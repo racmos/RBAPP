@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Sets - Riftbound Manager{% endblock %}
+
+{% block content %}
+<h1>Sets Management</h1>
+
+<div class="filter-section">
+    <form method="GET" action="{{ url_for('main.sets') }}">
+        <div class="filter-row">
+            <div class="form-group">
+                <label for="search_id">Set ID</label>
+                <input type="text" id="search_id" name="search_id" value="{{ request.args.get('search_id', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="search_name">Set Name</label>
+                <input type="text" id="search_name" name="search_name"
+                    value="{{ request.args.get('search_name', '') }}">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="{{ url_for('main.sets') }}" class="btn btn-secondary">Clear</a>
+    </form>
+</div>
+
+<button onclick="openAddModal()" class="btn btn-primary" style="margin-bottom: 1rem;">Add New Set</button>
+
+<table>
+    <thead>
+        <tr>
+            <th>Set ID</th>
+            <th>Set Name</th>
+            <th>Number of Cards</th>
+            <th>Release Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for set in sets %}
+        <tr>
+            <td>{{ set.rbset_id }}</td>
+            <td>{{ set.rbset_name }}</td>
+            <td>{{ set.rbset_ncard or 'N/A' }}</td>
+            <td>{{ set.rbset_outdat or 'N/A' }}</td>
+            <td>
+                <button
+                    onclick="openEditModal('{{ set.rbset_id }}', '{{ set.rbset_name }}', '{{ set.rbset_ncard }}', '{{ set.rbset_outdat }}')"
+                    class="btn btn-secondary">Edit</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Add Modal -->
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Set</h2>
+            <span class="close" onclick="closeAddModal()">&times;</span>
+        </div>
+        <form id="addForm">
+            <div class="form-group">
+                <label for="add_rbset_id">Set ID *</label>
+                <input type="text" id="add_rbset_id" required>
+            </div>
+            <div class="form-group">
+                <label for="add_rbset_name">Set Name *</label>
+                <input type="text" id="add_rbset_name" required>
+            </div>
+            <div class="form-group">
+                <label for="add_rbset_ncard">Number of Cards</label>
+                <input type="number" id="add_rbset_ncard">
+            </div>
+            <div class="form-group">
+                <label for="add_rbset_outdat">Release Date</label>
+                <input type="date" id="add_rbset_outdat">
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeAddModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Set</h2>
+            <span class="close" onclick="closeEditModal()">&times;</span>
+        </div>
+        <form id="editForm">
+            <input type="hidden" id="edit_rbset_id">
+            <div class="form-group">
+                <label for="edit_rbset_name">Set Name *</label>
+                <input type="text" id="edit_rbset_name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_rbset_ncard">Number of Cards</label>
+                <input type="number" id="edit_rbset_ncard">
+            </div>
+            <div class="form-group">
+                <label for="edit_rbset_outdat">Release Date</label>
+                <input type="date" id="edit_rbset_outdat">
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openAddModal() {
+        document.getElementById('addModal').classList.add('active');
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('active');
+        document.getElementById('addForm').reset();
+    }
+
+    function openEditModal(id, name, ncard, outdat) {
+        document.getElementById('edit_rbset_id').value = id;
+        document.getElementById('edit_rbset_name').value = name;
+        document.getElementById('edit_rbset_ncard').value = ncard !== 'None' ? ncard : '';
+        document.getElementById('edit_rbset_outdat').value = outdat !== 'None' ? outdat : '';
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('active');
+    }
+
+    document.getElementById('addForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const data = {
+            rbset_id: document.getElementById('add_rbset_id').value,
+            rbset_name: document.getElementById('add_rbset_name').value,
+            rbset_ncard: document.getElementById('add_rbset_ncard').value || null,
+            rbset_outdat: document.getElementById('add_rbset_outdat').value || null
+        };
+
+        const response = await fetch('/riftbound/set/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    });
+
+    document.getElementById('editForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const setId = document.getElementById('edit_rbset_id').value;
+        const data = {
+            rbset_name: document.getElementById('edit_rbset_name').value,
+            rbset_ncard: document.getElementById('edit_rbset_ncard').value || null,
+            rbset_outdat: document.getElementById('edit_rbset_outdat').value || null
+        };
+
+        const response = await fetch(`/riftbound/set/update/${setId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    });
+</script>
+{% endblock %}

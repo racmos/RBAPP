@@ -1,0 +1,836 @@
+{% extends "base.html" %}
+{% block title %}Collection - Riftbound Manager{% endblock %}
+
+{% block content %}
+<h1>My Collection</h1>
+
+<div class="filter-section">
+    <form method="GET" action="{{ url_for('main.collection') }}" id="filterForm">
+        <div class="filter-row">
+            <div class="form-group">
+                <label for="search_set">Set</label>
+                <select id="search_set" name="search_set" class="select-visible">
+                    <option value="">All Sets</option>
+                    {% for set in sets %}
+                    <option value="{{ set.rbset_id }}" {% if request.args.get('search_set')==set.rbset_id %}selected{% endif %}>{{ set.rbset_id }} - {{ set.rbset_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="search_card_id">Card ID</label>
+                <input type="text" id="search_card_id" name="search_card_id" value="{{ request.args.get('search_card_id', '') }}" placeholder="e.g., 1, 7a or 39">
+            </div>
+            <div class="form-group">
+                <label for="search_card_name">Card Name</label>
+                <input type="text" id="search_card_name" name="search_card_name" value="{{ request.args.get('search_card_name', '') }}" placeholder="Search card name...">
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-secondary" onclick="toggleAdvancedFilters()" style="margin-bottom: 1rem;">
+            <i class="fa-solid fa-sliders"></i> Advanced Filters
+        </button>
+
+        <div id="advancedFilters" style="display: none;">
+            <div class="form-group">
+                <label>Domain</label>
+                <div class="filter-buttons">
+                    {% for domain in ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless'] %}
+                    <button type="button" class="filter-btn {% if domain in request.args.getlist('search_domains') %}active{% endif %}" data-group="search_domains" data-value="{{ domain }}" onclick="toggleFilterButton(this)">{{ domain }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <div class="filter-buttons">
+                    {% for type in ['Spell', 'Unit', 'Gear', 'Legend', 'Signature', 'Battlefield'] %}
+                    <button type="button" class="filter-btn {% if type in request.args.getlist('search_types') %}active{% endif %}" data-group="search_types" data-value="{{ type }}" onclick="toggleFilterButton(this)">{{ type }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Rarity</label>
+                <div class="filter-buttons">
+                    {% for rarity in ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'] %}
+                    <button type="button" class="filter-btn {% if rarity in request.args.getlist('search_rarities') %}active{% endif %}" data-group="search_rarities" data-value="{{ rarity }}" onclick="toggleFilterButton(this)">{{ rarity }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="search_tags_text">Tags (contains text)</label>
+                <input type="text" id="search_tags_text" name="search_tags_text" value="{{ request.args.get('search_tags_text', '') }}" placeholder="Search in tags...">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="{{ url_for('main.collection') }}" class="btn btn-secondary">Clear</a>
+    </form>
+</div>
+
+<!-- Inline Add Form -->
+<div class="add-card-form" style="margin-bottom: 2rem; padding: 1rem; background-color: var(--bg-hover); border-radius: 8px;">
+    <h3 style="margin-top: 0;">Add Card to Collection</h3>
+    <form id="addForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+        <div class="form-group">
+            <label for="add_set_id">Set *</label>
+            <select id="add_set_id" required class="select-visible" onchange="loadCardsForSet()">
+                <option value="">Select Set</option>
+            </select>
+        </div>
+        <div class="form-group" style="position: relative;">
+            <label for="add_card_search">Card *</label>
+            <input type="text" id="add_card_search" placeholder="Search card..." autocomplete="off" oninput="filterCards(this.value)" onfocus="showCardDropdown()" onblur="hideCardDropdown()">
+            <input type="hidden" id="add_card_id" required>
+            <div id="cardDropdown" class="card-dropdown" style="display: none;"></div>
+        </div>
+        <div class="form-group">
+            <label for="add_foil">Foil</label>
+            <button type="button" id="foilBtn" class="btn btn-secondary" onclick="toggleFoil()" style="width: 100%;">
+                <i class="fa-solid fa-gem"></i> No
+            </button>
+            <input type="hidden" id="add_foil" value="N">
+        </div>
+        <div class="form-group">
+            <label for="add_quantity">Quantity</label>
+            <div class="quantity-controls" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button type="button" class="quantity-btn" onclick="changeQuantity(-1)">-</button>
+                <input type="number" id="add_quantity" value="1" min="1" required style="width: 60px; text-align: center;">
+                <button type="button" class="quantity-btn" onclick="changeQuantity(1)">+</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Add</button>
+        </div>
+    </form>
+</div>
+
+<!-- Toolbar with Sorting, Pagination and View Toggle -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <label for="sortSelect" style="margin: 0;">Sort by:</label>
+        <select id="sortSelect" class="select-visible" onchange="applySorting()">
+            <option value="set" {% if request.args.get('sort_by') == 'set' or not request.args.get('sort_by') %}selected{% endif %}>Set</option>
+            <option value="card_id" {% if request.args.get('sort_by') == 'card_id' %}selected{% endif %}>Card ID</option>
+            <option value="name" {% if request.args.get('sort_by') == 'name' %}selected{% endif %}>Card Name</option>
+            <option value="price" {% if request.args.get('sort_by') == 'price' %}selected{% endif %}>Price</option>
+            <option value="quantity" {% if request.args.get('sort_by') == 'quantity' %}selected{% endif %}>Quantity</option>
+        </select>
+        <select id="sortOrderSelect" class="select-visible" onchange="applySorting()">
+            <option value="asc" {% if request.args.get('sort_order') != 'desc' %}selected{% endif %}>Ascending</option>
+            <option value="desc" {% if request.args.get('sort_order') == 'desc' %}selected{% endif %}>Descending</option>
+        </select>
+    </div>
+
+    <!-- Centered Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="pagination" style="margin: 0;">
+        {% if pagination.has_prev %}
+        <a href="?{{ get_page_url(pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
+        {% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+        <a href="?{{ get_page_url(pagination.next_num) }}" class="btn btn-secondary">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <label for="perPageSelect" style="margin: 0; font-size: 0.9rem;">Show:</label>
+        <select id="perPageSelect" onchange="changePerPage(this.value)" class="select-visible" style="padding: 0.3rem; font-size: 0.9rem;">
+            <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+            <option value="100" {% if per_page==100 %}selected{% endif %}>100</option>
+            <option value="200" {% if per_page==200 %}selected{% endif %}>200</option>
+        </select>
+        <button id="toggleViewBtn" class="btn btn-primary" onclick="toggleView()" title="Toggle View">
+            <i id="viewIcon" class="fa-duotone fa-solid fa-images"></i>
+        </button>
+    </div>
+</div>
+
+{% if pagination.total > 0 %}
+<p style="margin-bottom: 1rem;">Showing {{ (pagination.page - 1) * pagination.per_page + 1 }} to {{ min(pagination.page * pagination.per_page, pagination.total) }} of {{ pagination.total }} cards</p>
+{% endif %}
+
+<!-- LIST VIEW -->
+<div id="listView">
+    {% if pagination.total == 0 %}
+    <p style="text-align: center; padding: 2rem; color: rgba(255, 255, 255, 0.7);">No cards in your collection yet. Add cards using the form above.</p>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Set</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Foil</th>
+                <th>Quantity</th>
+                <th>Last Updated</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in collections_data %}
+            {% set item = data.collection %}
+            {% set card = data.card %}
+            {% set price = data.price %}
+            <tr>
+                <td>
+                    {% if card.image %}
+                    <div class="card-thumbnail-container">
+                        <img src="/riftbound/static/images/cards/{{ card.rbcar_rbset_id.lower() }}/{{ card.image }}" alt="{{ card.rbcar_name }}" class="card-thumbnail">
+                    </div>
+                    {% else %}
+                    <span>-</span>
+                    {% endif %}
+                </td>
+                <td>{{ item.rbcol_rbset_id }}</td>
+                <td>{{ item.rbcol_rbcar_id }}</td>
+                <td>{{ card.rbcar_name }}</td>
+                <td>{{ 'Yes' if item.rbcol_foil == 'S' else 'No' }}</td>
+                <td>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', -1)">-</button>
+                        <span class="quantity-value" id="qty_{{ item.rbcol_rbset_id }}_{{ item.rbcol_rbcar_id }}_{{ item.rbcol_foil }}">{{ item.rbcol_quantity }}</span>
+                        <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', 1)">+</button>
+                    </div>
+                </td>
+                <td>{{ item.rbcol_chadat.strftime('%Y-%m-%d %H:%M') if item.rbcol_chadat else 'N/A' }}</td>
+                <td>{% if price %}{{ "%.2f"|format(price) }} €{% else %}-{% endif %}</td>
+                <td>
+                    <button onclick="deleteCollection('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}')" class="btn btn-danger btn-sm">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<!-- IMAGE VIEW -->
+<div id="imageView" style="display: none;">
+    {% if pagination.total == 0 %}
+    <p style="text-align: center; padding: 2rem; color: rgba(255, 255, 255, 0.7);">No cards in your collection yet. Add cards using the form above.</p>
+    {% else %}
+    <div class="cards-grid">
+        {% for data in collections_data %}
+        {% set item = data.collection %}
+        {% set card = data.card %}
+        {% set price = data.price %}
+        <div class="card-item">
+            <div class="card-image-wrapper">
+                {% if card.image %}
+                <img src="/riftbound/static/images/cards/{{ card.rbcar_rbset_id.lower() }}/{{ card.image }}" alt="{{ card.rbcar_name }}" class="card-image">
+                {% else %}
+                <div class="no-image-placeholder">
+                    <p>No Image</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-info">
+                <h3>{{ card.rbcar_name }}</h3>
+                <p class="card-id">{{ item.rbcol_rbset_id }}-{{ item.rbcol_rbcar_id }}</p>
+                <div style="margin: 0.5rem 0;">
+                    <button type="button" class="btn btn-secondary {% if item.rbcol_foil == 'S' %}foil-active{% endif %}" style="width: 100%; pointer-events: none;">
+                        <i class="fa-solid fa-gem"></i> {% if item.rbcol_foil == 'S' %}Yes{% else %}No{% endif %}
+                    </button>
+                </div>
+                <div class="quantity-controls" style="margin: 0.5rem 0;">
+                    <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', -1)">-</button>
+                    <span class="quantity-value" id="qty_img_{{ item.rbcol_rbset_id }}_{{ item.rbcol_rbcar_id }}_{{ item.rbcol_foil }}">{{ item.rbcol_quantity }}</span>
+                    <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', 1)">+</button>
+                </div>
+                <p><strong>Last Updated:</strong> {{ item.rbcol_chadat.strftime('%Y-%m-%d %H:%M') if item.rbcol_chadat else 'N/A' }}</p>
+                <p><strong>Price:</strong> {% if price %}{{ "%.2f"|format(price) }} €{% else %}-{% endif %}</p>
+                <button onclick="deleteCollection('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}')" class="btn btn-danger btn-sm" style="margin-top: 0.5rem; width: 100%;">Delete</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if pagination.pages > 1 %}
+<div class="pagination" style="margin-top: 2rem;">
+    {% if pagination.has_prev %}
+    <a href="?{{ get_page_url(pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
+    {% endif %}
+    <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+    <a href="?{{ get_page_url(pagination.next_num) }}" class="btn btn-secondary">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-thumbnail-container {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+    }
+
+    .card-thumbnail {
+        width: 50px;
+        height: auto;
+        border-radius: 12px;
+        cursor: pointer;
+        display: block;
+        position: relative;
+    }
+
+    .card-thumbnail-container::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9998;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+
+    .card-thumbnail-container:hover::before {
+        opacity: 1;
+    }
+
+    .card-thumbnail-container:hover .card-thumbnail {
+        position: fixed !important;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        z-index: 9999 !important;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.9) !important;
+        border: 3px solid var(--btn-login) !important;
+        max-width: 90vw !important;
+        max-height: 90vh !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    .quantity-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .quantity-btn {
+        padding: 0.3rem 0.6rem;
+        background-color: var(--btn-login);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .quantity-btn:hover {
+        background-color: rgba(0, 178, 207, 0.8);
+    }
+
+    .quantity-value {
+        min-width: 30px;
+        text-align: center;
+    }
+
+    .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        padding: 1rem 0;
+    }
+
+    .card-item {
+        background-color: var(--bg-hover);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-item:hover {
+        transform: translateY(-5px);
+    }
+
+    .card-image-wrapper {
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .card-image {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .no-image-placeholder {
+        padding: 2rem;
+        color: rgba(255, 255, 255, 0.5);
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card-info {
+        padding: 0.75rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-info h3 {
+        margin: 0 0 0.3rem;
+        font-size: 0.95rem;
+    }
+
+    .card-id {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 0 0 0.5rem;
+    }
+
+    .filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .filter-btn {
+        padding: 0.4rem 1rem;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .filter-btn:hover {
+        background-color: rgba(0, 178, 207, 0.3);
+    }
+
+    .filter-btn.active {
+        background-color: var(--btn-login);
+        color: white;
+        box-shadow: 0 0 10px rgba(0, 178, 207, 0.5);
+    }
+
+    .card-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-hover);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        margin-top: 4px;
+    }
+
+    .card-dropdown-item {
+        padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .card-dropdown-item:hover {
+        background-color: rgba(0, 178, 207, 0.3);
+    }
+
+    .card-dropdown-item img {
+        width: 40px;
+        height: auto;
+        border-radius: 4px;
+    }
+
+    .card-dropdown-item-info {
+        flex: 1;
+    }
+
+    .card-dropdown-item-id {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .foil-active {
+        background-color: var(--btn-login) !important;
+        color: white !important;
+    }
+
+    .select-visible,
+    select {
+        background-color: rgba(0, 178, 207, 0.2) !important;
+        border: 1px solid rgba(0, 178, 207, 0.3) !important;
+        color: #ffffff !important;
+        padding: 0.5rem;
+        border-radius: 4px;
+    }
+
+    .select-visible option,
+    select option {
+        background-color: #1a4c62 !important;
+        color: #ffffff !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentView = '{{ view_mode }}';
+    let allCards = [];
+    let filteredCards = [];
+    let selectedSetId = '';
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSets();
+        
+        // Restore view mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const view = urlParams.get('view');
+        if (view === 'image' || currentView === 'image') {
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('imageView').style.display = 'block';
+            document.getElementById('viewIcon').className = 'fa-duotone fa-solid fa-list';
+            currentView = 'image';
+        }
+    });
+
+    function toggleView() {
+        const listView = document.getElementById('listView');
+        const imageView = document.getElementById('imageView');
+        const viewIcon = document.getElementById('viewIcon');
+
+        if (currentView === 'list') {
+            listView.style.display = 'none';
+            imageView.style.display = 'block';
+            viewIcon.className = 'fa-duotone fa-solid fa-list';
+            currentView = 'image';
+        } else {
+            listView.style.display = 'block';
+            imageView.style.display = 'none';
+            viewIcon.className = 'fa-duotone fa-solid fa-images';
+            currentView = 'list';
+        }
+
+        // Save to URL
+        const url = new URL(window.location);
+        url.searchParams.set('view', currentView);
+        window.history.replaceState({}, '', url);
+    }
+
+    function changePerPage(value) {
+        const url = new URL(window.location);
+        url.searchParams.set('per_page', value);
+        url.searchParams.set('page', 1);
+        url.searchParams.set('view', currentView);
+        window.location = url.toString();
+    }
+
+    function applySorting() {
+        const sortBy = document.getElementById('sortSelect').value;
+        const sortOrder = document.getElementById('sortOrderSelect').value;
+        
+        const url = new URL(window.location);
+        url.searchParams.set('sort_by', sortBy);
+        url.searchParams.set('sort_order', sortOrder);
+        url.searchParams.set('page', 1);
+        window.location = url.toString();
+    }
+
+    function toggleAdvancedFilters() {
+        const filters = document.getElementById('advancedFilters');
+        filters.style.display = filters.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleFilterButton(btn) {
+        btn.classList.toggle('active');
+        const group = btn.dataset.group;
+        const value = btn.dataset.value;
+        
+        // Create hidden input if it doesn't exist
+        let input = document.querySelector(`input[name="${group}"][value="${value}"]`);
+        if (btn.classList.contains('active')) {
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = group;
+                input.value = value;
+                document.getElementById('filterForm').appendChild(input);
+            }
+        } else {
+            if (input) {
+                input.remove();
+            }
+        }
+    }
+
+    async function loadSets() {
+        try {
+            const response = await fetch('/riftbound/collection/api/sets');
+            const data = await response.json();
+            const select = document.getElementById('add_set_id');
+            select.innerHTML = '<option value="">Select Set</option>';
+            data.sets.forEach(set => {
+                const option = document.createElement('option');
+                option.value = set.id;
+                option.textContent = `${set.id} - ${set.name}`;
+                select.appendChild(option);
+            });
+            
+            // Restore selected set from localStorage
+            const savedSetId = localStorage.getItem('collection_last_set');
+            if (savedSetId) {
+                select.value = savedSetId;
+                loadCardsForSet();
+            }
+        } catch (error) {
+            console.error('Error loading sets:', error);
+        }
+    }
+
+    async function loadCardsForSet() {
+        const setSelect = document.getElementById('add_set_id');
+        selectedSetId = setSelect.value;
+        
+        // Save selected set to localStorage
+        if (selectedSetId) {
+            localStorage.setItem('collection_last_set', selectedSetId);
+        } else {
+            localStorage.removeItem('collection_last_set');
+        }
+        
+        // Clear card search when set changes
+        document.getElementById('add_card_search').value = '';
+        document.getElementById('add_card_id').value = '';
+        
+        if (!selectedSetId) {
+            allCards = [];
+            filteredCards = [];
+            return;
+        }
+
+        try {
+            const response = await fetch(`/riftbound/collection/api/cards?set_id=${selectedSetId}&limit=1000`);
+            const data = await response.json();
+            allCards = data.cards;
+            filteredCards = allCards;
+        } catch (error) {
+            console.error('Error loading cards:', error);
+        }
+    }
+
+    function filterCards(searchTerm) {
+        if (!searchTerm) {
+            filteredCards = allCards;
+        } else {
+            const term = searchTerm.toLowerCase();
+            filteredCards = allCards.filter(card => 
+                card.name.toLowerCase().includes(term) ||
+                card.card_id.toLowerCase().includes(term)
+            );
+        }
+        showCardDropdown();
+    }
+
+    function showCardDropdown() {
+        const dropdown = document.getElementById('cardDropdown');
+        if (filteredCards.length === 0 || !selectedSetId) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        dropdown.innerHTML = '';
+        filteredCards.slice(0, 20).forEach(card => {
+            const item = document.createElement('div');
+            item.className = 'card-dropdown-item';
+            item.onclick = () => selectCard(card);
+            
+            item.innerHTML = `
+                ${card.image ? `<img src="${card.image}" alt="${card.name}">` : ''}
+                <div class="card-dropdown-item-info">
+                    <div>${card.name}</div>
+                    <div class="card-dropdown-item-id">${card.set_id}-${card.card_id}</div>
+                </div>
+            `;
+            dropdown.appendChild(item);
+        });
+        
+        dropdown.style.display = filteredCards.length > 0 ? 'block' : 'none';
+    }
+
+    function hideCardDropdown() {
+        // Delay to allow click on dropdown item
+        setTimeout(() => {
+            document.getElementById('cardDropdown').style.display = 'none';
+        }, 200);
+    }
+
+    function selectCard(card) {
+        document.getElementById('add_card_search').value = `${card.name} (${card.set_id}-${card.card_id})`;
+        document.getElementById('add_card_id').value = `${card.set_id}|${card.card_id}`;
+        document.getElementById('cardDropdown').style.display = 'none';
+    }
+
+    let foilActive = false;
+    function toggleFoil() {
+        foilActive = !foilActive;
+        const btn = document.getElementById('foilBtn');
+        const input = document.getElementById('add_foil');
+        
+        if (foilActive) {
+            btn.classList.add('foil-active');
+            btn.innerHTML = '<i class="fa-solid fa-gem"></i> Yes';
+            input.value = 'S';
+        } else {
+            btn.classList.remove('foil-active');
+            btn.innerHTML = '<i class="fa-solid fa-gem"></i> No';
+            input.value = 'N';
+        }
+    }
+
+    function changeQuantity(delta) {
+        const input = document.getElementById('add_quantity');
+        const current = parseInt(input.value) || 1;
+        const newValue = Math.max(1, current + delta);
+        input.value = newValue;
+    }
+
+    async function updateQuantity(setId, cardId, foil, change) {
+        const elementIds = [`qty_${setId}_${cardId}_${foil}`, `qty_img_${setId}_${cardId}_${foil}`];
+        const elements = elementIds.map(id => document.getElementById(id)).filter(el => el);
+        
+        if (elements.length === 0) return;
+        
+        const currentQty = parseInt(elements[0].textContent);
+        const newQty = currentQty + change;
+
+        if (newQty < 0) {
+            alert('Quantity cannot be negative');
+            return;
+        }
+
+        const data = {
+            rbcol_rbset_id: setId,
+            rbcol_rbcar_id: cardId,
+            rbcol_foil: foil,
+            quantity: newQty
+        };
+
+        try {
+            const response = await fetch('/riftbound/collection/update_quantity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                if (result.deleted) {
+                    location.reload();
+                } else {
+                    elements.forEach(el => el.textContent = newQty);
+                }
+            } else {
+                alert(result.message || 'Error updating quantity');
+            }
+        } catch (error) {
+            alert('Error updating quantity');
+            console.error(error);
+        }
+    }
+
+    async function deleteCollection(setId, cardId, foil) {
+        if (!confirm('Are you sure you want to delete this card from your collection?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/riftbound/collection/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rbcol_rbset_id: setId,
+                    rbcol_rbcar_id: cardId,
+                    rbcol_foil: foil
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('Error deleting card');
+            }
+        } catch (error) {
+            alert('Error deleting card');
+            console.error(error);
+        }
+    }
+
+    document.getElementById('addForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const cardIdValue = document.getElementById('add_card_id').value;
+        if (!cardIdValue) {
+            alert('Please select a card');
+            return;
+        }
+
+        const [setId, cardId] = cardIdValue.split('|');
+
+        const data = {
+            rbcol_rbset_id: setId,
+            rbcol_rbcar_id: cardId,
+            rbcol_foil: document.getElementById('add_foil').value,
+            rbcol_quantity: document.getElementById('add_quantity').value
+        };
+
+        try {
+            const response = await fetch('/riftbound/collection/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert(result.message || 'Error adding card');
+            }
+        } catch (error) {
+            alert('Error adding card');
+            console.error(error);
+        }
+    });
+</script>
+{% endblock %}
+

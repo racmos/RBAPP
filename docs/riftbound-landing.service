@@ -1,0 +1,14 @@
+[Unit]
+Description=Riftbound Landing Page (FastAPI)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/riftbound
+Environment="PATH=/var/www/riftbound/venv/bin"
+# Run on port 8000
+ExecStart=/var/www/riftbound/venv/bin/gunicorn -k uvicorn.workers.UvicornWorker -w 3 -b 0.0.0.0:8001 landing:app
+
+[Install]
+WantedBy=multi-user.target

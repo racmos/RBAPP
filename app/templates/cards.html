@@ -1,0 +1,1139 @@
+{% extends "base.html" %}
+{% block title %}Cards - Riftbound Manager{% endblock %}
+
+{% block content %}
+<h1>Cards Management</h1>
+
+<div class="filter-section">
+    <form method="GET" action="{{ url_for('main.cards') }}" id="filterForm">
+        <div class="filter-row">
+            <div class="form-group">
+                <label for="search_name">Card Name</label>
+                <input type="text" id="search_name" name="search_name"
+                    value="{{ request.args.get('search_name', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="search_set">Set</label>
+                <select id="search_set" name="search_set" class="select-visible">
+                    <option value="">All Sets</option>
+                    {% for set in sets %}
+                    <option value="{{ set.rbset_id }}" {% if request.args.get('search_set')==set.rbset_id %}selected{%
+                        endif %}>{{ set.rbset_id }} - {{ set.rbset_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="search_id">Card ID</label>
+                <input type="text" id="search_id" name="search_id" value="{{ request.args.get('search_id', '') }}"
+                    placeholder="e.g., 1, 7a or 39">
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-secondary" onclick="toggleAdvancedFilters()" style="margin-bottom: 1rem;">
+            <i class="fa-solid fa-sliders"></i> Advanced Filters
+        </button>
+
+        <div id="advancedFilters" style="display: none;">
+            <div class="form-group">
+                <label>Domain</label>
+                <div class="filter-buttons">
+                    {% for domain in ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless'] %}
+                    <button type="button"
+                        class="filter-btn {% if domain in request.args.getlist('search_domains') %}active{% endif %}"
+                        data-group="search_domains" data-value="{{ domain }}" onclick="toggleFilterButton(this)">{{
+                        domain }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <div class="filter-buttons">
+                    {% for type in ['Spell', 'Unit', 'Gear', 'Legend', 'Signature', 'Battlefield'] %}
+                    <button type="button"
+                        class="filter-btn {% if type in request.args.getlist('search_types') %}active{% endif %}"
+                        data-group="search_types" data-value="{{ type }}" onclick="toggleFilterButton(this)">{{ type
+                        }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Rarity</label>
+                <div class="filter-buttons">
+                    {% for rarity in ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'] %}
+                    <button type="button"
+                        class="filter-btn {% if rarity in request.args.getlist('search_rarities') %}active{% endif %}"
+                        data-group="search_rarities" data-value="{{ rarity }}" onclick="toggleFilterButton(this)">{{
+                        rarity }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="search_banned">Status</label>
+                <select id="search_banned" name="search_banned" class="select-visible">
+                    <option value="">All</option>
+                    <option value="N" {% if request.args.get('search_banned')=='N' %}selected{% endif %}>Allowed
+                    </option>
+                    <option value="S" {% if request.args.get('search_banned')=='S' %}selected{% endif %}>Banned</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="search_tags_text">Tags (contains text)</label>
+                <input type="text" id="search_tags_text" name="search_tags_text"
+                    value="{{ request.args.get('search_tags_text', '') }}" placeholder="Search in tags...">
+            </div>
+
+            <div class="form-group">
+                <label for="search_ability">Ability (contains text)</label>
+                <input type="text" id="search_ability" name="search_ability"
+                    value="{{ request.args.get('search_ability', '') }}" placeholder="Search in abilities...">
+            </div>
+
+            <div class="form-group">
+                <label>Stats Ranges</label>
+                <div class="stats-row">
+                    <div class="stat-group">
+                        <label>Energy</label>
+                        <div class="minmax-inputs">
+                            <input type="number" name="energy_min" value="{{ request.args.get('energy_min', '') }}"
+                                placeholder="Min" min="0">
+                            <input type="number" name="energy_max" value="{{ request.args.get('energy_max', '') }}"
+                                placeholder="Max" min="0">
+                        </div>
+                    </div>
+                    <div class="stat-group">
+                        <label>Power</label>
+                        <div class="minmax-inputs">
+                            <input type="number" name="power_min" value="{{ request.args.get('power_min', '') }}"
+                                placeholder="Min" min="0">
+                            <input type="number" name="power_max" value="{{ request.args.get('power_max', '') }}"
+                                placeholder="Max" min="0">
+                        </div>
+                    </div>
+                    <div class="stat-group">
+                        <label>Might</label>
+                        <div class="minmax-inputs">
+                            <input type="number" name="might_min" value="{{ request.args.get('might_min', '') }}"
+                                placeholder="Min" min="0">
+                            <input type="number" name="might_max" value="{{ request.args.get('might_max', '') }}"
+                                placeholder="Max" min="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="{{ url_for('main.cards') }}" class="btn btn-secondary">Clear</a>
+    </form>
+</div>
+
+<!-- Toolbar con Paginación CENTRADA -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <button onclick="openAddModal()" class="btn btn-primary">Add New Card</button>
+
+    <!-- PAGINACIÓN EN EL CENTRO -->
+    {% if pagination.pages > 1 %}
+    <div class="pagination" style="margin: 0;">
+        {% if pagination.has_prev %}
+        <a href="?{{ get_page_url(pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
+        {% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+        <a href="?{{ get_page_url(pagination.next_num) }}" class="btn btn-secondary">Next</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div></div>
+    {% endif %}
+
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <label for="perPageSelect" style="margin: 0; font-size: 0.9rem;">Show:</label>
+        <select id="perPageSelect" onchange="changePerPage(this.value)" class="select-visible"
+            style="padding: 0.3rem; font-size: 0.9rem;">
+            <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+            <option value="100" {% if per_page==100 %}selected{% endif %}>100</option>
+            <option value="200" {% if per_page==200 %}selected{% endif %}>200</option>
+        </select>
+        <button id="toggleViewBtn" class="btn btn-primary" onclick="toggleView()" title="Toggle View">
+            <i id="viewIcon" class="fa-duotone fa-solid fa-images"></i>
+        </button>
+    </div>
+</div>
+
+{% if pagination.total > 0 %}
+<p style="margin-bottom: 1rem;">Showing {{ (pagination.page - 1) * pagination.per_page + 1 }} to {{ min(pagination.page
+    * pagination.per_page, pagination.total) }} of {{ pagination.total }} cards</p>
+{% endif %}
+
+<!-- LIST VIEW -->
+<div id="listView">
+    <table>
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Set</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Domain</th>
+                <th>Type</th>
+                <th>Rarity</th>
+                <th>Energy</th>
+                <th>Power</th>
+                <th>Might</th>
+                <th>Banned</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for card in cards %}
+            <tr data-card-index="{{ loop.index0 }}">
+                <td>
+                    {% if card.image %}
+                    <div class="card-thumbnail-container">
+                        <img src="/riftbound/static/images/cards/{{ card.rbcar_rbset_id.lower() }}/{{ card.image }}"
+                            alt="{{ card.rbcar_name }}" class="card-thumbnail">
+                    </div>
+                    {% else %}
+                    <span>-</span>
+                    {% endif %}
+                </td>
+                <td>{{ card.rbcar_rbset_id }}</td>
+                <td>{{ card.rbcar_id }}</td>
+                <td>{{ card.rbcar_name }}</td>
+                <td>{{ card.rbcar_domain or '-' }}</td>
+                <td>{{ card.rbcar_type or '-' }}</td>
+                <td>{{ card.rbcar_rarity or '-' }}</td>
+                <td>{{ card.rbcar_energy or '-' }}</td>
+                <td>{{ card.rbcar_power or '-' }}</td>
+                <td>{{ card.rbcar_might or '-' }}</td>
+                <td>{{ card.rbcar_banned }}</td>
+                <td><button onclick="openEditModal({{ loop.index0 }})" class="btn btn-secondary btn-sm">Edit</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- IMAGE VIEW -->
+<div id="imageView" style="display: none;">
+    <div class="cards-grid">
+        {% for card in cards %}
+        <div class="card-item">
+            <div class="card-image-wrapper">
+                {% if card.image %}
+                <img src="/riftbound/static/images/cards/{{ card.rbcar_rbset_id.lower() }}/{{ card.image }}"
+                    alt="{{ card.rbcar_name }}" class="card-image">
+                {% else %}
+                <div class="no-image-placeholder">
+                    <p>No Image</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-info">
+                <h3>{{ card.rbcar_name }}</h3>
+                <p class="card-id">{{ card.rbcar_rbset_id }}-{{ card.rbcar_id }}</p>
+                <div class="card-actions-row">
+                    <span
+                        class="banned-badge {% if card.rbcar_banned == 'S' %}banned-yes{% else %}banned-no{% endif %}">
+                        {% if card.rbcar_banned == 'S' %}BANNED{% else %}ALLOWED{% endif %}
+                    </span>
+                    <button onclick="openEditModal({{ loop.index0 }})" class="btn btn-secondary btn-sm">Edit</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Card</h2>
+            <span class="close" onclick="closeAddModal()">&times;</span>
+        </div>
+        <form id="addForm">
+            <!-- Set ID -->
+            <div class="form-group">
+                <label>Set ID *</label>
+                <select id="add_rbcar_rbset_id" required class="select-visible">
+                    <option value="">Select</option>
+                    {% for set in sets %}<option value="{{ set.rbset_id }}">{{ set.rbset_id }}</option>{% endfor %}
+                </select>
+            </div>
+
+            <!-- Card ID -->
+            <div class="form-group">
+                <label>Card ID *</label>
+                <input type="text" id="add_rbcar_id" required>
+            </div>
+
+            <!-- Name -->
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" id="add_rbcar_name" required>
+            </div>
+
+            <!-- Domain -->
+            <div class="form-group">
+                <label>Domain</label>
+                <select id="add_rbcar_domain_selector" class="select-visible">
+                    <option value="">Select</option>
+                    {% for d in ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless'] %}
+                    <option value="{{ d }}">{{ d }}</option>
+                    {% endfor %}
+                </select>
+                <div id="add_selected_domains" class="domain-tags"></div>
+                <input type="hidden" id="add_rbcar_domain">
+            </div>
+
+            <!-- Type -->
+            <div class="form-group">
+                <label>Type</label>
+                <input type="text" id="add_rbcar_type">
+            </div>
+
+            <!-- ⭐ AÑADIR AQUÍ: TAGS -->
+            <div class="form-group">
+                <label for="add_rbcar_tags">Tags</label>
+                <input type="text" id="add_rbcar_tags" placeholder="Region, creature type, etc.">
+            </div>
+
+            <!-- Energy/Power/Might -->
+            <div class="filter-row">
+                <div class="form-group">
+                    <label>Energy</label>
+                    <input type="number" id="add_rbcar_energy">
+                </div>
+                <div class="form-group">
+                    <label>Power</label>
+                    <input type="number" id="add_rbcar_power">
+                </div>
+                <div class="form-group">
+                    <label>Might</label>
+                    <input type="number" id="add_rbcar_might">
+                </div>
+            </div>
+
+            <!-- Ability -->
+            <div class="form-group">
+                <label for="add_rbcar_ability">Ability</label>
+                <textarea id="add_rbcar_ability" rows="3"></textarea>
+            </div>
+
+            <!-- Rarity -->
+            <div class="form-group">
+                <label>Rarity</label>
+                <select id="add_rbcar_rarity" class="select-visible">
+                    <option value="">Select</option>
+                    {% for r in ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'] %}
+                    <option value="{{ r }}">{{ r }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Artist -->
+            <div class="form-group">
+                <label>Artist</label>
+                <input type="text" id="add_rbcar_artist">
+            </div>
+
+            <!-- Banned -->
+            <div class="form-group">
+                <label>Banned?</label>
+                <select id="add_rbcar_banned" class="select-visible">
+                    <option value="N">No</option>
+                    <option value="S">Yes</option>
+                </select>
+            </div>
+
+            <!-- ⭐ AÑADIR AQUÍ: IMAGE URL -->
+            <div class="form-group">
+                <label for="add_image_url">Image URL</label>
+                <input type="text" id="add_image_url">
+            </div>
+
+            <!-- Image Upload -->
+            <div class="form-group">
+                <label>Upload Image</label>
+                <input type="file" id="add_image_file" accept=".jpg,.jpeg,.png,.webp" onchange="previewAddImage(this)">
+                <small>Max 10MB</small>
+                <div id="add_image_preview"></div>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="button" onclick="closeAddModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal (simplificado) -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Card</h2>
+            <button type="button" class="nav-arrow-btn" onclick="navigateCard('prev')" title="Previous Card">
+                <i class="fa-duotone fa-solid fa-arrow-left"></i>
+            </button>
+            <button type="button" class="nav-arrow-btn" onclick="navigateCard('next')" title="Next Card">
+                <i class="fa-duotone fa-solid fa-arrow-right"></i>
+            </button>
+            <span class="close" onclick="closeEditModal()">&times;</span>
+        </div>
+        <div id="editCardImagePreview"></div>
+        <form id="editForm">
+            <input type="hidden" id="edit_rbcar_rbset_id">
+            <input type="hidden" id="edit_rbcar_id">
+            <input type="hidden" id="edit_card_index">
+            <div class="form-group"><label>Name *</label><input type="text" id="edit_rbcar_name" required></div>
+            <div class="filter-row">
+                <div class="form-group">
+                    <label>Set ID</label>
+                    <input type="text" id="edit_rbcar_rbset_id_display" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Card ID</label>
+                    <input type="text" id="edit_rbcar_id_display" disabled>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="edit_rbcar_domain">Domain</label>
+                <select id="edit_rbcar_domain_selector" class="styled-select select-visible">
+                    <option value="">Select Domain to add</option>
+                    <option value="Fury">Fury</option>
+                    <option value="Calm">Calm</option>
+                    <option value="Mind">Mind</option>
+                    <option value="Body">Body</option>
+                    <option value="Chaos">Chaos</option>
+                    <option value="Order">Order</option>
+                    <option value="Colorless">Colorless</option>
+                </select>
+                <div id="edit_selected_domains" class="domain-tags"></div>
+                <input type="hidden" id="edit_rbcar_domain" name="edit_rbcar_domain">
+            </div>
+            <div class="form-group"><label>Type</label><input type="text" id="edit_rbcar_type"></div>
+            <div class="form-group">
+                <label for="edit_rbcar_tags">Tags</label>
+                <input type="text" id="edit_rbcar_tags">
+            </div>
+            <div class="filter-row">
+                <div class="form-group"><label>Energy</label><input type="number" id="edit_rbcar_energy"></div>
+                <div class="form-group"><label>Power</label><input type="number" id="edit_rbcar_power"></div>
+                <div class="form-group"><label>Might</label><input type="number" id="edit_rbcar_might"></div>
+            </div>
+            <div class="form-group">
+                <label for="edit_rbcar_ability">Ability</label>
+                <textarea id="edit_rbcar_ability" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit_rbcar_rarity">Rarity</label>
+                <select id="edit_rbcar_rarity" class="styled-select select-visible">
+                    <option value="">Select Rarity</option>
+                    <option value="Common">Common</option>
+                    <option value="Uncommon">Uncommon</option>
+                    <option value="Rare">Rare</option>
+                    <option value="Epic">Epic</option>
+                    <option value="Showcase">Showcase</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit_rbcar_artist">Artist</label>
+                <input type="text" id="edit_rbcar_artist">
+            </div>
+            <div class="form-group">
+                <label for="edit_image_url">Image URL</label>
+                <input type="text" id="edit_image_url">
+            </div>
+            <div class="form-group">
+                <label for="edit_image">Image Filename</label>
+                <input type="text" id="edit_image" placeholder="001.jpg" readonly>
+                <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="document.getElementById('edit_image_file').click()">
+                    <i class="fa-solid fa-upload"></i> Upload New Image
+                </button>
+                <input type="file" id="edit_image_file" accept=".jpg,.jpeg,.png,.webp" style="display: none;"
+                    onchange="handleEditImageUpload(this)">
+                <div id="edit_image_preview" style="margin-top: 0.5rem;"></div>
+                <small id="edit_upload_status"></small>
+            </div>
+            <div class="form-group"><label>Banned?</label>
+                <select id="edit_rbcar_banned" class="select-visible">
+                    <option value="N">No</option>
+                    <option value="S">Yes</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Paginación INFERIOR (duplicada) -->
+{% if pagination.pages > 1 %}
+<div class="pagination" style="margin-top: 2rem;">
+    {% if pagination.has_prev %}
+    <a href="?{{ get_page_url(pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
+    {% endif %}
+    <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+    <a href="?{{ get_page_url(pagination.next_num) }}" class="btn btn-secondary">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Thumbnail hover - SE CIERRA AL SALIR (sin overlay completo) */
+    .card-thumbnail-container {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+    }
+
+    .card-thumbnail {
+        width: 50px;
+        height: auto;
+        border-radius: 12px;
+        cursor: pointer;
+        display: block;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Overlay con ::before para que se cierre */
+    .card-thumbnail-container::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9998;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+
+    .card-thumbnail-container:hover::before {
+        opacity: 1;
+    }
+
+    .card-thumbnail-container:hover .card-thumbnail {
+        position: fixed !important;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        z-index: 9999 !important;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.9) !important;
+        border: 3px solid var(--btn-login) !important;
+        max-width: 90vw !important;
+        max-height: 90vh !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        padding: 1rem 0;
+    }
+
+    .card-item {
+        background-color: var(--bg-hover);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-item:hover {
+        transform: translateY(-5px);
+    }
+
+    .card-image-wrapper {
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .card-image {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .no-image-placeholder {
+        padding: 2rem;
+        color: rgba(255, 255, 255, 0.5);
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card-info {
+        padding: 0.75rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-info h3 {
+        margin: 0 0 0.3rem;
+        font-size: 0.95rem;
+    }
+
+    .card-id {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 0 0 0.5rem;
+    }
+
+    .card-actions-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-top: auto;
+    }
+
+    .banned-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: bold;
+    }
+
+    .banned-yes {
+        background-color: #e74c3c;
+        color: white;
+    }
+
+    .banned-no {
+        background-color: var(--btn-login);
+        color: white;
+    }
+
+    .pagination {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .filter-btn {
+        padding: 0.4rem 1rem;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .filter-btn:hover {
+        background-color: rgba(0, 178, 207, 0.3);
+    }
+
+    .filter-btn.active {
+        background-color: var(--btn-login);
+        color: white;
+        box-shadow: 0 0 10px rgba(0, 178, 207, 0.5);
+    }
+
+    .select-visible,
+    select {
+        background-color: rgba(0, 178, 207, 0.2) !important;
+        border: 1px solid rgba(0, 178, 207, 0.3) !important;
+        color: #ffffff !important;
+        padding: 0.5rem;
+        border-radius: 4px;
+    }
+
+    .select-visible option,
+    select option {
+        background-color: #1a4c62 !important;
+        color: #ffffff !important;
+    }
+
+    .domain-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        min-height: 30px;
+    }
+
+    .domain-tag {
+        background-color: rgba(0, 178, 207, 0.3);
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .domain-tag button {
+        background: none;
+        border: none;
+        color: #e74c3c;
+        cursor: pointer;
+    }
+
+    .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .stat-group>label {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 0.3rem;
+        color: var(--text-color);
+    }
+
+    .minmax-inputs {
+        display: flex;
+        gap: 0.3rem;
+    }
+
+    .minmax-inputs input {
+        flex: 1;
+        width: 70px;
+        padding: 0.3rem;
+    }
+
+    .nav-arrow-btn {
+        background: var(--btn-login);
+        border: none;
+        color: white;
+        padding: 0.5rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin: 0 0.3rem;
+    }
+
+    .nav-arrow-btn:hover {
+        background: var(--btn-active);
+    }
+
+    .nav-arrow-btn:disabled {
+        background: rgba(255, 255, 255, 0.2);
+        cursor: not-allowed;
+    }
+
+    .nav-arrow-btn i {
+        font-size: 1.2rem;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .modal-header h2 {
+        flex: 1;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentView = 'list';
+    let addSelectedDomains = [];
+    const cardsData = {{ cards_json| tojson }};
+
+    // MANTENER VISTA AL CAMBIAR PÁGINA
+    function toggleView() {
+        const listView = document.getElementById('listView');
+        const imageView = document.getElementById('imageView');
+        const viewIcon = document.getElementById('viewIcon');
+
+        if (currentView === 'list') {
+            listView.style.display = 'none';
+            imageView.style.display = 'block';
+            viewIcon.className = 'fa-duotone fa-solid fa-list';
+            currentView = 'image';
+        } else {
+            listView.style.display = 'block';
+            imageView.style.display = 'none';
+            viewIcon.className = 'fa-duotone fa-solid fa-images';
+            currentView = 'list';
+        }
+
+        // Guardar en URL
+        const url = new URL(window.location);
+        url.searchParams.set('view', currentView);
+        window.history.replaceState({}, '', url);
+    }
+
+    function changePerPage(value) {
+        const url = new URL(window.location);
+        url.searchParams.set('per_page', value);
+        url.searchParams.set('page', 1);
+        // MANTENER vista
+        url.searchParams.set('view', currentView);
+        window.location = url.toString();
+    }
+
+    // Restaurar vista al cargar
+    document.addEventListener('DOMContentLoaded', function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const view = urlParams.get('view');
+
+        if (view === 'image') {
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('imageView').style.display = 'block';
+            document.getElementById('viewIcon').className = 'fa-duotone fa-solid fa-list';
+            currentView = 'image';
+        }
+
+        // AÑADIR ESTO: Interceptar todos los links de paginación
+        document.querySelectorAll('.pagination a').forEach(link => {
+            link.addEventListener('click', function (e) {
+                // Si hay un modo de vista activo, añadirlo a la URL
+                if (currentView) {
+                    e.preventDefault();
+                    const url = new URL(this.href);
+                    url.searchParams.set('view', currentView);
+                    window.location.href = url.toString();
+                }
+            });
+        });
+    });
+
+    function toggleAdvancedFilters() {
+        const advanced = document.getElementById('advancedFilters');
+        advanced.style.display = advanced.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleFilterButton(button) {
+        button.classList.toggle('active');
+    }
+
+    async function handleEditImageUpload(input) {
+        const file = input.files[0];
+        const statusEl = document.getElementById('edit_upload_status');
+        const preview = document.getElementById('edit_image_preview');
+
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            statusEl.textContent = 'File size exceeds 2MB limit';
+            statusEl.style.color = '#e74c3c';
+            input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            preview.innerHTML = `<img src="${e.target.result}" class="image-preview" alt="Preview">`;
+        };
+        reader.readAsDataURL(file);
+
+        const action = confirm('Replace existing image or save as new? \n\nOK = Replace existing\nCancel = Save as new name');
+
+        const setId = document.getElementById('edit_rbcar_rbset_id').value;
+        let filename = document.getElementById('edit_image').value;
+
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('set_id', setId);
+
+        statusEl.textContent = 'Uploading...';
+        statusEl.style.color = '#00b2cf';
+
+        try {
+            const response = await fetch('/riftbound/card/upload_image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (action) {
+                    // Reemplazar: usar el MISMO nombre pero la imagen se sobrescribió
+                    // Mantener filename para que el backend sepa que es reemplazo
+                    document.getElementById('edit_image').value = result.filename || filename;
+                    statusEl.textContent = 'Image uploaded (replaced existing)';
+                } else {
+                    // Nuevo nombre: usar el filename generado por el servidor
+                    document.getElementById('edit_image').value = result.filename;
+                    statusEl.textContent = 'Image uploaded as ' + result.filename;
+                }
+                statusEl.style.color = '#27ae60';
+            } else {
+                statusEl.textContent = 'Upload failed: ' + result.message;
+                statusEl.style.color = '#e74c3c';
+            }
+        } catch (error) {
+            statusEl.textContent = 'Upload error: ' + error.message;
+            statusEl.style.color = '#e74c3c';
+        }
+    }
+
+    document.getElementById('filterForm').addEventListener('submit', function (e) {
+        document.querySelectorAll('input[data-filter-input]').forEach(el => el.remove());
+
+        document.querySelectorAll('.filter-btn.active').forEach(btn => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = btn.dataset.group;
+            input.value = btn.dataset.value;
+            input.setAttribute('data-filter-input', 'true');
+            this.appendChild(input);
+        });
+
+        // Mantener vista
+        const viewInput = document.createElement('input');
+        viewInput.type = 'hidden';
+        viewInput.name = 'view';
+        viewInput.value = currentView;
+        viewInput.setAttribute('data-filter-input', 'true');
+        this.appendChild(viewInput);
+    });
+
+    document.getElementById('add_rbcar_domain_selector').addEventListener('change', function () {
+        if (this.value && !addSelectedDomains.includes(this.value)) {
+            addSelectedDomains.push(this.value);
+            updateDomainTags('add');
+        }
+        this.value = '';
+    });
+
+    // Event listener para EDIT domain selector
+    document.getElementById('edit_rbcar_domain_selector').addEventListener('change', function () {
+        if (this.value && !editSelectedDomains.includes(this.value)) {
+            editSelectedDomains.push(this.value);
+            updateDomainTags('edit');
+        }
+        this.value = '';
+    });
+
+    function updateDomainTags(mode = 'add') {
+        const domains = mode === 'add' ? addSelectedDomains : editSelectedDomains;
+        const container = document.getElementById(`${mode}_selected_domains`);
+        const hiddenInput = document.getElementById(`${mode}_rbcar_domain`);
+
+        container.innerHTML = domains.map(d =>
+            `<div class="domain-tag">${d}<button type="button" onclick="removeDomain('${mode}', '${d}')">&times;</button></div>`
+        ).join('');
+
+        hiddenInput.value = domains.join(' ');
+    }
+
+    function removeDomain(mode, domain) {
+        if (mode === 'add') {
+            addSelectedDomains = addSelectedDomains.filter(d => d !== domain);
+        } else {
+            editSelectedDomains = editSelectedDomains.filter(d => d !== domain);
+        }
+        updateDomainTags(mode);
+    }
+
+    function previewAddImage(input) {
+        const preview = document.getElementById('add_image_preview');
+        if (input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = e => preview.innerHTML = `<img src="${e.target.result}" style="max-width:200px;margin-top:0.5rem;">`;
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function openAddModal() {
+        addSelectedDomains = [];
+        updateDomainTags('add');
+        document.getElementById('addModal').classList.add('active');
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('active');
+        document.getElementById('addForm').reset();
+    }
+
+    function openEditModal(index) {
+        currentEditIndex = index;
+        const card = cardsData[index];
+
+        document.getElementById('edit_rbcar_rbset_id').value = card.rbcar_rbset_id;
+        document.getElementById('edit_rbcar_id').value = card.rbcar_id;
+        document.getElementById('edit_rbcar_rbset_id_display').value = card.rbcar_rbset_id;
+        document.getElementById('edit_rbcar_id_display').value = card.rbcar_id;
+        document.getElementById('edit_rbcar_name').value = card.rbcar_name;
+        document.getElementById('edit_rbcar_type').value = card.rbcar_type || '';
+        document.getElementById('edit_rbcar_tags').value = card.rbcar_tags || '';
+        document.getElementById('edit_rbcar_energy').value = card.rbcar_energy || '';
+        document.getElementById('edit_rbcar_power').value = card.rbcar_power || '';
+        document.getElementById('edit_rbcar_might').value = card.rbcar_might || '';
+        document.getElementById('edit_rbcar_ability').value = card.rbcar_ability || '';
+        document.getElementById('edit_rbcar_rarity').value = card.rbcar_rarity || '';
+        document.getElementById('edit_rbcar_artist').value = card.rbcar_artist || '';
+        document.getElementById('edit_rbcar_banned').value = card.rbcar_banned || 'N';
+        document.getElementById('edit_image_url').value = card.image_url || '';
+        document.getElementById('edit_image').value = card.image || '';
+        document.getElementById('edit_upload_status').textContent = '';
+        document.getElementById('edit_image_preview').innerHTML = '';
+
+        editSelectedDomains = card.rbcar_domain ? card.rbcar_domain.split(' ').filter(d => d) : [];
+        updateDomainTags('edit');
+
+        const imagePreview = document.getElementById('editCardImagePreview');
+        if (card.image) {
+            const imgSrc = `/riftbound/static/images/cards/${card.rbcar_rbset_id.toLowerCase()}/${card.image}`;
+            imagePreview.innerHTML = `<img src="${imgSrc}" alt="${card.rbcar_name}" onerror="this.style.display='none'">`;
+        } else {
+            imagePreview.innerHTML = '<p style="color: rgba(255,255,255,0.5);">No image available</p>';
+        }
+
+        // Deshabilitar/habilitar botones de navegación
+        const prevBtn = document.querySelector('.nav-arrow-btn[onclick*="prev"]');
+        const nextBtn = document.querySelector('.nav-arrow-btn[onclick*="next"]');
+
+        if (prevBtn) prevBtn.disabled = (index === 0);
+        if (nextBtn) nextBtn.disabled = (index === cardsData.length - 1);
+
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('active');
+    }
+
+    function navigateCard(direction) {
+        let newIndex = currentEditIndex;
+
+        if (direction === 'prev' && newIndex > 0) {
+            newIndex--;
+        } else if (direction === 'next' && newIndex < cardsData.length - 1) {
+            newIndex++;
+        }
+
+        if (newIndex !== currentEditIndex) {
+            openEditModal(newIndex);
+        }
+    }
+
+    document.getElementById('addForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        let imageFilename = '';
+        const fileInput = document.getElementById('add_image_file');
+
+        if (fileInput.files.length > 0) {
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('set_id', document.getElementById('add_rbcar_rbset_id').value);
+
+            const uploadResponse = await fetch('/riftbound/card/upload_image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const uploadResult = await uploadResponse.json();
+            if (!uploadResult.success) {
+                alert(uploadResult.message);
+                return;
+            }
+            imageFilename = uploadResult.filename;
+        }
+
+        const data = {
+            rbcar_rbset_id: document.getElementById('add_rbcar_rbset_id').value,
+            rbcar_id: document.getElementById('add_rbcar_id').value,
+            rbcar_name: document.getElementById('add_rbcar_name').value,
+            rbcar_domain: document.getElementById('add_rbcar_domain').value || null,
+            rbcar_type: document.getElementById('add_rbcar_type').value || null,
+            rbcar_energy: document.getElementById('add_rbcar_energy').value || null,
+            rbcar_power: document.getElementById('add_rbcar_power').value || null,
+            rbcar_might: document.getElementById('add_rbcar_might').value || null,
+            rbcar_rarity: document.getElementById('add_rbcar_rarity').value || null,
+            rbcar_artist: document.getElementById('add_rbcar_artist').value || null,
+            rbcar_banned: 'N',
+            image: imageFilename || null
+        };
+
+        const response = await fetch('/riftbound/card/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    });
+
+    document.getElementById('editForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const setId = document.getElementById('edit_rbcar_rbset_id').value;
+        const cardId = document.getElementById('edit_rbcar_id').value;
+
+        const data = {
+            rbcar_name: document.getElementById('edit_rbcar_name').value,
+            rbcar_domain: document.getElementById('edit_rbcar_domain').value || null,
+            rbcar_type: document.getElementById('edit_rbcar_type').value || null,
+            rbcar_tags: document.getElementById('edit_rbcar_tags').value || null,
+            rbcar_energy: document.getElementById('edit_rbcar_energy').value || null,
+            rbcar_power: document.getElementById('edit_rbcar_power').value || null,
+            rbcar_might: document.getElementById('edit_rbcar_might').value || null,
+            rbcar_ability: document.getElementById('edit_rbcar_ability').value || null,
+            rbcar_rarity: document.getElementById('edit_rbcar_rarity').value || null,
+            rbcar_artist: document.getElementById('edit_rbcar_artist').value || null,
+            rbcar_banned: document.getElementById('edit_rbcar_banned').value,
+            image_url: document.getElementById('edit_image_url').value || null,
+            image: document.getElementById('edit_image').value || null
+        };
+
+        const response = await fetch(`/riftbound/card/update/${setId}/${cardId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    });
+
+</script>
+{% endblock %}

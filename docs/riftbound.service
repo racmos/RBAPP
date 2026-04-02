@@ -1,0 +1,14 @@
+[Unit]
+Description=Riftbound Flask Application
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/riftbound
+Environment="PATH=/var/www/riftbound/venv/bin"
+# Changed to port 8001 to free up 8000 for Landing Page
+ExecStart=/var/www/riftbound/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
+
+[Install]
+WantedBy=multi-user.target

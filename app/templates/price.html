@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Price Generation - Riftbound Manager{% endblock %}
+
+{% block content %}
+<h1>Price Generation</h1>
+
+<div class="card">
+    <h2>Select Sets for Price Generation</h2>
+    <p>Select the sets you want to generate prices for, or leave all unchecked to generate for all sets.</p>
+
+    <form id="priceForm">
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="selectAll" onclick="toggleAllSets()">
+                <strong>Select All Sets</strong>
+            </label>
+        </div>
+
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+            {% for set in sets %}
+            <label class="set-checkbox">
+                <input type="checkbox" name="sets" value="{{ set.rbset_id }}" class="set-check">
+                {{ set.rbset_name }} ({{ set.rbset_id }})
+            </label>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Generate Price CSV</button>
+    </form>
+</div>
+
+<div id="resultSection" style="display: none; margin-top: 2rem;">
+    <div class="card">
+        <h2>Generation Result</h2>
+        <div id="statusMessage"></div>
+
+        <div id="processStatus" style="margin-top: 1.5rem;">
+            <h3>Process Status</h3>
+            <table id="statusTable">
+                <thead>
+                    <tr>
+                        <th>Step</th>
+                        <th>Status</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody id="statusBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="csvPreview" style="margin-top: 1.5rem; display: none;">
+            <h3>CSV Preview</h3>
+            <textarea id="csvContent" readonly
+                style="width: 100%; height: 300px; font-family: monospace; background-color: rgba(0,0,0,0.3); color: var(--text-color); border: 1px solid var(--bg-hover); padding: 1rem; border-radius: 6px;"></textarea>
+            <button onclick="downloadCSV()" class="btn btn-primary" style="margin-top: 1rem;">Download CSV</button>
+        </div>
+    </div>
+</div>
+
+<div id="errorSection" style="display: none; margin-top: 2rem;">
+    <div class="alert alert-error">
+        <strong>Errors/Warnings:</strong>
+        <ul id="errorList" style="margin-left: 1.5rem; margin-top: 0.5rem;"></ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleAllSets() {
+        const selectAll = document.getElementById('selectAll').checked;
+        const checkboxes = document.querySelectorAll('.set-check');
+        checkboxes.forEach(cb => cb.checked = selectAll);
+    }
+
+    function addStatusRow(step, status, message) {
+        const tbody = document.getElementById('statusBody');
+        const row = tbody.insertRow();
+        row.innerHTML = `
+        <td>${step}</td>
+        <td><span class="status-badge status-${status.toLowerCase()}">${status}</span></td>
+        <td>${message}</td>
+    `;
+    }
+
+    function downloadCSV() {
+        const content = document.getElementById('csvContent').value;
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `riftbound_prices_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('priceForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        // Get selected sets
+        const selectedSets = [];
+        document.querySelectorAll('.set-check:checked').forEach(cb => {
+            selectedSets.push(cb.value);
+        });
+
+        // Show result section
+        document.getElementById('resultSection').style.display = 'block';
+        document.getElementById('csvPreview').style.display = 'none';
+        document.getElementById('errorSection').style.display = 'none';
+        document.getElementById('statusBody').innerHTML = '';
+        document.getElementById('errorList').innerHTML = '';
+
+        // Add initial status
+        addStatusRow('1. CSV Generation', 'RUNNING', 'Generating CSV from database...');
+
+        try {
+            const response = await fetch('/riftbound/price/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sets: selectedSets })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update status
+                const rows = document.getElementById('statusBody').rows;
+                rows[0].cells[1].innerHTML = '<span class="status-badge status-success">SUCCESS</span>';
+                rows[0].cells[2].textContent = 'CSV generated successfully';
+
+                // Show CSV content
+                document.getElementById('csvContent').value = result.csv;
+                document.getElementById('csvPreview').style.display = 'block';
+
+                // Add next steps status
+                addStatusRow('2. Web Scraping', 'PENDING', 'Ready to run scraping tool with generated CSV');
+                addStatusRow('3. Price Calculation', 'PENDING', 'Waiting for scraping to complete');
+                addStatusRow('4. Database Import', 'PENDING', 'Waiting for price calculation');
+
+                document.getElementById('statusMessage').innerHTML = `
+                <div class="alert alert-success">
+                    <strong>CSV Generated Successfully!</strong><br>
+                    ${result.csv.split('\n').length} cards prepared for price lookup.
+                </div>
+            `;
+
+                // Show instructions
+                document.getElementById('statusMessage').innerHTML += `
+                <div class="alert alert-warning" style="margin-top: 1rem;">
+                    <strong>Next Steps:</strong>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Download the CSV file using the button below</li>
+                        <li>Run your web scraping tool with this CSV file</li>
+                        <li>Wait for the scraping process to complete</li>
+                        <li>Run the price calculation process</li>
+                        <li>Import the final results back into the database</li>
+                    </ol>
+                </div>
+            `;
+            } else {
+                const rows = document.getElementById('statusBody').rows;
+                rows[0].cells[1].innerHTML = '<span class="status-badge status-error">ERROR</span>';
+                rows[0].cells[2].textContent = result.message || 'Failed to generate CSV';
+
+                document.getElementById('statusMessage').innerHTML = `
+                <div class="alert alert-error">
+                    <strong>Error:</strong> ${result.message || 'Failed to generate CSV'}
+                </div>
+            `;
+            }
+        } catch (error) {
+            const rows = document.getElementById('statusBody').rows;
+            if (rows.length > 0) {
+                rows[0].cells[1].innerHTML = '<span class="status-badge status-error">ERROR</span>';
+                rows[0].cells[2].textContent = error.message;
+            }
+
+            document.getElementById('statusMessage').innerHTML = `
+            <div class="alert alert-error">
+                <strong>Error:</strong> ${error.message}
+            </div>
+        `;
+        }
+    });
+</script>
+
+<style>
+    .set-checkbox {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .set-checkbox:hover {
+        background-color: var(--bg-hover);
+    }
+
+    .set-checkbox input[type="checkbox"] {
+        margin-right: 0.5rem;
+        width: auto;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+
+    .status-success {
+        background-color: rgba(46, 204, 113, 0.3);
+        color: #2ecc71;
+    }
+
+    .status-running {
+        background-color: rgba(241, 196, 15, 0.3);
+        color: #f1c40f;
+    }
+
+    .status-pending {
+        background-color: rgba(149, 165, 166, 0.3);
+        color: #95a5a6;
+    }
+
+    .status-error {
+        background-color: rgba(231, 76, 60, 0.3);
+        color: #e74c3c;
+    }
+</style>
+{% endblock %}

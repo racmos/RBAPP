@@ -1,0 +1,64 @@
+server {
+    if ($host = www.racmosdev.es) {
+        return 301 https://$host$request_uri;
+    }
+    if ($host = racmosdev.es) {
+        return 301 https://$host$request_uri;
+    }
+
+    listen 80;
+    server_name racmosdev.es www.racmosdev.es;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name racmosdev.es www.racmosdev.es;
+
+    # Certificados SSL existentes
+    ssl_certificate /etc/letsencrypt/live/racmosdev.es/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/racmosdev.es/privkey.pem;
+
+    # Seguridad básica
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-Content-Type-Options nosniff;
+
+    # =================================================================
+    # 1. NUEVA LANDING PAGE (Ruta Raíz /) - AHORA EN PUERTO 8000
+    # =================================================================
+
+    # Aplicación FastAPI (Gunicorn + UvicornWorker en puerto 8000)
+    location / {
+    # Landing Page movida a 8001
+    proxy_pass http://192.168.1.31:8001;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Soporte WebSocket
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+
+    # =================================================================
+    # 2. APLICACIÓN EXISTENTE (/riftbound/) - AHORA EN PUERTO 8001
+    # =================================================================
+    location /riftbound/ {
+    # Main App movida a 8000 (puerto principal)
+    proxy_pass http://192.168.1.31:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # CRITICO para que ProxyFix/DispatcherMiddleware sepan el prefijo
+    # proxy_set_header X-Forwarded-Prefix /riftbound;
+
+    proxy_redirect off;
+}
+}
