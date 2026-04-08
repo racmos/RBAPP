@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deck.name }} - Riftbound Manager{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>{{ deck.name }}</h1>
+    <a href="{{ url_for('deck.deck') }}" class="btn btn-secondary">Back to Decks</a>
+</div>
+
+<div class="card">
+    <h2>Deck Information</h2>
+    <div class="filter-row">
+        <div>
+            <strong>Owner:</strong> {{ deck.user or 'Unknown' }}
+        </div>
+        <div>
+            <strong>Mode:</strong> {{ deck.mode }}
+        </div>
+        <div>
+            <strong>Format:</strong> {{ deck.format }}
+        </div>
+        <div>
+            <strong>Max Set:</strong> {{ deck.max_set_name or deck.max_set }}
+        </div>
+    </div>
+    {% if deck.description %}
+    <p style="margin-top: 1rem;">{{ deck.description }}</p>
+    {% endif %}
+</div>
+
+<!-- Summary Card -->
+<div class="card">
+    <h2>Summary</h2>
+    <div class="summary-grid">
+        <div class="summary-stat">
+            <div class="stat-value" id="ownedMain">-</div>
+            <div class="stat-label">Owned Main Deck</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="ownedSide">-</div>
+            <div class="stat-label">Owned Sideboard</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="missingMain">-</div>
+            <div class="stat-label">Missing Main Deck</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="missingSide">-</div>
+            <div class="stat-label">Missing Sideboard</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="missingMainCost">-</div>
+            <div class="stat-label">Missing Main Estimated Cost</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="missingSideCost">-</div>
+            <div class="stat-label">Missing Sideboard Estimated Cost</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="mainCost">-</div>
+            <div class="stat-label">Main Estimated Cost</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="sideCost">-</div>
+            <div class="stat-label">Sideboard Estimated Cost</div>
+        </div>
+        <div class="summary-stat">
+            <div class="stat-value" id="totalCost">-</div>
+            <div class="stat-label">Total Estimated Cost</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Deck -->
+<div class="card">
+    <h2>Main Deck</h2>
+    <table class="deck-table deck-table-main">
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Set</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Qty</th>
+                <th>Owned</th>
+                <th>Missing</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for card in deck.cards %}
+            {% if card.sideboard == 'N' %}
+            <tr class="deck-row main-row {% if card.have >= card.quantity %}card-owned{% else %}card-missing{% endif %}"
+                data-qty="{{ card.quantity }}" data-owned="{{ card.have }}" data-missing="{{ card.missing }}" data-price="{{ card.price if card.price is not none else 0 }}" data-sideboard="N">
+                <td>
+                    {% if card.image %}
+                    <div class="card-thumbnail-container">
+                        <img src="{{ card.image }}" alt="{{ card.card_name or card.card_id }}" class="card-thumbnail">
+                    </div>
+                    {% else %}
+                    <span>-</span>
+                    {% endif %}
+                </td>
+                <td>{{ card.set_id }}</td>
+                <td>{{ card.card_id }}</td>
+                <td>{{ card.card_name }}</td>
+                <td><strong>{{ card.quantity }}</strong></td>
+                <td class="owned-count">{{ card.have }}</td>
+                <td class="missing-count">{{ card.missing }}</td>
+                <td class="card-price">{% if card.price is not none %}{{ "%.2f"|format(card.price) }} €{% else %}-{% endif %}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Sideboard -->
+{% set sideboard_cards = deck.cards|selectattr('sideboard', 'equalto', 'S')|list %}
+{% if sideboard_cards|length > 0 %}
+<div class="card">
+    <h2>Sideboard</h2>
+    <table class="deck-table deck-table-side">
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Set</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Qty</th>
+                <th>Owned</th>
+                <th>Missing</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for card in sideboard_cards %}
+            <tr class="deck-row side-row {% if card.have >= card.quantity %}card-owned{% else %}card-missing{% endif %}"
+                data-qty="{{ card.quantity }}" data-owned="{{ card.have }}" data-missing="{{ card.missing }}" data-price="{{ card.price if card.price is not none else 0 }}" data-sideboard="S">
+                <td>
+                    {% if card.image %}
+                    <div class="card-thumbnail-container">
+                        <img src="{{ card.image }}" alt="{{ card.card_name or card.card_id }}" class="card-thumbnail">
+                    </div>
+                    {% else %}
+                    <span>-</span>
+                    {% endif %}
+                </td>
+                <td>{{ card.set_id }}</td>
+                <td>{{ card.card_id }}</td>
+                <td>{{ card.card_name }}</td>
+                <td><strong>{{ card.quantity }}</strong></td>
+                <td class="owned-count">{{ card.have }}</td>
+                <td class="missing-count">{{ card.missing }}</td>
+                <td class="card-price">{% if card.price is not none %}{{ "%.2f"|format(card.price) }} €{% else %}-{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <button onclick="exportTextList()" class="btn btn-primary">Export Text List</button>
+    <button onclick="exportTTS()" class="btn btn-secondary">Export TTS</button>
+    <button onclick="generateShoppingList()" class="btn btn-secondary">Generate Shopping List</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateSummary() {
+        console.log('updateSummary called');
+        const num = (v) => {
+            const n = parseFloat(v);
+            return isNaN(n) ? 0 : n;
+        };
+
+        const formatMoney = (v) => '€' + v.toFixed(2);
+
+        const accumulate = (rows) => {
+            return rows.reduce((acc, row) => {
+                const qty = num(row.dataset.qty);
+                const ownedRaw = num(row.dataset.owned);
+                const owned = Math.min(ownedRaw, qty);
+                const missing = Math.max(0, qty - owned);
+                const price = num(row.dataset.price);
+
+                acc.owned += owned;
+                acc.missing += missing;
+                acc.missingCost += missing * price;
+                acc.cost += qty * price;
+                return acc;
+            }, { owned: 0, missing: 0, missingCost: 0, cost: 0 });
+        };
+
+        const mainRows = Array.from(document.querySelectorAll('.deck-table-main tbody tr'));
+        const sideRows = Array.from(document.querySelectorAll('.deck-table-side tbody tr'));
+
+        console.log('Main rows found:', mainRows.length);
+        console.log('Side rows found:', sideRows.length);
+
+        const mainTotals = accumulate(mainRows);
+        const sideTotals = accumulate(sideRows);
+
+        console.log('Main totals:', mainTotals);
+        console.log('Side totals:', sideTotals);
+
+        // Update summary metrics
+        document.getElementById('ownedMain').textContent = mainTotals.owned;
+        document.getElementById('ownedSide').textContent = sideTotals.owned;
+        document.getElementById('missingMain').textContent = mainTotals.missing;
+        document.getElementById('missingSide').textContent = sideTotals.missing;
+        document.getElementById('missingMainCost').textContent = formatMoney(mainTotals.missingCost);
+        document.getElementById('missingSideCost').textContent = formatMoney(sideTotals.missingCost);
+        document.getElementById('mainCost').textContent = formatMoney(mainTotals.cost);
+        document.getElementById('sideCost').textContent = formatMoney(sideTotals.cost);
+        document.getElementById('totalCost').textContent = formatMoney(mainTotals.cost + sideTotals.cost);
+        
+        console.log('Summary updated successfully');
+    }
+
+    function updateDeckCard(setId, cardId, change, isSideboard = false) {
+        // This would update the deck in the database
+        alert('Deck modification functionality coming soon!');
+    }
+
+    function sanitizeFilename(name) {
+        return name.replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
+    }
+
+    function normalizeText(text) {
+        // Replace curly apostrophes and quotes with straight ones
+        return text.replace(/['']/g, "'").replace(/[""]/g, '"');
+    }
+
+    function exportTextList() {
+        const cards = {{ deck.cards|tojson }};
+        let deckText = '';
+        
+        // Main Deck
+        cards.filter(c => c.sideboard === 'N').forEach(card => {
+            deckText += `${card.quantity} ${normalizeText(card.card_name)}\n`;
+        });
+
+        // Sideboard
+        const sideboardCards = cards.filter(c => c.sideboard === 'S');
+        if (sideboardCards.length > 0) {
+            deckText += '\nSideboard:\n';
+            sideboardCards.forEach(card => {
+                deckText += `${card.quantity} ${normalizeText(card.card_name)}\n`;
+            });
+        }
+
+        const blob = new Blob([deckText], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const filename = 'Text ' + sanitizeFilename({{ deck.name|tojson }}) + '.txt';
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    function exportTTS() {
+        const cards = {{ deck.cards|tojson }};
+        const allCards = [];
+        
+        // Main Deck - repeat each card by quantity
+        cards.filter(c => c.sideboard === 'N').forEach(card => {
+            for (let i = 0; i < card.quantity; i++) {
+                allCards.push(`${card.set_id}-${card.card_id}-1`);
+            }
+        });
+        
+        // Sideboard - repeat each card by quantity
+        cards.filter(c => c.sideboard === 'S').forEach(card => {
+            for (let i = 0; i < card.quantity; i++) {
+                allCards.push(`${card.set_id}-${card.card_id}-1`);
+            }
+        });
+        
+        const ttsText = allCards.join(' ');
+
+        const blob = new Blob([ttsText], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const filename = 'TTS ' + sanitizeFilename({{ deck.name|tojson }}) + '.txt';
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    function generateShoppingList() {
+        const cards = {{ deck.cards|tojson }};
+        let shoppingList = '';
+
+        cards.filter(c => c.missing > 0).forEach(card => {
+            shoppingList += `${card.missing} ${normalizeText(card.card_name)}\n`;
+        });
+
+        const blob = new Blob([shoppingList], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = {{ deck.name|tojson }} + '_shopping_list.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    // Thumbnail zoom that stays centered during scroll - create shared elements once
+    let overlay = null;
+    let zoomedImg = null;
+    let isHovering = false;
+    
+    const updatePosition = () => {
+        if (!isHovering || !zoomedImg) return;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        zoomedImg.style.left = (viewportWidth / 2 - zoomedImg.offsetWidth / 2) + 'px';
+        zoomedImg.style.top = (viewportHeight / 2 - zoomedImg.offsetHeight / 2) + 'px';
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded - Initializing thumbnail zoom');
+        
+        // Create shared overlay and zoomed image elements once
+        overlay = document.createElement('div');
+        overlay.className = 'zoom-overlay';
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); z-index: 9998; display: none; pointer-events: none;';
+        document.body.appendChild(overlay);
+        
+        zoomedImg = document.createElement('img');
+        zoomedImg.style.cssText = 'position: fixed; z-index: 9999; border: 3px solid var(--btn-login); box-shadow: 0 0 50px rgba(0, 0, 0, 0.9); max-width: 90vw; max-height: 90vh; width: auto; height: auto; display: none; pointer-events: none; border-radius: 12px;';
+        document.body.appendChild(zoomedImg);
+        
+        console.log('Overlay and zoomedImg created');
+        
+        // Attach events to all thumbnail containers
+        const containers = document.querySelectorAll('.card-thumbnail-container');
+        console.log('Found thumbnail containers:', containers.length);
+        
+        containers.forEach((container, index) => {
+            const img = container.querySelector('.card-thumbnail');
+            if (!img) {
+                console.log('Container', index, 'has no img');
+                return;
+            }
+            
+            console.log('Attaching events to container', index, 'img src:', img.src);
+            
+            container.addEventListener('mouseenter', () => {
+                console.log('Mouse enter on container', index);
+                isHovering = true;
+                zoomedImg.src = img.src;
+                overlay.style.display = 'block';
+                zoomedImg.style.display = 'block';
+                zoomedImg.onload = updatePosition;
+                updatePosition();
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                console.log('Mouse leave on container', index);
+                isHovering = false;
+                overlay.style.display = 'none';
+                zoomedImg.style.display = 'none';
+            });
+        });
+        
+        window.addEventListener('scroll', updatePosition);
+        window.addEventListener('resize', updatePosition);
+        
+        // Run summary calculation after DOM is ready
+        setTimeout(() => {
+            console.log('Running updateSummary...');
+            updateSummary();
+        }, 200);
+    });
+
+    // Also run on window load as backup
+    window.addEventListener('load', () => {
+        console.log('Window loaded, running updateSummary...');
+        updateSummary();
+    });
+</script>
+
+<style>
+    .card-owned {
+        background-color: rgba(46, 204, 113, 0.1);
+    }
+
+    .card-missing {
+        background-color: rgba(231, 76, 60, 0.1);
+    }
+
+    .deck-table {
+        width: 100%;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .summary-stat {
+        text-align: center;
+        padding: 1rem;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--btn-login);
+    }
+
+    .stat-label {
+        margin-top: 0.5rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+    }
+
+    .owned-count {
+        color: #2ecc71;
+        font-weight: bold;
+    }
+
+    .missing-count {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .card-thumbnail-container {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        cursor: pointer;
+    }
+
+    .card-thumbnail {
+        width: 50px;
+        height: auto;
+        border-radius: 12px;
+        display: block;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Riftbound Manager{% endblock %}
+
+{% block content %}
+<h1>User Profile</h1>
+
+<div class="card">
+    <h2>Account Information</h2>
+    <form id="profileForm">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" value="{{ user.username }}" disabled>
+            <small>Username cannot be changed</small>
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" value="{{ user.email }}" required>
+        </div>
+        <div class="form-group">
+            <label for="password">New Password (leave blank to keep current)</label>
+            <input type="password" id="password" placeholder="Enter new password">
+        </div>
+        <div class="form-group">
+            <label for="password_confirm">Confirm New Password</label>
+            <input type="password" id="password_confirm" placeholder="Confirm new password">
+        </div>
+        <button type="submit" class="btn btn-primary">Update Profile</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('profileForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const password = document.getElementById('password').value;
+        const passwordConfirm = document.getElementById('password_confirm').value;
+
+        if (password && password !== passwordConfirm) {
+            alert('Passwords do not match');
+            return;
+        }
+
+        const data = {
+            email: document.getElementById('email').value
+        };
+
+        if (password) {
+            data.password = password;
+        }
+
+        const response = await fetch('/riftbound/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('Profile updated successfully');
+            document.getElementById('password').value = '';
+            document.getElementById('password_confirm').value = '';
+        } else {
+            alert(result.message);
+        }
+    });
+</script>
+{% endblock %}

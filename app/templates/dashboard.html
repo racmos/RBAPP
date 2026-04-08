@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Riftbound Manager{% endblock %}
+
+{% block content %}
+<h1 style="text-align: center; color: var(--btn-login); margin-bottom: 3rem;">Welcome to Riftbound Manager</h1>
+
+<div class="dashboard-grid">
+    <a href="{{ url_for('sets.sets') }}" class="dashboard-card">
+        <h3>Sets</h3>
+        <p>Manage card sets and expansions</p>
+    </a>
+
+    <a href="{{ url_for('cards.cards') }}" class="dashboard-card">
+        <h3>Cards</h3>
+        <p>View and manage all cards</p>
+    </a>
+
+    <a href="{{ url_for('collection.collection') }}" class="dashboard-card">
+        <h3>Collections</h3>
+        <p>Track your card collection</p>
+    </a>
+
+    <a href="{{ url_for('deck.deck') }}" class="dashboard-card">
+        <h3>Decks</h3>
+        <p>Build and manage decks</p>
+    </a>
+
+    <a href="{{ url_for('price.price') }}" class="dashboard-card">
+        <h3>Generate Prices</h3>
+        <p>Generate price lists</p>
+    </a>
+
+    <a href="{{ url_for('profile.profile') }}" class="dashboard-card">
+        <h3>Profile</h3>
+        <p>Manage your profile</p>
+    </a>
+</div>
+{% endblock %}

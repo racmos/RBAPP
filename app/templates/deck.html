@@ -1,0 +1,896 @@
+{% extends "base.html" %}
+
+{% block title %}Decks - Riftbound Manager{% endblock %}
+
+{% block content %}
+<h1>Deck Management</h1>
+
+<!-- Filter drawer (applies to both My Decks and All Public Decks) -->
+<div class="filter-section" style="margin-top:1rem;">
+    <form method="get" id="deckFilters">
+        <div class="filter-row">
+            <div class="form-group">
+                <label for="filter_name">Deck Name</label>
+                <input type="text" id="filter_name" name="filter_name" placeholder="Deck name" value="{{ request.args.get('filter_name','') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="filter_user">User</label>
+                <input type="text" id="filter_user" name="filter_user" placeholder="User" value="{{ request.args.get('filter_user','') }}">
+            </div>
+
+            <div class="form-group legend-filter">
+                <label for="legendFilterBtn">Legend</label>
+                <div style="position: relative;">
+                    <button type="button" id="legendFilterBtn" class="select-visible legend-filter-btn">
+                        <span id="legendFilterText">Select legend...</span>
+                        <span style="margin-left: auto; font-size: 0.8rem;">▼</span>
+                    </button>
+                    <input type="hidden" name="filter_legend" id="filter_legend" value="{{ request.args.get('filter_legend','') }}">
+                    <div id="legendFilterDropdown" class="legend-filter-dropdown" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-row">
+            <div class="form-group" style="min-width:220px;">
+                <label for="setSelect">Set</label>
+                <div style="display:flex;align-items:center;">
+                    <select id="setSelect" class="select-visible">
+                        <option value="">Select set...</option>
+                        {% for s in sets %}
+                        <option value="{{ s.rbset_id }}">{{ s.rbset_id }} - {{ s.rbset_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <input type="hidden" name="filter_set" id="filter_set_hidden" value="{{ request.args.get('filter_set','') }}">
+                <div id="selectedSets" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Format</label>
+                <div id="formatButtons" class="btn-column-group">
+                    <button type="button" class="btn btn-secondary btn-toggle" data-format="Standard">Standard</button>
+                    <button type="button" class="btn btn-secondary btn-toggle" data-format="Limited">Limited</button>
+                </div>
+                <input type="hidden" name="filter_format" id="filter_format_hidden" value="{{ request.args.get('filter_format','') }}">
+            </div>
+
+            <div class="form-group">
+                <label>Mode</label>
+                <div id="modeButtons" class="btn-column-group">
+                    <button type="button" class="btn btn-secondary btn-toggle" data-mode="1v1">1v1</button>
+                    <button type="button" class="btn btn-secondary btn-toggle" data-mode="2v2">2v2</button>
+                </div>
+                <input type="hidden" name="filter_mode" id="filter_mode_hidden" value="{{ request.args.get('filter_mode','') }}">
+            </div>
+        </div>
+
+        <div style="margin-top:0.75rem;display:flex;gap:8px;align-items:center;">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="/riftbound/deck" class="btn btn-secondary">Clear</a>
+        </div>
+    </form>
+</div>
+
+<!-- Controls row: Create on left, (sort is on filter) keep layout consistent -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+    <div>
+        <button onclick="openCreateModal()" class="btn btn-primary">Create New Deck</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <label style="margin:0;font-weight:600;color:var(--btn-login);">Sort:</label>
+        <select name="sort_by" form="deckFilters" class="select-visible" onchange="document.getElementById('deckFilters').submit()">
+            <option value="date_desc" {% if request.args.get('sort_by','date_desc')=='date_desc' %}selected{% endif %}>Newest first</option>
+            <option value="date_asc" {% if request.args.get('sort_by')=='date_asc' %}selected{% endif %}>Oldest first</option>
+        </select>
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem;">
+    <h2>My Decks</h2>
+    {% if user_decks %}
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Legend</th>
+                    <th>Deck Name</th>
+                    <th>Created</th>
+                    <th>Format / Mode</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for deck in user_decks %}
+                <tr class="deck-row" data-timestamp="{{ deck.snapshot }}">
+                    <td class="legend-cell">
+                        {% if deck.legend_image %}
+                        <img src="{{ deck.legend_image }}" alt="legend-thumb">
+                        <div class="legend-name">{% if deck.legend_tags %}{{ deck.legend_tags }}<br>{% endif %}{{ deck.legend_name or '' }}</div>
+                        {% else %}
+                        <div style="width:48px;height:72px;border-radius:6px;background:rgba(255,255,255,0.03);"></div>
+                        {% endif %}
+                    </td>
+                    <td title="{{ deck.name }}">{{ deck.name[:45] }}{% if deck.name|length > 45 %}...{% endif %}</td>
+                    <td>{{ deck.snapshot.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ deck.format }} / {{ deck.mode }}</td>
+                    <td>
+                        <a href="{{ url_for('deck.view_deck_legacy', set_id=deck.rbdck_rbset_id, card_id=deck.rbdck_rbcar_id) }}" class="btn btn-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination controls for My Decks (centered like Cards tab) -->
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+        <div></div>
+        {% if user_pagination.pages > 1 %}
+        <div class="pagination" style="margin:0;">
+            {% if user_pagination.has_prev %}
+            <a href="?{{ get_page_url('page_user', user_pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
+            {% endif %}
+            <span>Page {{ user_pagination.page }} of {{ user_pagination.pages }}</span>
+            {% if user_pagination.has_next %}
+            <a href="?{{ get_page_url('page_user', user_pagination.next_num) }}" class="btn btn-secondary">Next</a>
+            {% endif %}
+        </div>
+        {% else %}
+        <div></div>
+        {% endif %}
+        <div></div>
+    </div>
+    {% else %}
+    <p>You don't have any decks yet.</p>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-top: 2rem;">
+    <h2>All Public Decks</h2>
+
+    {% if all_decks %}
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Legend</th>
+                    <th>Deck Name</th>
+                    <th>Owner</th>
+                    <th>Created</th>
+                    <th>Format / Mode</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for deck in all_decks %}
+                <tr class="deck-row" data-timestamp="{{ deck.snapshot }}">
+                    <td class="legend-cell">
+                        {% if deck.legend_image %}
+                        <img src="{{ deck.legend_image }}" alt="legend-thumb">
+                        <div class="legend-name">{% if deck.legend_tags %}{{ deck.legend_tags }}<br>{% endif %}{{ deck.legend_name or '' }}</div>
+                        {% else %}
+                        <div style="width:48px;height:72px;border-radius:6px;background:rgba(255,255,255,0.03);"></div>
+                        {% endif %}
+                    </td>
+                    <td title="{{ deck.name }}">{{ deck.name[:45] }}{% if deck.name|length > 45 %}...{% endif %}</td>
+                    <td>{{ deck.user or 'Unknown' }}</td>
+                    <td>{{ deck.snapshot.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ deck.format }} / {{ deck.mode }}</td>
+                    <td>
+                        <a href="{{ url_for('deck.view_deck_legacy', set_id=deck.rbdck_rbset_id, card_id=deck.rbdck_rbcar_id) }}" class="btn btn-primary">View</a>
+                        {% if deck.user != current_user.username %}
+                        <button onclick="copyDeck('{{ deck.snapshot }}')" class="btn btn-secondary copy-btn">Copy</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination controls for All Public Decks (centered like Cards tab) -->
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+        <div></div>
+        {% if all_pagination.pages > 1 %}
+        <div class="pagination" style="margin:0;">
+            {% if all_pagination.has_prev %}
+            <a href="?{{ get_page_url('page_all', all_pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
+            {% endif %}
+            <span>Page {{ all_pagination.page }} of {{ all_pagination.pages }}</span>
+            {% if all_pagination.has_next %}
+            <a href="?{{ get_page_url('page_all', all_pagination.next_num) }}" class="btn btn-secondary">Next</a>
+            {% endif %}
+        </div>
+        {% else %}
+        <div></div>
+        {% endif %}
+        <div></div>
+    </div>
+    {% else %}
+    <p>No public decks available.</p>
+    {% endif %}
+</div>
+
+<!-- Create Deck Modal -->
+<div id="createModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 id="deckModalTitle">Create New Deck</h2>
+            <span class="close" onclick="closeCreateModal()">&times;</span>
+        </div>
+        <form id="createForm">
+            <div class="form-group">
+                <label for="deck_name">Deck Name *</label>
+                <input type="text" id="deck_name" required>
+            </div>
+            <div class="form-group">
+                <label for="deck_description">Description</label>
+                <textarea id="deck_description" rows="3"></textarea>
+            </div>
+            <div class="filter-row">
+                <div class="form-group">
+                    <label for="deck_mode">Mode</label>
+                    <select id="deck_mode" class="select-visible">
+                        <option value="1v1" selected>1v1</option>
+                        <option value="2v2">2v2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="deck_format">Format</label>
+                    <select id="deck_format" class="select-visible">
+                        <option value="Standard" selected>Standard</option>
+                        <option value="Limited">Limited</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Paste Method -->
+            <div id="pasteMethod">
+                <div class="form-group">
+                    <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">
+                        Supported formats:<br>
+                        1. SET-CARD-QUANTITY (e.g., OGN-269-1 OGN-270-3)<br>
+                        2. QUANTITY CardName (e.g., 3 Fiora Victorious)<br>
+                        <br>
+                        Add "Sideboard:" on a line to mark following cards as sideboard.
+                    </p>
+                    <textarea id="deck_paste" rows="15"
+                        placeholder="OGN-269-1 OGN-270-3&#10;or&#10;3 Fiora Victorious&#10;2 Sett The Boss&#10;&#10;Sideboard:&#10;2 Salvage"></textarea>
+                </div>
+                <button type="button" onclick="parseDeckList()" class="btn btn-secondary">Parse & Preview</button>
+            </div>
+
+            <!-- Preview Section -->
+            <div id="previewSection" style="display: none; margin-top: 1.5rem;">
+                <h3>Deck Preview</h3>
+                <div
+                    style="background-color: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; max-height: 300px; overflow-y: auto;">
+                    <h4>Main Deck (<span id="mainDeckCount">0</span> cards)</h4>
+                    <ul id="mainDeckList" style="list-style: none;"></ul>
+                    <h4 style="margin-top: 1rem;">Sideboard (<span id="sideboardCount">0</span> cards)</h4>
+                    <ul id="sideboardList" style="list-style: none;"></ul>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" onclick="closeCreateModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Deck</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let parsedCards = [];
+
+    function openCreateModal(title = 'Create New Deck') {
+        // Set the title (default or provided)
+        const titleEl = document.getElementById('deckModalTitle');
+        if (titleEl) titleEl.textContent = title;
+        document.getElementById('createModal').classList.add('active');
+    }
+
+    function closeCreateModal() {
+        document.getElementById('createModal').classList.remove('active');
+        document.getElementById('createForm').reset();
+        parsedCards = [];
+        document.getElementById('previewSection').style.display = 'none';
+    }
+
+    async function copyDeck(timestamp) {
+        try {
+            // Fetch deck data from API
+            const response = await fetch(`/riftbound/deck/api/copy/${timestamp}`);
+            const deckData = await response.json();
+            
+            if (!deckData.success) {
+                alert('Error loading deck: ' + (deckData.message || 'Unknown error'));
+                return;
+            }
+            
+            // Fill modal fields
+            document.getElementById('deck_name').value = deckData.name + ' (Copy)';
+            document.getElementById('deck_description').value = deckData.description;
+            document.getElementById('deck_mode').value = deckData.mode;
+            document.getElementById('deck_format').value = deckData.format;
+            
+            // Generate deck list text in SET-CARD-QUANTITY format
+            let deckListText = '';
+            const mainCards = deckData.cards.filter(c => !c.sideboard);
+            const sideboardCards = deckData.cards.filter(c => c.sideboard);
+            
+            mainCards.forEach(card => {
+                deckListText += `${card.set_id}-${card.card_id}-${card.quantity}\n`;
+            });
+            
+            if (sideboardCards.length > 0) {
+                deckListText += '\nSideboard:\n';
+                sideboardCards.forEach(card => {
+                    deckListText += `${card.set_id}-${card.card_id}-${card.quantity}\n`;
+                });
+            }
+            
+            document.getElementById('deck_paste').value = deckListText.trim();
+            
+            // Open modal with 'Copy Deck' title
+            openCreateModal('Copy Deck');
+            
+            // Auto-parse the deck to show preview
+            await parseDeckList();
+            
+        } catch (error) {
+            console.error('Error copying deck:', error);
+            alert('Error copying deck. Please try again.');
+        }
+    }
+
+    async function parseDeckList() {
+        const deckText = document.getElementById('deck_paste').value;
+        const tempCards = {}; // Para agrupar cartas: key = "SET-CARD", value = cantidad
+        let isSideboard = false;
+        const cardsToResolve = []; // Cards que necesitan búsqueda por nombre
+
+        const lines = deckText.split('\n');
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            // Check for sideboard marker
+            if (line.toLowerCase().includes('sideboard:')) {
+                isSideboard = true;
+                continue;
+            }
+
+            // Try format: SET-CARD-QUANTITY
+            const formatMatch = line.match(/([A-Z0-9]+)-(\d+[a-z]?)-(\d+)/g);
+            if (formatMatch) {
+                for (let match of formatMatch) {
+                    const [setId, cardId, qty] = match.split('-');
+                    // Normalizar card_id: eliminar ceros a la izquierda (008 -> 8)
+                    const normalizedCardId = cardId.replace(/^0+/, '') || '0';
+                    const key = `${setId}-${normalizedCardId}-${isSideboard ? 'S' : 'N'}`;
+                    
+                    if (tempCards[key]) {
+                        tempCards[key].quantity += parseInt(qty);
+                    } else {
+                        tempCards[key] = {
+                            set_id: setId,
+                            card_id: normalizedCardId,
+                            quantity: parseInt(qty),
+                            sideboard: isSideboard
+                        };
+                    }
+                }
+                continue;
+            }
+
+            // Try format: QUANTITY CardName
+            const nameMatch = line.match(/^(\d+)\s+(.+)$/);
+            if (nameMatch) {
+                const qty = parseInt(nameMatch[1]);
+                const cardName = nameMatch[2];
+                
+                // Agregar a la lista sin duplicar
+                const existing = cardsToResolve.find(c => c.name === cardName && c.sideboard === isSideboard);
+                if (existing) {
+                    existing.quantity += qty;
+                } else {
+                    cardsToResolve.push({
+                        name: cardName,
+                        quantity: qty,
+                        sideboard: isSideboard
+                    });
+                }
+            }
+        }
+
+        // Resolver cartas por nombre SOLO si es necesario
+        if (cardsToResolve.length > 0) {
+            // Mostrar indicador
+            document.getElementById('previewSection').style.display = 'block';
+            document.getElementById('mainDeckList').innerHTML = '<li>Searching for ' + cardsToResolve.length + ' cards...</li>';
+            
+            try {
+                const resolvedCards = await resolveCardsByName(cardsToResolve);
+                
+                for (let card of resolvedCards) {
+                    const key = `${card.set_id}-${card.card_id}-${card.sideboard ? 'S' : 'N'}`;
+                    
+                    if (tempCards[key]) {
+                        tempCards[key].quantity += card.quantity;
+                    } else {
+                        tempCards[key] = card;
+                    }
+                }
+            } catch (error) {
+                alert('Error searching cards: ' + error.message);
+                return;
+            }
+        }
+
+        // Convertir objeto a array
+        parsedCards = [];
+        
+        // Agregar cartas del main deck
+        for (let key in tempCards) {
+            if (!tempCards[key].sideboard) {
+                parsedCards.push(tempCards[key]);
+            }
+        }
+        
+        // Verificar límite de 56 y mover exceso al sideboard
+        let cardCount = parsedCards.reduce((sum, card) => sum + card.quantity, 0);
+        
+        if (cardCount > 56) {
+            let accumulated = 0;
+            const newParsed = [];
+            
+            for (let card of parsedCards) {
+                if (accumulated + card.quantity <= 56) {
+                    // Toda la carta cabe en el main deck
+                    newParsed.push(card);
+                    accumulated += card.quantity;
+                } else if (accumulated < 56) {
+                    // Parte va al main, parte al sideboard
+                    const mainQty = 56 - accumulated;
+                    const sideQty = card.quantity - mainQty;
+                    
+                    newParsed.push({
+                        set_id: card.set_id,
+                        card_id: card.card_id,
+                        quantity: mainQty,
+                        sideboard: false
+                    });
+                    
+                    newParsed.push({
+                        set_id: card.set_id,
+                        card_id: card.card_id,
+                        quantity: sideQty,
+                        sideboard: true
+                    });
+                    
+                    accumulated = 56;
+                } else {
+                    // Todo va al sideboard
+                    newParsed.push({
+                        set_id: card.set_id,
+                        card_id: card.card_id,
+                        quantity: card.quantity,
+                        sideboard: true
+                    });
+                }
+            }
+            
+            parsedCards = newParsed;
+        }
+        
+        // Agregar cartas marcadas explícitamente como sideboard
+        for (let key in tempCards) {
+            if (tempCards[key].sideboard) {
+                parsedCards.push(tempCards[key]);
+            }
+        }
+
+        updatePreview();
+    }
+
+    async function resolveCardsByName(cards) {
+        const resolved = [];
+        const notFound = [];
+        
+        for (let cardData of cards) {
+            try {
+                let matchedCard = null;
+                let searchTerm = cardData.name;
+                
+                // Si tiene formato "Champion, CardName", usar solo el CardName
+                if (searchTerm.includes(',')) {
+                    const parts = searchTerm.split(',');
+                    searchTerm = parts[1].trim();
+                }
+                
+                // UNA SOLA búsqueda
+                const response = await fetch(`/riftbound/collection/api/cards?search=${encodeURIComponent(searchTerm)}&limit=5`);
+                const result = await response.json();
+                
+                if (result.cards && result.cards.length > 0) {
+                    // Usar el primer resultado
+                    matchedCard = result.cards[0];
+                    
+                    resolved.push({
+                        set_id: matchedCard.set_id,
+                        card_id: matchedCard.card_id,
+                        quantity: cardData.quantity,
+                        sideboard: cardData.sideboard
+                    });
+                } else {
+                    notFound.push(cardData.name);
+                }
+            } catch (error) {
+                notFound.push(cardData.name);
+            }
+        }
+        
+        if (notFound.length > 0) {
+            alert(`Warning: ${notFound.length} card(s) not found:\n${notFound.join('\n')}`);
+        }
+        
+        return resolved;
+    }
+
+    function addManualCard() {
+        const setId = document.getElementById('manual_set').value;
+        const cardId = document.getElementById('manual_card').value;
+        const qty = parseInt(document.getElementById('manual_quantity').value);
+
+        if (!setId || !cardId || !qty) {
+            alert('Please fill all fields');
+            return;
+        }
+
+        const currentTotal = parsedCards.reduce((sum, card) => sum + card.quantity, 0);
+        parsedCards.push({
+            set_id: setId,
+            card_id: cardId,
+            quantity: qty,
+            sideboard: currentTotal >= 56
+        });
+
+        document.getElementById('manual_set').value = '';
+        document.getElementById('manual_card').value = '';
+        document.getElementById('manual_quantity').value = '1';
+
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const mainDeck = parsedCards.filter(c => !c.sideboard);
+        const sideboard = parsedCards.filter(c => c.sideboard);
+
+        const mainCount = mainDeck.reduce((sum, card) => sum + card.quantity, 0);
+        const sideCount = sideboard.reduce((sum, card) => sum + card.quantity, 0);
+
+        document.getElementById('mainDeckCount').textContent = mainCount;
+        document.getElementById('sideboardCount').textContent = sideCount;
+
+        document.getElementById('mainDeckList').innerHTML = mainDeck.map(card =>
+            `<li>${card.quantity}x ${card.set_id}-${card.card_id}</li>`
+        ).join('');
+
+        document.getElementById('sideboardList').innerHTML = sideboard.map(card =>
+            `<li>${card.quantity}x ${card.set_id}-${card.card_id}</li>`
+        ).join('');
+
+        document.getElementById('previewSection').style.display = 'block';
+    }
+
+    document.getElementById('createForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        if (parsedCards.length === 0) {
+            alert('Please add cards to your deck');
+            return;
+        }
+
+        const data = {
+            name: document.getElementById('deck_name').value,
+            description: document.getElementById('deck_description').value,
+            mode: document.getElementById('deck_mode').value,
+            format: document.getElementById('deck_format').value,
+            cards: parsedCards
+        };
+
+        const response = await fetch('/riftbound/deck/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('Deck saved successfully!');
+            location.reload();
+        } else {
+            alert(result.message || 'Failed to save deck');
+        }
+    });
+
+    // Tooltip element for deck summary
+    const deckTooltip = document.createElement('div');
+    deckTooltip.className = 'deck-tooltip';
+    deckTooltip.style.display = 'none';
+    document.body.appendChild(deckTooltip);
+
+    // Positioning helper: place tooltip vertically centered to the source rect and avoid going off-screen
+    function positionTooltip(rect, tooltipEl) {
+        // Tooltip should already be visible to measure
+        const tt = tooltipEl.getBoundingClientRect();
+        let top = rect.top + (rect.height - tt.height) / 2;
+        let left = rect.right + 8;
+
+        // If tooltip goes off the right edge, place it to the left of the element
+        if (left + tt.width > window.innerWidth - 8) {
+            left = rect.left - tt.width - 8;
+        }
+
+        // Clamp vertically within viewport
+        const minTop = 8;
+        const maxTop = window.innerHeight - tt.height - 8;
+        if (top < minTop) top = minTop;
+        if (top > maxTop) top = maxTop;
+
+        // Apply scroll offsets because getBoundingClientRect is viewport-relative
+        tooltipEl.style.left = (left + window.scrollX) + 'px';
+        tooltipEl.style.top = (top + window.scrollY) + 'px';
+    }
+
+    async function showSetsPreview(e, timestamp) {
+        e.stopPropagation();
+        try {
+            const resp = await fetch(`/riftbound/deck/api/summary/${timestamp}`);
+            const j = await resp.json();
+            if (!j.success) {
+                alert(j.message || 'No deck info');
+                return;
+            }
+
+            const html = `<strong>${j.name}</strong><div style="margin-top:6px;font-size:0.95rem">${j.description || ''}</div>` +
+                `<div class="sets">${j.set_ids.map(s => `<span class="set-tag">${s}</span>`).join('')}</div>`;
+
+            deckTooltip.innerHTML = html;
+            deckTooltip.style.display = 'block';
+            const rect = e.target.getBoundingClientRect();
+            positionTooltip(rect, deckTooltip);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // Hide tooltip on document click
+    document.addEventListener('click', () => { deckTooltip.style.display = 'none'; });
+
+    // Add hover preview for deck rows (name/description and sets)
+    document.querySelectorAll('.deck-row').forEach(row => {
+        row.addEventListener('mouseenter', async (ev) => {
+            const ts = row.getAttribute('data-timestamp');
+            try {
+                const resp = await fetch(`/riftbound/deck/api/summary/${ts}`);
+                const j = await resp.json();
+                if (!j.success) return;
+                const html = `<strong>${j.name}</strong><div style="margin-top:6px;font-size:0.9rem">${j.description || ''}</div>` +
+                    `<div class="sets">${j.set_ids.map(s => `<span class="set-tag">${s}</span>`).join('')}</div>`;
+                deckTooltip.innerHTML = html;
+                deckTooltip.style.display = 'block';
+                const rect = row.getBoundingClientRect();
+                positionTooltip(rect, deckTooltip);
+            } catch (err) { }
+        });
+        row.addEventListener('mouseleave', () => { deckTooltip.style.display = 'none'; });
+    });
+
+    // Legend autocomplete
+    const legendInput = document.getElementById('legendSearch');
+    const legendHidden = document.getElementById('filter_legend_hidden');
+    const legendSuggestions = document.getElementById('legendSuggestions');
+    let legendTimer = null;
+
+    // Format/Mode button toggles - allow multiple selections
+    function initToggles() {
+        // Format - allow multiple selections
+        document.querySelectorAll('#formatButtons .btn-toggle').forEach(b => {
+            const val = document.getElementById('filter_format_hidden').value;
+            if (val && val.split(',').includes(b.dataset.format)) b.classList.add('active');
+            b.addEventListener('click', () => {
+                // toggle: add or remove from active set
+                if (b.classList.contains('active')) {
+                    b.classList.remove('active');
+                } else {
+                    b.classList.add('active');
+                }
+                // Update hidden input with comma-separated active values
+                const selected = Array.from(document.querySelectorAll('#formatButtons .btn-toggle.active'))
+                    .map(x => x.dataset.format).join(',');
+                document.getElementById('filter_format_hidden').value = selected;
+            });
+        });
+
+        // Mode - allow multiple selections
+        document.querySelectorAll('#modeButtons .btn-toggle').forEach(b => {
+            const val = document.getElementById('filter_mode_hidden').value;
+            if (val && val.split(',').includes(b.dataset.mode)) b.classList.add('active');
+            b.addEventListener('click', () => {
+                // toggle: add or remove from active set
+                if (b.classList.contains('active')) {
+                    b.classList.remove('active');
+                } else {
+                    b.classList.add('active');
+                }
+                // Update hidden input with comma-separated active values
+                const selected = Array.from(document.querySelectorAll('#modeButtons .btn-toggle.active'))
+                    .map(x => x.dataset.mode).join(',');
+                document.getElementById('filter_mode_hidden').value = selected;
+            });
+        });
+    }
+
+    // Sets chips management
+    const setSelect = document.getElementById('setSelect');
+    const selectedSetsDiv = document.getElementById('selectedSets');
+    const filterSetHidden = document.getElementById('filter_set_hidden');
+
+    function updateFilterSetHidden() {
+        const chips = Array.from(selectedSetsDiv.querySelectorAll('.set-chip')).map(c => c.dataset.value);
+        filterSetHidden.value = chips.join(',');
+    }
+
+    function addSetChip(value, label) {
+        // prevent duplicates
+        if (Array.from(selectedSetsDiv.querySelectorAll('.set-chip')).some(c => c.dataset.value === value)) return;
+        const chip = document.createElement('div');
+        chip.className = 'set-chip';
+        chip.dataset.value = value;
+        chip.style = 'display:inline-flex;align-items:center;padding:4px 8px;border-radius:12px;background:rgba(255,255,255,0.06);gap:6px;';
+        chip.innerHTML = `<span style="font-size:0.9rem">${value}</span><button type="button" style="background:transparent;border:none;color:var(--text-color);cursor:pointer">✕</button>`;
+        chip.querySelector('button').addEventListener('click', () => { chip.remove(); updateFilterSetHidden(); });
+        selectedSetsDiv.appendChild(chip);
+        updateFilterSetHidden();
+    }
+
+    // Auto-add set on select change
+    setSelect && setSelect.addEventListener('change', () => {
+        const val = setSelect.value;
+        if (!val) return;
+        const label = setSelect.options[setSelect.selectedIndex].text;
+        addSetChip(val, label);
+        setSelect.value = ''; // reset select
+    });
+
+    // Initialize chips from existing hidden value
+    if (filterSetHidden && filterSetHidden.value) {
+        const parts = filterSetHidden.value.split(',').map(s => s.trim()).filter(Boolean);
+        for (const p of parts) {
+            addSetChip(p, p);
+        }
+    }
+
+    // Init toggles
+    initToggles();
+
+    async function populateLegendDropdown() {
+        try {
+            const resp = await fetch('/riftbound/deck/api/legends');
+            const data = await resp.json();
+            const dropdown = document.getElementById('legendFilterDropdown');
+            const legends = data.legends || [];
+            
+            // Clear existing items
+            dropdown.innerHTML = '';
+            
+            // Get current filter value
+            const currentValue = document.getElementById('filter_legend').value;
+            const btn = document.getElementById('legendFilterBtn');
+            const btnText = btn.querySelector('#legendFilterText');
+            
+            // Add legend options
+            for (const legend of legends) {
+                const item = document.createElement('div');
+                item.className = 'legend-filter-item';
+                if (legend.name === currentValue) {
+                    item.classList.add('active');
+                    // Update button text if there's a selected value
+                    if (currentValue) {
+                        btnText.textContent = legend.name;
+                    }
+                }
+                
+                const img = document.createElement('img');
+                img.src = legend.image || '/riftbound/static/images/cards/placeholder.png';
+                img.alt = legend.name;
+                item.appendChild(img);
+                
+                const textDiv = document.createElement('div');
+                textDiv.className = 'legend-filter-item-text';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'legend-filter-item-name';
+                nameDiv.textContent = legend.name;
+                textDiv.appendChild(nameDiv);
+                
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'legend-filter-item-details';
+                detailsDiv.textContent = `${legend.tags ? legend.tags + ' , ' : ''}${legend.set_id} - ${legend.card_id}`;
+                textDiv.appendChild(detailsDiv);
+                
+                item.appendChild(textDiv);
+                
+                item.addEventListener('click', () => {
+                    selectLegendFilter(legend.name, item);
+                });
+                
+                dropdown.appendChild(item);
+            }
+        } catch (err) {
+            console.error('Error loading legends:', err);
+        }
+    }
+
+    function selectLegendFilter(legendName, element) {
+        // Update hidden input
+        document.getElementById('filter_legend').value = legendName;
+        
+        // Update button text
+        const btn = document.getElementById('legendFilterBtn');
+        const btnText = btn.querySelector('#legendFilterText');
+        btnText.textContent = legendName;
+        
+        // Update active state
+        const dropdown = document.getElementById('legendFilterDropdown');
+        const items = dropdown.querySelectorAll('.legend-filter-item');
+        items.forEach(item => item.classList.remove('active'));
+        element.classList.add('active');
+        
+        // Close dropdown
+        dropdown.style.display = 'none';
+        
+        // Submit form
+        document.getElementById('deckFilters').submit();
+    }
+
+    function toggleLegendFilterDropdown() {
+        const dropdown = document.getElementById('legendFilterDropdown');
+        if (dropdown.style.display === 'none') {
+            dropdown.style.display = 'block';
+        } else {
+            dropdown.style.display = 'none';
+        }
+    }
+
+    // Legend filter button click handler
+    const legendFilterBtn = document.getElementById('legendFilterBtn');
+    if (legendFilterBtn) {
+        legendFilterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleLegendFilterDropdown();
+        });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const legendFilter = document.querySelector('.legend-filter');
+        const dropdown = document.getElementById('legendFilterDropdown');
+        if (legendFilter && !legendFilter.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+
+    // Populate legend dropdown on page load
+    document.addEventListener('DOMContentLoaded', populateLegendDropdown);
+
+</script>
+{% endblock %}
