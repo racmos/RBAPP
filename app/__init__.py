@@ -18,6 +18,10 @@ def create_app(config_class=Config):
                 static_url_path='/riftbound/static')
     app.config.from_object(config_class)
     
+    # Force SQLite in-memory if TESTING is set
+    if app.config.get('TESTING'):
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    
     # Make min/max available in all templates
     from builtins import min as _min, max as _max
     app.jinja_env.globals['min'] = _min
