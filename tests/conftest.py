@@ -9,13 +9,13 @@ from app import create_app, db
 @pytest.fixture
 def app():
     """Create application for testing."""
-    app = create_app()
-    app.config.update({
-        'TESTING': True,
-        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
-        'WTF_CSRF_ENABLED': False,
-        'SECRET_KEY': 'test-secret-key'
-    })
+    # Create application with test configuration overrides
+    app = create_app(
+        TESTING=True,
+        SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
+        WTF_CSRF_ENABLED=False,
+        SECRET_KEY='test-secret-key'
+    )
     
     with app.app_context():
         try:

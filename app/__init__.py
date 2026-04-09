@@ -9,7 +9,7 @@ db = SQLAlchemy()
 login = LoginManager()
 login.login_view = 'auth.login'
 
-def create_app(config_class=Config):
+def create_app(config_class=Config, **test_config):
     # Get the absolute path to the app directory
     app_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -18,9 +18,9 @@ def create_app(config_class=Config):
                 static_url_path='/riftbound/static')
     app.config.from_object(config_class)
     
-    # Force SQLite in-memory if TESTING is set
-    if app.config.get('TESTING'):
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    # Apply test configuration overrides before initializing extensions
+    if test_config:
+        app.config.update(test_config)
     
     # Make min/max available in all templates
     from builtins import min as _min, max as _max
