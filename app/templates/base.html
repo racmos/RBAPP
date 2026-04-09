@@ -17,13 +17,13 @@
             <a href="{{ url_for('main.dashboard') }}" class="logo">Riftbound Manager</a>
             <ul class="nav-links">
                 <li><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
-                <li><a href="{{ url_for('main.sets') }}">Sets</a></li>
-                <li><a href="{{ url_for('main.cards') }}">Cards</a></li>
-                <li><a href="{{ url_for('main.collection') }}">Collection</a></li>
-                <li><a href="{{ url_for('main.deck') }}">Decks</a></li>
-                <li><a href="{{ url_for('main.price') }}">Price</a></li>
-                <li><a href="{{ url_for('main.profile') }}">Profile</a></li>
-                <li><a href="{{ url_for('main.logout') }}" class="btn-danger">Logout</a></li>
+                <li><a href="{{ url_for('sets.sets') }}">Sets</a></li>
+                <li><a href="{{ url_for('cards.cards') }}">Cards</a></li>
+                <li><a href="{{ url_for('collection.collection') }}">Collection</a></li>
+                <li><a href="{{ url_for('deck.deck') }}">Decks</a></li>
+                <li><a href="{{ url_for('price.price') }}">Price</a></li>
+                <li><a href="{{ url_for('profile.profile') }}">Profile</a></li>
+                <li><a href="{{ url_for('auth.logout') }}" class="btn-danger">Logout</a></li>
             </ul>
             <div class="lang-switcher">
                 <button class="lang-btn active" onclick="setLanguage('es')">ES</button>

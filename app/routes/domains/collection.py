@@ -57,7 +57,7 @@ def add_collection():
     else:
         db.session.add(RbCollection(
             rbcol_rbset_id=data.rbcol_rbset_id, 
-            rbcar_id=data.rbcol_rbcar_id, 
+            rbcol_rbcar_id=data.rbcol_rbcar_id, 
             rbcol_foil=data.rbcol_foil, 
             rbcol_quantity=data.rbcol_quantity, 
             rbcol_chadat=datetime.utcnow(), 

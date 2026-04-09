@@ -126,3 +126,33 @@ class ProfileUpdate(BaseModel):
 class PriceGenerate(BaseModel):
     """Schema for price generation request."""
     sets: Optional[List[str]] = Field(default_factory=list, description="List of set IDs to include")
+
+
+# ============== Deck Schemas ==============
+
+class DeckCard(BaseModel):
+    """Schema for a single card in deck."""
+    set: str = Field(..., description="Set ID")
+    id: str = Field(..., description="Card ID")
+    qty: int = Field(1, ge=1, le=99, description="Quantity")
+
+
+class DeckCards(BaseModel):
+    """Schema for deck cards structure."""
+    main: List[DeckCard] = Field(default_factory=list, description="Main deck cards")
+    sideboard: List[DeckCard] = Field(default_factory=[], description="Sideboard cards")
+
+
+class DeckSave(BaseModel):
+    """Schema for saving a deck."""
+    rbdck_name: str = Field(..., min_length=1, max_length=200, description="Deck name")
+    rbdck_description: Optional[str] = Field(None, max_length=1000)
+    rbdck_mode: Optional[str] = Field('1v1', max_length=50)
+    rbdck_format: Optional[str] = Field('Standard', max_length=50)
+    rbdck_max_set: Optional[str] = Field(None, max_length=100)
+    rbdck_cards: Optional[DeckCards] = None
+    
+    @field_validator('rbdck_name')
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        return v.strip()

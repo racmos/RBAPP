@@ -116,7 +116,7 @@
                     <td>{{ deck.snapshot.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ deck.format }} / {{ deck.mode }}</td>
                     <td>
-                        <a href="{{ url_for('main.view_deck', timestamp=deck.snapshot) }}" class="btn btn-primary">View</a>
+                        <a href="{{ url_for('deck.view_deck_legacy', set_id=deck.rbdck_rbset_id, card_id=deck.rbdck_rbcar_id) }}" class="btn btn-primary">View</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -179,7 +179,7 @@
                     <td>{{ deck.snapshot.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ deck.format }} / {{ deck.mode }}</td>
                     <td>
-                        <a href="{{ url_for('main.view_deck', timestamp=deck.snapshot) }}" class="btn btn-primary">View</a>
+                        <a href="{{ url_for('deck.view_deck_legacy', set_id=deck.rbdck_rbset_id, card_id=deck.rbdck_rbcar_id) }}" class="btn btn-primary">View</a>
                         {% if deck.user != current_user.username %}
                         <button onclick="copyDeck('{{ deck.snapshot }}')" class="btn btn-secondary copy-btn">Copy</button>
                         {% endif %}

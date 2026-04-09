@@ -6,7 +6,7 @@
 <h1>Sets Management</h1>
 
 <div class="filter-section">
-    <form method="GET" action="{{ url_for('main.sets') }}">
+    <form method="GET" action="{{ url_for('sets.sets') }}">
         <div class="filter-row">
             <div class="form-group">
                 <label for="search_id">Set ID</label>
@@ -19,7 +19,7 @@
             </div>
         </div>
         <button type="submit" class="btn btn-primary">Search</button>
-        <a href="{{ url_for('main.sets') }}" class="btn btn-secondary">Clear</a>
+        <a href="{{ url_for('sets.sets') }}" class="btn btn-secondary">Clear</a>
     </form>
 </div>
 
