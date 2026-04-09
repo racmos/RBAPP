@@ -21,7 +21,8 @@ jobs:
           pip install -r requirements.txt
       - name: Run tests with pytest
         run: |
-          pytest --cov=app
+          pytest -vv --tb=long --cov=app
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          FLASK_ENV: testing

@@ -15,7 +15,12 @@ def app():
     app.config['SECRET_KEY'] = 'test-secret-key'
     
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+            print("DB Tables created successfully") # Esto aparecerá si fallan los tests
+        except Exception as e:
+            print(f"Error creating DB tables: {e}")
+            raise e
         yield app
         db.drop_all()
 
