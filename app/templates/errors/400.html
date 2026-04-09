@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}400 - Solicitud Inválida{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <h1>400</h1>
+    <h2>Solicitud Inválida</h2>
+    <p>La solicitud enviada no es válida. Por favor, verifica los datos e intenta de nuevo.</p>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Volver al Inicio</a>
+</div>
+{% endblock %}
