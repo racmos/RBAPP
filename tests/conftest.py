@@ -1,13 +1,16 @@
 """
 Pytest configuration and fixtures for Riftbound tests.
 """
+import os
 import pytest
 from app import create_app, db
-
 
 @pytest.fixture
 def app():
     """Create application for testing."""
+    # Force SQLite in-memory for testing
+    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+    
     app = create_app()
     app.config['TESTING'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
