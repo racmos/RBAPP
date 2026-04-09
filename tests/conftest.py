@@ -3,29 +3,29 @@ Pytest configuration and fixtures for Riftbound tests.
 """
 import os
 import pytest
+from unittest.mock import patch
 from app import create_app, db
 
 @pytest.fixture
 def app():
     """Create application for testing."""
-    # Force SQLite in-memory for testing
-    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-    
-    app = create_app()
-    app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    app.config['WTF_CSRF_ENABLED'] = False
-    app.config['SECRET_KEY'] = 'test-secret-key'
-    
-    with app.app_context():
-        try:
-            db.create_all()
-            print("DB Tables created successfully") # Esto aparecerá si fallan los tests
-        except Exception as e:
-            print(f"Error creating DB tables: {e}")
-            raise e
-        yield app
-        db.drop_all()
+    # Force SQLite in-memory using patch for testing
+    with patch.dict(os.environ, {'DATABASE_URL': 'sqlite:///:memory:'}):
+        app = create_app()
+        app.config['TESTING'] = True
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        app.config['WTF_CSRF_ENABLED'] = False
+        app.config['SECRET_KEY'] = 'test-secret-key'
+        
+        with app.app_context():
+            try:
+                db.create_all()
+                print("DB Tables created successfully") # Esto aparecerá si fallan los tests
+            except Exception as e:
+                print(f"Error creating DB tables: {e}")
+                raise e
+            yield app
+            db.drop_all()
 
 
 @pytest.fixture
