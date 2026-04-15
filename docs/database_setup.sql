@@ -156,7 +156,7 @@ ALTER TABLE riftbound.rbcardmarket ADD CONSTRAINT rbcmk_rbcar_fk_1
 CREATE TABLE IF NOT EXISTS riftbound.rbdecks (
 	rbdck_snapshot TIMESTAMP DEFAULT NOW() NOT NULL,
 	rbdck_name TEXT NOT NULL,
-	rbdck_decription TEXT NULL,
+	rbdck_description TEXT NULL,
 	rbdck_mode TEXT DEFAULT '1v1'::TEXT NOT NULL,
 	rbdck_format TEXT DEFAULT 'Standard'::TEXT NOT NULL,
 	rbdck_max_set TEXT NOT NULL,
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS riftbound.rbdecks (
 COMMENT ON TABLE riftbound.rbdecks IS 'Tabla de mazos';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_snapshot IS 'Fecha de guardado del deck';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_name IS 'Nombre del mazo';
-COMMENT ON COLUMN riftbound.rbdecks.rbdck_decription IS 'Descripción del mazo';
+COMMENT ON COLUMN riftbound.rbdecks.rbdck_description IS 'Descripción del mazo';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_mode IS 'Modo de juego';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_format IS 'Formato de juego';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_max_set IS 'Set más reciente con el que esta formado el deck';

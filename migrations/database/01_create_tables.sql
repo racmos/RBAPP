@@ -139,7 +139,7 @@ CREATE TABLE riftbound.rbdecks (
     rbdck_name VARCHAR(200) NOT NULL,
     rbdck_seq INTEGER DEFAULT 1,
     rbdck_snapshot TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    rbdck_decription TEXT,
+    rbdck_description TEXT,
     rbdck_mode VARCHAR(50) DEFAULT '1v1',
     rbdck_format VARCHAR(50) DEFAULT 'Standard',
     rbdck_max_set VARCHAR(100),
@@ -162,7 +162,7 @@ COMMENT ON COLUMN riftbound.rbdecks.rbdck_user IS 'FK al usuario propietario del
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_name IS 'Nombre del deck';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_seq IS 'Secuencial para permitir multiples versiones del mismo deck';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_snapshot IS 'Fecha/hora de creacion del deck (incluye hora, min, seg)';
-COMMENT ON COLUMN riftbound.rbdecks.rbdck_decription IS 'Descripcion del deck';
+COMMENT ON COLUMN riftbound.rbdecks.rbdck_description IS 'Descripcion del deck';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_mode IS 'Modo de juego (1v1, Commander, Team, Draft)';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_format IS 'Formato del deck (Standard, Expanded, Classic)';
 COMMENT ON COLUMN riftbound.rbdecks.rbdck_max_set IS 'Sets permitidos en el deck';
