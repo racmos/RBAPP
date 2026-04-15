@@ -21,6 +21,26 @@ def create_app(config_class=Config, **test_config):
     # Apply test configuration overrides before initializing extensions
     if test_config:
         app.config.update(test_config)
+
+    # Fix engine options and schema for SQLite (used in tests)
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_uri.startswith('sqlite'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+        # SQLite does not support schemas — patch all model __table_args__
+        from sqlalchemy import event
+        from sqlalchemy.engine import Engine
+        import sqlite3
+
+        @event.listens_for(Engine, 'connect')
+        def set_sqlite_pragma(dbapi_conn, connection_record):
+            if isinstance(dbapi_conn, sqlite3.Connection):
+                cursor = dbapi_conn.cursor()
+                # Check if already attached before attaching
+                cursor.execute("PRAGMA database_list")
+                attached = {row[1] for row in cursor.fetchall()}
+                if 'riftbound' not in attached:
+                    cursor.execute('ATTACH DATABASE ":memory:" AS riftbound')
+                cursor.close()
     
     # Make min/max available in all templates
     from builtins import min as _min, max as _max
@@ -31,6 +51,10 @@ def create_app(config_class=Config, **test_config):
     login.init_app(app)
     # Asegurar que Flask respete X-Forwarded-* y X-Forwarded-Prefix enviados por NGINX
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=0)
+
+    # Landing page (root /)
+    from app.routes.landing import landing_bp
+    app.register_blueprint(landing_bp)
 
     from app.routes.routes import main_bp
     app.register_blueprint(main_bp)
