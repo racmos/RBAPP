@@ -43,6 +43,26 @@ psql -U postgres -d postgres -f migrations/database/01_create_tables.sql
 psql -U postgres -d postgres -f migrations/database/02_sample_data.sql
 ```
 
+### Paso 3: Tablas de Cardmarket + Fix Deck
+**Archivo**: `03_cardmarket_tables.sql`
+
+```bash
+psql -U postgres -d postgres -f migrations/database/03_cardmarket_tables.sql
+```
+
+**Contenido**:
+- Corrige typo en `rbdecks`: renombra columna `rbdck_decription` → `rbdck_description`
+- Crea 7 nuevas tablas para datos de Cardmarket:
+  - `rbcm_products` — Productos brutos de Cardmarket por fecha (singles + nonsingles)
+  - `rbcm_price` — Snapshots diarios de precios (normal + foil)
+  - `rbcm_categories` — Lookup de categorías de Cardmarket
+  - `rbcm_expansions` — Lookup de expansiones de Cardmarket
+  - `rbcm_load_history` — Historial de cargas con hash SHA-256 para detección de cambios
+  - `rbcm_product_card_map` — Mapeo de idProduct de Cardmarket a rbcards internas (FK → rbcards)
+  - `rbproducts` — Tabla maestra de productos curada (FK → rbset)
+- Crea índices para optimización
+- Añade comentarios a tablas y columnas
+
 ---
 
 ## Estructura de Tablas (Nombres de campos)
@@ -99,7 +119,7 @@ CREATE TABLE riftbound.rbdecks (
     rbdck_name VARCHAR(200) NOT NULL,
     rbdck_seq INTEGER DEFAULT 1,
     rbdck_snapshot TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    rbdck_decription TEXT,
+    rbdck_description TEXT,
     rbdck_mode VARCHAR(50) DEFAULT '1v1',
     rbdck_format VARCHAR(50) DEFAULT 'Standard',
     rbdck_max_set VARCHAR(100),
@@ -122,6 +142,8 @@ CREATE TABLE riftbound.rbdecks (
 | rbcollection | rbcol_user | → rbusers(username) | FK a usuario |
 | rbdecks | rbdck_user | → rbusers(username) | FK a usuario |
 | rbcardmarket | (rbcmk_rbset_id, rbcmk_rbcar_id) | → rbcards | FK a cartas |
+| rbcm_product_card_map | (rbpcm_rbset_id, rbpcm_rbcar_id) | → rbcards | FK mapeo producto-carta |
+| rbproducts | rbpdt_id_set | → rbset(rbset_id) | FK a sets |
 
 ---
 
@@ -183,7 +205,8 @@ GRANT ALL ON SCHEMA riftbound TO postgres;
 ```
 migrations/
 └── database/
-    ├── 01_create_tables.sql    -- Estructura de base de datos
-    ├── 02_sample_data.sql      -- Datos de ejemplo (opcional)
-    └── README.md               -- Este documento
+    ├── 01_create_tables.sql         -- Estructura de base de datos
+    ├── 02_sample_data.sql           -- Datos de ejemplo (opcional)
+    ├── 03_cardmarket_tables.sql     -- Tablas de Cardmarket + fix deck typo
+    └── README.md                    -- Este documento
 ```

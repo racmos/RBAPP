@@ -21,6 +21,40 @@ def create_app(config_class=Config, **test_config):
     # Apply test configuration overrides before initializing extensions
     if test_config:
         app.config.update(test_config)
+
+    # Fix engine options and schema for SQLite (used in tests)
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_uri.startswith('sqlite'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+        # SQLite does not support schemas — patch all model __table_args__
+        from sqlalchemy import event
+        from sqlalchemy.engine import Engine
+        import sqlite3
+
+        import re
+
+        def _regexp_replace(value, pattern, replacement, flags=''):
+            """SQLite shim for PostgreSQL regexp_replace(value, pattern, replacement, flags)."""
+            if value is None:
+                return None
+            re_flags = 0
+            if 'g' in (flags or ''):
+                return re.sub(pattern, replacement, str(value), flags=re_flags)
+            return re.sub(pattern, replacement, str(value), count=1, flags=re_flags)
+
+        @event.listens_for(Engine, 'connect')
+        def set_sqlite_pragma(dbapi_conn, connection_record):
+            if isinstance(dbapi_conn, sqlite3.Connection):
+                # Register regexp_replace as a custom SQLite function
+                dbapi_conn.create_function('regexp_replace', 4, _regexp_replace)
+                dbapi_conn.create_function('regexp_replace', 3, _regexp_replace)
+                cursor = dbapi_conn.cursor()
+                # Attach riftbound schema if not already attached
+                cursor.execute("PRAGMA database_list")
+                attached = {row[1] for row in cursor.fetchall()}
+                if 'riftbound' not in attached:
+                    cursor.execute('ATTACH DATABASE ":memory:" AS riftbound')
+                cursor.close()
     
     # Make min/max available in all templates
     from builtins import min as _min, max as _max
@@ -31,6 +65,10 @@ def create_app(config_class=Config, **test_config):
     login.init_app(app)
     # Asegurar que Flask respete X-Forwarded-* y X-Forwarded-Prefix enviados por NGINX
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=0)
+
+    # Landing page (root /)
+    from app.routes.landing import landing_bp
+    app.register_blueprint(landing_bp)
 
     from app.routes.routes import main_bp
     app.register_blueprint(main_bp)
