@@ -1,0 +1,121 @@
+<!-- ═══════════════════════════════════════════════════
+     CameraScroll — Hero Scrollytelling Component
+     Canvas-based frame animation synchronized to scroll.
+     ═══════════════════════════════════════════════════ -->
+
+<!-- Tall container for scroll distance (400vh) -->
+<div id="camera-scroll-container" class="relative" style="height: 400vh;">
+
+    <!-- ─── Loader Overlay ─── -->
+    <div id="camera-loader"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface transition-opacity duration-700"
+        role="status" aria-label="Cargando animación">
+        <div class="text-center space-y-6">
+            <!-- Logo / Title -->
+            <h1 class="text-4xl md:text-5xl font-black tracking-tight text-white/90">
+                DEMACIA <span class="text-accent-glow">HONOR</span>
+            </h1>
+            <!-- Progress bar -->
+            <div class="w-64 md:w-80 h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                <div id="camera-progress-bar"
+                    class="h-full loader-progress-bar rounded-full transition-all duration-150" style="width: 0%"></div>
+            </div>
+            <!-- Percentage -->
+            <p id="camera-progress-text" class="text-white/40 text-sm font-mono tabular-nums">0%</p>
+        </div>
+    </div>
+
+    <!-- ─── Sticky Canvas ─── -->
+    <div class="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
+
+        <!-- Glow Effect Container -->
+        <div id="camera-glow"
+            class="absolute w-[80vh] h-[80vh] rounded-full bg-accent blur-[100px] opacity-0 transition-opacity duration-100 ease-linear pointer-events-none"
+            style="transform: translateZ(0);"></div>
+
+        <!-- Canvas with Circular Mask -->
+        <canvas id="camera-canvas" class="relative w-full h-full object-contain"
+            style="mask-image: radial-gradient(circle closest-side, black 85%, transparent 100%); -webkit-mask-image: radial-gradient(circle closest-side, black 85%, transparent 100%);"
+            aria-hidden="true"></canvas>
+
+        <!-- ─── Overlay: Stage 1 (0–20%) — Title Visible on Load ─── -->
+        <div id="overlay-1"
+            class="absolute inset-0 flex flex-col items-center justify-center text-center px-6 pointer-events-none z-10 transition-opacity duration-500">
+            <h2 class="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-shadow-hero mb-4">
+                DEMACIA <span class="text-accent-glow">HONOR</span>
+            </h2>
+            <p class="text-lg md:text-xl text-white/70 font-light max-w-xl text-shadow-hero mb-8">
+                Nada como un buen desafío para purgar la injusticia.
+            </p>
+            <a href="#Noticias" class="btn-primary text-sm pointer-events-auto" tabindex="0">
+                ¡Demacia van a ver!
+            </a>
+        </div>
+
+        <!-- ─── Overlay: Stage 2 (25–45%) ─── -->
+        <div id="overlay-2"
+            class="absolute inset-0 flex items-center justify-center text-center px-6 pointer-events-none opacity-0 z-10">
+            <p class="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-shadow-hero text-white/90"
+                style="filter: blur(0px);">
+                ¡Aguanten conmigo,<br>hermanos y hermanas!
+            </p>
+        </div>
+
+        <!-- ─── Overlay: Stage 3 (55–75%) ─── -->
+        <div id="overlay-3"
+            class="absolute inset-0 flex items-center justify-center text-center px-6 pointer-events-none opacity-0 z-10">
+            <p class="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-shadow-hero text-white/90"
+                style="filter: blur(0px);">
+                ¿Quién osa desafiar<br>mi voluntad?
+            </p>
+        </div>
+
+        <!-- ─── Overlay: Stage 4 — CTA Buttons at Bottom (80–100%) ─── -->
+        <div id="overlay-4"
+            class="absolute bottom-12 left-0 right-0 flex items-end justify-center px-6 pointer-events-none opacity-0 z-20">
+            <div class="flex flex-wrap justify-center gap-3 max-w-5xl w-full pointer-events-auto">
+                <a href="#Noticias" class="btn-primary text-xs py-2 px-4 shadow-lg shadow-black/50" tabindex="0">
+                    Noticias
+                </a>
+                <a href="#Discord"
+                    class="btn-secondary text-xs py-2 px-4 bg-navy/80 hover:bg-navy shadow-lg shadow-black/50"
+                    tabindex="0">
+                    Discord
+                </a>
+                <a href="#TorneosOnline"
+                    class="btn-secondary text-xs py-2 px-4 bg-navy/80 hover:bg-navy shadow-lg shadow-black/50"
+                    tabindex="0">
+                    Online
+                </a>
+                <a href="#TorneosFisicos"
+                    class="btn-secondary text-xs py-2 px-4 bg-navy/80 hover:bg-navy shadow-lg shadow-black/50"
+                    tabindex="0">
+                    Físicos
+                </a>
+                <a href="#Videos"
+                    class="btn-secondary text-xs py-2 px-4 bg-navy/80 hover:bg-navy shadow-lg shadow-black/50"
+                    tabindex="0">
+                    Videos
+                </a>
+                <a href="#Decks"
+                    class="btn-secondary text-xs py-2 px-4 bg-navy/80 hover:bg-navy shadow-lg shadow-black/50"
+                    tabindex="0">
+                    Decks
+                </a>
+            </div>
+        </div>
+
+        <!-- ─── Scroll Indicator (bottom center) ─── -->
+        <div id="scroll-indicator"
+            class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 opacity-0 transition-opacity duration-500 pointer-events-none">
+            <div class="flex flex-col items-center text-white/40 scroll-indicator">
+                <span class="text-xs tracking-widest uppercase mb-1">Scroll</span>
+                <svg width="16" height="24" viewBox="0 0 16 24" fill="none" class="animate-scroll-hint"
+                    aria-hidden="true">
+                    <rect x="1" y="1" width="14" height="22" rx="7" stroke="currentColor" stroke-width="1.5" />
+                    <circle cx="8" cy="8" r="2" fill="currentColor" />
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
