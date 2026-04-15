@@ -31,11 +31,25 @@ def create_app(config_class=Config, **test_config):
         from sqlalchemy.engine import Engine
         import sqlite3
 
+        import re
+
+        def _regexp_replace(value, pattern, replacement, flags=''):
+            """SQLite shim for PostgreSQL regexp_replace(value, pattern, replacement, flags)."""
+            if value is None:
+                return None
+            re_flags = 0
+            if 'g' in (flags or ''):
+                return re.sub(pattern, replacement, str(value), flags=re_flags)
+            return re.sub(pattern, replacement, str(value), count=1, flags=re_flags)
+
         @event.listens_for(Engine, 'connect')
         def set_sqlite_pragma(dbapi_conn, connection_record):
             if isinstance(dbapi_conn, sqlite3.Connection):
+                # Register regexp_replace as a custom SQLite function
+                dbapi_conn.create_function('regexp_replace', 4, _regexp_replace)
+                dbapi_conn.create_function('regexp_replace', 3, _regexp_replace)
                 cursor = dbapi_conn.cursor()
-                # Check if already attached before attaching
+                # Attach riftbound schema if not already attached
                 cursor.execute("PRAGMA database_list")
                 attached = {row[1] for row in cursor.fetchall()}
                 if 'riftbound' not in attached:
