@@ -163,3 +163,12 @@ class DeckSave(BaseModel):
     @classmethod
     def strip_whitespace(cls, v: str) -> str:
         return v.strip()
+
+
+# ============== Cardmarket Schemas ==============
+
+class CardmarketLoad(BaseModel):
+    """Schema for Cardmarket data load request."""
+    singles_url: Optional[str] = Field(None, description="Override URL for products_singles JSON")
+    nonsingles_url: Optional[str] = Field(None, description="Override URL for products_nonsingles JSON")
+    price_guide_url: Optional[str] = Field(None, description="Override URL for price_guide JSON")

@@ -156,7 +156,7 @@ def save_deck():
         rbdck_snapshot=datetime.utcnow(),
         rbdck_rbset_id=set_id,
         rbdck_rbcar_id=card_id,
-        rbdck_decription=data.rbdck_description,
+        rbdck_description=data.rbdck_description,
         rbdck_mode=data.rbdck_mode or '1v1',
         rbdck_format=data.rbdck_format or 'Standard',
         rbdck_max_set=data.rbdck_max_set,
@@ -213,7 +213,7 @@ def update_deck_legacy(set_id, card_id):
             rbdck_snapshot=datetime.utcnow(),
             rbdck_rbset_id=set_id,
             rbdck_rbcar_id=card_id,
-            rbdck_decription=data.get('rbdck_description', rbdeck.rbdck_decription),
+            rbdck_description=data.get('rbdck_description', rbdeck.rbdck_description),
             rbdck_mode=data.get('rbdck_mode', rbdeck.rbdck_mode),
             rbdck_format=data.get('rbdck_format', rbdeck.rbdck_format),
             rbdck_max_set=data.get('rbdck_max_set', rbdeck.rbdck_max_set),
@@ -231,8 +231,8 @@ def update_deck_legacy(set_id, card_id):
         db.session.add(new_deck)
     else:
         # Solo actualizar metadatos (sin crear nueva versión)
-        if 'rbdck_decription' in data:
-            rbdeck.rbdck_decription = data['rbdck_decription']
+        if 'rbdck_description' in data:
+            rbdeck.rbdck_description = data['rbdck_description']
         if 'rbdck_mode' in data:
             rbdeck.rbdck_mode = data['rbdck_mode']
         if 'rbdck_format' in data:
@@ -254,7 +254,7 @@ def update_deck_legacy(set_id, card_id):
                 rbdck_snapshot=datetime.utcnow(),
                 rbdck_rbset_id=set_id,
                 rbdck_rbcar_id=card_id,
-                rbdck_decription=rbdeck.rbdck_decription,
+                rbdck_description=rbdeck.rbdck_description,
                 rbdck_mode=rbdeck.rbdck_mode,
                 rbdck_format=rbdeck.rbdck_format,
                 rbdck_max_set=rbdeck.rbdck_max_set,

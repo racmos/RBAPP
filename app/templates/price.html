@@ -73,6 +73,36 @@
     </div>
 </div>
 
+<div class="card" style="margin-top: 2rem;">
+    <h2>Cardmarket Data Tables</h2>
+    <p>Download and load the latest product catalog and price guide from Cardmarket.</p>
+    <p style="font-size: 0.9rem; color: #95a5a6;">Files: price_guide_22.json, products_singles_22.json, products_nonsingles_22.json</p>
+    <button type="button" id="cardmarketLoadBtn" class="btn btn-primary" onclick="loadCardmarketData()" style="background-color: #ef7d21;">
+        Cardmarket Data Tables
+    </button>
+    <button type="button" id="reviewLoadBtn" class="btn btn-primary" onclick="openReviewModal()" style="background-color: #95a5a6; margin-left: 1rem; display: none;">
+        <i class="fas fa-exclamation-triangle"></i> Revisar carga
+    </button>
+</div>
+
+<div id="cardmarketResultSection" style="display: none; margin-top: 2rem;">
+    <div class="card">
+        <h2>Cardmarket Load Result</h2>
+        <div id="cardmarketStatusMessage"></div>
+        <table id="cardmarketStatusTable" style="margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th>Step</th>
+                    <th>Status</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="cardmarketStatusBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div id="resultSection" style="display: none; margin-top: 2rem;">
     <div class="card">
         <h2>Generation Result</h2>
@@ -106,6 +136,24 @@
     <div class="alert alert-error">
         <strong>Errors/Warnings:</strong>
         <ul id="errorList" style="margin-left: 1.5rem; margin-top: 0.5rem;"></ul>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-exclamation-triangle" style="color: #ef7d21;"></i> Revisar carga - Productos sin mapear</h2>
+            <button class="modal-close" onclick="closeReviewModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <table class="review-table" id="reviewTable">
+                <thead><tr id="reviewTableHead"></tr></thead>
+                <tbody id="unmatchedList">
+                    <!-- Dynamically populated -->
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -362,6 +410,233 @@
             btn.textContent = 'Extraer cartas Riot';
         }
     }
+
+    // === Cardmarket Functions ===
+
+    async function loadCardmarketData() {
+        const btn = document.getElementById('cardmarketLoadBtn');
+        btn.disabled = true;
+        btn.textContent = 'Loading...';
+        
+        // Show result section
+        document.getElementById('cardmarketResultSection').style.display = 'block';
+        document.getElementById('cardmarketStatusBody').innerHTML = '';
+        document.getElementById('cardmarketStatusMessage').innerHTML = `
+            <div class="alert alert-warning">
+                <strong>Processing...</strong> Downloading and loading Cardmarket data. Please wait.
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('/riftbound/price/cardmarket-load', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            
+            const result = await response.json();
+            const tbody = document.getElementById('cardmarketStatusBody');
+            
+            // Populate steps table
+            if (result.steps) {
+                result.steps.forEach(step => {
+                    const row = tbody.insertRow();
+                    const statusClass = step.status.toLowerCase();
+                    row.innerHTML = `
+                        <td>${step.step}</td>
+                        <td><span class="status-badge status-${statusClass}">${step.status}</span></td>
+                        <td>${step.message}</td>
+                    `;
+                });
+            }
+            
+            if (result.success) {
+                document.getElementById('cardmarketStatusMessage').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Cardmarket data loaded successfully!</strong><br>
+                        Date: ${result.date}
+                    </div>
+                `;
+            } else {
+                let errorHtml = '';
+                if (result.errors && result.errors.length > 0) {
+                    errorHtml = '<ul>' + result.errors.map(e => `<li>${e}</li>`).join('') + '</ul>';
+                }
+                document.getElementById('cardmarketStatusMessage').innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>Cardmarket load failed!</strong>
+                        ${errorHtml}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            document.getElementById('cardmarketStatusMessage').innerHTML = `
+                <div class="alert alert-error">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Cardmarket Data Tables';
+            checkUnmatched();
+        }
+    }
+
+    // === Review Modal Functions ===
+    
+    function checkUnmatched() {
+        fetch('/riftbound/price/cardmarket-unmatched')
+            .then(r => r.json())
+            .then(data => {
+                const btn = document.getElementById('reviewLoadBtn');
+                if (data.count > 0) {
+                    btn.style.display = 'inline-block';
+                    btn.style.backgroundColor = '#e74c3c';
+                    btn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Revisar carga (${data.count})`;
+                } else {
+                    btn.style.display = 'none';
+                }
+            })
+            .catch(() => {});
+    }
+
+    function openReviewModal() {
+        document.getElementById('reviewModal').style.display = 'flex';
+        loadUnmatchedProducts();
+    }
+
+    function closeReviewModal() {
+        document.getElementById('reviewModal').style.display = 'none';
+    }
+
+    function loadUnmatchedProducts() {
+        const container = document.getElementById('unmatchedList');
+        container.innerHTML = '<tr><td colspan="7">Cargando productos sin mapear...</td></tr>';
+        
+        fetch('/riftbound/price/cardmarket-unmatched')
+            .then(r => r.json())
+            .then(data => {
+                if (data.unmatched.length === 0) {
+                    container.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #2ecc71;">Todos los productos est&aacute;n mapeados correctamente.</td></tr>';
+                    document.getElementById('reviewLoadBtn').style.display = 'none';
+                    return;
+                }
+                
+                const headerRow = document.getElementById('reviewTableHead');
+                headerRow.innerHTML = '<th>ID Product</th><th>Nombre Producto</th><th style="text-align: center;">Precio Bajo</th><th>Set</th><th>ID Card</th><th>Card Name</th><th></th>';
+                
+                const tbody = document.getElementById('unmatchedList');
+                let html = '';
+                
+                data.unmatched.forEach(p => {
+                    const lowPrice = p.low_price != null ? `&euro;${p.low_price.toFixed(2)}` : '&mdash;';
+                    html += `<tr id="row-${p.id_product}">
+                        <td>${p.id_product}</td>
+                        <td>${p.name}</td>
+                        <td style="text-align: center; font-family: monospace;">${lowPrice}</td>
+                        <td><input type="text" class="map-input" id="set-${p.id_product}" placeholder="Set ID" style="width: 80px;"></td>
+                        <td><input type="text" class="map-input" id="card-${p.id_product}" placeholder="Card ID" style="width: 80px;"></td>
+                        <td><input type="text" class="map-input map-search" id="search-${p.id_product}" 
+                            placeholder="Buscar por nombre (min 3 chars)" style="width: 200px;"
+                            oninput="searchCards(this, ${p.id_product})"></td>
+                        <td>
+                            <button class="btn-map" onclick="saveMapping(${p.id_product})" title="Guardar mapeo">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr id="results-${p.id_product}" style="display: none;">
+                        <td colspan="7">
+                            <div class="search-results" id="searchResults-${p.id_product}"></div>
+                        </td>
+                    </tr>`;
+                });
+                
+                html += '</tbody>';
+                tbody.innerHTML = html;
+            })
+            .catch(err => {
+                container.innerHTML = `<tr><td colspan="7" class="alert alert-error">Error: ${err.message}</td></tr>`;
+            });
+    }
+
+    function searchCards(input, idProduct) {
+        const q = input.value.trim();
+        const resultsRow = document.getElementById(`results-${idProduct}`);
+        const resultsDiv = document.getElementById(`searchResults-${idProduct}`);
+        
+        if (q.length < 3) {
+            resultsRow.style.display = 'none';
+            resultsDiv.innerHTML = '';
+            return;
+        }
+        
+        fetch(`/riftbound/price/cardmarket-search-cards?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.cards.length === 0) {
+                    resultsDiv.innerHTML = '<span style="color: #95a5a6;">No se encontraron cartas</span>';
+                    resultsRow.style.display = 'table-row';
+                    return;
+                }
+                
+                let html = '';
+                data.cards.forEach(c => {
+                    html += `<span class="search-result-item" onclick="selectCard(${idProduct}, '${c.rbset_id}', '${c.rbcar_id}', '${c.name.replace(/'/g, "\\'")}')">
+                        ${c.rbset_id} / ${c.rbcar_id} &mdash; ${c.name}
+                    </span>`;
+                });
+                
+                resultsDiv.innerHTML = html;
+                resultsRow.style.display = 'table-row';
+            });
+    }
+
+    function selectCard(idProduct, setId, cardId, cardName) {
+        document.getElementById(`set-${idProduct}`).value = setId;
+        document.getElementById(`card-${idProduct}`).value = cardId;
+        document.getElementById(`search-${idProduct}`).value = cardName;
+        document.getElementById(`results-${idProduct}`).style.display = 'none';
+    }
+
+    function saveMapping(idProduct) {
+        const setId = document.getElementById(`set-${idProduct}`).value.trim();
+        const cardId = document.getElementById(`card-${idProduct}`).value.trim();
+        
+        if (!setId || !cardId) {
+            alert('Set ID y Card ID son obligatorios');
+            return;
+        }
+        
+        fetch('/riftbound/price/cardmarket-map', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_product: idProduct,
+                rbset_id: setId,
+                rbcar_id: cardId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.getElementById(`row-${idProduct}`);
+                const resultsRow = document.getElementById(`results-${idProduct}`);
+                row.style.backgroundColor = 'rgba(46, 204, 113, 0.2)';
+                row.querySelectorAll('input, button').forEach(el => el.disabled = true);
+                resultsRow.style.display = 'none';
+                
+                // Update counter
+                checkUnmatched();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+
+    // Check for unmatched products on page load
+    checkUnmatched();
 </script>
 
 <style>
@@ -409,6 +684,183 @@
     .status-error {
         background-color: rgba(231, 76, 60, 0.3);
         color: #e74c3c;
+    }
+
+    .status-info {
+        background-color: rgba(52, 152, 219, 0.3);
+        color: #3498db;
+    }
+
+    .status-skipped {
+        background-color: rgba(149, 165, 166, 0.3);
+        color: #95a5a6;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background-color: #013951;
+        border: 1px solid #1a4c62;
+        border-radius: 4px;
+        width: 99%;
+        max-width: none;
+        height: 96vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        margin: 0;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 2px 4px;
+        margin: 0;
+        border-bottom: none;
+        flex-shrink: 0;
+        min-height: 0;
+        line-height: 1.2;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        padding: 0;
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: #95a5a6;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .modal-close:hover {
+        color: #e74c3c;
+    }
+
+    .modal-body {
+        padding: 0;
+        margin: 0;
+        overflow-y: scroll;
+        -webkit-overflow-scrolling: touch;
+        flex: 1;
+        position: relative;
+    }
+
+    .review-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .review-table th:last-child,
+    .review-table td:last-child {
+        padding-right: 0.2rem;
+    }
+
+    .review-table th,
+    .review-table td {
+        padding: 0.25rem 0.4rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .review-table thead th {
+        background-color: rgba(0, 0, 0, 0.95);
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .review-table thead tr {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .review-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .map-input {
+        background-color: rgba(0, 0, 0, 0.3);
+        color: var(--text-color, #fff);
+        border: 1px solid #1a4c62;
+        border-radius: 4px;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .map-input:focus {
+        outline: none;
+        border-color: #00b2cf;
+    }
+
+    .btn-map {
+        background-color: #2ecc71;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.4rem 0.8rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .btn-map:hover {
+        background-color: #27ae60;
+    }
+
+    .btn-map:disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+    }
+
+    .search-results {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .search-result-item {
+        background-color: rgba(0, 178, 207, 0.2);
+        border: 1px solid #00b2cf;
+        border-radius: 4px;
+        padding: 0.3rem 0.6rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+    }
+
+    .search-result-item:hover {
+        background-color: rgba(0, 178, 207, 0.4);
     }
 </style>
 {% endblock %}

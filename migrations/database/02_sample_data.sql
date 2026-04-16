@@ -51,7 +51,7 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- Insertar ejemplo de deck
-INSERT INTO riftbound.rbdecks (rbdck_user, rbdck_name, rbdck_seq, rbdck_snapshot, rbdck_decription, rbdck_mode, rbdck_format, rbdck_ncards, rbdck_cards)
+INSERT INTO riftbound.rbdecks (rbdck_user, rbdck_name, rbdck_seq, rbdck_snapshot, rbdck_description, rbdck_mode, rbdck_format, rbdck_ncards, rbdck_cards)
 VALUES 
     ('test', 'My First Deck', 1, CURRENT_TIMESTAMP, 'A test deck', '1v1', 'Standard', 4, 
      '{"main": [{"set": "OGN", "id": "001", "qty": 3}, {"set": "WIS", "id": "001", "qty": 1}], "sideboard": []}')

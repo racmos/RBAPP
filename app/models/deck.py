@@ -23,7 +23,7 @@ class RbDeck(db.Model):
     rbdck_snapshot = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
     
     # Metadatos del deck
-    rbdck_decription = db.Column(db.Text)
+    rbdck_description = db.Column(db.Text)
     rbdck_mode = db.Column(db.Text, nullable=False, default='1v1')
     rbdck_format = db.Column(db.Text, nullable=False, default='Standard')
     rbdck_max_set = db.Column(db.Text)
@@ -89,8 +89,8 @@ class RbDeck(db.Model):
     
     @property
     def description(self):
-        """Alias para rbdck_decription (compatibilidad)."""
-        return self.rbdck_decription
+        """Alias para rbdck_description (compatibilidad)."""
+        return self.rbdck_description
     
     @property
     def mode(self):
