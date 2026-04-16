@@ -128,6 +128,13 @@ class PriceGenerate(BaseModel):
     sets: Optional[List[str]] = Field(default_factory=list, description="List of set IDs to include")
 
 
+# ============== Riot Extract Schemas ==============
+
+class RiotExtract(BaseModel):
+    """Schema for Riot card extraction request."""
+    sets: Optional[List[str]] = Field(default_factory=list, description="List of set IDs to extract (empty = all)")
+
+
 # ============== Deck Schemas ==============
 
 class DeckCard(BaseModel):
