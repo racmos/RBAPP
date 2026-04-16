@@ -32,6 +32,48 @@
 </div>
 
 <div class="card" style="margin-top: 2rem;">
+    <h2>Extraer Cartas Riot</h2>
+    <p>Descarga cartas e im&aacute;genes desde la galer&iacute;a oficial de Riot.</p>
+
+    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+        <button type="button" id="refreshSetsBtn" class="btn btn-primary" onclick="refreshRiotSets()" style="background-color: #00b2cf;">
+            Refrescar Sets
+        </button>
+        <button type="button" id="extractCardsBtn" class="btn btn-primary" onclick="extractRiotCards()" style="background-color: #ef7d21;" disabled>
+            Extraer cartas Riot
+        </button>
+    </div>
+
+    <div id="riotSetsContainer" style="display: none; margin: 1rem 0;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; cursor: pointer;">
+            <input type="checkbox" id="riotSelectAll" onclick="toggleAllRiotSets()" style="width: auto; margin: 0;">
+            <strong>Seleccionar todos</strong>
+        </label>
+        <div id="riotSetsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+        </div>
+    </div>
+
+    <div id="riotResultSection" style="display: none; margin-top: 1rem;">
+        <div id="riotStatusMessage"></div>
+        <table style="margin-top: 0.5rem; width: 100%;">
+            <thead>
+                <tr>
+                    <th>Step</th>
+                    <th>Status</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="riotStatusBody">
+            </tbody>
+        </table>
+        <div id="riotStatsSection" style="display: none; margin-top: 1rem;">
+            <h3 style="font-size: 1rem;">Estad&iacute;sticas</h3>
+            <div id="riotStatsContent" style="font-family: monospace; font-size: 0.9rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 6px;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
     <h2>Cardmarket Data Tables</h2>
     <p>Download and load the latest product catalog and price guide from Cardmarket.</p>
     <p style="font-size: 0.9rem; color: #95a5a6;">Files: price_guide_22.json, products_singles_22.json, products_nonsingles_22.json</p>
@@ -236,6 +278,141 @@
         }
     });
 
+    // === Riot Scraper Functions ===
+
+    async function refreshRiotSets() {
+        const btn = document.getElementById('refreshSetsBtn');
+        btn.disabled = true;
+        btn.textContent = 'Cargando sets...';
+
+        try {
+            const response = await fetch('/riftbound/price/refresh-riot-sets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const result = await response.json();
+
+            if (result.success && result.sets.length > 0) {
+                const container = document.getElementById('riotSetsList');
+                container.innerHTML = '';
+
+                result.sets.forEach(s => {
+                    const label = document.createElement('label');
+                    label.className = 'set-checkbox';
+                    label.innerHTML = `
+                        <input type="checkbox" name="riot_sets" value="${s.id}" class="riot-set-check" checked>
+                        ${s.label || s.id} (${s.id})
+                    `;
+                    container.appendChild(label);
+                });
+
+                document.getElementById('riotSetsContainer').style.display = 'block';
+                document.getElementById('extractCardsBtn').disabled = false;
+                document.getElementById('riotSelectAll').checked = true;
+            } else {
+                alert('No se encontraron sets: ' + (result.message || 'respuesta vac\u00eda'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Refrescar Sets';
+        }
+    }
+
+    function toggleAllRiotSets() {
+        const checked = document.getElementById('riotSelectAll').checked;
+        document.querySelectorAll('.riot-set-check').forEach(cb => cb.checked = checked);
+    }
+
+    async function extractRiotCards() {
+        const btn = document.getElementById('extractCardsBtn');
+        btn.disabled = true;
+        btn.textContent = 'Extrayendo...';
+
+        // Gather selected sets
+        const selectedSets = [];
+        document.querySelectorAll('.riot-set-check:checked').forEach(cb => {
+            selectedSets.push(cb.value);
+        });
+
+        // Show result section
+        const resultSection = document.getElementById('riotResultSection');
+        resultSection.style.display = 'block';
+        document.getElementById('riotStatusBody').innerHTML = '';
+        document.getElementById('riotStatsSection').style.display = 'none';
+        document.getElementById('riotStatusMessage').innerHTML = `
+            <div class="alert alert-warning">
+                <strong>Procesando...</strong> Descargando cartas e im\u00e1genes de Riot. Puede tardar unos minutos.
+            </div>
+        `;
+
+        try {
+            const response = await fetch('/riftbound/price/extract-riot-cards', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sets: selectedSets })
+            });
+
+            const result = await response.json();
+            const tbody = document.getElementById('riotStatusBody');
+
+            // Populate steps table
+            if (result.steps) {
+                result.steps.forEach(step => {
+                    const row = tbody.insertRow();
+                    const statusClass = step.status.toLowerCase();
+                    row.innerHTML = `
+                        <td>${step.step}</td>
+                        <td><span class="status-badge status-${statusClass}">${step.status}</span></td>
+                        <td>${step.message}</td>
+                    `;
+                });
+            }
+
+            // Show stats
+            if (result.stats) {
+                const s = result.stats;
+                document.getElementById('riotStatsSection').style.display = 'block';
+                document.getElementById('riotStatsContent').innerHTML = `
+                    Cartas extra\u00eddas: <strong>${s.total_scraped || 0}</strong><br>
+                    Filtradas: ${s.filtered || 0}<br>
+                    Insertadas: <strong>${s.inserted || 0}</strong><br>
+                    Actualizadas: ${s.updated || 0}<br>
+                    Sin cambios: ${s.skipped || 0}<br>
+                    Im\u00e1genes nuevas: <strong>${s.images_downloaded || 0}</strong><br>
+                    Im\u00e1genes existentes: ${s.images_existed || 0}<br>
+                    Im\u00e1genes fallidas: ${s.images_failed || 0}
+                `;
+            }
+
+            if (result.success) {
+                document.getElementById('riotStatusMessage').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>\u00a1Extracci\u00f3n completada!</strong>
+                    </div>
+                `;
+            } else {
+                document.getElementById('riotStatusMessage').innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>Error en extracci\u00f3n</strong>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            document.getElementById('riotStatusMessage').innerHTML = `
+                <div class="alert alert-error">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Extraer cartas Riot';
+        }
+    }
+
+    // === Cardmarket Functions ===
+
     async function loadCardmarketData() {
         const btn = document.getElementById('cardmarketLoadBtn');
         btn.disabled = true;
@@ -340,7 +517,7 @@
             .then(r => r.json())
             .then(data => {
                 if (data.unmatched.length === 0) {
-                    container.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #2ecc71;">Todos los productos están mapeados correctamente.</td></tr>';
+                    container.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #2ecc71;">Todos los productos est&aacute;n mapeados correctamente.</td></tr>';
                     document.getElementById('reviewLoadBtn').style.display = 'none';
                     return;
                 }
@@ -352,7 +529,7 @@
                 let html = '';
                 
                 data.unmatched.forEach(p => {
-                    const lowPrice = p.low_price != null ? `€${p.low_price.toFixed(2)}` : '—';
+                    const lowPrice = p.low_price != null ? `&euro;${p.low_price.toFixed(2)}` : '&mdash;';
                     html += `<tr id="row-${p.id_product}">
                         <td>${p.id_product}</td>
                         <td>${p.name}</td>
@@ -406,7 +583,7 @@
                 let html = '';
                 data.cards.forEach(c => {
                     html += `<span class="search-result-item" onclick="selectCard(${idProduct}, '${c.rbset_id}', '${c.rbcar_id}', '${c.name.replace(/'/g, "\\'")}')">
-                        ${c.rbset_id} / ${c.rbcar_id} — ${c.name}
+                        ${c.rbset_id} / ${c.rbcar_id} &mdash; ${c.name}
                     </span>`;
                 });
                 
