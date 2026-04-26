@@ -225,6 +225,36 @@ def collection():
                            get_page_url=get_page_url)
 
 
+def _null_safe_eq(col, val):
+    """NULL-safe equality for SQLAlchemy filters.
+
+    NULL == NULL → True (IS NULL check)
+    value == value → normal == comparison
+
+    Works on both PostgreSQL (prod) and SQLite (tests).
+    """
+    if val is None:
+        return col.is_(None)
+    return col == val
+
+
+def _find_exact_duplicate(user, rbset_id, rbcar_id, foil, selling, sell_price, condition, language):
+    """Busca una fila exacta en la colección del usuario (8-field NULL-safe match).
+
+    Devuelve la fila encontrada o None.
+    """
+    return RbCollection.query.filter(
+        RbCollection.rbcol_user == user,
+        RbCollection.rbcol_rbset_id == rbset_id,
+        RbCollection.rbcol_rbcar_id == rbcar_id,
+        RbCollection.rbcol_foil == foil,
+        RbCollection.rbcol_selling == selling,
+        _null_safe_eq(RbCollection.rbcol_sell_price, sell_price),
+        _null_safe_eq(RbCollection.rbcol_condition, condition),
+        _null_safe_eq(RbCollection.rbcol_language, language),
+    ).first()
+
+
 def _get_owned_row(rbcol_id):
     """Carga una fila de la colección verificando que pertenece al usuario actual.
     Devuelve la fila o aborta con 404."""
@@ -237,11 +267,11 @@ def _get_owned_row(rbcol_id):
 @login_required
 @validate_json(CollectionAdd)
 def add_collection():
-    """Inserta SIEMPRE una nueva fila en la colección.
+    """Añade a la colección. Si ya existe una fila exactamente igual (mismo
+    set/card/foil/selling/sell_price/condition/language) la cantidad se suma
+    (merge). Si difiere en cualquier campo, se inserta una nueva fila.
 
-    Permite tener varias filas con la misma (set, card, foil) que difieran en
-    condición, idioma o precio de venta (lotes). Si se quiere agrupar más
-    tarde, se hace borrando manualmente."""
+    Response incluye `merged: bool` para que el frontend muestre el toast adecuado."""
     data = request.validated_data
 
     card = RbCard.query.filter_by(
@@ -250,12 +280,39 @@ def add_collection():
     if not card:
         return jsonify({'success': False, 'message': 'Card does not exist'}), 400
 
+    # REQ-2: foil restriction for Rare/Epic/Showcase
+    if data.rbcol_foil == 'S' and (card.rbcar_rarity or '').lower() in ('rare', 'epic', 'showcase'):
+        return jsonify({
+            'success': False,
+            'message': f'Foil not allowed for {card.rbcar_rarity} cards',
+        }), 400
+
+    selling = data.rbcol_selling or 'N'
+
+    # REQ-1: auto-merge exact duplicate
+    existing = _find_exact_duplicate(
+        user=current_user.username,
+        rbset_id=data.rbcol_rbset_id,
+        rbcar_id=data.rbcol_rbcar_id,
+        foil=data.rbcol_foil,
+        selling=selling,
+        sell_price=data.rbcol_sell_price,
+        condition=data.rbcol_condition,
+        language=data.rbcol_language,
+    )
+
+    if existing:
+        existing.rbcol_quantity = str(_qty_int(existing.rbcol_quantity) + data.rbcol_quantity)
+        existing.rbcol_chadat = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'success': True, 'rbcol_id': existing.rbcol_id, 'merged': True})
+
     new_row = RbCollection(
         rbcol_rbset_id=data.rbcol_rbset_id,
         rbcol_rbcar_id=data.rbcol_rbcar_id,
         rbcol_foil=data.rbcol_foil,
         rbcol_quantity=str(data.rbcol_quantity),
-        rbcol_selling=data.rbcol_selling or 'N',
+        rbcol_selling=selling,
         rbcol_sell_price=data.rbcol_sell_price,
         rbcol_condition=data.rbcol_condition,
         rbcol_language=data.rbcol_language,
@@ -264,7 +321,7 @@ def add_collection():
     )
     db.session.add(new_row)
     db.session.commit()
-    return jsonify({'success': True, 'rbcol_id': new_row.rbcol_id})
+    return jsonify({'success': True, 'rbcol_id': new_row.rbcol_id, 'merged': False})
 
 
 @collection_bp.route('/update_quantity', methods=['POST'])

@@ -1,100 +1,100 @@
-# Skill Registry - Riftbound Project
+# Skill Registry — rbapp (Riftbound Manager)
 
-**Generated**: 2026-03-31
-**Mode**: engram (hybrid)
+**Generated**: 2026-04-26
+**Mode**: engram
+**SDD Strict TDD**: enabled ✅
 
-## Project Skills (Local)
+---
 
-Located in `.agent/skills/`:
+## User Skills (Auto-resolved from `~/.config/opencode/skills/`)
 
 | Skill | Description | Trigger |
 |-------|-------------|---------|
-| `python-pro` | Python best practices and patterns | Writing Python code |
-| `fastapi-pro` | FastAPI patterns (not used in this Flask project) | — |
-| `python-performance-optimization` | Performance optimization tips | Performance-related tasks |
+| `sdd-explore` | Investigate ideas before committing to a change | `/sdd-explore <topic>` |
+| `sdd-propose` | Create change proposal | `/sdd-propose <change-name>` |
+| `sdd-spec` | Write delta specs (Given/When/Then) | `/sdd-spec <change>` |
+| `sdd-design` | Technical design document | `/sdd-design <change>` |
+| `sdd-tasks` | Break down change into tasks | `/sdd-tasks <change>` |
+| `sdd-apply` | Implement tasks from change | `/sdd-apply <change>` |
+| `sdd-verify` | Validate implementation vs specs | `/sdd-verify <change>` |
+| `sdd-archive` | Archive completed change | `/sdd-archive <change>` |
+| `branch-pr` | PR creation workflow | When creating a pull request |
+| `issue-creation` | GitHub issue creation | When reporting a bug or feature |
+| `judgment-day` | Adversarial dual-review protocol | "judgment day" / "juzgar" |
+| `skill-creator` | Create new AI skills | When adding agent instructions |
+| `skill-registry` | Update this registry | "update skills" / "skill registry" |
 
-## User Skills (Auto-resolved)
+## Project Skills (Local — `.agent/skills/`)
 
-Skills are resolved from the registry and injected into sub-agent prompts as compact rules. Match by code context (file extensions) and task context.
+_No project-level skills directory found._
 
-### Skill Resolution Matrix
+---
+
+## Skill Resolution Matrix
 
 | Code Context | Task Context | Skills to Inject |
 |--------------|--------------|------------------|
-| `*.py` | Writing Python | `python-pro` |
-| `*.py` | Testing | `pytest` (if available) |
-| `app/routes/*.py` | API design | `django-drf` (Flask equivalent patterns) |
-| `app/models/*.py` | Database models | `python-pro` |
-| `*.html` | Frontend templates | `tailwind-4` (for styling patterns) |
-| `app/__init__.py` | App factory | `python-pro` |
+| `*.py` | Writing Python | `python-pro` (user preference) |
+| `app/routes/domains/*.py` | New endpoint | Review `app/schemas/validators.py` first |
+| `app/models/*.py` | New model | Follow `rb` prefix convention |
+| `tests/test_*.py` | Writing tests | pytest + SQLite in-memory fixtures pattern |
+| Any | SDD workflow | Load appropriate `sdd-*` skill |
 
-## Project Standards (Compact Rules)
+---
 
-### Python
-```python
-# Use type hints
-def function(param: str) -> dict:
-    pass
+## Project Conventions (Compact Rules)
 
-# Use f-strings
-name = f"Hello {user}"
+### Stack
+- Flask 3.1.0, Python 3.13, SQLAlchemy 2.0.36, Pydantic 2.10.5
+- PostgreSQL (prod) / SQLite in-memory (tests)
+- Gunicorn + Nginx — all routes prefixed `/riftbound`
 
-# Use context managers
-with db.session.begin():
-    db.session.add(obj)
-
-# Query patterns
-cards = RbCard.query.filter_by(rbcar_rbset_id=set_id).all()
+### DB Naming
+```
+Tables: rbusers, rbset, rbcards, rbcollection, rbdecks, rbcardmarket
+Schema: riftbound
+Columns: snake_case with table prefix — rbcar_name, rbcol_quantity, rbdck_snapshot
+Models: Rb prefix — RbCard, RbSet, RbCollection, RbDeck
 ```
 
-### Database
+### Route Pattern
 ```python
-# Always commit after changes
-db.session.add(obj)
-db.session.commit()
+from app.schemas.validators import MySchema
+from app.schemas.validation import validate_json
 
-# Use rollback on error
-try:
-    db.session.commit()
-except:
-    db.session.rollback()
-    raise
-
-# Filter with ilike for case-insensitive search
-query.filter(RbCard.rbcar_name.ilike(f'%{search}%'))
-```
-
-### Routes
-```python
-# Always require auth for protected routes
-@main_bp.route('/endpoint')
+@bp.route('/endpoint', methods=['POST'])
 @login_required
-def protected_endpoint():
-    pass
-
-# Return JSON for API endpoints
-return jsonify({'success': True, 'data': data})
+@validate_json(MySchema)
+def endpoint():
+    data = request.validated_data  # validated Pydantic model
+    ...
+    return jsonify({'success': True, 'data': result})
 ```
 
-### Templates (Jinja2)
-```html
-<!-- Use url_for for links -->
-<a href="{{ url_for('main.cards') }}">Cards</a>
-
-<!-- Pass current_user to templates -->
-{{ current_user.username }}
+### Testing Pattern
+```python
+# Use fixtures from conftest.py
+def test_something(authenticated_client, sample_card):
+    resp = authenticated_client.post('/riftbound/endpoint', json={...})
+    assert resp.status_code == 200
+    assert resp.json['success'] is True
 ```
 
-## Skills Not Found
+### Test Command
+```bash
+source venv/bin/activate && pytest -vv --tb=long --cov=app
+```
 
-The following skills were not found but may be useful:
-- `pytest` — No test runner detected
-- `tailwind-4` — Project uses vanilla CSS
-- `typescript` — No TypeScript in project
+---
 
-## Notes
+## Convention Sources
 
-- This is a Flask project, not Django or FastAPI
-- No TypeScript/JavaScript framework detected (vanilla JS only)
-- No E2E testing framework detected
-- Project uses PostgreSQL with SQLAlchemy ORM
+| File | Role |
+|------|------|
+| `AGENTS.md` | Full project conventions — read before any code |
+| `app/schemas/validators.py` | All Pydantic schemas — check before adding validation |
+| `app/routes/domains/` | Existing route patterns — follow these |
+| `app/models/` | Model definitions — follow `rb` prefix |
+| `tests/conftest.py` | All test fixtures |
+| `pytest.ini` | Test runner config |
+| `requirements.txt` | Exact pinned dependency versions |
