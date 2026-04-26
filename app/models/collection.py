@@ -8,7 +8,9 @@ class RbCollection(db.Model):
 
     # PK sintética. Permite múltiples filas para la misma (set, card, foil, user)
     # que difieran en condición / idioma / precio de venta.
-    rbcol_id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    # Nota: usamos Integer (no BigInteger) para compatibilidad con SQLite en tests.
+    # En PostgreSQL el tipo INTEGER es suficiente para los IDs típicos.
+    rbcol_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     rbcol_rbset_id = db.Column(db.Text, nullable=False)
     rbcol_rbcar_id = db.Column(db.Text, nullable=False)
     rbcol_foil = db.Column(db.Text, nullable=False, default='N')
