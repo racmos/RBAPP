@@ -3,9 +3,14 @@
 {% block title %}{{ deck.name }} - Riftbound Manager{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-    <h1>{{ deck.name }}</h1>
-    <a href="{{ url_for('deck.deck') }}" class="btn btn-secondary">Back to Decks</a>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;">
+    <h1 style="margin: 0;">{{ deck.name }}</h1>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <button onclick="exportTextList()" class="btn btn-primary">Export Text List</button>
+        <button onclick="exportTTS()" class="btn btn-secondary">Export TTS</button>
+        <button onclick="generateShoppingList()" class="btn btn-secondary">Generate Shopping List</button>
+        <a href="{{ url_for('deck.deck') }}" class="btn btn-secondary">Back to Decks</a>
+    </div>
 </div>
 
 <div class="card">
@@ -161,11 +166,6 @@
 </div>
 {% endif %}
 
-<div style="margin-top: 2rem;">
-    <button onclick="exportTextList()" class="btn btn-primary">Export Text List</button>
-    <button onclick="exportTTS()" class="btn btn-secondary">Export TTS</button>
-    <button onclick="generateShoppingList()" class="btn btn-secondary">Generate Shopping List</button>
-</div>
 {% endblock %}
 
 {% block extra_js %}

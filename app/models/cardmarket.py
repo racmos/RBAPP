@@ -51,12 +51,18 @@ class RbcmCategory(db.Model):
 
 
 class RbcmExpansion(db.Model):
-    """Expansion lookup table."""
+    """Expansion lookup table.
+
+    `rbexp_rbset_id` enlaza la expansión Cardmarket con el set interno (rbset).
+    NULL significa que todavía no está mapeada — la UI detecta esto al cargar
+    data tables y pide al usuario el set interno equivalente.
+    """
     __tablename__ = 'rbcm_expansions'
     __table_args__ = {"schema": "riftbound"}
 
     rbexp_id = db.Column(db.Integer, primary_key=True)
     rbexp_name = db.Column(db.Text)
+    rbexp_rbset_id = db.Column(db.Text, nullable=True)
 
 
 class RbcmLoadHistory(db.Model):
@@ -75,13 +81,19 @@ class RbcmLoadHistory(db.Model):
 
 
 class RbcmProductCardMap(db.Model):
-    """Maps Cardmarket idProduct to internal rbcards."""
+    """Maps Cardmarket idProduct to internal rbcards.
+
+    `rbpcm_foil` distingue si este idProduct representa la versión normal o
+    foil de la carta. Para cartas que no tienen foil físico (rare/epic) se
+    deja NULL.
+    """
     __tablename__ = 'rbcm_product_card_map'
     __table_args__ = {"schema": "riftbound"}
 
     rbpcm_id_product = db.Column(db.Integer, primary_key=True)
     rbpcm_rbset_id = db.Column(db.Text, nullable=False)
     rbpcm_rbcar_id = db.Column(db.Text, nullable=False)
+    rbpcm_foil = db.Column(db.String(1), nullable=True)          # 'N' | 'S' | NULL
     rbpcm_match_type = db.Column(db.Text, default='manual')      # auto | manual
     rbpcm_confidence = db.Column(db.Numeric)
 
