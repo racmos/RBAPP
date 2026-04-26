@@ -87,21 +87,119 @@ class CollectionAdd(BaseModel):
     rbcol_rbcar_id: str = Field(..., min_length=1, description="Card ID")
     rbcol_foil: Optional[str] = Field('N', max_length=1)
     rbcol_quantity: int = Field(1, ge=1, le=9999, description="Quantity to add")
-    
+    rbcol_selling: Optional[str] = Field('N', max_length=1)
+    rbcol_sell_price: Optional[float] = Field(None, ge=0)
+    rbcol_condition: Optional[str] = Field(None, max_length=8)
+    rbcol_language: Optional[str] = Field(None, max_length=40)
+
     @field_validator('rbcol_foil')
     @classmethod
-    def validate_foil(cls, v: str) -> str:
-        if v not in ('Y', 'N'):
-            return 'N'
+    def validate_foil(cls, v: Optional[str]) -> str:
+        # Convención del proyecto: 'S' (foil) | 'N' (no foil). Cualquier otro valor
+        # se normaliza a 'N'.
+        return 'S' if v == 'S' else 'N'
+
+    @field_validator('rbcol_selling')
+    @classmethod
+    def validate_selling(cls, v: Optional[str]) -> str:
+        return 'Y' if v == 'Y' else 'N'
+
+    @field_validator('rbcol_condition')
+    @classmethod
+    def validate_condition(cls, v: Optional[str]) -> Optional[str]:
+        if not v:
+            return None
+        allowed = {'MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'}
+        if v not in allowed:
+            raise ValueError(f'Condition must be one of {sorted(allowed)}')
         return v
+
+    @field_validator('rbcol_language')
+    @classmethod
+    def validate_language(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
 
 
 class CollectionUpdateQuantity(BaseModel):
-    """Schema for updating collection quantity."""
-    rbcol_rbset_id: str = Field(..., min_length=1)
-    rbcol_rbcar_id: str = Field(..., min_length=1)
-    rbcol_foil: str = Field(..., max_length=1)
+    """Schema for updating collection quantity. Identifica la fila por rbcol_id."""
+    rbcol_id: int = Field(..., ge=1)
     quantity: int = Field(..., ge=0, le=9999, description="New quantity (0 to remove)")
+
+
+class CollectionDelete(BaseModel):
+    """Schema for deleting a collection entry."""
+    rbcol_id: int = Field(..., ge=1)
+
+
+class CollectionUpdateSelling(BaseModel):
+    """Schema for updating selling status."""
+    rbcol_id: int = Field(..., ge=1)
+    rbcol_selling: str = Field(..., max_length=1)
+
+    @field_validator('rbcol_selling')
+    @classmethod
+    def validate_selling(cls, v: str) -> str:
+        if v not in ('Y', 'N'):
+            raise ValueError('Must be Y or N')
+        return v
+
+
+class CollectionUpdatePlayset(BaseModel):
+    """Schema for updating playset value."""
+    rbcol_id: int = Field(..., ge=1)
+    rbcol_playset: Optional[int] = Field(None)
+
+    @field_validator('rbcol_playset')
+    @classmethod
+    def validate_playset(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v not in (1, 2, 3):
+            raise ValueError('Must be 1, 2, or 3')
+        return v
+
+
+class CollectionUpdateSellPrice(BaseModel):
+    """Schema for updating sell price."""
+    rbcol_id: int = Field(..., ge=1)
+    rbcol_sell_price: Optional[float] = Field(None, ge=0)
+
+
+class CollectionUpdateCondition(BaseModel):
+    """Schema for updating card condition."""
+    rbcol_id: int = Field(..., ge=1)
+    rbcol_condition: Optional[str] = Field(None, max_length=8)
+
+    @field_validator('rbcol_condition')
+    @classmethod
+    def validate_condition(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == '':
+            return None
+        allowed = {'MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'}
+        if v not in allowed:
+            raise ValueError(f'Condition must be one of {sorted(allowed)}')
+        return v
+
+
+class CollectionUpdateLanguage(BaseModel):
+    """Schema for updating card language."""
+    rbcol_id: int = Field(..., ge=1)
+    rbcol_language: Optional[str] = Field(None, max_length=40)
+
+    @field_validator('rbcol_language')
+    @classmethod
+    def normalize_language(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class CollectionExport(BaseModel):
+    """Schema for CSV export filter."""
+    rbset_id: str = Field(..., min_length=1, description="Expansion/Set ID (required)")
+    rarity: str = Field(..., min_length=1, description="Card rarity (required)")
 
 
 # ============== Profile Schemas ==============
@@ -147,7 +245,7 @@ class DeckCard(BaseModel):
 class DeckCards(BaseModel):
     """Schema for deck cards structure."""
     main: List[DeckCard] = Field(default_factory=list, description="Main deck cards")
-    sideboard: List[DeckCard] = Field(default_factory=[], description="Sideboard cards")
+    sideboard: List[DeckCard] = Field(default_factory=list, description="Sideboard cards")
 
 
 class DeckSave(BaseModel):

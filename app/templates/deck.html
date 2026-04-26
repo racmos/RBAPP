@@ -116,7 +116,7 @@
                     <td>{{ deck.snapshot.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ deck.format }} / {{ deck.mode }}</td>
                     <td>
-                        <a href="{{ url_for('deck.view_deck_legacy', set_id=deck.rbdck_rbset_id, card_id=deck.rbdck_rbcar_id) }}" class="btn btn-primary">View</a>
+                        <a href="{{ url_for('deck.view_deck_by_id', deck_id=deck.id) }}" class="btn btn-primary">View</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -179,9 +179,9 @@
                     <td>{{ deck.snapshot.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ deck.format }} / {{ deck.mode }}</td>
                     <td>
-                        <a href="{{ url_for('deck.view_deck_legacy', set_id=deck.rbdck_rbset_id, card_id=deck.rbdck_rbcar_id) }}" class="btn btn-primary">View</a>
+                        <a href="{{ url_for('deck.view_deck_by_id', deck_id=deck.id) }}" class="btn btn-primary">View</a>
                         {% if deck.user != current_user.username %}
-                        <button onclick="copyDeck('{{ deck.snapshot }}')" class="btn btn-secondary copy-btn">Copy</button>
+                        <button onclick="copyDeck({{ deck.id }})" class="btn btn-secondary copy-btn">Copy</button>
                         {% endif %}
                     </td>
                 </tr>
@@ -597,26 +597,46 @@
             return;
         }
 
+        // Adaptar a la forma que espera el schema DeckSave del backend:
+        //   rbdck_name, rbdck_description, rbdck_mode, rbdck_format,
+        //   rbdck_cards: { main: [{set,id,qty}], sideboard: [{set,id,qty}] }
+        const main = [];
+        const sideboard = [];
+        for (const c of parsedCards) {
+            const card = { set: c.set_id, id: c.card_id, qty: parseInt(c.quantity, 10) || 1 };
+            if (c.sideboard) sideboard.push(card);
+            else main.push(card);
+        }
+
         const data = {
-            name: document.getElementById('deck_name').value,
-            description: document.getElementById('deck_description').value,
-            mode: document.getElementById('deck_mode').value,
-            format: document.getElementById('deck_format').value,
-            cards: parsedCards
+            rbdck_name: document.getElementById('deck_name').value,
+            rbdck_description: document.getElementById('deck_description').value,
+            rbdck_mode: document.getElementById('deck_mode').value,
+            rbdck_format: document.getElementById('deck_format').value,
+            rbdck_cards: { main, sideboard },
         };
 
-        const response = await fetch('/riftbound/deck/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
+        try {
+            const response = await fetch('/riftbound/deck/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
 
-        const result = await response.json();
-        if (result.success) {
-            alert('Deck saved successfully!');
-            location.reload();
-        } else {
-            alert(result.message || 'Failed to save deck');
+            const result = await response.json();
+            if (result.success) {
+                alert('Deck saved successfully!');
+                location.reload();
+            } else {
+                // Mostrar detalles de validación si vienen del backend
+                let msg = result.message || 'Failed to save deck';
+                if (result.details && Array.isArray(result.details) && result.details.length) {
+                    msg += '\n\n' + result.details.map(d => `· ${d.field}: ${d.message}`).join('\n');
+                }
+                alert(msg);
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
         }
     });
 

@@ -69,7 +69,10 @@
 <!-- Inline Add Form -->
 <div class="add-card-form" style="margin-bottom: 2rem; padding: 1rem; background-color: var(--bg-hover); border-radius: 8px;">
     <h3 style="margin-top: 0;">Add Card to Collection</h3>
-    <form id="addForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+    <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+        Cada Add inserta una línea NUEVA. Para tener varios lotes de la misma carta con diferente condición o precio, añade uno por uno.
+    </p>
+    <form id="addForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: end;">
         <div class="form-group">
             <label for="add_set_id">Set *</label>
             <select id="add_set_id" required class="select-visible" onchange="loadCardsForSet()">
@@ -90,7 +93,7 @@
             <input type="hidden" id="add_foil" value="N">
         </div>
         <div class="form-group">
-            <label for="add_quantity">Quantity</label>
+            <label for="add_quantity">Quantity *</label>
             <div class="quantity-controls" style="display: flex; align-items: center; gap: 0.5rem;">
                 <button type="button" class="quantity-btn" onclick="changeQuantity(-1)">-</button>
                 <input type="number" id="add_quantity" value="1" min="1" required style="width: 60px; text-align: center;">
@@ -98,12 +101,51 @@
             </div>
         </div>
         <div class="form-group">
+            <label for="add_selling">Vendiendo</label>
+            <select id="add_selling" class="select-visible">
+                <option value="N">No</option>
+                <option value="Y">Sí</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="add_sell_price">Sell Price (€)</label>
+            <input type="number" id="add_sell_price" min="0" step="0.01" placeholder="—" style="width: 100%;">
+        </div>
+        <div class="form-group">
+            <label for="add_condition">Condition</label>
+            <select id="add_condition" class="select-visible">
+                <option value="">—</option>
+                <option value="MT">MT</option>
+                <option value="NM">NM</option>
+                <option value="EX">EX</option>
+                <option value="GD">GD</option>
+                <option value="LP">LP</option>
+                <option value="PL">PL</option>
+                <option value="PO">PO</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="add_language">Language</label>
+            <select id="add_language" class="select-visible">
+                <option value="">—</option>
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Italian">Italian</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+                <option value="Chinese">Chinese</option>
+            </select>
+        </div>
+        <div class="form-group">
             <button type="submit" class="btn btn-primary" style="width: 100%;">Add</button>
         </div>
     </form>
 </div>
 
-<!-- Toolbar with Sorting, Pagination and View Toggle -->
+<!-- Toolbar -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
     <div style="display: flex; gap: 1rem; align-items: center;">
         <label for="sortSelect" style="margin: 0;">Sort by:</label>
@@ -120,7 +162,6 @@
         </select>
     </div>
 
-    <!-- Centered Pagination -->
     {% if pagination.pages > 1 %}
     <div class="pagination" style="margin: 0;">
         {% if pagination.has_prev %}
@@ -143,6 +184,9 @@
         <button id="toggleViewBtn" class="btn btn-primary" onclick="toggleView()" title="Toggle View">
             <i id="viewIcon" class="fa-duotone fa-solid fa-images"></i>
         </button>
+        <button type="button" class="btn btn-primary" onclick="openExportModal()" title="Exportar CSV">
+            <i class="fa-solid fa-file-export"></i> Export
+        </button>
     </div>
 </div>
 
@@ -158,15 +202,23 @@
     <table>
         <thead>
             <tr>
+                <th style="width: 36px; text-align: center;">
+                    <input type="checkbox" id="selectAll" title="Select all" onchange="toggleAll(this.checked)" style="cursor: pointer; width: 16px; height: 16px;">
+                </th>
                 <th>Image</th>
                 <th>Set</th>
                 <th>ID</th>
                 <th>Name</th>
                 <th>Foil</th>
                 <th>Quantity</th>
+                <th>Playset</th>
+                <th>Vendiendo</th>
+                <th>Sell Price (€)</th>
+                <th>Condition</th>
+                <th>Language</th>
                 <th>Last Updated</th>
                 <th>Price</th>
-                <th>Actions</th>
+                <th id="actionsHeader">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -174,7 +226,10 @@
             {% set item = data.collection %}
             {% set card = data.card %}
             {% set price = data.price %}
-            <tr>
+            <tr id="row_{{ item.rbcol_id }}">
+                <td style="text-align: center;">
+                    <input type="checkbox" class="row-checkbox" data-id="{{ item.rbcol_id }}" onchange="toggleRow(this)" style="cursor: pointer; width: 16px; height: 16px;">
+                </td>
                 <td>
                     {% if card.image %}
                     <div class="card-thumbnail-container">
@@ -190,15 +245,51 @@
                 <td>{{ 'Yes' if item.rbcol_foil == 'S' else 'No' }}</td>
                 <td>
                     <div class="quantity-controls">
-                        <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', -1)">-</button>
-                        <span class="quantity-value" id="qty_{{ item.rbcol_rbset_id }}_{{ item.rbcol_rbcar_id }}_{{ item.rbcol_foil }}">{{ item.rbcol_quantity }}</span>
-                        <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', 1)">+</button>
+                        <button class="quantity-btn" onclick="updateQuantity({{ item.rbcol_id }}, -1)">-</button>
+                        <span class="quantity-value" id="qty_{{ item.rbcol_id }}">{{ item.rbcol_quantity }}</span>
+                        <button class="quantity-btn" onclick="updateQuantity({{ item.rbcol_id }}, 1)">+</button>
                     </div>
+                </td>
+                <td>
+                    <select class="select-visible playset-select" onchange="updatePlayset({{ item.rbcol_id }}, this.value)" style="padding: 0.25rem 0.4rem; font-size: 0.85rem;">
+                        <option value="" {% if not item.rbcol_playset %}selected{% endif %}>-</option>
+                        <option value="1" {% if item.rbcol_playset == 1 %}selected{% endif %}>1</option>
+                        <option value="2" {% if item.rbcol_playset == 2 %}selected{% endif %}>2</option>
+                        <option value="3" {% if item.rbcol_playset == 3 %}selected{% endif %}>3</option>
+                    </select>
+                </td>
+                <td style="text-align: center;">
+                    <input type="checkbox" class="selling-checkbox" {% if item.rbcol_selling == 'Y' %}checked{% endif %}
+                        onchange="updateSelling({{ item.rbcol_id }}, this.checked)"
+                        style="cursor: pointer; width: 16px; height: 16px;" title="Vendiendo">
+                </td>
+                <td>
+                    <input type="number" class="inline-input" min="0" step="0.01"
+                        value="{{ '%.2f'|format(item.rbcol_sell_price|float) if item.rbcol_sell_price is not none else '' }}"
+                        placeholder="-"
+                        onchange="updateSellPrice({{ item.rbcol_id }}, this.value)"
+                        style="width: 80px;">
+                </td>
+                <td>
+                    <select class="select-visible" style="padding: 0.25rem 0.4rem; font-size: 0.85rem;"
+                        onchange="updateCondition({{ item.rbcol_id }}, this.value)">
+                        {% for cond in ['', 'MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'] %}
+                        <option value="{{ cond }}" {% if (item.rbcol_condition or '') == cond %}selected{% endif %}>{{ cond or '-' }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <select class="select-visible" style="padding: 0.25rem 0.4rem; font-size: 0.85rem;"
+                        onchange="updateLanguage({{ item.rbcol_id }}, this.value)">
+                        {% for lang in ['', 'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Japanese', 'Korean', 'Chinese'] %}
+                        <option value="{{ lang }}" {% if (item.rbcol_language or '') == lang %}selected{% endif %}>{{ lang or '-' }}</option>
+                        {% endfor %}
+                    </select>
                 </td>
                 <td>{{ item.rbcol_chadat.strftime('%Y-%m-%d %H:%M') if item.rbcol_chadat else 'N/A' }}</td>
                 <td>{% if price %}{{ "%.2f"|format(price) }} €{% else %}-{% endif %}</td>
                 <td>
-                    <button onclick="deleteCollection('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}')" class="btn btn-danger btn-sm">Delete</button>
+                    <button onclick="deleteCollection({{ item.rbcol_id }})" class="btn btn-danger btn-sm">Delete</button>
                 </td>
             </tr>
             {% endfor %}
@@ -236,13 +327,13 @@
                     </button>
                 </div>
                 <div class="quantity-controls" style="margin: 0.5rem 0;">
-                    <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', -1)">-</button>
-                    <span class="quantity-value" id="qty_img_{{ item.rbcol_rbset_id }}_{{ item.rbcol_rbcar_id }}_{{ item.rbcol_foil }}">{{ item.rbcol_quantity }}</span>
-                    <button class="quantity-btn" onclick="updateQuantity('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}', 1)">+</button>
+                    <button class="quantity-btn" onclick="updateQuantity({{ item.rbcol_id }}, -1)">-</button>
+                    <span class="quantity-value" id="qty_img_{{ item.rbcol_id }}">{{ item.rbcol_quantity }}</span>
+                    <button class="quantity-btn" onclick="updateQuantity({{ item.rbcol_id }}, 1)">+</button>
                 </div>
                 <p><strong>Last Updated:</strong> {{ item.rbcol_chadat.strftime('%Y-%m-%d %H:%M') if item.rbcol_chadat else 'N/A' }}</p>
                 <p><strong>Price:</strong> {% if price %}{{ "%.2f"|format(price) }} €{% else %}-{% endif %}</p>
-                <button onclick="deleteCollection('{{ item.rbcol_rbset_id }}', '{{ item.rbcol_rbcar_id }}', '{{ item.rbcol_foil }}')" class="btn btn-danger btn-sm" style="margin-top: 0.5rem; width: 100%;">Delete</button>
+                <button onclick="deleteCollection({{ item.rbcol_id }})" class="btn btn-danger btn-sm" style="margin-top: 0.5rem; width: 100%;">Delete</button>
             </div>
         </div>
         {% endfor %}
@@ -252,7 +343,7 @@
 
 <!-- Pagination -->
 {% if pagination.pages > 1 %}
-<div class="pagination" style="margin-top: 2rem;">
+<div class="pagination" style="margin-top: 2rem; margin-bottom: 5rem;">
     {% if pagination.has_prev %}
     <a href="?{{ get_page_url(pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
     {% endif %}
@@ -262,6 +353,121 @@
     {% endif %}
 </div>
 {% endif %}
+
+<!-- Export CSV Modal -->
+<div id="exportModal" class="export-modal" style="display: none;">
+    <div class="export-modal-backdrop" onclick="closeExportModal()"></div>
+    <div class="export-modal-inner">
+        <h3 style="margin-top: 0;">Exportar CSV</h3>
+        <p style="margin-top: 0; font-size: 0.9rem; color: rgba(255,255,255,0.75);">
+            Sólo se exportarán cartas con <strong>Vendiendo</strong> marcado y cantidad sobrante (quantity − playset).
+        </p>
+        <div class="form-group">
+            <label for="exportSet">Expansión *</label>
+            <select id="exportSet" class="select-visible" required>
+                <option value="">Selecciona expansión</option>
+                {% for set in sets %}
+                <option value="{{ set.rbset_id }}">{{ set.rbset_id }} - {{ set.rbset_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="exportRarity">Rareza *</label>
+            <select id="exportRarity" class="select-visible" required>
+                <option value="">Selecciona rareza</option>
+                {% for rarity in rarities %}
+                <option value="{{ rarity }}">{{ rarity }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeExportModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="doExport()">
+                <i class="fa-solid fa-file-export"></i> Descargar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk actions drawer -->
+<div id="bulkPanel" class="bulk-panel">
+    <div class="bulk-panel-inner">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <strong>Aplicar a los seleccionados</strong>
+            <span id="selectedCount" class="selected-badge">0</span>
+            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.6);">
+                (rellena solo los campos que quieras modificar)
+            </span>
+        </div>
+
+        <div class="bulk-divider"></div>
+
+        <div class="bulk-action-group">
+            <label style="white-space: nowrap;">Quantity</label>
+            <input type="number" id="bulkQuantity" min="1" step="1" placeholder="—" class="bulk-number-input">
+        </div>
+
+        <div class="bulk-action-group">
+            <label style="white-space: nowrap;">Playset</label>
+            <select id="bulkPlayset" class="select-visible" style="padding: 0.3rem 0.5rem;">
+                <option value="">—</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+        </div>
+
+        <div class="bulk-action-group">
+            <label style="white-space: nowrap;">Vendiendo</label>
+            <select id="bulkSelling" class="select-visible" style="padding: 0.3rem 0.5rem;">
+                <option value="">—</option>
+                <option value="Y">Sí</option>
+                <option value="N">No</option>
+            </select>
+        </div>
+
+        <div class="bulk-action-group">
+            <label style="white-space: nowrap;">Sell Price (€)</label>
+            <input type="number" id="bulkSellPrice" min="0" step="0.01" placeholder="—" class="bulk-number-input" style="width: 90px;">
+        </div>
+
+        <div class="bulk-action-group">
+            <label style="white-space: nowrap;">Condition</label>
+            <select id="bulkCondition" class="select-visible" style="padding: 0.3rem 0.5rem;">
+                <option value="">—</option>
+                <option value="MT">MT</option>
+                <option value="NM">NM</option>
+                <option value="EX">EX</option>
+                <option value="GD">GD</option>
+                <option value="LP">LP</option>
+                <option value="PL">PL</option>
+                <option value="PO">PO</option>
+            </select>
+        </div>
+
+        <div class="bulk-action-group">
+            <label style="white-space: nowrap;">Language</label>
+            <select id="bulkLanguage" class="select-visible" style="padding: 0.3rem 0.5rem;">
+                <option value="">—</option>
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Italian">Italian</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+                <option value="Chinese">Chinese</option>
+            </select>
+        </div>
+
+        <div class="bulk-divider"></div>
+
+        <button class="btn btn-primary" onclick="applyBulkAll()">
+            <i class="fa-solid fa-check"></i> Apply
+        </button>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_css %}
@@ -498,6 +704,112 @@
         background-color: #1a4c62 !important;
         color: #ffffff !important;
     }
+
+    /* Bulk panel */
+    .bulk-panel {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #0d3344;
+        border-top: 2px solid var(--btn-login);
+        padding: 0.85rem 1.5rem;
+        z-index: 200;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .bulk-panel-inner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .bulk-action-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .bulk-number-input {
+        width: 70px;
+        padding: 0.3rem 0.5rem;
+        background-color: rgba(0, 178, 207, 0.2);
+        border: 1px solid rgba(0, 178, 207, 0.3);
+        color: #ffffff;
+        border-radius: 4px;
+        text-align: center;
+    }
+
+    .bulk-number-input::-webkit-inner-spin-button,
+    .bulk-number-input::-webkit-outer-spin-button {
+        opacity: 1;
+    }
+
+    .bulk-divider {
+        width: 1px;
+        height: 28px;
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .selected-badge {
+        background: var(--btn-login);
+        color: white;
+        padding: 0.15rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+
+    .selling-checkbox {
+        accent-color: var(--btn-login);
+    }
+
+    .row-checkbox {
+        accent-color: var(--btn-login);
+    }
+
+    #selectAll {
+        accent-color: var(--btn-login);
+    }
+
+    /* Inline editable inputs in table cells */
+    .inline-input {
+        padding: 0.3rem 0.5rem;
+        background-color: rgba(0, 178, 207, 0.15);
+        border: 1px solid rgba(0, 178, 207, 0.3);
+        color: #ffffff;
+        border-radius: 4px;
+    }
+
+    /* Export modal */
+    .export-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .export-modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+    }
+
+    .export-modal-inner {
+        position: relative;
+        background: #0d3344;
+        border: 1px solid var(--btn-login);
+        border-radius: 8px;
+        padding: 1.5rem;
+        width: min(480px, 92vw);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
 </style>
 {% endblock %}
 
@@ -507,12 +819,11 @@
     let allCards = [];
     let filteredCards = [];
     let selectedSetId = '';
+    /** Set<number> con los rbcol_id seleccionados. */
+    const selectedKeys = new Set();
 
-    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         loadSets();
-        
-        // Restore view mode
         const urlParams = new URLSearchParams(window.location.search);
         const view = urlParams.get('view');
         if (view === 'image' || currentView === 'image') {
@@ -523,11 +834,252 @@
         }
     });
 
+    // --- Selection ---
+
+    function toggleAll(checked) {
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.checked = checked;
+            const id = parseInt(cb.dataset.id, 10);
+            if (checked) selectedKeys.add(id);
+            else selectedKeys.delete(id);
+        });
+        updateSelectionUI();
+    }
+
+    function toggleRow(cb) {
+        const id = parseInt(cb.dataset.id, 10);
+        if (cb.checked) selectedKeys.add(id);
+        else selectedKeys.delete(id);
+
+        const all = document.querySelectorAll('.row-checkbox');
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        const master = document.getElementById('selectAll');
+        if (master) {
+            master.indeterminate = checked.length > 0 && checked.length < all.length;
+            master.checked = all.length > 0 && checked.length === all.length;
+        }
+        updateSelectionUI();
+    }
+
+    function updateSelectionUI() {
+        const count = selectedKeys.size;
+        const panel = document.getElementById('bulkPanel');
+        const header = document.getElementById('actionsHeader');
+
+        if (count > 0) {
+            panel.style.display = 'block';
+            document.getElementById('selectedCount').textContent = count;
+            if (header) {
+                header.innerHTML = `<button class="btn btn-danger btn-sm" onclick="deleteSelected()">Delete Selected (${count})</button>`;
+            }
+        } else {
+            panel.style.display = 'none';
+            if (header) header.textContent = 'Actions';
+        }
+    }
+
+    // --- Bulk operations ---
+
+    /**
+     * Aplica en un único request todos los campos que el usuario haya rellenado
+     * en el panel bulk. Los campos vacíos se ignoran (no sobrescriben).
+     */
+    async function applyBulkAll() {
+        if (selectedKeys.size === 0) {
+            alert('No hay filas seleccionadas');
+            return;
+        }
+
+        const payload = { ids: Array.from(selectedKeys) };
+
+        const qtyRaw = document.getElementById('bulkQuantity').value;
+        if (qtyRaw !== '') {
+            if (!/^\d+$/.test(qtyRaw) || parseInt(qtyRaw, 10) < 1) {
+                alert('La cantidad debe ser un número entero mayor que 0');
+                return;
+            }
+            payload.quantity = parseInt(qtyRaw, 10);
+        }
+
+        const playsetRaw = document.getElementById('bulkPlayset').value;
+        if (playsetRaw !== '') {
+            payload.playset = parseInt(playsetRaw, 10);
+        }
+
+        const sellingRaw = document.getElementById('bulkSelling').value;
+        if (sellingRaw !== '') {
+            payload.selling = sellingRaw;  // 'Y' | 'N'
+        }
+
+        const sellPriceRaw = document.getElementById('bulkSellPrice').value;
+        if (sellPriceRaw !== '') {
+            const p = parseFloat(sellPriceRaw);
+            if (isNaN(p) || p < 0) {
+                alert('Precio inválido (debe ser ≥ 0)');
+                return;
+            }
+            payload.sell_price = p;
+        }
+
+        const condRaw = document.getElementById('bulkCondition').value;
+        if (condRaw !== '') payload.condition = condRaw;
+
+        const langRaw = document.getElementById('bulkLanguage').value;
+        if (langRaw !== '') payload.language = langRaw;
+
+        // Si el usuario no rellenó ningún campo aparte de ids, no hacemos nada
+        const keys = Object.keys(payload).filter(k => k !== 'ids');
+        if (keys.length === 0) {
+            alert('Rellena al menos un campo del panel');
+            return;
+        }
+
+        try {
+            const resp = await fetch('/riftbound/collection/bulk_apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+            if (result.success) location.reload();
+            else alert(result.message || 'Error');
+        } catch (e) {
+            alert('Error aplicando cambios');
+        }
+    }
+
+    async function deleteSelected() {
+        if (!confirm(`¿Eliminar ${selectedKeys.size} línea(s) de la colección?`)) return;
+        try {
+            const resp = await fetch('/riftbound/collection/bulk_delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(selectedKeys) })
+            });
+            const result = await resp.json();
+            if (result.success) location.reload();
+            else alert(result.message || 'Error');
+        } catch (e) {
+            alert('Error deleting');
+        }
+    }
+
+    // --- Per-row inline updates (todas reciben rbcol_id) ---
+
+    async function _postJson(url, payload) {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        return resp.json();
+    }
+
+    async function updateSelling(rbcol_id, checked) {
+        try {
+            const r = await _postJson('/riftbound/collection/update_selling', {
+                rbcol_id, rbcol_selling: checked ? 'Y' : 'N'
+            });
+            if (!r.success) alert(r.message || 'Error updating selling');
+        } catch (e) { console.error('Error updating selling', e); }
+    }
+
+    async function updatePlayset(rbcol_id, value) {
+        try {
+            const r = await _postJson('/riftbound/collection/update_playset', {
+                rbcol_id, rbcol_playset: value ? parseInt(value) : null
+            });
+            if (!r.success) alert(r.message || 'Error updating playset');
+        } catch (e) { console.error('Error updating playset', e); }
+    }
+
+    async function updateSellPrice(rbcol_id, value) {
+        const sell = value === '' ? null : parseFloat(value);
+        if (sell !== null && (isNaN(sell) || sell < 0)) { alert('Precio inválido'); return; }
+        try {
+            const r = await _postJson('/riftbound/collection/update_sell_price', {
+                rbcol_id, rbcol_sell_price: sell
+            });
+            if (!r.success) alert(r.message || 'Error updating price');
+        } catch (e) { console.error('Error updating sell price', e); }
+    }
+
+    async function updateCondition(rbcol_id, value) {
+        try {
+            const r = await _postJson('/riftbound/collection/update_condition', {
+                rbcol_id, rbcol_condition: value || null
+            });
+            if (!r.success) alert(r.message || 'Error updating condition');
+        } catch (e) { console.error('Error updating condition', e); }
+    }
+
+    async function updateLanguage(rbcol_id, value) {
+        try {
+            const r = await _postJson('/riftbound/collection/update_language', {
+                rbcol_id, rbcol_language: value || null
+            });
+            if (!r.success) alert(r.message || 'Error updating language');
+        } catch (e) { console.error('Error updating language', e); }
+    }
+
+    // --- Export CSV ---
+
+    function openExportModal() {
+        const modal = document.getElementById('exportModal');
+        // Prefill set from current filter if any
+        const setFilter = new URLSearchParams(window.location.search).get('search_set');
+        if (setFilter) document.getElementById('exportSet').value = setFilter;
+        modal.style.display = 'flex';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+
+    async function doExport() {
+        const rbset_id = document.getElementById('exportSet').value;
+        const rarity = document.getElementById('exportRarity').value;
+        if (!rbset_id || !rarity) {
+            alert('Debes seleccionar expansión y rareza');
+            return;
+        }
+        try {
+            const resp = await fetch('/riftbound/collection/export_csv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rbset_id, rarity })
+            });
+            if (!resp.ok) {
+                const msg = await resp.json().catch(() => ({ message: 'Error exportando' }));
+                alert(msg.message || 'Error exportando');
+                return;
+            }
+            const blob = await resp.blob();
+            // Extrae filename del Content-Disposition si viene
+            const disp = resp.headers.get('Content-Disposition') || '';
+            const match = disp.match(/filename="([^"]+)"/);
+            const filename = match ? match[1] : `collection_${rbset_id}_${rarity}.csv`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            closeExportModal();
+        } catch (e) {
+            console.error('Error exportando', e);
+            alert('Error exportando');
+        }
+    }
+
+    // --- View / sort / pagination ---
+
     function toggleView() {
         const listView = document.getElementById('listView');
         const imageView = document.getElementById('imageView');
         const viewIcon = document.getElementById('viewIcon');
-
         if (currentView === 'list') {
             listView.style.display = 'none';
             imageView.style.display = 'block';
@@ -539,8 +1091,6 @@
             viewIcon.className = 'fa-duotone fa-solid fa-images';
             currentView = 'list';
         }
-
-        // Save to URL
         const url = new URL(window.location);
         url.searchParams.set('view', currentView);
         window.history.replaceState({}, '', url);
@@ -557,7 +1107,6 @@
     function applySorting() {
         const sortBy = document.getElementById('sortSelect').value;
         const sortOrder = document.getElementById('sortOrderSelect').value;
-        
         const url = new URL(window.location);
         url.searchParams.set('sort_by', sortBy);
         url.searchParams.set('sort_order', sortOrder);
@@ -574,8 +1123,6 @@
         btn.classList.toggle('active');
         const group = btn.dataset.group;
         const value = btn.dataset.value;
-        
-        // Create hidden input if it doesn't exist
         let input = document.querySelector(`input[name="${group}"][value="${value}"]`);
         if (btn.classList.contains('active')) {
             if (!input) {
@@ -586,11 +1133,11 @@
                 document.getElementById('filterForm').appendChild(input);
             }
         } else {
-            if (input) {
-                input.remove();
-            }
+            if (input) input.remove();
         }
     }
+
+    // --- Add form ---
 
     async function loadSets() {
         try {
@@ -604,8 +1151,6 @@
                 option.textContent = `${set.id} - ${set.name}`;
                 select.appendChild(option);
             });
-            
-            // Restore selected set from localStorage
             const savedSetId = localStorage.getItem('collection_last_set');
             if (savedSetId) {
                 select.value = savedSetId;
@@ -619,24 +1164,14 @@
     async function loadCardsForSet() {
         const setSelect = document.getElementById('add_set_id');
         selectedSetId = setSelect.value;
-        
-        // Save selected set to localStorage
         if (selectedSetId) {
             localStorage.setItem('collection_last_set', selectedSetId);
         } else {
             localStorage.removeItem('collection_last_set');
         }
-        
-        // Clear card search when set changes
         document.getElementById('add_card_search').value = '';
         document.getElementById('add_card_id').value = '';
-        
-        if (!selectedSetId) {
-            allCards = [];
-            filteredCards = [];
-            return;
-        }
-
+        if (!selectedSetId) { allCards = []; filteredCards = []; return; }
         try {
             const response = await fetch(`/riftbound/collection/api/cards?set_id=${selectedSetId}&limit=1000`);
             const data = await response.json();
@@ -652,7 +1187,7 @@
             filteredCards = allCards;
         } else {
             const term = searchTerm.toLowerCase();
-            filteredCards = allCards.filter(card => 
+            filteredCards = allCards.filter(card =>
                 card.name.toLowerCase().includes(term) ||
                 card.card_id.toLowerCase().includes(term)
             );
@@ -666,13 +1201,11 @@
             dropdown.style.display = 'none';
             return;
         }
-
         dropdown.innerHTML = '';
         filteredCards.slice(0, 20).forEach(card => {
             const item = document.createElement('div');
             item.className = 'card-dropdown-item';
             item.onclick = () => selectCard(card);
-            
             item.innerHTML = `
                 ${card.image ? `<img src="${card.image}" alt="${card.name}">` : ''}
                 <div class="card-dropdown-item-info">
@@ -682,12 +1215,10 @@
             `;
             dropdown.appendChild(item);
         });
-        
         dropdown.style.display = filteredCards.length > 0 ? 'block' : 'none';
     }
 
     function hideCardDropdown() {
-        // Delay to allow click on dropdown item
         setTimeout(() => {
             document.getElementById('cardDropdown').style.display = 'none';
         }, 200);
@@ -704,7 +1235,6 @@
         foilActive = !foilActive;
         const btn = document.getElementById('foilBtn');
         const input = document.getElementById('add_foil');
-        
         if (foilActive) {
             btn.classList.add('foil-active');
             btn.innerHTML = '<i class="fa-solid fa-gem"></i> Yes';
@@ -719,118 +1249,63 @@
     function changeQuantity(delta) {
         const input = document.getElementById('add_quantity');
         const current = parseInt(input.value) || 1;
-        const newValue = Math.max(1, current + delta);
-        input.value = newValue;
+        input.value = Math.max(1, current + delta);
     }
 
-    async function updateQuantity(setId, cardId, foil, change) {
-        const elementIds = [`qty_${setId}_${cardId}_${foil}`, `qty_img_${setId}_${cardId}_${foil}`];
+    async function updateQuantity(rbcol_id, change) {
+        const elementIds = [`qty_${rbcol_id}`, `qty_img_${rbcol_id}`];
         const elements = elementIds.map(id => document.getElementById(id)).filter(el => el);
-        
         if (elements.length === 0) return;
-        
+
         const currentQty = parseInt(elements[0].textContent);
         const newQty = currentQty + change;
-
-        if (newQty < 0) {
-            alert('Quantity cannot be negative');
-            return;
-        }
-
-        const data = {
-            rbcol_rbset_id: setId,
-            rbcol_rbcar_id: cardId,
-            rbcol_foil: foil,
-            quantity: newQty
-        };
+        if (newQty < 0) { alert('Quantity cannot be negative'); return; }
 
         try {
-            const response = await fetch('/riftbound/collection/update_quantity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+            const r = await _postJson('/riftbound/collection/update_quantity', {
+                rbcol_id, quantity: newQty
             });
-
-            const result = await response.json();
-            if (result.success) {
-                if (result.deleted) {
-                    location.reload();
-                } else {
-                    elements.forEach(el => el.textContent = newQty);
-                }
+            if (r.success) {
+                if (r.deleted) location.reload();
+                else elements.forEach(el => el.textContent = newQty);
             } else {
-                alert(result.message || 'Error updating quantity');
+                alert(r.message || 'Error updating quantity');
             }
-        } catch (error) {
-            alert('Error updating quantity');
-            console.error(error);
-        }
+        } catch (error) { alert('Error updating quantity'); }
     }
 
-    async function deleteCollection(setId, cardId, foil) {
-        if (!confirm('Are you sure you want to delete this card from your collection?')) {
-            return;
-        }
-
+    async function deleteCollection(rbcol_id) {
+        if (!confirm('¿Eliminar esta línea de la colección?')) return;
         try {
-            const response = await fetch('/riftbound/collection/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    rbcol_rbset_id: setId,
-                    rbcol_rbcar_id: cardId,
-                    rbcol_foil: foil
-                })
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                location.reload();
-            } else {
-                alert('Error deleting card');
-            }
-        } catch (error) {
-            alert('Error deleting card');
-            console.error(error);
-        }
+            const r = await _postJson('/riftbound/collection/delete', { rbcol_id });
+            if (r.success) location.reload();
+            else alert(r.message || 'Error deleting');
+        } catch (error) { alert('Error deleting'); }
     }
 
     document.getElementById('addForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-
         const cardIdValue = document.getElementById('add_card_id').value;
-        if (!cardIdValue) {
-            alert('Please select a card');
-            return;
-        }
-
+        if (!cardIdValue) { alert('Selecciona una carta'); return; }
         const [setId, cardId] = cardIdValue.split('|');
 
-        const data = {
+        const sellPriceRaw = document.getElementById('add_sell_price').value;
+        const payload = {
             rbcol_rbset_id: setId,
             rbcol_rbcar_id: cardId,
             rbcol_foil: document.getElementById('add_foil').value,
-            rbcol_quantity: document.getElementById('add_quantity').value
+            rbcol_quantity: parseInt(document.getElementById('add_quantity').value, 10),
+            rbcol_selling: document.getElementById('add_selling').value || 'N',
+            rbcol_sell_price: sellPriceRaw === '' ? null : parseFloat(sellPriceRaw),
+            rbcol_condition: document.getElementById('add_condition').value || null,
+            rbcol_language: document.getElementById('add_language').value || null,
         };
 
         try {
-            const response = await fetch('/riftbound/collection/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                location.reload();
-            } else {
-                alert(result.message || 'Error adding card');
-            }
-        } catch (error) {
-            alert('Error adding card');
-            console.error(error);
-        }
+            const r = await _postJson('/riftbound/collection/add', payload);
+            if (r.success) location.reload();
+            else alert(r.message || 'Error adding card');
+        } catch (error) { alert('Error adding card'); }
     });
 </script>
 {% endblock %}
-
