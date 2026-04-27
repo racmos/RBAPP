@@ -1224,14 +1224,47 @@
         }, 200);
     }
 
+    // REQ-2: Rarities that do NOT allow foil (backend and frontend in sync)
+    const NO_FOIL_RARITIES = new Set(['rare', 'epic', 'showcase']);
+
+    let selectedCardRarity = '';
+
     function selectCard(card) {
         document.getElementById('add_card_search').value = `${card.name} (${card.set_id}-${card.card_id})`;
         document.getElementById('add_card_id').value = `${card.set_id}|${card.card_id}`;
         document.getElementById('cardDropdown').style.display = 'none';
+        // Track rarity and enforce foil restriction (REQ-2)
+        selectedCardRarity = (card.rarity || '').toLowerCase();
+        _enforceFoilRestriction();
+    }
+
+    function _enforceFoilRestriction() {
+        const btn = document.getElementById('foilBtn');
+        const input = document.getElementById('add_foil');
+        if (NO_FOIL_RARITIES.has(selectedCardRarity)) {
+            // Disable foil for Rare/Epic/Showcase: reset to No and lock
+            foilActive = false;
+            btn.classList.remove('foil-active');
+            btn.innerHTML = '<i class="fa-solid fa-gem"></i> No (N/A)';
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            input.value = 'N';
+        } else {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            // Restore foil state label without forcing reset
+            btn.innerHTML = foilActive
+                ? '<i class="fa-solid fa-gem"></i> Yes'
+                : '<i class="fa-solid fa-gem"></i> No';
+        }
     }
 
     let foilActive = false;
     function toggleFoil() {
+        // Ignore clicks when foil is restricted
+        if (NO_FOIL_RARITIES.has(selectedCardRarity)) return;
         foilActive = !foilActive;
         const btn = document.getElementById('foilBtn');
         const input = document.getElementById('add_foil');

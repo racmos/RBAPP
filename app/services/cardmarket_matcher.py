@@ -167,27 +167,69 @@ def _group_products_by_metacard():
 
 
 def _build_card_index() -> dict[str, list[RbCard]]:
-    """Indice nombre_normalizado -> [RbCard, ...]."""
+    """Indice nombre_normalizado -> [RbCard, ...].
+
+    Para cartas de tipo Legend se añaden además entradas compuestas con los
+    rbcar_tags, en ambos órdenes:
+      - normalize_name(f"{tags}, {name}")  e.g. 'the nine tailed fox ahri'
+      - normalize_name(f"{name}, {tags}")  e.g. 'ahri the nine tailed fox'
+
+    Cardmarket usa ambas convenciones según la edición del producto, por lo
+    que indexar ambas órdenes maximiza la cobertura del auto-matcher (REQ-5).
+    """
     cards = RbCard.query.all()
     idx = defaultdict(list)
     for c in cards:
         idx[normalize_name(c.rbcar_name)].append(c)
+        # REQ-5: Legend cards indexed by composite name
+        if (c.rbcar_type or '').lower() == 'legend' and c.rbcar_tags:
+            tags = c.rbcar_tags
+            name = c.rbcar_name or ''
+            idx[normalize_name(f"{tags}, {name}")].append(c)
+            idx[normalize_name(f"{name}, {tags}")].append(c)
     return idx
 
 
-def _expand_slots(card: RbCard) -> list[tuple[RbCard, Optional[str]]]:
+def _expand_slots(
+    card: RbCard,
+    taken: Optional[set] = None,
+) -> list[tuple[RbCard, Optional[str]]]:
     """Para cada candidato genera ranuras (card, foil).
 
     common/uncommon de set NO promo -> dos slots ('N' y 'S').
     Resto -> un único slot con foil=None.
+
+    REQ-3: Showcase rarity -> [] (manual-only).
+    REQ-4: rbcar_id matching ^\\d+s$ (signed showcase) -> [] (manual-only).
+    REQ-2: Filter slots already present in `taken` set
+           (set of (rbset_id, rbcar_id, foil) tuples from RbcmProductCardMap).
     """
     rarity = (card.rbcar_rarity or '').lower()
+    rbcar_id = card.rbcar_id or ''
+
+    # REQ-3: Never auto-match Showcase rarity
+    if rarity == 'showcase':
+        return []
+
+    # REQ-4: Never auto-match signed showcase (suffix 's', e.g. '15s')
+    if re.match(r'^\d+s$', rbcar_id):
+        return []
+
     is_promo_set = (card.rbcar_rbset_id or '').endswith('X')
     if rarity in ('common', 'uncommon') and not is_promo_set:
         # foil cuesta más, pero como ambos slots representan el MISMO rbcar,
         # van uno justo después del otro en el orden de productos asc por precio.
-        return [(card, 'N'), (card, 'S')]
-    return [(card, None)]
+        raw_slots = [(card, 'N'), (card, 'S')]
+    else:
+        raw_slots = [(card, None)]
+
+    # REQ-2: Remove slots already taken by existing mappings
+    if taken is None:
+        return raw_slots
+    return [
+        s for s in raw_slots
+        if (card.rbcar_rbset_id, card.rbcar_id, s[1]) not in taken
+    ]
 
 
 def _get_expansion_to_set_map() -> dict[int, str]:
@@ -201,8 +243,13 @@ def _get_expansion_to_set_map() -> dict[int, str]:
 def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
     """Ejecuta el auto-matcher. `dry_run=True` no escribe nada en BD.
 
-    Devuelve dict con: assigned, unmatched, skipped, no_candidates, samples
-    (lista de hasta 25 emparejamientos para revisión)."""
+    Devuelve dict con: assigned, unmatched, skipped, no_candidates, review,
+    samples (lista de hasta 25 emparejamientos para revisión).
+
+    El counter `review` acumula mappings skipped porque la combinación
+    (rbset_id, rbcar_id, foil) ya existe en BD con un idProduct distinto
+    (REQ-6: duplicate mapping guard).
+    """
     groups, skipped_no_metacard = _group_products_by_metacard()
     if not groups:
         return {
@@ -211,6 +258,7 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
             'unmatched': 0,
             'skipped': skipped_no_metacard,
             'no_candidates': 0,
+            'review': 0,
             'samples': [],
             'message': 'No hay productos pendientes de mapear',
         }
@@ -219,9 +267,19 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
     cards_by_norm = _build_card_index()
     exp_to_set = _get_expansion_to_set_map()
 
+    # REQ-2: Load existing taken slots once (avoids N+1 and blocks re-assignment)
+    taken: set[tuple] = set(
+        db.session.query(
+            RbcmProductCardMap.rbpcm_rbset_id,
+            RbcmProductCardMap.rbpcm_rbcar_id,
+            RbcmProductCardMap.rbpcm_foil,
+        ).all()
+    )
+
     assigned = 0
     unmatched = 0
     no_candidates = 0
+    review = 0  # REQ-6: duplicate mapping conflicts
     samples = []
 
     items = list(groups.items())
@@ -269,7 +327,7 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
         candidates.sort(key=card_rank_key)
         slots: list[tuple[RbCard, Optional[str]]] = []
         for c in candidates:
-            slots.extend(_expand_slots(c))
+            slots.extend(_expand_slots(c, taken=taken))
 
         # Productos ordenados por precio asc
         prods_sorted = sorted(
@@ -280,7 +338,22 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
         # Emparejamiento 1:1
         for prod, slot in zip(prods_sorted, slots):
             card, foil = slot
+
+            # REQ-6: Duplicate mapping guard — skip if (set, card, foil) already
+            # mapped to a DIFFERENT idProduct (same idProduct = idempotent, OK).
             if not dry_run:
+                existing_map = RbcmProductCardMap.query.filter_by(
+                    rbpcm_rbset_id=card.rbcar_rbset_id,
+                    rbpcm_rbcar_id=card.rbcar_id,
+                    rbpcm_foil=foil,
+                ).first()
+                if existing_map and existing_map.rbpcm_id_product != prod.rbprd_id_product:
+                    review += 1
+                    continue
+                if existing_map and existing_map.rbpcm_id_product == prod.rbprd_id_product:
+                    # Idempotent re-run — already correctly mapped, skip silently
+                    continue
+
                 m = RbcmProductCardMap(
                     rbpcm_id_product=prod.rbprd_id_product,
                     rbpcm_rbset_id=card.rbcar_rbset_id,
@@ -316,5 +389,6 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
         'unmatched': unmatched,
         'skipped': skipped_no_metacard,
         'no_candidates': no_candidates,
+        'review': review,
         'samples': samples,
     }

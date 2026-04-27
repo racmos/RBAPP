@@ -164,12 +164,12 @@
 
 <!-- Auto-match Result Modal -->
 <div id="autoMatchModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 900px;">
+    <div class="modal-content" style="max-width: 900px; display: flex; flex-direction: column; max-height: 90vh;">
         <div class="modal-header">
             <h2><i class="fas fa-wand-magic-sparkles"></i> Auto-match resultado</h2>
             <button class="modal-close" onclick="closeAutoMatchModal()">&times;</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="flex: 1 1 auto; overflow-y: auto; min-height: 0;">
             <div id="autoMatchSummary" style="margin-bottom: 1rem;"></div>
             <table class="review-table" style="width: 100%; font-size: 0.85rem;">
                 <thead>
@@ -1374,11 +1374,12 @@
         const modal = document.getElementById('autoMatchModal');
         const summary = document.getElementById('autoMatchSummary');
         summary.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; text-align: center;">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; text-align: center;">
                 <div><strong style="color: #2ecc71;">${d.assigned}</strong><br><small>${alreadyApplied ? 'aplicados' : 'a aplicar'}</small></div>
                 <div><strong style="color: #e67e22;">${d.unmatched}</strong><br><small>sobrantes (sin slot libre)</small></div>
                 <div><strong style="color: #95a5a6;">${d.no_candidates}</strong><br><small>sin candidato en rbcards</small></div>
                 <div><strong style="color: #95a5a6;">${d.skipped}</strong><br><small>sin idMetacard</small></div>
+                <div><strong style="color: #e74c3c;">${d.review || 0}</strong><br><small>conflicto de mapping</small></div>
             </div>
             ${d.message ? `<p style="margin-top: 0.75rem; color: #95a5a6;"><em>${d.message}</em></p>` : ''}
         `;

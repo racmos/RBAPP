@@ -20,3 +20,4 @@ build/
 # Downloaded card images (generated at runtime by riot scraper)
 app/static/images/cards/**/
 !app/static/images/cards/.gitkeep
+.coverage
