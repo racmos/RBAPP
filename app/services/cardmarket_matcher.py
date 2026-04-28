@@ -77,14 +77,14 @@ def normalize_name(name: Optional[str]) -> str:
     return n
 
 
-_RARITY_RANK = {'common': 0, 'uncommon': 0, 'rare': 1, 'epic': 2}
+_RARITY_RANK = {'common': 0, 'uncommon': 0, 'rare': 1, 'epic': 2, 'showcase': 2.5}
 
 
 def card_rank_key(card: RbCard):
     """Clave de orden creciente por "precio esperado".
 
-    rare base < rare promo (X) < epic base < epic 's' (signed showcase)
-        < epic plated promo (epic en X)
+    rare base < rare promo (X) < rare alt (suffix a) < epic base < showcase
+        < showcase signed (suffix s) < epic plated promo (epic en X)
     """
     rarity = (card.rbcar_rarity or '').lower()
     rbset_id = card.rbcar_rbset_id or ''
@@ -115,8 +115,9 @@ def card_rank_key(card: RbCard):
 
 
 def _get_latest_prices() -> dict[int, float]:
-    """Devuelve {id_product: precio_orden}. Usa avg7, avg7_foil o low en
-    ese orden. Sólo de la última fecha disponible por producto."""
+    """Devuelve {id_product: precio_orden}. Usa low, low_foil, avg7,
+    avg7_foil o 0 en ese orden. Sólo de la última fecha disponible por
+    producto."""
     latest_per_prod = dict(
         db.session.query(
             RbcmPrice.rbprc_id_product,
@@ -132,13 +133,55 @@ def _get_latest_prices() -> dict[int, float]:
         if latest_per_prod.get(p.rbprc_id_product) != p.rbprc_date:
             continue
         v = (
-            p.rbprc_avg7
+            p.rbprc_low
+            or p.rbprc_low_foil
+            or p.rbprc_avg7
             or p.rbprc_avg7_foil
-            or p.rbprc_low
             or 0
         )
         prices[p.rbprc_id_product] = float(v) if v is not None else 0.0
     return prices
+
+
+def _get_partition_candidates(
+    candidates: list[RbCard],
+    partition_prods: list[RbcmProduct],
+    exp_to_set: dict[int, str],
+) -> list[RbCard]:
+    """Resuelve candidatos para una partición de productos del mismo set.
+
+    Si existen candidatos del set exacto, sólo se usan esos. Si no, cae al
+    comportamiento previo: considerar el set base + su variante promo (X).
+    """
+    exact_sets = []
+    seen_exact_sets = set()
+    for prod in partition_prods:
+        exact_set = exp_to_set.get(prod.rbprd_id_expansion or 0)
+        if exact_set and exact_set not in seen_exact_sets:
+            seen_exact_sets.add(exact_set)
+            exact_sets.append(exact_set)
+
+    exact_candidates = [
+        c for c in candidates
+        if c.rbcar_rbset_id in seen_exact_sets
+    ]
+    if exact_candidates:
+        return exact_candidates
+
+    related_sets = set()
+    for sid in exact_sets:
+        related_sets.add(sid)
+        if sid.endswith('X'):
+            related_sets.add(sid[:-1])
+        else:
+            related_sets.add(sid + 'X')
+
+    if related_sets:
+        preferred = [c for c in candidates if c.rbcar_rbset_id in related_sets]
+        if preferred:
+            return preferred
+
+    return candidates
 
 
 def _group_products_by_metacard():
@@ -199,21 +242,12 @@ def _expand_slots(
     common/uncommon de set NO promo -> dos slots ('N' y 'S').
     Resto -> un único slot con foil=None.
 
-    REQ-3: Showcase rarity -> [] (manual-only).
-    REQ-4: rbcar_id matching ^\\d+s$ (signed showcase) -> [] (manual-only).
+    Showcase and signed (suffix 's') cards ARE matchable (rank 2.5+).
     REQ-2: Filter slots already present in `taken` set
            (set of (rbset_id, rbcar_id, foil) tuples from RbcmProductCardMap).
     """
     rarity = (card.rbcar_rarity or '').lower()
     rbcar_id = card.rbcar_id or ''
-
-    # REQ-3: Never auto-match Showcase rarity
-    if rarity == 'showcase':
-        return []
-
-    # REQ-4: Never auto-match signed showcase (suffix 's', e.g. '15s')
-    if re.match(r'^\d+s$', rbcar_id):
-        return []
 
     is_promo_set = (card.rbcar_rbset_id or '').endswith('X')
     if rarity in ('common', 'uncommon') and not is_promo_set:
@@ -304,81 +338,73 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
             no_candidates += len(prods)
             continue
 
-        # Si los productos pertenecen a una expansión Cardmarket mapeada a un
-        # set interno, podemos preferir candidates de ese set (o de su set X
-        # asociado). No es estricto: si no hay match preciso, usamos todos.
-        product_sets_internal = set()
-        for p in prods:
-            sid = exp_to_set.get(p.rbprd_id_expansion or 0)
-            if sid:
-                product_sets_internal.add(sid)
-                # Promo asociado: añadir variante terminada en X y la base
-                if sid.endswith('X'):
-                    product_sets_internal.add(sid[:-1])
-                else:
-                    product_sets_internal.add(sid + 'X')
+        partitions = defaultdict(list)
+        for prod in prods:
+            partitions[exp_to_set.get(prod.rbprd_id_expansion or 0)].append(prod)
 
-        if product_sets_internal:
-            preferred = [c for c in candidates if c.rbcar_rbset_id in product_sets_internal]
-            if preferred:
-                candidates = preferred
+        for partition_prods in partitions.values():
+            partition_candidates = _get_partition_candidates(
+                candidates=candidates,
+                partition_prods=partition_prods,
+                exp_to_set=exp_to_set,
+            )
 
-        # Generar slots ordenados por rank_key creciente
-        candidates.sort(key=card_rank_key)
-        slots: list[tuple[RbCard, Optional[str]]] = []
-        for c in candidates:
-            slots.extend(_expand_slots(c, taken=taken))
+            # Generar slots ordenados por rank_key creciente
+            partition_candidates.sort(key=card_rank_key)
+            slots: list[tuple[RbCard, Optional[str]]] = []
+            for c in partition_candidates:
+                slots.extend(_expand_slots(c, taken=taken))
 
-        # Productos ordenados por precio asc
-        prods_sorted = sorted(
-            prods,
-            key=lambda p: (prices.get(p.rbprd_id_product, 0.0), p.rbprd_id_product),
-        )
+            # Productos ordenados por precio asc dentro de su partición
+            prods_sorted = sorted(
+                partition_prods,
+                key=lambda p: (prices.get(p.rbprd_id_product, 0.0), p.rbprd_id_product),
+            )
 
-        # Emparejamiento 1:1
-        for prod, slot in zip(prods_sorted, slots):
-            card, foil = slot
+            # Emparejamiento 1:1
+            for prod, slot in zip(prods_sorted, slots):
+                card, foil = slot
 
-            # REQ-6: Duplicate mapping guard — skip if (set, card, foil) already
-            # mapped to a DIFFERENT idProduct (same idProduct = idempotent, OK).
-            if not dry_run:
-                existing_map = RbcmProductCardMap.query.filter_by(
-                    rbpcm_rbset_id=card.rbcar_rbset_id,
-                    rbpcm_rbcar_id=card.rbcar_id,
-                    rbpcm_foil=foil,
-                ).first()
-                if existing_map and existing_map.rbpcm_id_product != prod.rbprd_id_product:
-                    review += 1
-                    continue
-                if existing_map and existing_map.rbpcm_id_product == prod.rbprd_id_product:
-                    # Idempotent re-run — already correctly mapped, skip silently
-                    continue
+                # REQ-6: Duplicate mapping guard — skip if (set, card, foil) already
+                # mapped to a DIFFERENT idProduct (same idProduct = idempotent, OK).
+                if not dry_run:
+                    existing_map = RbcmProductCardMap.query.filter_by(
+                        rbpcm_rbset_id=card.rbcar_rbset_id,
+                        rbpcm_rbcar_id=card.rbcar_id,
+                        rbpcm_foil=foil,
+                    ).first()
+                    if existing_map and existing_map.rbpcm_id_product != prod.rbprd_id_product:
+                        review += 1
+                        continue
+                    if existing_map and existing_map.rbpcm_id_product == prod.rbprd_id_product:
+                        # Idempotent re-run — already correctly mapped, skip silently
+                        continue
 
-                m = RbcmProductCardMap(
-                    rbpcm_id_product=prod.rbprd_id_product,
-                    rbpcm_rbset_id=card.rbcar_rbset_id,
-                    rbpcm_rbcar_id=card.rbcar_id,
-                    rbpcm_foil=foil,
-                    rbpcm_match_type='auto',
-                    rbpcm_confidence=0.7,
-                )
-                db.session.add(m)
-            assigned += 1
-            if len(samples) < 25:
-                samples.append({
-                    'id_product': prod.rbprd_id_product,
-                    'product_name': prod.rbprd_name,
-                    'price': prices.get(prod.rbprd_id_product, 0.0),
-                    'rbset_id': card.rbcar_rbset_id,
-                    'rbcar_id': card.rbcar_id,
-                    'rbcar_name': card.rbcar_name,
-                    'rbpcm_foil': foil,
-                    'rbcar_rarity': card.rbcar_rarity,
-                })
+                    m = RbcmProductCardMap(
+                        rbpcm_id_product=prod.rbprd_id_product,
+                        rbpcm_rbset_id=card.rbcar_rbset_id,
+                        rbpcm_rbcar_id=card.rbcar_id,
+                        rbpcm_foil=foil,
+                        rbpcm_match_type='auto',
+                        rbpcm_confidence=0.7,
+                    )
+                    db.session.add(m)
+                assigned += 1
+                if len(samples) < 25:
+                    samples.append({
+                        'id_product': prod.rbprd_id_product,
+                        'product_name': prod.rbprd_name,
+                        'price': prices.get(prod.rbprd_id_product, 0.0),
+                        'rbset_id': card.rbcar_rbset_id,
+                        'rbcar_id': card.rbcar_id,
+                        'rbcar_name': card.rbcar_name,
+                        'rbpcm_foil': foil,
+                        'rbcar_rarity': card.rbcar_rarity,
+                    })
 
-        # Productos sobrantes (más productos que slots disponibles)
-        extra = max(0, len(prods_sorted) - len(slots))
-        unmatched += extra
+            # Productos sobrantes (más productos que slots disponibles)
+            extra = max(0, len(prods_sorted) - len(slots))
+            unmatched += extra
 
     if not dry_run:
         db.session.commit()
