@@ -270,3 +270,37 @@ class CardmarketLoad(BaseModel):
     singles_url: Optional[str] = Field(None, description="Override URL for products_singles JSON")
     nonsingles_url: Optional[str] = Field(None, description="Override URL for products_nonsingles JSON")
     price_guide_url: Optional[str] = Field(None, description="Override URL for price_guide JSON")
+
+
+class IgnoredAdd(BaseModel):
+    """Schema for adding a product to the ignored list."""
+    id_product: int = Field(..., ge=1, description="Cardmarket idProduct")
+    name: str = Field(..., min_length=1, description="Product name")
+
+
+class IgnoredRestore(BaseModel):
+    """Schema for removing a product from the ignored list."""
+    id_product: int = Field(..., ge=1, description="Cardmarket idProduct")
+    name: str = Field(..., min_length=1, description="Product name")
+
+
+class AutoMatchPairing(BaseModel):
+    """Schema for a single pairing in the selective auto-match apply."""
+    id_product: int = Field(..., ge=1, description="Cardmarket idProduct")
+    rbset_id: str = Field(..., min_length=1, description="Internal set ID")
+    rbcar_id: str = Field(..., min_length=1, description="Internal card ID")
+    foil: Optional[str] = Field(None, description="'N' | 'S' | null")
+
+    @field_validator('foil')
+    @classmethod
+    def validate_foil(cls, v: Optional[str]) -> Optional[str]:
+        if v in (None, '', 'null'):
+            return None
+        if v not in ('N', 'S'):
+            raise ValueError("foil must be 'N', 'S', or null")
+        return v
+
+
+class AutoMatchApply(BaseModel):
+    """Schema for the selective auto-match apply request."""
+    pairings: List[AutoMatchPairing] = Field(..., min_length=1, description="List of pairings to apply")

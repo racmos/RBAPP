@@ -47,7 +47,7 @@ from sqlalchemy import func
 from app import db
 from app.models import RbCard
 from app.models.cardmarket import (
-    RbcmProduct, RbcmPrice, RbcmExpansion, RbcmProductCardMap,
+    RbcmProduct, RbcmPrice, RbcmExpansion, RbcmProductCardMap, RbcmIgnored,
 )
 
 
@@ -184,13 +184,18 @@ def _get_partition_candidates(
     return candidates
 
 
-def _group_products_by_metacard():
-    """Productos sin mapear, de la última fecha, agrupados por idMetacard."""
+def _group_products_by_metacard(ignored: set | None = None):
+    """Productos sin mapear, de la última fecha, agrupados por idMetacard.
+
+    `ignored` is a set of (id_product, name) tuples to skip.
+    Returns (groups_dict, skipped_no_metacard, ignored_count).
+    """
     latest_date = db.session.query(func.max(RbcmProduct.rbprd_date)).scalar()
     if not latest_date:
-        return {}, 0
+        return {}, 0, 0
 
     mapped_ids = {r[0] for r in db.session.query(RbcmProductCardMap.rbpcm_id_product).all()}
+    ignored = ignored or set()
 
     products = RbcmProduct.query.filter(
         RbcmProduct.rbprd_date == latest_date,
@@ -199,14 +204,18 @@ def _group_products_by_metacard():
 
     groups = defaultdict(list)
     skipped_no_metacard = 0
+    ignored_count = 0
     for p in products:
         if p.rbprd_id_product in mapped_ids:
+            continue
+        if (p.rbprd_id_product, p.rbprd_name) in ignored:
+            ignored_count += 1
             continue
         if not p.rbprd_id_metacard:
             skipped_no_metacard += 1
             continue
         groups[p.rbprd_id_metacard].append(p)
-    return groups, skipped_no_metacard
+    return groups, skipped_no_metacard, ignored_count
 
 
 def _build_card_index() -> dict[str, list[RbCard]]:
@@ -284,7 +293,13 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
     (rbset_id, rbcar_id, foil) ya existe en BD con un idProduct distinto
     (REQ-6: duplicate mapping guard).
     """
-    groups, skipped_no_metacard = _group_products_by_metacard()
+    # Load ignored set once: (id_product, name) tuples
+    ignored: set[tuple] = {
+        (r.rbig_id_product, r.rbig_name)
+        for r in RbcmIgnored.query.all()
+    }
+
+    groups, skipped_no_metacard, ignored_count = _group_products_by_metacard(ignored=ignored)
     if not groups:
         return {
             'success': True,
@@ -293,6 +308,7 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
             'skipped': skipped_no_metacard,
             'no_candidates': 0,
             'review': 0,
+            'ignored_count': ignored_count,
             'samples': [],
             'message': 'No hay productos pendientes de mapear',
         }
@@ -390,17 +406,16 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
                     )
                     db.session.add(m)
                 assigned += 1
-                if len(samples) < 25:
-                    samples.append({
-                        'id_product': prod.rbprd_id_product,
-                        'product_name': prod.rbprd_name,
-                        'price': prices.get(prod.rbprd_id_product, 0.0),
-                        'rbset_id': card.rbcar_rbset_id,
-                        'rbcar_id': card.rbcar_id,
-                        'rbcar_name': card.rbcar_name,
-                        'rbpcm_foil': foil,
-                        'rbcar_rarity': card.rbcar_rarity,
-                    })
+                samples.append({
+                    'id_product': prod.rbprd_id_product,
+                    'product_name': prod.rbprd_name,
+                    'price': prices.get(prod.rbprd_id_product, 0.0),
+                    'rbset_id': card.rbcar_rbset_id,
+                    'rbcar_id': card.rbcar_id,
+                    'rbcar_name': card.rbcar_name,
+                    'rbpcm_foil': foil,
+                    'rbcar_rarity': card.rbcar_rarity,
+                })
 
             # Productos sobrantes (más productos que slots disponibles)
             extra = max(0, len(prods_sorted) - len(slots))
@@ -416,5 +431,6 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
         'skipped': skipped_no_metacard,
         'no_candidates': no_candidates,
         'review': review,
+        'ignored_count': ignored_count,
         'samples': samples,
     }

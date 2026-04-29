@@ -7,9 +7,13 @@ from sqlalchemy import func
 from app import db
 from app.models import RbSet, RbCard
 from app.models.cardmarket import (
-    RbcmExpansion, RbcmProduct, RbcmPrice, RbcmProductCardMap, RbProducts
+    RbcmExpansion, RbcmProduct, RbcmPrice, RbcmProductCardMap, RbProducts,
+    RbcmIgnored,
 )
-from app.schemas.validators import PriceGenerate, CardmarketLoad, RiotExtract
+from app.schemas.validators import (
+    PriceGenerate, CardmarketLoad, RiotExtract,
+    IgnoredAdd, IgnoredRestore, AutoMatchApply,
+)
 from app.schemas.validation import validate_json
 from app.services.cardmarket_loader import CARDMARKET_URLS
 
@@ -121,11 +125,23 @@ def cardmarket_unmatched():
     # Get all product IDs that ARE mapped
     mapped_ids = db.session.query(RbcmProductCardMap.rbpcm_id_product).subquery()
 
+    # Build ignored set: (id_product, name) tuples
+    ignored_pairs = set(
+        (r.rbig_id_product, r.rbig_name)
+        for r in RbcmIgnored.query.all()
+    )
+
     # Get products NOT in mapped_ids, ordered by name then id_product
-    unmatched = RbcmProduct.query.filter(
+    unmatched_raw = RbcmProduct.query.filter(
         RbcmProduct.rbprd_date == latest_date,
         ~RbcmProduct.rbprd_id_product.in_(db.session.query(mapped_ids))
     ).order_by(RbcmProduct.rbprd_name, RbcmProduct.rbprd_id_product).all()
+
+    # Exclude products that match an ignored (id_product, name) pair
+    unmatched = [
+        p for p in unmatched_raw
+        if (p.rbprd_id_product, p.rbprd_name) not in ignored_pairs
+    ]
 
     # Get latest price date for low prices
     latest_price_date = db.session.query(func.max(RbcmPrice.rbprc_date)).scalar()
@@ -725,3 +741,94 @@ def cardmarket_upsert_product():
         'rbpdt_id_product': rbpdt_id_product,
         'rbpdt_name': existing.rbpdt_name,
     })
+
+
+# =========================================================================
+# IGNORED PRODUCTS
+# =========================================================================
+
+@price_bp.route('/ignored/add', methods=['POST'])
+@login_required
+@validate_json(IgnoredAdd)
+def ignored_add():
+    """Add a (id_product, name) pair to the ignored list."""
+    data = request.validated_data
+    existing = RbcmIgnored.query.filter_by(
+        rbig_id_product=data.id_product,
+        rbig_name=data.name,
+    ).first()
+    if not existing:
+        db.session.add(RbcmIgnored(
+            rbig_id_product=data.id_product,
+            rbig_name=data.name,
+        ))
+        db.session.commit()
+    return jsonify({'success': True})
+
+
+@price_bp.route('/ignored/restore', methods=['POST'])
+@login_required
+@validate_json(IgnoredRestore)
+def ignored_restore():
+    """Remove a (id_product, name) pair from the ignored list."""
+    data = request.validated_data
+    RbcmIgnored.query.filter_by(
+        rbig_id_product=data.id_product,
+        rbig_name=data.name,
+    ).delete()
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@price_bp.route('/ignored', methods=['GET'])
+@login_required
+def ignored_list():
+    """List all ignored (id_product, name) pairs."""
+    rows = RbcmIgnored.query.order_by(RbcmIgnored.rbig_ignored_at.desc()).all()
+    return jsonify({
+        'success': True,
+        'ignored': [{
+            'id_product': r.rbig_id_product,
+            'name': r.rbig_name,
+            'ignored_at': r.rbig_ignored_at.isoformat() if r.rbig_ignored_at else None,
+        } for r in rows],
+    })
+
+
+# =========================================================================
+# SELECTIVE AUTO-MATCH APPLY
+# =========================================================================
+
+@price_bp.route('/auto-match/apply', methods=['POST'])
+@login_required
+@validate_json(AutoMatchApply)
+def auto_match_apply():
+    """Apply a selective list of auto-match pairings.
+
+    For each pairing: insert RbcmProductCardMap row if not already present;
+    skip + count duplicates as review.
+    Returns {success, inserted, review}.
+    """
+    data = request.validated_data
+    inserted = 0
+    review = 0
+
+    for pairing in data.pairings:
+        existing = RbcmProductCardMap.query.filter_by(
+            rbpcm_id_product=pairing.id_product,
+        ).first()
+        if existing:
+            review += 1
+            continue
+        db.session.add(RbcmProductCardMap(
+            rbpcm_id_product=pairing.id_product,
+            rbpcm_rbset_id=pairing.rbset_id,
+            rbpcm_rbcar_id=pairing.rbcar_id,
+            rbpcm_foil=pairing.foil,
+            rbpcm_match_type='auto',
+            rbpcm_confidence=0.7,
+        ))
+        inserted += 1
+
+    db.session.commit()
+    return jsonify({'success': True, 'inserted': inserted, 'review': review})
