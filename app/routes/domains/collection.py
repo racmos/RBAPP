@@ -51,12 +51,16 @@ def _collection_query():
          impresiones). Para evitar que ese N*M multiplique las filas de la
          colección, se reduce a UN producto canónico por (rbset_id, rbcar_id)
          usando `MIN(rbpcm_id_product)` — criterio determinista y estable.
+      3. Fallback de precios: si no existe mapeo exacto por foil (p.ej.
+         mapeo foil='S' para una carta común foil), se usa cualquier mapeo
+         disponible para esa carta como aproximación.  Así es preferible mostrar
+         un precio aproximado a no mostrar nada.
     """
-    # Un único producto canónico por (carta interna, foil). Si el mapping
-    # no clasifica el foil (rbpcm_foil NULL — caso rare/epic o legacy), se
-    # agrupa bajo la "ranura sin foil" usando '_' como sentinela.
+    # Preferred mapping: exact foil match per (rbset_id, rbcar_id, foil_key).
+    # Si el mapping no clasifica el foil (rbpcm_foil NULL — caso rare/epic o
+    # legacy), se agrupa bajo la "ranura sin foil" usando '_' como centinela.
     foil_key = func.coalesce(RbcmProductCardMap.rbpcm_foil, '_')
-    single_map_sq = db.session.query(
+    preferred_map_sq = db.session.query(
         RbcmProductCardMap.rbpcm_rbset_id.label('rbset_id'),
         RbcmProductCardMap.rbpcm_rbcar_id.label('rbcar_id'),
         foil_key.label('foil_key'),
@@ -65,7 +69,21 @@ def _collection_query():
         RbcmProductCardMap.rbpcm_rbset_id,
         RbcmProductCardMap.rbpcm_rbcar_id,
         foil_key,
-    ).subquery('sm')
+    ).subquery('pm')
+
+    # Fallback mapping: ANY mapping per (rbset_id, rbcar_id), regardless of foil.
+    # Used when no exact foil match exists — shows approximate price instead of none.
+    fallback_map_sq = db.session.query(
+        RbcmProductCardMap.rbpcm_rbset_id.label('rbset_id'),
+        RbcmProductCardMap.rbpcm_rbcar_id.label('rbcar_id'),
+        func.min(RbcmProductCardMap.rbpcm_id_product).label('id_product'),
+    ).group_by(
+        RbcmProductCardMap.rbpcm_rbset_id,
+        RbcmProductCardMap.rbpcm_rbcar_id,
+    ).subquery('fm')
+
+    # Effective id_product: prefer preferred (exact-foil), fall back to any mapping.
+    effective_id_product = func.coalesce(preferred_map_sq.c.id_product, fallback_map_sq.c.id_product)
 
     latest_price_sq = db.session.query(
         RbcmPrice.rbprc_id_product,
@@ -82,26 +100,30 @@ def _collection_query():
         (RbCollection.rbcol_rbset_id == RbCard.rbcar_rbset_id) &
         (RbCollection.rbcol_rbcar_id == RbCard.rbcar_id)
     ).outerjoin(
-        single_map_sq,
-        (RbCollection.rbcol_rbset_id == single_map_sq.c.rbset_id) &
-        (RbCollection.rbcol_rbcar_id == single_map_sq.c.rbcar_id) &
+        preferred_map_sq,
+        (RbCollection.rbcol_rbset_id == preferred_map_sq.c.rbset_id) &
+        (RbCollection.rbcol_rbcar_id == preferred_map_sq.c.rbcar_id) &
         # Mappings clasificados deben coincidir foil-con-foil; los legacy
         # (foil_key='_') matchean siempre (compatibilidad hacia atrás).
-        ((single_map_sq.c.foil_key == RbCollection.rbcol_foil) |
-         (single_map_sq.c.foil_key == '_'))
+        ((preferred_map_sq.c.foil_key == RbCollection.rbcol_foil) |
+         (preferred_map_sq.c.foil_key == '_'))
+    ).outerjoin(
+        fallback_map_sq,
+        (RbCollection.rbcol_rbset_id == fallback_map_sq.c.rbset_id) &
+        (RbCollection.rbcol_rbcar_id == fallback_map_sq.c.rbcar_id)
     ).outerjoin(
         latest_price_sq,
-        single_map_sq.c.id_product == latest_price_sq.c.rbprc_id_product
+        effective_id_product == latest_price_sq.c.rbprc_id_product
     ).outerjoin(
         RbcmPrice,
-        (single_map_sq.c.id_product == RbcmPrice.rbprc_id_product) &
+        (effective_id_product == RbcmPrice.rbprc_id_product) &
         (RbcmPrice.rbprc_date == latest_price_sq.c.max_date)
     ).outerjoin(
         latest_product_sq,
-        single_map_sq.c.id_product == latest_product_sq.c.rbprd_id_product
+        effective_id_product == latest_product_sq.c.rbprd_id_product
     ).outerjoin(
         RbcmProduct,
-        (single_map_sq.c.id_product == RbcmProduct.rbprd_id_product) &
+        (effective_id_product == RbcmProduct.rbprd_id_product) &
         (RbcmProduct.rbprd_date == latest_product_sq.c.max_date)
     )
 
@@ -109,25 +131,28 @@ def _collection_query():
 def _resolve_price(col, price_obj, card=None):
     """Elige el precio correcto según la rareza de la carta y el tipo de foil:
 
-      - common / uncommon + foil='N' -> avg7
-      - common / uncommon + foil='S' -> avg7_foil
-      - rare / epic (no tienen foil)  -> avg7_foil
+      - rare / epic / showcase → avg7_foil (fallback avg7)
+      - common / uncommon + foil='S' → avg7_foil (fallback avg7)
+      - common / uncommon + foil='N' → avg7 (fallback avg7_foil)
 
-    Fuente de verdad: Riftbound sólo tiene foil para common/uncommon; las rare
-    y epic siempre se cotizan en el mercado con el campo "foil" (que en
+    Fuente de verdad: Riftbound sólo tiene foil para common/uncommon; las rare,
+    epic y showcase siempre se cotizan con el campo "foil" de Cardmarket (que en
     realidad representa la versión única de esas rarezas).
+
+    Cuando el campo preferido es NULL, se usa el alternativo como aproximación.
+    Es mejor mostrar un precio aproximado que ningún precio.
     """
     if not price_obj:
         return None
 
     rarity = (card.rbcar_rarity if card else '') or ''
     rarity_lower = rarity.lower()
-    is_rare_or_epic = rarity_lower in ('rare', 'epic')
+    is_premium = rarity_lower in ('rare', 'epic', 'showcase')
 
-    if is_rare_or_epic or col.rbcol_foil == 'S':
-        raw = price_obj.rbprc_avg7_foil
+    if is_premium or col.rbcol_foil == 'S':
+        raw = price_obj.rbprc_avg7_foil or price_obj.rbprc_avg7
     else:
-        raw = price_obj.rbprc_avg7
+        raw = price_obj.rbprc_avg7 or price_obj.rbprc_avg7_foil
 
     return float(raw) if raw is not None else None
 
