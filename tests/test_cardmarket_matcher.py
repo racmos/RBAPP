@@ -832,7 +832,7 @@ class TestApheliosShowcase:
         epic_card = RbCard(rbcar_rbset_id='SFD', rbcar_id='50', rbcar_rarity='Epic',
                            rbcar_name='Test', rbcar_type='Unit', rbcar_tags=None)
         showcase_card = RbCard(rbcar_rbset_id='SFD', rbcar_id='224', rbcar_rarity='Showcase',
-                               rbcar_name='Test', rbcar_type='Unit', rbcar_tags=None)
+                                rbcar_name='Test', rbcar_type='Unit', rbcar_tags=None)
 
         rare_key = card_rank_key(rare_card)
         epic_key = card_rank_key(epic_card)
@@ -841,3 +841,71 @@ class TestApheliosShowcase:
         assert rare_key < epic_key < showcase_key, (
             f"Expected rare < epic < showcase, got rare={rare_key}, epic={epic_key}, showcase={showcase_key}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Group J - Basic Rune foil handling (REQ-10)
+# ---------------------------------------------------------------------------
+
+class TestBasicRuneFoilSlots:
+
+    def test_common_rune_produces_single_foil_none_slot(self, app, setup_sets):
+        """Basic Rune with Common rarity must produce 1 slot with foil=None,
+        NOT 2 slots like a regular Common card."""
+        from app.services.cardmarket_matcher import _expand_slots
+        with app.app_context():
+            card = RbCard(
+                rbcar_rbset_id='OGN',
+                rbcar_id='200',
+                rbcar_name='Blazing Scorcher',
+                rbcar_type='Basic Rune',
+                rbcar_rarity='Common',
+                rbcar_tags=None,
+            )
+            slots = _expand_slots(card)
+            assert len(slots) == 1, f"Expected 1 slot for Common Rune, got {len(slots)}: {slots}"
+            _, foil = slots[0]
+            assert foil is None, f"Common Rune must have foil=None, got foil={foil}"
+
+    def test_showcase_rune_produces_single_foil_none_slot(self, app, setup_sets):
+        """Basic Rune with Showcase rarity must produce 1 slot with foil=None."""
+        from app.services.cardmarket_matcher import _expand_slots
+        with app.app_context():
+            card = RbCard(
+                rbcar_rbset_id='OGN',
+                rbcar_id='201s',
+                rbcar_name='Blazing Scorcher',
+                rbcar_type='Basic Rune',
+                rbcar_rarity='Showcase',
+                rbcar_tags=None,
+            )
+            slots = _expand_slots(card)
+            assert len(slots) == 1, f"Expected 1 slot for Showcase Rune, got {len(slots)}: {slots}"
+            _, foil = slots[0]
+            assert foil is None, f"Showcase Rune must have foil=None, got foil={foil}"
+
+    def test_regular_common_unchanged_by_rune_fix(self, app, common_card):
+        """Regression: regular Common card (non-Rune) must still produce 2 slots."""
+        from app.services.cardmarket_matcher import _expand_slots
+        with app.app_context():
+            card = RbCard.query.filter_by(rbcar_rbset_id='OGN', rbcar_id='01').first()
+            slots = _expand_slots(card)
+            foils = [f for _, f in slots]
+            assert foils == ['N', 'S'], f"Regular Common must have ['N','S'], got {foils}"
+
+    def test_rune_type_case_insensitive(self, app, setup_sets):
+        """'basic rune' (lowercase) must also be detected as Rune."""
+        from app.services.cardmarket_matcher import _expand_slots
+        with app.app_context():
+            card = RbCard(
+                rbcar_rbset_id='OGN',
+                rbcar_id='202',
+                rbcar_name='Test Rune',
+                rbcar_type='basic rune',
+                rbcar_rarity='Common',
+                rbcar_tags=None,
+            )
+            slots = _expand_slots(card)
+            assert len(slots) == 1, f"Expected 1 slot for 'basic rune', got {len(slots)}"
+            _, foil = slots[0]
+            assert foil is None

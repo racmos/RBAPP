@@ -121,7 +121,8 @@ def cards():
             'rbcar_artist': card.rbcar_artist,
             'rbcar_banned': card.rbcar_banned,
             'image_url': card.image_url,
-            'image': card.image
+            'image': card.image,
+            'image_src': card.image_src,
         })
     
     def get_page_url(page_num):

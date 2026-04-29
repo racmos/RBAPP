@@ -663,10 +663,7 @@ def api_cards():
             'rarity': c.rbcar_rarity,
             'domain': c.rbcar_domain,
             'type': c.rbcar_type,
-            'image': (
-                f"/riftbound/static/images/cards/{c.rbcar_rbset_id.lower()}/{c.image}"
-                if c.image else None
-            ),
+            'image': c.image_src,
         } for c in cards],
     })
 
