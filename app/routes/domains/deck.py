@@ -38,10 +38,7 @@ def _legend_for_deck(rbdeck):
     for c in cards:
         rbc = by_key.get((c.get('set'), c.get('id')))
         if rbc and (rbc.rbcar_type or '').lower() == 'legend':
-            img = (
-                f"/riftbound/static/images/cards/{rbc.rbcar_rbset_id.lower()}/{rbc.image}"
-                if rbc.image else None
-            )
+            img = rbc.image_src
             return (img, rbc.rbcar_name, rbc.rbcar_tags)
     return (None, None, None)
 
@@ -145,9 +142,7 @@ def _enrich_cards_for_view(rbdeck, owner_username):
         card_id = c.get('id') or ''
         qty = int(c.get('qty') or 0)
         rbc = cards_by_key.get((set_id, card_id))
-        image = None
-        if rbc and rbc.image:
-            image = f"/riftbound/static/images/cards/{rbc.rbcar_rbset_id.lower()}/{rbc.image}"
+        image = rbc.image_src if rbc else None
         have = min(owned_by_key.get((set_id, card_id), 0), qty)
         missing = max(0, qty - have)
         price = _latest_price_for_card(set_id, card_id, rbc.rbcar_rarity if rbc else None)
@@ -375,10 +370,7 @@ def api_legends():
 
     out = []
     for c in sorted(seen.values(), key=lambda x: (x.rbcar_name or '').lower()):
-        image = (
-            f"/riftbound/static/images/cards/{c.rbcar_rbset_id.lower()}/{c.image}"
-            if c.image else None
-        )
+        image = c.image_src
         out.append({
             'name': c.rbcar_name,
             'tags': c.rbcar_tags or '',

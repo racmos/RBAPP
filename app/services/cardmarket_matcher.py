@@ -11,7 +11,10 @@ Asigna automáticamente cada idProduct sin mapear a la mejor combinación
 
 Reglas (consolidadas con el usuario):
 
-  - common / uncommon: 2 slots (N=normal, S=foil), base y promo por igual.
+  - Basic Rune: 1 slot (foil=None). Runes have Common and Showcase
+    versions but never foil.
+  - common / uncommon (non-Rune): 2 slots (N=normal, S=foil), base y promo
+    por igual.
   - rare / epic: NO tienen foil. Las distintas variantes son entradas
     SEPARADAS en rbcards con sufijos en rbcar_id (79, 79a) o en sets promo
     (OGN -> OGNX). Orden creciente de precio aproximado:
@@ -246,22 +249,29 @@ def _expand_slots(
 ) -> list[tuple[RbCard, Optional[str]]]:
     """Para cada candidato genera ranuras (card, foil).
 
-    common/uncommon de set NO promo -> dos slots ('N' y 'S').
-    Resto -> un único slot con foil=None.
+    Basic Rune: 1 slot (foil=None) — runes have Common and Showcase
+    versions, never foil.
+    Common/Uncommon (non-Rune): 2 slots ('N' and 'S') — always have
+    non-foil and foil products.
+    Rest: 1 slot (foil=None).
 
     Showcase and signed (suffix 's') cards ARE matchable (rank 2.5+).
     REQ-2: Filter slots already present in `taken` set
            (set of (rbset_id, rbcar_id, foil) tuples from RbcmProductCardMap).
     """
     rarity = (card.rbcar_rarity or '').lower()
+    card_type = (card.rbcar_type or '').lower()
     rbcar_id = card.rbcar_id or ''
 
-    if rarity in ('common', 'uncommon'):
-        # Common/uncommon always have both non-foil and foil products,
-        # regardless of base or promo set.
+    is_rune = 'rune' in card_type
+    if is_rune:
+        # Basic Rune — single slot, no foil, regardless of rarity
+        raw_slots = [(card, None)]
+    elif rarity in ('common', 'uncommon'):
+        # Common/uncommon always have both non-foil and foil products
         raw_slots = [(card, 'N'), (card, 'S')]
     else:
-        # Rare/epic/showcase: single slot, no foil distinction.
+        # Rare/epic/showcase: single slot, no foil distinction
         raw_slots = [(card, None)]
 
     # REQ-2: Remove slots already taken by existing mappings

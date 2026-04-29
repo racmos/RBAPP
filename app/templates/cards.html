@@ -188,9 +188,9 @@
             {% for card in cards %}
             <tr data-card-index="{{ loop.index0 }}">
                 <td>
-                    {% if card.image %}
+                    {% if card.image_src %}
                     <div class="card-thumbnail-container">
-                        <img src="/riftbound/static/images/cards/{{ card.rbcar_rbset_id.lower() }}/{{ card.image }}"
+                        <img src="{{ card.image_src }}"
                             alt="{{ card.rbcar_name }}" class="card-thumbnail">
                     </div>
                     {% else %}
@@ -221,8 +221,8 @@
         {% for card in cards %}
         <div class="card-item">
             <div class="card-image-wrapper">
-                {% if card.image %}
-                <img src="/riftbound/static/images/cards/{{ card.rbcar_rbset_id.lower() }}/{{ card.image }}"
+                {% if card.image_src %}
+                <img src="{{ card.image_src }}"
                     alt="{{ card.rbcar_name }}" class="card-image">
                 {% else %}
                 <div class="no-image-placeholder">
@@ -1011,9 +1011,8 @@
         updateDomainTags('edit');
 
         const imagePreview = document.getElementById('editCardImagePreview');
-        if (card.image) {
-            const imgSrc = `/riftbound/static/images/cards/${card.rbcar_rbset_id.toLowerCase()}/${card.image}`;
-            imagePreview.innerHTML = `<img src="${imgSrc}" alt="${card.rbcar_name}" onerror="this.style.display='none'">`;
+        if (card.image_src) {
+            imagePreview.innerHTML = `<img src="${card.image_src}" alt="${card.rbcar_name}" onerror="this.style.display='none'">`;
         } else {
             imagePreview.innerHTML = '<p style="color: rgba(255,255,255,0.5);">No image available</p>';
         }
