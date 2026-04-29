@@ -807,7 +807,7 @@
                             <button class="btn-map" onclick="openAddEntryFor(${p.id_product})" title="Añadir/editar carta o producto" style="background-color: #2980b9; margin-left: 4px;">
                                 <i class="fas fa-plus"></i>
                             </button>
-                            <button class="btn-map" onclick="ignoreProduct(${p.id_product}, ${JSON.stringify(p.name)})" title="Ignorar este producto" style="background-color: #8e44ad; margin-left: 4px;">
+                            <button class="btn-map" onclick="ignoreProduct(${p.id_product})" title="Ignorar este producto" style="background-color: #8e44ad; margin-left: 4px;">
                                 <i class="fas fa-eye-slash"></i>
                             </button>
                         </td>
@@ -919,19 +919,27 @@
 
     // ====== Ignore / Ver ignorados ======
 
-    async function ignoreProduct(idProduct, name) {
+    async function ignoreProduct(idProduct) {
+        // Read name from the DOM (2nd td of the row) to avoid quoting issues in inline onclick.
+        const row = document.getElementById(`row-${idProduct}`);
+        if (!row) { alert('No se encontró la fila del producto.'); return; }
+        const name = row.cells[1] ? row.cells[1].textContent.trim() : '';
+        if (!name) { alert('No se pudo leer el nombre del producto.'); return; }
         try {
             const r = await fetch('/riftbound/price/ignored/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id_product: idProduct, name: name })
             });
+            if (!r.ok) {
+                alert('Error HTTP ' + r.status + ' al ignorar el producto.');
+                return;
+            }
             const d = await r.json();
             if (!d.success) { alert('Error al ignorar: ' + (d.message || '')); return; }
             // Remove the row from the DOM immediately
-            const row = document.getElementById(`row-${idProduct}`);
             const resultsRow = document.getElementById(`results-${idProduct}`);
-            if (row) row.remove();
+            row.remove();
             if (resultsRow) resultsRow.remove();
             checkUnmatched();
         } catch (e) { alert('Error: ' + e.message); }
