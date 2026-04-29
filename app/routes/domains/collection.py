@@ -129,18 +129,19 @@ def _collection_query():
 
 
 def _resolve_price(col, price_obj, card=None):
-    """Elige el precio correcto según la rareza de la carta y el tipo de foil:
+    """Elige el precio correcto según la rareza de la carta y el tipo de foil.
 
-      - rare / epic / showcase → avg7_foil (fallback avg7)
-      - common / uncommon + foil='S' → avg7_foil (fallback avg7)
-      - common / uncommon + foil='N' → avg7 (fallback avg7_foil)
+    Cadena de fallback (es mejor mostrar un precio aproximado que ninguno):
 
-    Fuente de verdad: Riftbound sólo tiene foil para common/uncommon; las rare,
-    epic y showcase siempre se cotizan con el campo "foil" de Cardmarket (que en
-    realidad representa la versión única de esas rarezas).
+      rare / epic / showcase:
+        avg7_foil → avg7 → low_foil → low
+      common / uncommon + foil='S':
+        avg7_foil → avg7 → low_foil → low
+      common / uncommon + foil='N':
+        avg7 → avg7_foil → low → low_foil
 
-    Cuando el campo preferido es NULL, se usa el alternativo como aproximación.
-    Es mejor mostrar un precio aproximado que ningún precio.
+    Para cartas nuevas puede que avg7 y avg7_foil sean NULL pero low/low_foil
+    ya tenga dato. Los campos low son el último recurso.
     """
     if not price_obj:
         return None
@@ -150,9 +151,15 @@ def _resolve_price(col, price_obj, card=None):
     is_premium = rarity_lower in ('rare', 'epic', 'showcase')
 
     if is_premium or col.rbcol_foil == 'S':
-        raw = price_obj.rbprc_avg7_foil or price_obj.rbprc_avg7
+        raw = (price_obj.rbprc_avg7_foil
+               or price_obj.rbprc_avg7
+               or price_obj.rbprc_low_foil
+               or price_obj.rbprc_low)
     else:
-        raw = price_obj.rbprc_avg7 or price_obj.rbprc_avg7_foil
+        raw = (price_obj.rbprc_avg7
+               or price_obj.rbprc_avg7_foil
+               or price_obj.rbprc_low
+               or price_obj.rbprc_low_foil)
 
     return float(raw) if raw is not None else None
 
