@@ -312,11 +312,12 @@
                     <tr>
                         <th style="width: 100px;">idProduct</th>
                         <th>Nombre</th>
+                        <th style="width: 90px; text-align: center;">Precio</th>
                         <th style="width: 120px;"></th>
                     </tr>
                 </thead>
                 <tbody id="ignoredListBody">
-                    <tr><td colspan="3">Cargando...</td></tr>
+                    <tr><td colspan="4">Cargando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -956,33 +957,40 @@
 
     async function loadIgnoredList() {
         const tbody = document.getElementById('ignoredListBody');
-        tbody.innerHTML = '<tr><td colspan="3">Cargando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
         try {
             const r = await fetch('/riftbound/price/ignored');
             const d = await r.json();
             if (!d.success || !d.ignored.length) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#95a5a6;">No hay productos ignorados.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#95a5a6;">No hay productos ignorados.</td></tr>';
                 return;
             }
-            tbody.innerHTML = d.ignored.map(item => `
-                <tr id="ignored-row-${item.id_product}-${item.name.replace(/[^a-z0-9]/gi, '_')}">
+            tbody.innerHTML = d.ignored.map(item => {
+                const priceStr = item.low_price != null ? `€${item.low_price.toFixed(2)}` : '—';
+                return `
+                <tr id="ignored-row-${item.id_product}">
                     <td>${item.id_product}</td>
                     <td>${escapeHtml(item.name)}</td>
+                    <td style="text-align:center;">${priceStr}</td>
                     <td>
                         <button class="btn-map" style="background-color: #2980b9;"
-                            onclick="restoreIgnored(${item.id_product}, ${JSON.stringify(item.name)}, this)"
+                            onclick="restoreIgnored(${item.id_product}, this)"
                             title="Restaurar">
                             <i class="fas fa-rotate-left"></i> Restaurar
                         </button>
                     </td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="3">Error: ${escapeHtml(e.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4">Error: ${escapeHtml(e.message)}</td></tr>`;
         }
     }
 
-    async function restoreIgnored(idProduct, name, btn) {
+    async function restoreIgnored(idProduct, btn) {
+        // Read name from DOM (2nd cell) to avoid quoting issues in inline onclick.
+        const row = btn.closest('tr');
+        const name = row && row.cells[1] ? row.cells[1].textContent.trim() : '';
+        if (!name) { alert('No se pudo leer el nombre del producto.'); return; }
         try {
             const r = await fetch('/riftbound/price/ignored/restore', {
                 method: 'POST',
@@ -992,7 +1000,6 @@
             const d = await r.json();
             if (!d.success) { alert('Error: ' + (d.message || '')); return; }
             // Remove row from ignored modal
-            const row = btn.closest('tr');
             if (row) row.remove();
             // Refresh the unmatched list if review modal is open
             const reviewModal = document.getElementById('reviewModal');

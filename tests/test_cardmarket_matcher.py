@@ -652,6 +652,177 @@ class TestApheliosShowcase:
         # 3 products, 3 slots (rare, showcase, showcase-signed) => all 3 assigned
         assert result['assigned'] == 3, f"Expected 3 assigned, got {result['assigned']}. Result: {result}"
 
+    # -----------------------------------------------------------------------
+    # Group I - Common/uncommon foil slots (REQ-9)
+    # Common/uncommon cards ALWAYS produce 2 slots (N, S), regardless of
+    # whether they're in a base set or a promo set ending in X.
+    # -----------------------------------------------------------------------
+
+    class TestFoilSlotsCommonUncommon:
+
+        def test_common_in_promo_set_produces_two_slots(self, app, setup_sets):
+            """Common card in a promo set (ending in X) must also produce
+            two slots: (card, 'N') and (card, 'S'). Promo commons have both
+            non-foil AND foil products, same as base-set commons."""
+            from app.services.cardmarket_matcher import _expand_slots
+            with app.app_context():
+                promo_set = RbSet(rbset_id='OGNX', rbset_name='Origins Promo', rbset_ncard=20)
+                db.session.add(promo_set)
+                db.session.commit()
+
+                card = RbCard(
+                    rbcar_rbset_id='OGNX',
+                    rbcar_id='01',
+                    rbcar_name='Blade Strike',
+                    rbcar_type='Spell',
+                    rbcar_rarity='Common',
+                    rbcar_tags=None,
+                )
+                slots = _expand_slots(card)
+                assert len(slots) == 2, f"Expected 2 slots for promo common, got {len(slots)}: {slots}"
+                foils = [f for _, f in slots]
+                assert foils == ['N', 'S'], f"Promo common must have foils ['N','S'], got {foils}"
+
+        def test_uncommon_in_promo_set_produces_two_slots(self, app, setup_sets):
+            """Uncommon card in a promo set (ending in X) must also produce
+            two slots: (card, 'N') and (card, 'S')."""
+            from app.services.cardmarket_matcher import _expand_slots
+            with app.app_context():
+                promo_set = RbSet(rbset_id='OGNX', rbset_name='Origins Promo', rbset_ncard=20)
+                db.session.add(promo_set)
+                db.session.commit()
+
+                card = RbCard(
+                    rbcar_rbset_id='OGNX',
+                    rbcar_id='03',
+                    rbcar_name='Mystic Shot',
+                    rbcar_type='Spell',
+                    rbcar_rarity='Uncommon',
+                    rbcar_tags=None,
+                )
+                slots = _expand_slots(card)
+                assert len(slots) == 2, f"Expected 2 slots for promo uncommon, got {len(slots)}: {slots}"
+                foils = [f for _, f in slots]
+                assert foils == ['N', 'S'], f"Promo uncommon must have foils ['N','S'], got {foils}"
+
+        def test_common_in_base_set_produces_two_slots(self, app, common_card):
+            """Regression: base-set common must produce (card,'N') + (card,'S')."""
+            from app.services.cardmarket_matcher import _expand_slots
+            with app.app_context():
+                card = RbCard.query.filter_by(rbcar_rbset_id='OGN', rbcar_id='01').first()
+                slots = _expand_slots(card)
+                foils = [f for _, f in slots]
+                assert foils == ['N', 'S'], f"Base common must have foils ['N','S'], got {foils}"
+
+        def test_rare_in_promo_set_produces_single_foil_none_slot(self, app, setup_sets):
+            """Rare cards in promo sets must produce a single slot with foil=None."""
+            from app.services.cardmarket_matcher import _expand_slots
+            with app.app_context():
+                promo_set = RbSet(rbset_id='OGNX', rbset_name='Origins Promo', rbset_ncard=20)
+                db.session.add(promo_set)
+                db.session.commit()
+
+                card = RbCard(
+                    rbcar_rbset_id='OGNX',
+                    rbcar_id='15',
+                    rbcar_name='Teemo, Scout',
+                    rbcar_type='Legend',
+                    rbcar_rarity='Rare',
+                    rbcar_tags=None,
+                )
+                slots = _expand_slots(card)
+                assert len(slots) == 1
+                _, foil = slots[0]
+                assert foil is None, f"Promo rare must have foil=None, got foil={foil}"
+
+        def test_auto_match_assigns_common_promo_with_both_foils(self, app, setup_sets):
+            """Integration: common card with base + promo products.
+            Base partition: 2 products (normal €0.05, foil €0.15) → (OGN, 01, N), (OGN, 01, S).
+            Promo partition: 2 products (normal €0.30, foil €0.50) → (OGNX, 01, N), (OGNX, 01, S).
+            All 4 products matched with correct foil markers."""
+            from app.services.cardmarket_matcher import auto_match
+
+            with app.app_context():
+                promo_set = RbSet(rbset_id='OGNX', rbset_name='Origins Promo', rbset_ncard=20)
+                db.session.add(promo_set)
+
+                # Base + promo cards for the same common spell
+                db.session.add_all([
+                    RbCard(
+                        rbcar_rbset_id='OGN', rbcar_id='01',
+                        rbcar_name='Blade Strike', rbcar_type='Spell',
+                        rbcar_rarity='Common', rbcar_tags=None,
+                    ),
+                    RbCard(
+                        rbcar_rbset_id='OGNX', rbcar_id='01',
+                        rbcar_name='Blade Strike', rbcar_type='Spell',
+                        rbcar_rarity='Common', rbcar_tags=None,
+                    ),
+                ])
+
+                db.session.add_all([
+                    RbcmExpansion(rbexp_id=501, rbexp_name='Origins Base', rbexp_rbset_id='OGN'),
+                    RbcmExpansion(rbexp_id=502, rbexp_name='Origins Promo', rbexp_rbset_id='OGNX'),
+                ])
+
+                # 4 products: base normal, base foil, promo normal, promo foil
+                db.session.add_all([
+                    RbcmProduct(
+                        rbprd_date='20260428', rbprd_id_product=5101,
+                        rbprd_name='Blade Strike', rbprd_id_metacard=5500,
+                        rbprd_id_expansion=501, rbprd_type='single',
+                    ),
+                    RbcmProduct(
+                        rbprd_date='20260428', rbprd_id_product=5102,
+                        rbprd_name='Blade Strike', rbprd_id_metacard=5500,
+                        rbprd_id_expansion=501, rbprd_type='single',
+                    ),
+                    RbcmProduct(
+                        rbprd_date='20260428', rbprd_id_product=5103,
+                        rbprd_name='Blade Strike', rbprd_id_metacard=5500,
+                        rbprd_id_expansion=502, rbprd_type='single',
+                    ),
+                    RbcmProduct(
+                        rbprd_date='20260428', rbprd_id_product=5104,
+                        rbprd_name='Blade Strike', rbprd_id_metacard=5500,
+                        rbprd_id_expansion=502, rbprd_type='single',
+                    ),
+                ])
+                db.session.add_all([
+                    RbcmPrice(rbprc_id_product=5101, rbprc_date='20260428', rbprc_low=0.05),
+                    RbcmPrice(rbprc_id_product=5102, rbprc_date='20260428', rbprc_low=0.15),
+                    RbcmPrice(rbprc_id_product=5103, rbprc_date='20260428', rbprc_low=0.30),
+                    RbcmPrice(rbprc_id_product=5104, rbprc_date='20260428', rbprc_low=0.50),
+                ])
+                db.session.commit()
+
+                result = auto_match(dry_run=False)
+
+                assert result['success'] is True
+                assert result['assigned'] == 4, f"Expected 4 assigned, got {result['assigned']}"
+
+                # Base partition: cheaper → N, more expensive → S
+                base_normal = RbcmProductCardMap.query.filter_by(rbpcm_id_product=5101).first()
+                assert base_normal is not None
+                assert base_normal.rbpcm_rbset_id == 'OGN'
+                assert base_normal.rbpcm_foil == 'N'
+
+                base_foil = RbcmProductCardMap.query.filter_by(rbpcm_id_product=5102).first()
+                assert base_foil is not None
+                assert base_foil.rbpcm_rbset_id == 'OGN'
+                assert base_foil.rbpcm_foil == 'S'
+
+                # Promo partition: cheaper → N, more expensive → S
+                promo_normal = RbcmProductCardMap.query.filter_by(rbpcm_id_product=5103).first()
+                assert promo_normal is not None
+                assert promo_normal.rbpcm_rbset_id == 'OGNX'
+                assert promo_normal.rbpcm_foil == 'N'
+
+                promo_foil = RbcmProductCardMap.query.filter_by(rbpcm_id_product=5104).first()
+                assert promo_foil is not None
+                assert promo_foil.rbpcm_rbset_id == 'OGNX'
+                assert promo_foil.rbpcm_foil == 'S'
+
     def test_showcase_rank_between_epic_and_unknown(self, app, setup_sets):
         """Showcase rank must be 2.5 (between epic=2 and unknown=3)."""
         from app.services.cardmarket_matcher import card_rank_key

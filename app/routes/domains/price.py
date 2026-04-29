@@ -783,13 +783,34 @@ def ignored_restore():
 @price_bp.route('/ignored', methods=['GET'])
 @login_required
 def ignored_list():
-    """List all ignored (id_product, name) pairs."""
+    """List all ignored (id_product, name) pairs with their latest low price."""
+    from app.models.cardmarket import RbcmPrice
+    from sqlalchemy import func
+
     rows = RbcmIgnored.query.order_by(RbcmIgnored.rbig_ignored_at.desc()).all()
+
+    # Build latest low_price lookup for the ignored ids (same source as the
+    # Revisar carga modal: rbcm_price.rbprc_low at latest rbprc_date).
+    price_map = {}
+    if rows:
+        latest_price_date = db.session.query(func.max(RbcmPrice.rbprc_date)).scalar()
+        if latest_price_date:
+            ids = [r.rbig_id_product for r in rows]
+            prices = RbcmPrice.query.filter(
+                RbcmPrice.rbprc_date == latest_price_date,
+                RbcmPrice.rbprc_id_product.in_(ids),
+            ).all()
+            price_map = {
+                p.rbprc_id_product: float(p.rbprc_low) if p.rbprc_low is not None else None
+                for p in prices
+            }
+
     return jsonify({
         'success': True,
         'ignored': [{
             'id_product': r.rbig_id_product,
             'name': r.rbig_name,
+            'low_price': price_map.get(r.rbig_id_product),
             'ignored_at': r.rbig_ignored_at.isoformat() if r.rbig_ignored_at else None,
         } for r in rows],
     })

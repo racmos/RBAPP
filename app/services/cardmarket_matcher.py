@@ -11,9 +11,7 @@ Asigna automáticamente cada idProduct sin mapear a la mejor combinación
 
 Reglas (consolidadas con el usuario):
 
-  - common / uncommon de set NO promo: 2 productos -> bajo=normal, alto=foil.
-    Si hay un 3º producto: el más caro mapea a la versión promo de esa misma
-    carta, que vive en el set terminado en X (p.ej. OGN-1 -> OGNX-1).
+  - common / uncommon: 2 slots (N=normal, S=foil), base y promo por igual.
   - rare / epic: NO tienen foil. Las distintas variantes son entradas
     SEPARADAS en rbcards con sufijos en rbcar_id (79, 79a) o en sets promo
     (OGN -> OGNX). Orden creciente de precio aproximado:
@@ -258,12 +256,12 @@ def _expand_slots(
     rarity = (card.rbcar_rarity or '').lower()
     rbcar_id = card.rbcar_id or ''
 
-    is_promo_set = (card.rbcar_rbset_id or '').endswith('X')
-    if rarity in ('common', 'uncommon') and not is_promo_set:
-        # foil cuesta más, pero como ambos slots representan el MISMO rbcar,
-        # van uno justo después del otro en el orden de productos asc por precio.
+    if rarity in ('common', 'uncommon'):
+        # Common/uncommon always have both non-foil and foil products,
+        # regardless of base or promo set.
         raw_slots = [(card, 'N'), (card, 'S')]
     else:
+        # Rare/epic/showcase: single slot, no foil distinction.
         raw_slots = [(card, None)]
 
     # REQ-2: Remove slots already taken by existing mappings
