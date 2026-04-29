@@ -6,5 +6,5 @@ from .market import RbCardMarket
 from .deck import RbDeck
 from .cardmarket import (
     RbcmProduct, RbcmPrice, RbcmCategory, RbcmExpansion,
-    RbcmLoadHistory, RbcmProductCardMap, RbProducts
+    RbcmLoadHistory, RbcmProductCardMap, RbProducts, RbcmIgnored
 )

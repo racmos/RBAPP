@@ -390,6 +390,23 @@ COMMENT ON COLUMN riftbound.rbcm_product_card_map.rbpcm_foil IS 'N=normal, S=foi
 COMMENT ON COLUMN riftbound.rbcm_product_card_map.rbpcm_match_type IS 'Tipo de mapeo: auto o manual';
 COMMENT ON COLUMN riftbound.rbcm_product_card_map.rbpcm_confidence IS 'Nivel de confianza del mapeo automatico';
 
+-- TABLA: rbcm_ignored (Productos ignorados por el usuario)
+DROP TABLE IF EXISTS riftbound.rbcm_ignored;
+
+CREATE TABLE riftbound.rbcm_ignored (
+    rbig_id_product INT NOT NULL,
+    rbig_name TEXT NOT NULL,
+    rbig_ignored_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (rbig_id_product, rbig_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rbcm_ignored_id ON riftbound.rbcm_ignored(rbig_id_product);
+
+COMMENT ON TABLE riftbound.rbcm_ignored IS 'Productos ignorados explicitamente por el usuario en el navegador de mappings';
+COMMENT ON COLUMN riftbound.rbcm_ignored.rbig_id_product IS 'idProduct de Cardmarket';
+COMMENT ON COLUMN riftbound.rbcm_ignored.rbig_name IS 'Nombre del producto (parte de la PK compuesta para distinguir variantes)';
+COMMENT ON COLUMN riftbound.rbcm_ignored.rbig_ignored_at IS 'Cuando fue ignorado el producto';
+
 -- TABLA: rbproducts (Tabla maestra de productos)
 DROP TABLE IF EXISTS riftbound.rbproducts;
 
@@ -505,7 +522,9 @@ SELECT 'rbcm_products', COUNT(*) FROM riftbound.rbcm_products
 UNION ALL
 SELECT 'rbcm_price', COUNT(*) FROM riftbound.rbcm_price
 UNION ALL
-SELECT 'rbcm_product_card_map', COUNT(*) FROM riftbound.rbcm_product_card_map;
+SELECT 'rbcm_product_card_map', COUNT(*) FROM riftbound.rbcm_product_card_map
+UNION ALL
+SELECT 'rbcm_ignored', COUNT(*) FROM riftbound.rbcm_ignored;
 
 -- =============================================
 -- END OF INSTALLATION SCRIPT

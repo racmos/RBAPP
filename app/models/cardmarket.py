@@ -98,6 +98,20 @@ class RbcmProductCardMap(db.Model):
     rbpcm_confidence = db.Column(db.Numeric)
 
 
+class RbcmIgnored(db.Model):
+    """Products explicitly ignored by the user in the mappings browser.
+
+    Identified by (idProduct, name) composite PK so that two products
+    sharing the same idProduct but different names are tracked separately.
+    """
+    __tablename__ = 'rbcm_ignored'
+    __table_args__ = {"schema": "riftbound"}
+
+    rbig_id_product = db.Column(db.Integer, primary_key=True)
+    rbig_name = db.Column(db.Text, primary_key=True)
+    rbig_ignored_at = db.Column(db.DateTime, default=db.func.now())
+
+
 class RbProducts(db.Model):
     """Curated product master table (future use)."""
     __tablename__ = 'rbproducts'
