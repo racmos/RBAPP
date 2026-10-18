@@ -1,0 +1,292 @@
+-- PostgreSQL 18.4 (Debian 18.4-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+
+-- TABLE riftbound.old1_rbusers
+  rbus_id integer NOT NULL DEFAULT nextval('riftbound.rbusers_rbus_id_seq'::regclass)
+  rbus_username character varying(80) NOT NULL
+  rbus_email character varying(120) NOT NULL
+  rbus_password character varying(256) NOT NULL
+  rbus_created timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  rbus_updated timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  CONSTRAINT rbusers_rbus_email_not_null NOT NULL rbus_email
+  CONSTRAINT rbusers_rbus_id_not_null NOT NULL rbus_id
+  CONSTRAINT rbusers_rbus_password_not_null NOT NULL rbus_password
+  CONSTRAINT rbusers_rbus_username_not_null NOT NULL rbus_username
+  CONSTRAINT rbusers_pkey1 PRIMARY KEY (rbus_id)
+  CONSTRAINT rbusers_rbus_email_key UNIQUE (rbus_email)
+  CONSTRAINT rbusers_rbus_username_key UNIQUE (rbus_username)
+  CREATE INDEX idx_rbusers_email ON riftbound.old1_rbusers USING btree (rbus_email)
+  CREATE INDEX idx_rbusers_username ON riftbound.old1_rbusers USING btree (rbus_username)
+  CREATE UNIQUE INDEX rbusers_pkey1 ON riftbound.old1_rbusers USING btree (rbus_id)
+  CREATE UNIQUE INDEX rbusers_rbus_email_key ON riftbound.old1_rbusers USING btree (rbus_email)
+  CREATE UNIQUE INDEX rbusers_rbus_username_key ON riftbound.old1_rbusers USING btree (rbus_username)
+
+-- TABLE riftbound.old_rbdecks
+  rbdck_snapshot timestamp without time zone NOT NULL DEFAULT now()
+  rbdck_name text NOT NULL
+  rbdck_decription text
+  rbdck_mode text NOT NULL DEFAULT '1v1'::text
+  rbdck_format text NOT NULL DEFAULT 'Standard'::text
+  rbdck_max_set text NOT NULL
+  rbdck_rbset_id text NOT NULL
+  rbdck_rbcar_id text NOT NULL
+  rbdck_ncards numeric NOT NULL DEFAULT 1
+  rbdck_sideboard text NOT NULL DEFAULT 'N'::text
+  rbdck_user text NOT NULL
+  rbdck_orden numeric NOT NULL
+  CONSTRAINT rbdck_rbcar_fk_1 FOREIGN KEY (rbdck_rbset_id, rbdck_rbcar_id) REFERENCES riftbound.rbcards(rbcar_rbset_id, rbcar_id) ON UPDATE CASCADE ON DELETE CASCADE
+  CONSTRAINT rbdecks_user_fk_1 FOREIGN KEY (rbdck_user) REFERENCES riftbound.rbusers(username) ON UPDATE CASCADE ON DELETE RESTRICT
+  CONSTRAINT rbdecks_rbdck_format_not_null NOT NULL rbdck_format
+  CONSTRAINT rbdecks_rbdck_max_set_not_null NOT NULL rbdck_max_set
+  CONSTRAINT rbdecks_rbdck_mode_not_null NOT NULL rbdck_mode
+  CONSTRAINT rbdecks_rbdck_name_not_null NOT NULL rbdck_name
+  CONSTRAINT rbdecks_rbdck_ncards_not_null NOT NULL rbdck_ncards
+  CONSTRAINT rbdecks_rbdck_orden_not_null NOT NULL rbdck_orden
+  CONSTRAINT rbdecks_rbdck_rbcar_id_not_null NOT NULL rbdck_rbcar_id
+  CONSTRAINT rbdecks_rbdck_rbset_id_not_null NOT NULL rbdck_rbset_id
+  CONSTRAINT rbdecks_rbdck_sideboard_not_null NOT NULL rbdck_sideboard
+  CONSTRAINT rbdecks_rbdck_snapshot_not_null NOT NULL rbdck_snapshot
+  CONSTRAINT rbdecks_rbdck_user_not_null NOT NULL rbdck_user
+  CONSTRAINT rbdck_pk PRIMARY KEY (rbdck_snapshot, rbdck_rbset_id, rbdck_rbcar_id, rbdck_sideboard, rbdck_user)
+  CREATE UNIQUE INDEX rbdck_pk ON riftbound.old_rbdecks USING btree (rbdck_snapshot, rbdck_rbset_id, rbdck_rbcar_id, rbdck_sideboard, rbdck_user)
+
+-- TABLE riftbound.rbcardmarket
+  rbcmk_snapshot timestamp without time zone NOT NULL DEFAULT now()
+  rbcmk_rbset_id text NOT NULL
+  rbcmk_rbcar_id text NOT NULL
+  rbcmk_name text NOT NULL
+  rbcmk_foil text NOT NULL DEFAULT 'N'::text
+  rbcmk_price numeric NOT NULL
+  CONSTRAINT rbcmk_rbcar_fk_1 FOREIGN KEY (rbcmk_rbset_id, rbcmk_rbcar_id) REFERENCES riftbound.rbcards(rbcar_rbset_id, rbcar_id) ON UPDATE CASCADE ON DELETE CASCADE
+  CONSTRAINT rbcardmarket_rbcmk_foil_not_null NOT NULL rbcmk_foil
+  CONSTRAINT rbcardmarket_rbcmk_name_not_null NOT NULL rbcmk_name
+  CONSTRAINT rbcardmarket_rbcmk_price_not_null NOT NULL rbcmk_price
+  CONSTRAINT rbcardmarket_rbcmk_rbcar_id_not_null NOT NULL rbcmk_rbcar_id
+  CONSTRAINT rbcardmarket_rbcmk_rbset_id_not_null NOT NULL rbcmk_rbset_id
+  CONSTRAINT rbcardmarket_rbcmk_snapshot_not_null NOT NULL rbcmk_snapshot
+  CONSTRAINT rbcmk_pk PRIMARY KEY (rbcmk_snapshot, rbcmk_rbset_id, rbcmk_rbcar_id, rbcmk_foil)
+  CREATE UNIQUE INDEX rbcmk_pk ON riftbound.rbcardmarket USING btree (rbcmk_snapshot, rbcmk_rbset_id, rbcmk_rbcar_id, rbcmk_foil)
+
+-- TABLE riftbound.rbcards
+  rbcar_rbset_id text NOT NULL
+  rbcar_id text NOT NULL
+  rbcar_name text NOT NULL
+  rbcar_domain text
+  rbcar_type text
+  rbcar_tags text
+  rbcar_energy smallint
+  rbcar_power smallint
+  rbcar_might smallint
+  rbcar_ability text
+  rbcar_rarity text
+  rbcar_artist text
+  rbcar_banned text DEFAULT 'N'::text
+  image_url text
+  image text
+  CONSTRAINT rbcards_rbset_fk_1 FOREIGN KEY (rbcar_rbset_id) REFERENCES riftbound.rbset(rbset_id) ON UPDATE CASCADE ON DELETE CASCADE
+  CONSTRAINT rbcards_rbcar_id_not_null NOT NULL rbcar_id
+  CONSTRAINT rbcards_rbcar_name_not_null NOT NULL rbcar_name
+  CONSTRAINT rbcards_rbcar_rbset_id_not_null NOT NULL rbcar_rbset_id
+  CONSTRAINT rbcards_pk PRIMARY KEY (rbcar_rbset_id, rbcar_id)
+  CREATE UNIQUE INDEX rbcards_pk ON riftbound.rbcards USING btree (rbcar_rbset_id, rbcar_id)
+
+-- TABLE riftbound.rbcm_categories
+  rbcat_id integer NOT NULL DEFAULT nextval('riftbound.rbcm_categories_rbcat_id_seq'::regclass)
+  rbcat_name text NOT NULL
+  CONSTRAINT rbcm_categories_rbcat_id_not_null NOT NULL rbcat_id
+  CONSTRAINT rbcm_categories_rbcat_name_not_null NOT NULL rbcat_name
+  CONSTRAINT rbcm_categories_pkey PRIMARY KEY (rbcat_id)
+  CREATE UNIQUE INDEX rbcm_categories_pkey ON riftbound.rbcm_categories USING btree (rbcat_id)
+
+-- TABLE riftbound.rbcm_expansions
+  rbexp_id integer NOT NULL DEFAULT nextval('riftbound.rbcm_expansions_rbexp_id_seq'::regclass)
+  rbexp_name text
+  rbexp_rbset_id text
+  CONSTRAINT rbcm_expansions_rbexp_id_not_null NOT NULL rbexp_id
+  CONSTRAINT rbcm_expansions_pkey PRIMARY KEY (rbexp_id)
+  CREATE INDEX idx_rbcm_expansions_unmapped ON riftbound.rbcm_expansions USING btree (rbexp_rbset_id) WHERE (rbexp_rbset_id IS NULL)
+  CREATE UNIQUE INDEX rbcm_expansions_pkey ON riftbound.rbcm_expansions USING btree (rbexp_id)
+
+-- TABLE riftbound.rbcm_ignored
+  rbig_id_product integer NOT NULL
+  rbig_name text NOT NULL
+  rbig_ignored_at timestamp without time zone
+  CONSTRAINT rbcm_ignored_rbig_id_product_not_null NOT NULL rbig_id_product
+  CONSTRAINT rbcm_ignored_rbig_name_not_null NOT NULL rbig_name
+  CONSTRAINT rbcm_ignored_pkey PRIMARY KEY (rbig_id_product, rbig_name)
+  CREATE INDEX idx_rbcm_ignored_id ON riftbound.rbcm_ignored USING btree (rbig_id_product)
+  CREATE UNIQUE INDEX rbcm_ignored_pkey ON riftbound.rbcm_ignored USING btree (rbig_id_product, rbig_name)
+
+-- TABLE riftbound.rbcm_load_history
+  rblh_id integer NOT NULL DEFAULT nextval('riftbound.rbcm_load_history_rblh_id_seq'::regclass)
+  rblh_date text NOT NULL
+  rblh_file_type text NOT NULL
+  rblh_hash text NOT NULL
+  rblh_rows integer
+  rblh_status text
+  rblh_message text
+  rblh_loaded_at timestamp without time zone
+  CONSTRAINT rbcm_load_history_rblh_date_not_null NOT NULL rblh_date
+  CONSTRAINT rbcm_load_history_rblh_file_type_not_null NOT NULL rblh_file_type
+  CONSTRAINT rbcm_load_history_rblh_hash_not_null NOT NULL rblh_hash
+  CONSTRAINT rbcm_load_history_rblh_id_not_null NOT NULL rblh_id
+  CONSTRAINT rbcm_load_history_pkey PRIMARY KEY (rblh_id)
+  CREATE UNIQUE INDEX rbcm_load_history_pkey ON riftbound.rbcm_load_history USING btree (rblh_id)
+
+-- TABLE riftbound.rbcm_price
+  rbprc_date text NOT NULL
+  rbprc_id_product integer NOT NULL
+  rbprc_id_category integer
+  rbprc_avg numeric
+  rbprc_low numeric
+  rbprc_trend numeric
+  rbprc_avg1 numeric
+  rbprc_avg7 numeric
+  rbprc_avg30 numeric
+  rbprc_avg_foil numeric
+  rbprc_low_foil numeric
+  rbprc_trend_foil numeric
+  rbprc_avg1_foil numeric
+  rbprc_avg7_foil numeric
+  rbprc_avg30_foil numeric
+  rbprc_low_ex numeric
+  CONSTRAINT rbcm_price_rbprc_date_not_null NOT NULL rbprc_date
+  CONSTRAINT rbcm_price_rbprc_id_product_not_null NOT NULL rbprc_id_product
+  CONSTRAINT rbcm_price_pkey PRIMARY KEY (rbprc_date, rbprc_id_product)
+  CREATE UNIQUE INDEX rbcm_price_pkey ON riftbound.rbcm_price USING btree (rbprc_date, rbprc_id_product)
+
+-- TABLE riftbound.rbcm_product_card_map
+  rbpcm_id_product integer NOT NULL DEFAULT nextval('riftbound.rbcm_product_card_map_rbpcm_id_product_seq'::regclass)
+  rbpcm_rbset_id text NOT NULL
+  rbpcm_rbcar_id text NOT NULL
+  rbpcm_match_type text
+  rbpcm_confidence numeric
+  rbpcm_foil character varying(1)
+  CONSTRAINT rbcm_pcm_foil_chk CHECK (((rbpcm_foil IS NULL) OR ((rbpcm_foil)::text = ANY ((ARRAY['N'::character varying, 'S'::character varying])::text[]))))
+  CONSTRAINT rbcm_product_card_map_rbpcm_id_product_not_null NOT NULL rbpcm_id_product
+  CONSTRAINT rbcm_product_card_map_rbpcm_rbcar_id_not_null NOT NULL rbpcm_rbcar_id
+  CONSTRAINT rbcm_product_card_map_rbpcm_rbset_id_not_null NOT NULL rbpcm_rbset_id
+  CONSTRAINT rbcm_product_card_map_pkey PRIMARY KEY (rbpcm_id_product)
+  CREATE INDEX idx_rbcm_pcm_card_foil ON riftbound.rbcm_product_card_map USING btree (rbpcm_rbset_id, rbpcm_rbcar_id, rbpcm_foil)
+  CREATE UNIQUE INDEX rbcm_product_card_map_pkey ON riftbound.rbcm_product_card_map USING btree (rbpcm_id_product)
+
+-- TABLE riftbound.rbcm_products
+  rbprd_date text NOT NULL
+  rbprd_id_product integer NOT NULL
+  rbprd_name text NOT NULL
+  rbprd_id_category integer
+  rbprd_category_name text
+  rbprd_id_expansion integer
+  rbprd_id_metacard integer
+  rbprd_date_added text
+  rbprd_type text NOT NULL
+  CONSTRAINT rbcm_products_rbprd_date_not_null NOT NULL rbprd_date
+  CONSTRAINT rbcm_products_rbprd_id_product_not_null NOT NULL rbprd_id_product
+  CONSTRAINT rbcm_products_rbprd_name_not_null NOT NULL rbprd_name
+  CONSTRAINT rbcm_products_rbprd_type_not_null NOT NULL rbprd_type
+  CONSTRAINT rbcm_products_pkey PRIMARY KEY (rbprd_date, rbprd_id_product)
+  CREATE UNIQUE INDEX rbcm_products_pkey ON riftbound.rbcm_products USING btree (rbprd_date, rbprd_id_product)
+
+-- TABLE riftbound.rbcollection
+  rbcol_rbset_id text NOT NULL
+  rbcol_rbcar_id text NOT NULL
+  rbcol_foil text NOT NULL DEFAULT 'N'::text
+  rbcol_quantity text NOT NULL
+  rbcol_chadat timestamp without time zone NOT NULL
+  rbcol_user character varying(64) NOT NULL
+  rbcol_selling text DEFAULT 'N'::text
+  rbcol_playset integer
+  rbcol_sell_price numeric
+  rbcol_condition character varying(8)
+  rbcol_language character varying(40)
+  rbcol_id bigint NOT NULL DEFAULT nextval('riftbound.rbcollection_rbcol_id_seq'::regclass)
+  CONSTRAINT rbcollection_playset_chk CHECK (((rbcol_playset IS NULL) OR (rbcol_playset = ANY (ARRAY[1, 2, 3]))))
+  CONSTRAINT rbcollection_selling_chk CHECK ((rbcol_selling = ANY (ARRAY['Y'::text, 'N'::text, 'S'::text])))
+  CONSTRAINT rbcollection_rbcar_fk_1 FOREIGN KEY (rbcol_rbset_id, rbcol_rbcar_id) REFERENCES riftbound.rbcards(rbcar_rbset_id, rbcar_id) ON UPDATE CASCADE ON DELETE CASCADE
+  CONSTRAINT rbcollection_user_fk_1 FOREIGN KEY (rbcol_user) REFERENCES riftbound.rbusers(username) ON UPDATE CASCADE ON DELETE RESTRICT
+  CONSTRAINT rbcollection_rbcol_chadat_not_null1 NOT NULL rbcol_chadat
+  CONSTRAINT rbcollection_rbcol_foil_not_null1 NOT NULL rbcol_foil
+  CONSTRAINT rbcollection_rbcol_id_not_null NOT NULL rbcol_id
+  CONSTRAINT rbcollection_rbcol_quantity_not_null1 NOT NULL rbcol_quantity
+  CONSTRAINT rbcollection_rbcol_rbcar_id_not_null1 NOT NULL rbcol_rbcar_id
+  CONSTRAINT rbcollection_rbcol_rbset_id_not_null1 NOT NULL rbcol_rbset_id
+  CONSTRAINT rbcollection_rbcol_user_not_null NOT NULL rbcol_user
+  CONSTRAINT rbcollection_pk PRIMARY KEY (rbcol_id)
+  CREATE INDEX idx_rbcollection_selling ON riftbound.rbcollection USING btree (rbcol_user, rbcol_selling)
+  CREATE INDEX idx_rbcollection_user_card_foil ON riftbound.rbcollection USING btree (rbcol_user, rbcol_rbset_id, rbcol_rbcar_id, rbcol_foil)
+  CREATE UNIQUE INDEX rbcollection_pk ON riftbound.rbcollection USING btree (rbcol_id)
+
+-- TABLE riftbound.rbdecks
+  id integer NOT NULL DEFAULT nextval('riftbound.rbdecks_id_seq'::regclass)
+  rbdck_user character varying(80) NOT NULL
+  rbdck_name character varying(200) NOT NULL
+  rbdck_seq integer DEFAULT 1
+  rbdck_snapshot timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+  rbdck_description text
+  rbdck_mode character varying(50) DEFAULT '1v1'::character varying
+  rbdck_format character varying(50) DEFAULT 'Standard'::character varying
+  rbdck_max_set character varying(100)
+  rbdck_ncards integer DEFAULT 0
+  rbdck_orden numeric
+  rbdck_cards jsonb
+  CONSTRAINT fk_deck_user FOREIGN KEY (rbdck_user) REFERENCES riftbound.old1_rbusers(rbus_username)
+  CONSTRAINT rbdecks_id_not_null NOT NULL id
+  CONSTRAINT rbdecks_rbdck_name_not_null1 NOT NULL rbdck_name
+  CONSTRAINT rbdecks_rbdck_snapshot_not_null1 NOT NULL rbdck_snapshot
+  CONSTRAINT rbdecks_rbdck_user_not_null1 NOT NULL rbdck_user
+  CONSTRAINT rbdecks_pkey PRIMARY KEY (id)
+  CONSTRAINT rbdecks_rbdck_user_rbdck_name_rbdck_seq_key UNIQUE (rbdck_user, rbdck_name, rbdck_seq)
+  CREATE UNIQUE INDEX rbdecks_pkey ON riftbound.rbdecks USING btree (id)
+  CREATE UNIQUE INDEX rbdecks_rbdck_user_rbdck_name_rbdck_seq_key ON riftbound.rbdecks USING btree (rbdck_user, rbdck_name, rbdck_seq)
+
+-- TABLE riftbound.rbproducts
+  rbpdt_id_set text NOT NULL
+  rbpdt_id_product integer NOT NULL
+  rbpdt_name text NOT NULL
+  rbpdt_description text
+  rbpdt_type text
+  rbpdt_image_url text
+  rbpdt_image text
+  CONSTRAINT rbproducts_rbpdt_id_product_not_null NOT NULL rbpdt_id_product
+  CONSTRAINT rbproducts_rbpdt_id_set_not_null NOT NULL rbpdt_id_set
+  CONSTRAINT rbproducts_rbpdt_name_not_null NOT NULL rbpdt_name
+  CONSTRAINT rbproducts_pkey PRIMARY KEY (rbpdt_id_set, rbpdt_id_product)
+  CREATE UNIQUE INDEX rbproducts_pkey ON riftbound.rbproducts USING btree (rbpdt_id_set, rbpdt_id_product)
+
+-- TABLE riftbound.rbset
+  rbset_id text NOT NULL
+  rbset_name text NOT NULL
+  rbset_ncard smallint
+  rbset_outdat date
+  CONSTRAINT rbset_rbset_id_not_null NOT NULL rbset_id
+  CONSTRAINT rbset_rbset_name_not_null NOT NULL rbset_name
+  CONSTRAINT rbset_pk PRIMARY KEY (rbset_id)
+  CREATE UNIQUE INDEX rbset_pk ON riftbound.rbset USING btree (rbset_id)
+
+-- TABLE riftbound.rbusers
+  id integer NOT NULL DEFAULT nextval('riftbound.rbusers_id_seq'::regclass)
+  username character varying(64) NOT NULL
+  email character varying(120) NOT NULL
+  password_hash character varying(256) NOT NULL
+  created_at timestamp without time zone DEFAULT now()
+  CONSTRAINT rbusers_email_not_null NOT NULL email
+  CONSTRAINT rbusers_id_not_null NOT NULL id
+  CONSTRAINT rbusers_password_hash_not_null NOT NULL password_hash
+  CONSTRAINT rbusers_username_not_null NOT NULL username
+  CONSTRAINT rbusers_pkey PRIMARY KEY (id)
+  CONSTRAINT rbusers_email_key UNIQUE (email)
+  CONSTRAINT rbusers_username_key UNIQUE (username)
+  CREATE UNIQUE INDEX rbusers_email_key ON riftbound.rbusers USING btree (email)
+  CREATE UNIQUE INDEX rbusers_pkey ON riftbound.rbusers USING btree (id)
+  CREATE UNIQUE INDEX rbusers_username_key ON riftbound.rbusers USING btree (username)
+
+-- OTHER OBJECTS (v=view, m=matview, S=sequence)
+  S rbcm_categories_rbcat_id_seq
+  S rbcm_expansions_rbexp_id_seq
+  S rbcm_load_history_rblh_id_seq
+  S rbcm_product_card_map_rbpcm_id_product_seq
+  S rbcollection_rbcol_id_seq
+  S rbdecks_id_seq
+  S rbusers_id_seq
+  S rbusers_rbus_id_seq
+-- FUNCTIONS: 
+-- TRIGGERS: 

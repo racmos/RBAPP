@@ -1,0 +1,64 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Flask 3.1.0, Python 3.12 (venv/), SQLAlchemy 2.0.36 + Flask-SQLAlchemy 3.1.1, Pydantic 2.10.5, Flask-Login 0.6.3; Gunicorn + Nginx; all routes prefixed /riftbound.
+  Database: PostgreSQL (schema `riftbound`) in prod; SQLite in-memory in tests (conftest attaches `riftbound` schema). Schema is currently managed by raw SQL scripts in migrations/database/*.sql (no Alembic yet).
+  Architecture: blueprints per domain (app/routes/domains), models in app/models (Rb* classes, rb* tables, snake_case columns with table prefix e.g. rbcar_name), services in app/services, Jinja2 templates; JSON endpoints use @validate_json(Schema) -> request.validated_data.
+  Roadmap (openspec/roadmap.md): multi-phase rebuild. Flask becomes a JSON API under /riftbound/api/v1; new React + TypeScript + Vite PWA in frontend/ (added in phase F1, not present yet); migrations move to Flask-Migrate/Alembic; gradual coexistence with existing Jinja templates.
+  Testing: pytest 8.3.4 + pytest-flask + pytest-cov, tests/ with fixtures in tests/conftest.py; baseline = 93 passing. Frontend testing (vitest) will be added in F1.
+  Style: PEP 8 + type hints (AGENTS.md); no linter/formatter/type checker configured locally; CI = GitHub Actions (pytest --cov, bandit).
+
+strict_tdd: true
+
+testing:
+  strict_tdd: true
+  detected: 2026-10-18
+  runner:
+    framework: pytest 8.3.4 (+ pytest-flask 1.3.0)
+    command: "venv/bin/python -m pytest"
+    baseline: "93 passed"
+  layers:
+    unit: { available: true, tool: pytest }
+    integration: { available: true, tool: "pytest-flask / Flask test client (in-memory SQLite, authenticated_client fixture)" }
+    e2e: { available: false, tool: null }
+    frontend: { available: false, tool: null, note: "vitest will be added in phase F1 (frontend/ not present yet)" }
+  coverage:
+    available: true
+    command: "venv/bin/python -m pytest --cov=app --cov-report=term-missing"
+  quality:
+    linter: { available: false, command: null, note: "bandit runs in CI only (bandit -r app/ -ll); not installed in venv" }
+    type_checker: { available: false, command: null }
+    formatter: { available: false, command: null }
+
+rules:
+  proposal:
+    - Include rollback plan for every change (mandatory, not only risky ones)
+    - Identify affected modules/packages and which roadmap phase (F0, F1, ...) the change belongs to
+    - State the impact on existing Jinja routes/templates (coexistence during the gradual migration)
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - API specs MUST define route under /riftbound/api/v1, request/response JSON shape, and error format ({success, error, message})
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Any DB schema change MUST be designed as an Alembic migration (once Alembic exists) that is compatible with both PostgreSQL and SQLite
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+    - Under Strict TDD, order each unit as test (RED) before implementation (GREEN)
+  apply:
+    - Follow existing code patterns and conventions (blueprints in app/routes/domains, @validate_json, rb* naming)
+    - Keep the 93 existing tests green; new behavior ships with new tests
+    - Any DB schema change MUST ship as an Alembic migration (once Alembic exists) and MUST be PostgreSQL + SQLite compatible
+    - Do not break existing Jinja routes while the API is introduced
+    - Load relevant coding skills for the project stack
+  verify:
+    - Run venv/bin/python -m pytest (all 93 baseline tests must still pass)
+    - Compare implementation against every spec scenario
+    - Verify PostgreSQL + SQLite compatibility for schema changes
+    - Run frontend tests (vitest) once frontend/ exists (from F1)
+  archive:
+    - Warn before merging destructive deltas (large removals)

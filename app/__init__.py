@@ -1,31 +1,63 @@
 from flask import Flask
-from config import Config
+from dotenv import dotenv_values, load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
+from config import engine_options, load_settings, resolve_env, validate_settings
+
 db = SQLAlchemy()
 login = LoginManager()
 login.login_view = 'auth.login'
 
-def create_app(config_class=Config, **test_config):
-    # Get the absolute path to the app directory
-    app_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    app = Flask(__name__, 
-                static_folder=os.path.join(app_dir, 'static'),
-                static_url_path='/riftbound/static')
-    app.config.from_object(config_class)
-    
-    # Apply test configuration overrides before initializing extensions
-    if test_config:
-        app.config.update(test_config)
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    # Fix engine options and schema for SQLite (used in tests)
-    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+# `<repo>/.env`. Module-level so tests can point it at a temporary file.
+DOTENV_PATH = os.path.join(os.path.dirname(_APP_DIR), '.env')
+
+
+def _maybe_load_dotenv():
+    """Load `.env` into os.environ only when the effective environment is
+    development (CFG-4, D1). Real environment variables always win
+    (override=False).
+
+    When RB_ENV is unset the file may declare `RB_ENV=development` itself
+    (R15); the file is read for that one key without touching os.environ, and
+    applied only if it says development. An explicit RB_ENV=production or
+    testing never reads the file.
+    """
+    declared = (os.environ.get('RB_ENV') or '').strip()
+    if not declared:
+        declared = (dotenv_values(DOTENV_PATH).get('RB_ENV') or '').strip()
+    if declared.lower() == 'development':
+        load_dotenv(DOTENV_PATH, override=False)
+
+
+def create_app(**overrides):
+    """Application factory.
+
+    Flow (D1, D2): load `.env` if development -> resolve RB_ENV -> read the
+    environment -> apply `overrides` (tests) -> compute engine options from the
+    FINAL database URI -> validate. Validation runs last so overrides count.
+    """
+    _maybe_load_dotenv()
+    env = resolve_env(os.environ)
+
+    app = Flask(__name__,
+                static_folder=os.path.join(_APP_DIR, 'static'),
+                static_url_path='/riftbound/static')
+    app.config.update(load_settings(env, os.environ))
+
+    # Apply test configuration overrides before initializing extensions
+    app.config.update(overrides)
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_options(
+        app.config.get('SQLALCHEMY_DATABASE_URI'))
+    validate_settings(app.config, env)
+
+    # Schema handling for SQLite (used in tests)
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI') or ''
     if db_uri.startswith('sqlite'):
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
         # SQLite does not support schemas — patch all model __table_args__
         from sqlalchemy import event
         from sqlalchemy.engine import Engine
@@ -64,7 +96,14 @@ def create_app(config_class=Config, **test_config):
     db.init_app(app)
     login.init_app(app)
     # Asegurar que Flask respete X-Forwarded-* y X-Forwarded-Prefix enviados por NGINX
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=0)
+    # El número de saltos de confianza viene de PROXY_FIX_X_FOR/PROTO/HOST (CFG-7).
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=app.config['PROXY_FIX_X_FOR'],
+        x_proto=app.config['PROXY_FIX_X_PROTO'],
+        x_host=app.config['PROXY_FIX_X_HOST'],
+        x_prefix=0,
+    )
 
     # Landing page (root /)
     from app.routes.landing import landing_bp

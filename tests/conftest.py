@@ -2,9 +2,35 @@
 Pytest configuration and fixtures for Riftbound tests.
 """
 import os
+
+# D1: pin the environment BEFORE importing the app so `.env` is never read
+# and the production-only checks never run against the test overrides.
+os.environ['RB_ENV'] = 'testing'
+
 import pytest
 from unittest.mock import patch
 from app import create_app, db
+
+# Variables read by the app factory / entry points (unit a).
+CONFIG_ENV_NAMES = (
+    'RB_ENV', 'SECRET_KEY', 'DATABASE_URL', 'FLASK_DEBUG', 'RB_HOST', 'RB_PORT',
+    'PROXY_FIX_X_FOR', 'PROXY_FIX_X_PROTO', 'PROXY_FIX_X_HOST',
+)
+
+
+@pytest.fixture
+def clean_env(monkeypatch, tmp_path):
+    """Unset every config variable (restored on teardown, even when a test
+    triggers load_dotenv) and point the `.env` hook to a file that does not
+    exist, so a developer's real `.env` can never leak into config tests.
+    Returns the monkeypatch object for further setenv calls."""
+    import app as app_module
+    for name in CONFIG_ENV_NAMES:
+        monkeypatch.setenv(name, 'placeholder')   # registers the original state
+        monkeypatch.delenv(name)
+    monkeypatch.setattr(app_module, 'DOTENV_PATH', str(tmp_path / 'missing.env'))
+    return monkeypatch
+
 
 @pytest.fixture
 def app():

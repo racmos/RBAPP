@@ -2,6 +2,7 @@
 pytest==8.3.4
 pytest-cov==6.0.0
 pytest-flask==1.3.0
+PyYAML==6.0.3  # workflow-file tests (CI-1 and later)
 
 # Validation - Pydantic 2.10+ soporta Python 3.14
 pydantic==2.10.5
