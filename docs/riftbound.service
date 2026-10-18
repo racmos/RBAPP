@@ -7,7 +7,13 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/riftbound
 Environment="PATH=/var/www/riftbound/venv/bin"
-# Changed to port 8001 to free up 8000 for Landing Page
+# Secrets and settings live OUTSIDE the repo and this file (CFG-1, CFG-6).
+# Create /etc/riftbound/riftbound.env (mode 640, owner root:www-data) with at
+# least RB_ENV=production, SECRET_KEY and DATABASE_URL; see .env.example.
+# The old DB password and SECRET_KEY are in the git history: rotate both.
+EnvironmentFile=/etc/riftbound/riftbound.env
+# Gunicorn binds 0.0.0.0:8000 (a LAN-reachable port). Firewall port 8000 so only
+# the Nginx host can connect, or bind 127.0.0.1 when Nginx runs on this machine.
 ExecStart=/var/www/riftbound/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
 
 [Install]
