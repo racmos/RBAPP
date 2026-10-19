@@ -1,0 +1,21 @@
+{
+  "loading": "Cargando…",
+  "actions": {
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "reload": "Recargar",
+    "back": "Volver"
+  },
+  "password": {
+    "show": "Mostrar contraseña",
+    "hide": "Ocultar contraseña"
+  },
+  "skipToContent": "Saltar al contenido",
+  "toast": {
+    "region": "Notificaciones"
+  },
+  "loadingRegion": "Cargando contenido",
+  "errorState": {
+    "title": "No se pudo cargar"
+  }
+}

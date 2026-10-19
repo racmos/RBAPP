@@ -1,0 +1,71 @@
+@layer components {
+  /* A manual popover lives in the top layer, above open dialogs (D17). Where the Popover API is
+     missing the attribute is ignored and this fixed box with --z-toast is the fallback. */
+  .stack {
+    position: fixed;
+    inset: auto var(--pad) calc(var(--pad) + var(--safe-bottom)) auto;
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(380px, calc(100vw - 2 * var(--pad)));
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    overflow: visible;
+  }
+
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-3);
+    box-shadow: var(--shadow-pop);
+    font-size: 14px;
+  }
+
+  .success {
+    border-color: color-mix(in srgb, var(--green) 55%, transparent);
+  }
+
+  .error {
+    border-color: color-mix(in srgb, var(--red) 65%, transparent);
+  }
+
+  .message {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .action,
+  .close {
+    flex: none;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: rgba(120, 205, 228, 0.08);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .action {
+    border-color: var(--accent-ring);
+    color: var(--accent-bright);
+  }
+
+  .close {
+    min-width: 32px;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+}

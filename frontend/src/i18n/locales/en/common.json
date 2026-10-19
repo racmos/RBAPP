@@ -1,0 +1,21 @@
+{
+  "loading": "Loading…",
+  "actions": {
+    "close": "Close",
+    "retry": "Retry",
+    "reload": "Reload",
+    "back": "Back"
+  },
+  "password": {
+    "show": "Show password",
+    "hide": "Hide password"
+  },
+  "skipToContent": "Skip to content",
+  "toast": {
+    "region": "Notifications"
+  },
+  "loadingRegion": "Loading content",
+  "errorState": {
+    "title": "Could not load"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "code": {
+    "invalid_credentials": "Usuario o contraseña incorrectos.",
+    "locked": "Cuenta bloqueada temporalmente. Inténtalo de nuevo en {{retry_after}} s.",
+    "rate_limited": "Demasiadas peticiones. Inténtalo de nuevo en {{retry_after}} s.",
+    "username_taken": "Ese nombre de usuario ya está en uso.",
+    "email_taken": "Ese correo electrónico ya está registrado.",
+    "captcha_failed": "La verificación de seguridad ha fallado. Inténtalo de nuevo.",
+    "csrf_invalid": "La sesión del formulario ha caducado. Inténtalo de nuevo.",
+    "unauthenticated": "Tu sesión ha caducado. Inicia sesión de nuevo.",
+    "validation_error": "Revisa los datos del formulario."
+  },
+  "status": {
+    "400": "La solicitud no es válida.",
+    "401": "Necesitas iniciar sesión.",
+    "403": "No tienes permiso para hacer esto.",
+    "404": "No se encontró lo que buscas.",
+    "405": "Operación no permitida.",
+    "429": "Demasiadas peticiones. Espera un momento.",
+    "500": "Ha ocurrido un error inesperado. Inténtalo más tarde.",
+    "502": "El servicio no responde. Inténtalo más tarde.",
+    "503": "El servicio no está disponible temporalmente.",
+    "504": "El servicio ha tardado demasiado en responder."
+  },
+  "network": "No hay conexión con el servidor. Comprueba tu red e inténtalo de nuevo.",
+  "unknown": "Ha ocurrido un error inesperado.",
+  "validation": {
+    "required": "Este campo es obligatorio.",
+    "too_short": "Debe tener al menos {{min}} caracteres.",
+    "too_long": "Debe tener como máximo {{max}} caracteres.",
+    "invalid_format": "El formato no es válido.",
+    "invalid_value": "El valor no es válido.",
+    "out_of_range": "El valor está fuera de rango.",
+    "username": {
+      "invalid_format": "Usa de 3 a 32 caracteres: letras, números, punto, guion o guion bajo.",
+      "too_short": "El usuario debe tener al menos {{min}} caracteres.",
+      "too_long": "El usuario debe tener como máximo {{max}} caracteres."
+    },
+    "email": {
+      "invalid_format": "Introduce un correo electrónico válido."
+    },
+    "password": {
+      "too_short": "La contraseña debe tener al menos {{min}} caracteres.",
+      "too_long": "La contraseña debe tener como máximo {{max}} caracteres."
+    }
+  },
+  "route": {
+    "title": "Algo ha salido mal",
+    "body": "No se pudo mostrar esta pantalla.",
+    "chunk": "No se pudo cargar esta pantalla. Puede haber una versión nueva de la aplicación: recarga la página."
+  }
+}

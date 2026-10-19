@@ -1,0 +1,101 @@
+@layer components {
+  .title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
+
+  .subtitle {
+    margin: 6px 0 22px;
+    color: var(--muted);
+    font-size: 14.5px;
+    text-align: center;
+  }
+
+  .form {
+    display: grid;
+    gap: 16px;
+  }
+
+  .alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--red) 55%, transparent);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--red) 14%, transparent);
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .alertIcon {
+    flex: none;
+    margin-top: 1px;
+    color: var(--red-text);
+  }
+
+  .notice {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--accent-ring);
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    font-size: 14px;
+  }
+
+  .footer {
+    margin: 20px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .footer a {
+    color: var(--accent-bright);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .captcha {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  /* altcha 2.3.0 exposes its theme as custom properties, which cross the shadow boundary. */
+  .captcha altcha-widget {
+    --altcha-max-width: 100%;
+    --altcha-border-radius: var(--radius-sm);
+    --altcha-color-base: var(--panel-3);
+    --altcha-color-border: var(--line);
+    --altcha-color-text: var(--text);
+    --altcha-color-border-focus: var(--accent);
+    --altcha-color-error-text: var(--red-text);
+    --altcha-color-footer-bg: var(--panel-2);
+  }
+
+  .captchaLegend {
+    padding: 0;
+    margin-bottom: 6px;
+    color: var(--cyan);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+}
+
+@layer components {
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+}

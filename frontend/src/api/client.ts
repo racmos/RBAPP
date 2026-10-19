@@ -1,0 +1,124 @@
+import { clearCsrfToken, getCsrfToken, setCsrfToken } from './csrf';
+import { ApiError, errorFromResponse } from './errors';
+import type { SessionData } from './types';
+
+/** Base path of the API; `VITE_API_BASE` overrides it for a dev proxy (D12). */
+export const API_BASE: string = import.meta.env.VITE_API_BASE || '/riftbound/api/v1';
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+const UNSAFE = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+/** A 401 on these is an answer, not an expired session (FAUTH-7). */
+const AUTH_ANSWER_PATHS = new Set(['/auth/login', '/auth/logout']);
+
+type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+export type RequestOptions = { method?: Method; body?: unknown; signal?: AbortSignal };
+
+/** Options objects whose request is already on its single CSRF retry. */
+const retrying = new WeakSet<RequestOptions>();
+
+let unauthorizedHandler: (() => void) | null = null;
+
+/** The app registers what happens on an expired session (clear caches, go to /login). */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
+/** One fetch with the 15 s timeout. Resolves to the response; throws ApiError or the caller's abort. */
+async function send(
+  path: string,
+  { method = 'GET', body, signal }: RequestOptions,
+): Promise<Response> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const token = getCsrfToken();
+  if (UNSAFE.has(method) && token) headers['X-CSRFToken'] = token;
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  const relay = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener('abort', relay, { once: true });
+
+  try {
+    return await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      credentials: 'same-origin',
+      signal: controller.signal,
+    });
+  } catch (cause) {
+    if (timedOut) throw new ApiError({ kind: 'timeout' });
+    if (signal?.aborted) throw cause;
+    throw new ApiError({ kind: 'network' });
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', relay);
+  }
+}
+
+async function readJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return undefined;
+  }
+}
+
+let sessionInFlight: Promise<SessionData> | null = null;
+
+/** `GET /auth/session`: the account state and a CSRF token, which it stores. */
+export function getSession(): Promise<SessionData> {
+  sessionInFlight ??= request<SessionData>('/auth/session')
+    .then((data) => {
+      setCsrfToken(data.csrf_token);
+      return data;
+    })
+    .finally(() => {
+      sessionInFlight = null;
+    });
+  return sessionInFlight;
+}
+
+/**
+ * Typed `fetch` wrapper: unwraps `{success, data}`, throws `ApiError`, attaches the CSRF token
+ * to unsafe methods (fetching the session first when none is held) and retries once after a
+ * stale token (D12, FAUTH-6).
+ */
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const unsafe = UNSAFE.has(options.method ?? 'GET');
+  if (unsafe && !getCsrfToken()) await getSession();
+
+  const response = await send(path, options);
+  const body = await readJson(response);
+
+  if (response.ok) {
+    if (typeof body === 'object' && body !== null && 'data' in body && 'success' in body) {
+      return (body as { data: T }).data;
+    }
+    throw new ApiError({ kind: 'parse', status: response.status });
+  }
+
+  const error = errorFromResponse(response.status, body, response.headers);
+  if (
+    unsafe &&
+    response.status === 400 &&
+    error.code === 'csrf_invalid' &&
+    !retrying.has(options)
+  ) {
+    retrying.add(options);
+    try {
+      clearCsrfToken();
+      await getSession();
+      return await request<T>(path, options);
+    } finally {
+      retrying.delete(options);
+    }
+  }
+  if (response.status === 401 && !AUTH_ANSWER_PATHS.has(path)) unauthorizedHandler?.();
+  throw error;
+}

@@ -24,15 +24,15 @@ restart. Set it in the environment file only when the build lives elsewhere, for
 
 ## What Flask does with it
 
-| Request | Answer |
-|---|---|
-| `/riftbound/app` | redirect to `/riftbound/app/` |
-| `/riftbound/app/` | `index.html`, `Cache-Control: no-cache` |
-| `/riftbound/app/assets/<hashed file>` | the file, `public, max-age=31536000, immutable` |
+| Request                                                        | Answer                                           |
+| -------------------------------------------------------------- | ------------------------------------------------ |
+| `/riftbound/app`                                               | redirect to `/riftbound/app/`                    |
+| `/riftbound/app/`                                              | `index.html`, `Cache-Control: no-cache`          |
+| `/riftbound/app/assets/<hashed file>`                          | the file, `public, max-age=31536000, immutable`  |
 | `/riftbound/app/sw.js`, `workbox-*.js`, `manifest.webmanifest` | the file, `no-cache`, ETag (304 on revalidation) |
-| `/riftbound/app/account/interface` (no file extension) | `index.html` (a client-side route) |
-| `/riftbound/app/assets/missing.js` (extension, no such file) | 404, never `index.html` |
-| any path when `FRONTEND_DIST` has no `index.html` | 503 with the build command |
+| `/riftbound/app/account/interface` (no file extension)         | `index.html` (a client-side route)               |
+| `/riftbound/app/assets/missing.js` (extension, no such file)   | 404, never `index.html`                          |
+| any path when `FRONTEND_DIST` has no `index.html`              | 503 with the build command                       |
 
 Every response carries `X-Content-Type-Options: nosniff` and
 `Referrer-Policy: strict-origin-when-cross-origin` (the CSRF Referer check needs that
@@ -78,3 +78,74 @@ Nginx needs no change in F1: `/riftbound/` already proxies to Flask, so
    - `/riftbound/app/assets/missing.js` is a 404, not the app shell;
    - the Jinja pages, the landing page and `/riftbound/api/v1/health` still work;
    - the pending manual checks of the foundation phase (F0) pass.
+
+## Sign-in, sessions and CSRF (what the app does)
+
+The app and the Jinja pages share one session cookie, so signing in or out in either
+applies to both.
+
+- **Boot.** The app calls `GET /riftbound/api/v1/auth/session` before rendering any
+  guarded route and shows a loading state meanwhile, so a signed-in user never sees the
+  login form. The answer (`authenticated`, `user`, `prefs`) is the TanStack Query entry
+  `['session']`; it is refetched whenever the window regains focus, so a logout done in a
+  Jinja page or another tab is noticed.
+- **CSRF token.** It comes from `/auth/session`, is held in a module variable only and is
+  never written to `localStorage`, `sessionStorage` or a cookie. Every POST, PATCH, PUT
+  and DELETE sends it as `X-CSRFToken`. If the server answers `400` with
+  `code: "csrf_invalid"`, the client refetches the session and repeats the request once;
+  a second failure is shown as an error.
+- **Login.** `POST /auth/login` with `{username, password, remember}` ("Remember me" is
+  checked by default; the server then sets a 30-day `remember_token`). On success the app
+  refetches the session and goes to `next` or home. `next` is an absolute path such as
+  `/riftbound/app/account/interface`; `safeNext` accepts only paths under `/riftbound/`
+  (paths under `/riftbound/app/` stay in the router, others are a full page load) and sends
+  anything else home.
+- **Expired session.** A `401` from any call other than login or logout clears the query
+  cache, the "was signed in" hint and the CSRF token, and goes to
+  `/login?next=<where you were>`.
+- **Rate limits.** A `429` shows a countdown taken from `Retry-After` (or
+  `params.retry_after`), keeps the submit button disabled until it ends and announces the
+  start and the end politely.
+- **Register.** The page loads `/meta/config` and `/auth/captcha`. With provider `none`, or a
+  null challenge, there is no widget and no `altcha` field. Otherwise the ALTCHA widget
+  (npm `altcha` 2.3.0, the same version as the Python pin in `requirements.txt`; a pytest
+  contract checks it) is loaded only on this route and the solved payload is sent as
+  `altcha`. A payload is single use and is consumed before the duplicate check, so after
+  any failed attempt the page fetches a new challenge and remounts the widget.
+- **Logout.** `POST /auth/logout`. A `200` and a `401` (already signed out) both clear the
+  cache and the hint, keep the current language in `rb_lang` and go to `/login`; any other
+  failure keeps the user signed in and shows an error toast.
+
+## Languages and error codes
+
+Text lives in `frontend/src/i18n/locales/{es,en}/{common,nav,auth,errors,prefs}.json`
+and is bundled (no translation requests at run time). Spanish is the typed source: a
+missing key fails `npm run typecheck`. `src/i18n/parity.test.ts` fails when a key exists
+in one language only, when the `{{placeholders}}` of a key differ, or when a plural
+group lacks a form the language needs. The language is the account preference, then
+`rb_lang` in `localStorage`, then the first supported entry of `navigator.languages`,
+then Spanish.
+
+Server errors are translated by `code` (`translateError` in `src/i18n/translateError.ts`):
+`errors:code.<code>` with the `params` interpolated, then the API `message`, then
+`errors:status.<http status>`, then `errors:unknown`. Field errors in `details[]` use
+`errors:validation.<field>.<code>`, then `errors:validation.<code>`, then the detail
+`message`.
+
+### How to add an error code
+
+1. Add the value to `ErrorCode` in `app/api/error_codes.py` (a field-level code goes to
+   `DetailCode`) and return it from the endpoint (`fail(..., code=ErrorCode.X)`).
+2. Add `code.<value>` to `frontend/src/i18n/locales/es/errors.json` and
+   `.../en/errors.json` (for a field-level code, `validation.<value>`).
+3. Run `pytest tests/test_frontend_contracts.py` (it fails until both catalogs have the
+   entry) and `npx vitest run src/i18n` in `frontend/`.
+
+An older server may answer without codes: `deriveCode` in `src/api/errors.ts` maps the
+F0 bodies (401 login, 409 duplicates, 429) so the screens still work.
+
+## Build output
+
+The production build writes `dist/.vite/manifest.json` (`build.manifest`). It lists the
+chunks and what imports what; `altcha` must appear only behind the dynamic import of
+`src/auth/RegisterPage.tsx`, never in the entry chunk of `/login`.

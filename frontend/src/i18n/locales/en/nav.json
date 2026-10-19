@@ -1,0 +1,12 @@
+{
+  "home": "Home",
+  "logout": "Sign out",
+  "logoutFailed": "Could not sign out. Please try again.",
+  "welcome": "Hello, {{username}}",
+  "underConstruction": "The new app is under construction.",
+  "notFound": {
+    "title": "Page not found",
+    "body": "The page you are looking for does not exist or is no longer available.",
+    "home": "Go to home"
+  }
+}

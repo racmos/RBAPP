@@ -1,0 +1,52 @@
+{
+  "code": {
+    "invalid_credentials": "Wrong username or password.",
+    "locked": "Account temporarily locked. Try again in {{retry_after}} s.",
+    "rate_limited": "Too many requests. Try again in {{retry_after}} s.",
+    "username_taken": "That username is already taken.",
+    "email_taken": "That email is already registered.",
+    "captcha_failed": "The security check failed. Please try again.",
+    "csrf_invalid": "The form session has expired. Please try again.",
+    "unauthenticated": "Your session has expired. Please sign in again.",
+    "validation_error": "Check the form data."
+  },
+  "status": {
+    "400": "The request is not valid.",
+    "401": "You need to sign in.",
+    "403": "You do not have permission to do this.",
+    "404": "What you are looking for was not found.",
+    "405": "Operation not allowed.",
+    "429": "Too many requests. Please wait a moment.",
+    "500": "An unexpected error occurred. Please try again later.",
+    "502": "The service is not responding. Please try again later.",
+    "503": "The service is temporarily unavailable.",
+    "504": "The service took too long to respond."
+  },
+  "network": "Cannot reach the server. Check your connection and try again.",
+  "unknown": "An unexpected error occurred.",
+  "validation": {
+    "required": "This field is required.",
+    "too_short": "Must be at least {{min}} characters.",
+    "too_long": "Must be at most {{max}} characters.",
+    "invalid_format": "The format is not valid.",
+    "invalid_value": "The value is not valid.",
+    "out_of_range": "The value is out of range.",
+    "username": {
+      "invalid_format": "Use 3 to 32 characters: letters, numbers, dot, hyphen or underscore.",
+      "too_short": "The username must be at least {{min}} characters.",
+      "too_long": "The username must be at most {{max}} characters."
+    },
+    "email": {
+      "invalid_format": "Enter a valid email address."
+    },
+    "password": {
+      "too_short": "The password must be at least {{min}} characters.",
+      "too_long": "The password must be at most {{max}} characters."
+    }
+  },
+  "route": {
+    "title": "Something went wrong",
+    "body": "This screen could not be shown.",
+    "chunk": "This screen could not be loaded. There may be a new version of the app: reload the page."
+  }
+}

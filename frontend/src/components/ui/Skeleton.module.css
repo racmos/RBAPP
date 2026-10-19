@@ -1,0 +1,38 @@
+@layer components {
+  .skeleton {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .line {
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(
+      90deg,
+      rgba(120, 205, 228, 0.08),
+      rgba(120, 205, 228, 0.18),
+      rgba(120, 205, 228, 0.08)
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  .line:nth-child(odd) {
+    width: 100%;
+  }
+
+  .line:nth-child(even) {
+    width: 72%;
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
