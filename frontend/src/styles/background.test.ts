@@ -48,6 +48,15 @@ describe('background.css image layer (DS-5)', () => {
     expect(css).not.toContain('image-set');
   });
 
+  it('uses the map turned 90 degrees on portrait screens, so phones are not zoomed in', () => {
+    const portrait = declsOf('html::before', 'media (orientation: portrait)');
+    expect(portrait['background-image']).toContain('new_rift-portrait.webp');
+    // after the width query, so it wins on narrow portrait screens too
+    expect(css.indexOf('orientation: portrait')).toBeGreaterThan(
+      css.indexOf('max-width: 859.98px'),
+    );
+  });
+
   it('does not repeat the 1280 map outside the phone query', () => {
     const outside = all.filter(
       (rule) =>

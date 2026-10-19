@@ -10,7 +10,8 @@ Sources for files the build derives; nothing in this folder is shipped.
 ## Background images
 
 `src/assets/bg/new_rift-1920.webp` is `new_rift.webp` copied unchanged; `new_rift-1280.webp`
-(shown below 860 px, R5) is derived from it. Regenerate both, and commit the outputs, with:
+(shown below 860 px, R5) and `new_rift-portrait.webp` (the map turned 90 degrees, shown on
+portrait screens so phones are not zoomed in) are derived from it. Regenerate them, and commit the outputs, with:
 
 ```bash
 cd frontend

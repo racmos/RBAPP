@@ -3,7 +3,8 @@
    --bg-image-opacity; ::after is the overlay gradients (--bg-overlay). bgVars() and
    applyBackground() in lib/background.ts set the variables on <html>. The layer is inset by
    3 % so the blurred edges stay off screen. The 1280 px map is chosen by viewport width, not
-   by pixel density (R5). */
+   by pixel density (R5); portrait screens get the map turned 90 degrees, which fits them
+   without zooming in. */
 @layer base {
   html {
     background: var(--bg-0);
@@ -34,6 +35,12 @@
   @media (max-width: 859.98px) {
     html::before {
       background-image: url('../assets/bg/new_rift-1280.webp');
+    }
+  }
+
+  @media (orientation: portrait) {
+    html::before {
+      background-image: url('../assets/bg/new_rift-portrait.webp');
     }
   }
 

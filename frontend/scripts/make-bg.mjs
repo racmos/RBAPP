@@ -16,3 +16,12 @@ await sharp(source)
   .resize({ width: 1280 })
   .webp({ quality: 74, effort: 6 })
   .toFile(out('new_rift-1280.webp'));
+
+// Portrait screens: the map turned 90 degrees (1079x1920 before resizing). The board is
+// symmetric, so it still reads as the map, and a tall phone covers it with little zoom
+// instead of blowing up a thin slice of the landscape image.
+await sharp(source)
+  .rotate(90)
+  .resize({ height: 1600 })
+  .webp({ quality: 74, effort: 6 })
+  .toFile(out('new_rift-portrait.webp'));
