@@ -6,7 +6,8 @@ from app import limiter
 from app.schemas.validators import LoginRequest, RegisterRequest
 from app.services import auth as auth_service
 from app.services.captcha import FORM_FIELD as CAPTCHA_FIELD, get_captcha_provider
-from app.services.auth import AuthStatus, DuplicateUserError
+from app.services.auth import (AuthStatus, DuplicateUserError, LOGIN_RATE_LIMIT,
+                               REGISTER_RATE_LIMIT)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/riftbound')
 
@@ -34,7 +35,7 @@ def _form_errors(error: ValidationError) -> list[str]:
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-@limiter.shared_limit('10/minute;50/hour', scope='login', exempt_when=_not_post)
+@limiter.shared_limit(LOGIN_RATE_LIMIT, scope='login', exempt_when=_not_post)
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
@@ -66,7 +67,7 @@ def login():
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
-@limiter.limit('5/hour', exempt_when=_not_post)
+@limiter.shared_limit(REGISTER_RATE_LIMIT, scope='register', exempt_when=_not_post)
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))

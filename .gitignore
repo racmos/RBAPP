@@ -25,3 +25,8 @@ app/static/images/cards/**/
 # Runtime data (legacy-table backups contain emails and password hashes; never commit)
 instance/
 legacy_tables_*.sql
+
+# Frontend (F1): dependencies and build output
+node_modules/
+frontend/dist/
+.vite/

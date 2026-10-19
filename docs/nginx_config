@@ -1,4 +1,30 @@
 # =====================================================================
+# Nginx template for Riftbound (production layout).
+#
+# One Flask application, served by Gunicorn on port 8000 (see
+# docs/riftbound.service), answers BOTH paths:
+#   /            the public landing page (it is no longer a separate app)
+#   /riftbound/  the application and its JSON API (/riftbound/api/v1)
+#
+# Replace the server name, the certificate paths and the upstream address with
+# your own. Keep every address and credential out of the repository.
+#
+# Dev topology: the public Nginx may run on a separate proxy host that forwards
+# to the host running Gunicorn; then point the upstream below at that host
+# instead of 127.0.0.1. The app trusts exactly one proxy hop
+# (PROXY_FIX_X_FOR / PROXY_FIX_X_PROTO / PROXY_FIX_X_HOST = 1, the defaults), so
+# exactly one proxy may sit between the browser and Gunicorn. If you chain a
+# second one, raise the PROXY_FIX_* values to the real number of hops, otherwise
+# the client IP (rate limit, lockout) and the scheme are wrong. The proxy must
+# pass Host, X-Forwarded-Proto and X-Forwarded-For, and must not strip Referer.
+# =====================================================================
+
+# Gunicorn (run:app). Port 8000 must be firewalled so only this host reaches it.
+upstream riftbound_app {
+    server 127.0.0.1:8000;
+}
+
+# =====================================================================
 # Rate limit for the login / register forms and the API auth endpoints
 # (LOGIN-7). Goes at http level (this file is included there).
 #
@@ -18,15 +44,8 @@ limit_req_zone $rb_auth_limit_key zone=rb_auth:10m rate=20r/m;
 limit_req_status 429;
 
 server {
-    if ($host = www.racmosdev.es) {
-        return 301 https://$host$request_uri;
-    }
-    if ($host = racmosdev.es) {
-        return 301 https://$host$request_uri;
-    }
-
     listen 80;
-    server_name racmosdev.es www.racmosdev.es;
+    server_name racmosdev.online www.racmosdev.online;
 
     location / {
         return 301 https://$host$request_uri;
@@ -35,41 +54,15 @@ server {
 
 server {
     listen 443 ssl;
-    server_name racmosdev.es www.racmosdev.es;
+    server_name racmosdev.online www.racmosdev.online;
 
-    # Certificados SSL existentes
-    ssl_certificate /etc/letsencrypt/live/racmosdev.es/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/racmosdev.es/privkey.pem;
+    # Existing SSL certificates
+    ssl_certificate /etc/letsencrypt/live/racmosdev.online/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/racmosdev.online/privkey.pem;
 
-    # Seguridad básica
+    # Basic hardening
     add_header X-Frame-Options SAMEORIGIN;
     add_header X-Content-Type-Options nosniff;
-
-    # =================================================================
-    # 1. NUEVA LANDING PAGE (Ruta Raíz /) - AHORA EN PUERTO 8000
-    # =================================================================
-
-    # Aplicación FastAPI (Gunicorn + UvicornWorker en puerto 8000)
-    location / {
-    # Landing Page movida a 8001
-    proxy_pass http://192.168.1.31:8001;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-
-    # Soporte WebSocket
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-}
-
-    # =================================================================
-    # 2. APLICACIÓN EXISTENTE (/riftbound/) - AHORA EN PUERTO 8001
-    # =================================================================
-    location /riftbound/ {
-    # Main App movida a 8000 (puerto principal)
-    proxy_pass http://192.168.1.31:8000;
 
     # The app trusts exactly these three headers (ProxyFix, PROXY_FIX_X_* = 1):
     #  - Host and X-Forwarded-Proto: CSRF protection (Flask-WTF) checks on HTTPS that the
@@ -80,18 +73,24 @@ server {
     # Do NOT strip the Referer header and do not send `Referrer-Policy: no-referrer`
     # from Nginx: the browser would then omit it and every HTTPS POST would fail the
     # CSRF check (the default policy, strict-origin-when-cross-origin, is fine).
+    # Declared once here; both locations inherit them.
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-
-    # Login / register / API auth: at most 20 requests per minute per IP (+ a burst of 10),
-    # see the zone at the top of this file. Over the limit: 429.
-    limit_req zone=rb_auth burst=10 nodelay;
-
-    # CRITICO para que ProxyFix/DispatcherMiddleware sepan el prefijo
-    # proxy_set_header X-Forwarded-Prefix /riftbound;
-
     proxy_redirect off;
-}
+
+    # Landing page and its HTMX partials (/api/noticias, ...), static frames.
+    location / {
+        proxy_pass http://riftbound_app;
+    }
+
+    # The application and the JSON API.
+    location /riftbound/ {
+        proxy_pass http://riftbound_app;
+
+        # Login / register / API auth: at most 20 requests per minute per IP (+ a burst of 10),
+        # see the zone at the top of this file. Over the limit: 429.
+        limit_req zone=rb_auth burst=10 nodelay;
+    }
 }

@@ -96,7 +96,10 @@ class TestMultipartUpload:
         return tmp_path
 
     def upload(self, client, token=None):
-        headers = {'X-CSRFToken': token} if token else {}
+        # `fetch` (what the page uses for the upload) sends Accept: */*.
+        headers = {'Accept': '*/*'}
+        if token:
+            headers['X-CSRFToken'] = token
         return client.post(
             '/riftbound/card/upload_image', headers=headers, content_type='multipart/form-data',
             data={'set_id': 'ogn', 'image': (io.BytesIO(b'png-bytes'), 'ogn_1.png')})
@@ -125,8 +128,15 @@ class TestErrorFormat:
         assert resp.content_type.startswith('text/html')
         assert b'csrf-token' in resp.data          # an error page that extends base.html
 
-    def test_a_form_post_without_accept_gets_json(self, client, csrf_app):
+    def test_a_form_post_without_accept_gets_an_html_page(self, client, csrf_app):
+        # API-8: a request with no Accept header is treated as HTML (it was JSON
+        # under the interim predicate of unit d).
         resp = client.post('/riftbound/login', data={'username': 'x', 'password': 'y'})
+        assert resp.status_code == 400
+        assert resp.content_type.startswith('text/html')
+
+    def test_a_json_post_without_accept_gets_json(self, client, csrf_app):
+        resp = client.post('/riftbound/login', json={'username': 'x', 'password': 'y'})
         assert resp.status_code == 400
         assert resp.get_json()['error'] == 'CSRF Error'
 

@@ -12,8 +12,10 @@ is named in the message, so adding a route forces a decision. `fnmatch`
 wildcards cover whole blueprints (`price.*`, `landing.*`). Units d and e add
 their rules here.
 
-"Anonymous denial" is asserted for HTML clients only (302 to the login page);
-the JSON 401 arrives with the error negotiation of unit e (R14).
+"Anonymous denial" has two shapes (API-8, R14): HTML clients (no Accept, or a
+browser's) get a 302 to the login page; JSON clients (`Accept: application/json`,
+a JSON body) and everything under /riftbound/api/ get a JSON 401, never a
+redirect.
 
 No test here may reach the internet: `requests.Session.request` is replaced by
 a recorder that raises, and the A-class tests assert nothing was recorded for a
@@ -26,6 +28,8 @@ from types import SimpleNamespace
 import pytest
 import requests
 
+from tests.conftest import login_as
+
 # endpoint pattern -> class
 MATRIX = {
     # --- public -----------------------------------------------------------
@@ -33,8 +37,15 @@ MATRIX = {
     'landing.*': 'P',                       # landing page, HTMX partials, frames
     'auth.login': 'P',
     'auth.register': 'P',
+    'api_v1.health': 'P',                   # JSON API v1 (unit e)
+    'api_v1.meta_config': 'P',
+    'api_v1.auth_session': 'P',
+    'api_v1.auth_captcha': 'P',
+    'api_v1.auth_login': 'P',
+    'api_v1.auth_register': 'P',
     # --- authenticated ----------------------------------------------------
     'auth.logout': 'U',
+    'api_v1.auth_logout': 'U',
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',
@@ -51,6 +62,10 @@ MATRIX = {
 }
 
 LOGIN_PATH = '/riftbound/login'
+API_PREFIX = '/riftbound/api/'
+# Endpoints that end the caller's session: always requested last.
+LOGOUT_ENDPOINTS = ('auth.logout', 'api_v1.auth_logout')
+JSON = {'Accept': 'application/json'}
 
 
 def classify(rule):
@@ -81,18 +96,24 @@ def method_for(rule):
     return 'GET' if 'GET' in methods else sorted(methods)[0]
 
 
-def call(client, rule):
-    """Request `rule` with an empty form (no JSON, no Accept) so the answer is
-    what a plain browser form post would get."""
+def call(client, rule, **headers):
+    """Request `rule` with an empty form (no JSON, no Accept unless given) so the
+    answer is what a plain browser form post would get."""
     method = method_for(rule)
     url = sample_url(rule)
     if method == 'GET':
-        return client.get(url)
-    return client.open(url, method=method, data={})
+        return client.get(url, headers=headers)
+    return client.open(url, method=method, data={}, headers=headers)
 
 
 def is_login_redirect(resp):
     return resp.status_code == 302 and resp.headers.get('Location', '').startswith(LOGIN_PATH)
+
+
+def is_json_401(resp):
+    body = resp.get_json(silent=True) or {}
+    return (resp.status_code == 401 and 'Location' not in resp.headers
+            and body.get('success') is False and body.get('error') == 'Unauthorized')
 
 
 def is_denied(resp):
@@ -114,9 +135,9 @@ def outbound(monkeypatch):
 
 @pytest.fixture
 def rules(app):
-    """Every rule, with logout last: it ends the session of the client that calls it."""
+    """Every rule, with the logouts last: they end the session of the client that calls them."""
     return sorted(app.url_map.iter_rules(),
-                  key=lambda r: (r.endpoint == 'auth.logout', r.endpoint, r.rule))
+                  key=lambda r: (r.endpoint in LOGOUT_ENDPOINTS, r.endpoint, r.rule))
 
 
 def failures_for(rules_, wanted_class, check):
@@ -131,9 +152,14 @@ def failures_for(rules_, wanted_class, check):
 
 
 def expect_login_redirect(client):
+    """Anonymous denial for a plain (HTML) client: a redirect to the login page,
+    except under /riftbound/api/, which always answers a JSON 401."""
     def check(rule):
         resp = call(client, rule)
-        if not is_login_redirect(resp):
+        if rule.rule.startswith(API_PREFIX):
+            if not is_json_401(resp):
+                return f'expected a JSON 401 under the API prefix, got {resp.status_code}'
+        elif not is_login_redirect(resp):
             return f'expected a redirect to {LOGIN_PATH}, got {resp.status_code}'
     return check
 
@@ -201,12 +227,16 @@ class TestAuthenticatedRules:
     def test_ordinary_users_and_admins_get_through(self, app, authenticated_client,
                                                    admin_client, rules, outbound):
         def check(rule):
-            for who, client in (('user', authenticated_client), ('admin', admin_client)):
+            for who, client, username in (('user', authenticated_client, 'testuser'),
+                                          ('admin', admin_client, 'admin')):
+                if rule.endpoint in LOGOUT_ENDPOINTS:
+                    # An earlier logout rule ended this session: start a new one.
+                    login_as(client, username)
                 resp = call(client, rule)
-                if rule.endpoint == 'auth.logout':
-                    # Logging out redirects to the login page by design: prove it
-                    # ran with a live session by checking the session is gone.
-                    if resp.status_code != 302 or client.get('/riftbound/').status_code != 302:
+                if rule.endpoint in LOGOUT_ENDPOINTS:
+                    # Logging out answers 302 (form) or 200 (API) by design: prove
+                    # it ran with a live session by checking the session is gone.
+                    if resp.status_code not in (200, 302) or client.get('/riftbound/').status_code != 302:
                         return f'{who}: logout did not end the session'
                 elif is_denied(resp):
                     return f'{who} was denied with {resp.status_code}'
@@ -235,4 +265,43 @@ class TestAdminRules:
             if is_denied(resp):
                 return f'admin was denied with {resp.status_code}'
         failed = failures_for(rules, 'A', check)
+        assert not failed, '\n'.join(failed)
+
+
+# ---------------------------------------------------------------------------
+# Anonymous JSON clients (API-8, R14)
+# ---------------------------------------------------------------------------
+
+class TestAnonymousJsonClients:
+    def test_every_protected_rule_answers_a_json_401(self, app, client, rules, outbound):
+        def check(rule):
+            resp = call(client, rule, **JSON)
+            if not is_json_401(resp):
+                return f'expected a JSON 401, got {resp.status_code} {resp.content_type}'
+        failed = failures_for(rules, 'U', check) + failures_for(rules, 'A', check)
+        assert not failed, '\n'.join(failed)
+
+    def test_both_protected_classes_were_checked(self, rules):
+        assert sum(classify(r) == 'U' for r in rules) > 10
+        assert sum(classify(r) == 'A' for r in rules) > 25
+
+    def test_a_json_body_alone_is_enough(self, app, client, rules, outbound):
+        post_rules = [r for r in rules if classify(r) in ('U', 'A') and 'POST' in r.methods]
+        assert len(post_rules) > 20
+
+        def check(rule):
+            resp = client.post(sample_url(rule), json={})
+            if not is_json_401(resp):
+                return f'expected a JSON 401, got {resp.status_code}'
+        failed = failures_for(post_rules, 'U', check) + failures_for(post_rules, 'A', check)
+        assert not failed, '\n'.join(failed)
+        assert outbound == []
+
+    def test_public_rules_never_answer_401_to_anonymous_json_clients(self, app, client, rules,
+                                                                    outbound):
+        def check(rule):
+            resp = call(client, rule, **JSON)
+            if resp.status_code in (401, 403):
+                return f'denied with {resp.status_code}'
+        failed = failures_for(rules, 'P', check)
         assert not failed, '\n'.join(failed)

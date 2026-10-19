@@ -41,6 +41,12 @@ from app.models import User
 from app.schemas.validators import RegisterRequest
 from app.utils import clock
 
+# Per-IP request limits of the login and register endpoints (LOGIN-7, D15). The Jinja
+# forms and the JSON API share ONE budget each (same `scope`), so switching front door
+# does not reset the count.
+LOGIN_RATE_LIMIT = '10/minute;50/hour'
+REGISTER_RATE_LIMIT = '5/hour'
+
 USERNAME_TAKEN = 'Username already exists'
 EMAIL_TAKEN = 'Email already registered'
 

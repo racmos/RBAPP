@@ -169,10 +169,19 @@ class TestNonAdminCannotChangeTheCatalog:
         assert b'<html' in resp.data.lower()
 
     @pytest.mark.parametrize('path, body', CATALOG_WRITES)
-    def test_anonymous_callers_are_sent_to_login_not_403(self, catalog, client, path, body):
-        resp = client.post(f'/riftbound/{path}', json=body)
+    def test_anonymous_html_callers_are_sent_to_login_not_403(self, catalog, client, path, body):
+        resp = client.post(f'/riftbound/{path}', data={k: str(v) for k, v in body.items()})
         assert resp.status_code == 302
         assert resp.headers['Location'].startswith('/riftbound/login')
+
+    @pytest.mark.parametrize('path, body', CATALOG_WRITES)
+    def test_anonymous_json_callers_get_a_401_not_403_nor_a_redirect(self, catalog, client,
+                                                                     path, body):
+        # R14: with the error negotiation of unit e a JSON client gets the 401 envelope.
+        resp = client.post(f'/riftbound/{path}', json=body)
+        assert resp.status_code == 401
+        assert resp.json['success'] is False and resp.json['error'] == 'Unauthorized'
+        assert 'Location' not in resp.headers
 
 
 class TestAdminCanChangeTheCatalog:
