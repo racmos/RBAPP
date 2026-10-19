@@ -1,0 +1,45 @@
+/* App background (DS-5, D19). Two fixed layers behind the content:
+   ::before is the map, blurred and darkened by --bg-image-filter and shown at
+   --bg-image-opacity; ::after is the overlay gradients (--bg-overlay). bgVars() and
+   applyBackground() in lib/background.ts set the variables on <html>. The layer is inset by
+   3 % so the blurred edges stay off screen. The 1280 px map is chosen by viewport width, not
+   by pixel density (R5). */
+@layer base {
+  html {
+    background: var(--bg-0);
+  }
+
+  html::before,
+  html::after {
+    content: '';
+    position: fixed;
+    z-index: var(--z-bg);
+    pointer-events: none;
+  }
+
+  html::before {
+    inset: -3%;
+    background-image: url('../assets/bg/new_rift-1920.webp');
+    background-size: cover;
+    background-position: center;
+    filter: var(--bg-image-filter);
+    opacity: var(--bg-image-opacity);
+  }
+
+  html::after {
+    inset: 0;
+    background: var(--bg-overlay);
+  }
+
+  @media (max-width: 859.98px) {
+    html::before {
+      background-image: url('../assets/bg/new_rift-1280.webp');
+    }
+  }
+
+  /* 0 % means no image: it is never downloaded. Also hidden until bgVars() has run. */
+  html[data-bg='off']::before,
+  html:not([data-bg])::before {
+    display: none;
+  }
+}

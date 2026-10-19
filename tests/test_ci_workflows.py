@@ -254,43 +254,78 @@ class TestMigrationsJobShape:
 
 # CI-5 -------------------------------------------------------------------------
 
-class TestFrontendPlaceholderJob:
-    def test_exists(self):
-        assert 'frontend' in _ci()['jobs']
+class TestFrontendJob:
+    """CI-5 after unit a (R9): `frontend/package.json` exists, so no step is guarded."""
 
-    def test_guard_is_hashfiles_on_the_steps_not_on_the_job(self):
-        # GitHub forbids hashFiles in a job-level `if` (R10): the guard is per step
+    @staticmethod
+    def _steps():
+        return _ci()['jobs']['frontend']['steps']
+
+    def test_exists_and_the_frontend_project_is_in_the_repository(self):
+        assert 'frontend' in _ci()['jobs']
+        assert (ROOT / 'frontend' / 'package.json').is_file()
+        assert (ROOT / 'frontend' / 'package-lock.json').is_file()
+
+    def test_no_step_is_skipped_by_a_hashfiles_guard(self):
         job = _ci()['jobs']['frontend']
         assert 'hashFiles' not in str(job.get('if', ''))
-        guarded = [s for s in job['steps'] if "hashFiles('frontend/package.json')" in str(s.get('if', ''))]
-        assert len(guarded) >= 5
-        unguarded = [s for s in job['steps'] if s not in guarded]
-        # the only step that may run without the guard is the checkout
-        assert [str(s.get('uses', '')).split('@')[0] for s in unguarded] == ['actions/checkout']
+        for step in self._steps():
+            assert 'hashFiles' not in str(step.get('if', '')), step.get('name')
+            assert 'if' not in step, step.get('name')
 
-    def test_runs_install_lint_typecheck_vitest_and_build(self):
-        job = _ci()['jobs']['frontend']
-        text = _run_text(job)
-        for command in ('npm ci', 'lint', 'typecheck', 'vitest run', 'build'):
-            assert command in text
-        assert text.index('npm ci') < text.index('lint') < text.index('typecheck') \
-            < text.index('vitest run') < text.index('build')
+    def test_steps_run_in_the_documented_order(self):
+        steps = self._steps()
+        shape = [
+            (str(step['uses']).split('@')[0], None) if 'uses' in step else (None, step['run'])
+            for step in steps
+        ]
+        assert shape == [
+            ('actions/checkout', None),
+            ('actions/setup-node', None),
+            (None, 'npm ci'),
+            (None, 'npm run lint'),
+            (None, 'npm run typecheck'),
+            (None, 'npx vitest run'),
+            (None, 'npm run build'),
+            (None, 'npm run check:dist'),
+            ('actions/upload-artifact', None),
+        ]
 
-    def test_node_version_comes_from_nvmrc(self):
-        job = _ci()['jobs']['frontend']
-        setup = _steps_using(job, 'actions/setup-node')
-        assert [s['with']['node-version-file'] for s in setup] == ['.nvmrc']
+    def test_node_version_comes_from_nvmrc_with_the_npm_cache_of_the_lockfile(self):
+        setup = _steps_using(_ci()['jobs']['frontend'], 'actions/setup-node')
+        assert [s['with'] for s in setup] == [{
+            'node-version-file': '.nvmrc',
+            'cache': 'npm',
+            'cache-dependency-path': 'frontend/package-lock.json',
+        }]
         assert (ROOT / '.nvmrc').read_text().strip()
+
+    def test_the_commands_run_inside_the_frontend_directory(self):
+        job = _ci()['jobs']['frontend']
+        assert job['defaults']['run']['working-directory'] == 'frontend'
+
+    def test_the_dist_is_uploaded_as_the_frontend_dist_artifact(self):
+        uploads = _steps_using(_ci()['jobs']['frontend'], 'actions/upload-artifact')
+        assert len(uploads) == 1
+        assert uploads[0]['uses'] == 'actions/upload-artifact@v4'
+        assert uploads[0]['with'] == {
+            'name': 'frontend-dist',
+            'path': 'frontend/dist',
+            'if-no-files-found': 'error',
+            'retention-days': 7,
+        }
+
+    def test_the_workflow_still_grants_only_read_access(self):
+        assert _ci()['permissions'] == {'contents': 'read'}
+        assert 'permissions' not in _ci()['jobs']['frontend']
 
     def test_nvmrc_is_a_pinned_major_version(self):
         assert re.fullmatch(r'v?\d+(\.\d+){0,2}', (ROOT / '.nvmrc').read_text().strip())
 
-    def test_the_workflow_does_not_need_a_frontend_directory(self):
-        assert not (ROOT / 'frontend' / 'package.json').exists()
-        # steps that touch frontend/ are all guarded, so the job passes while it is absent
-        for step in _ci()['jobs']['frontend']['steps']:
-            if 'frontend' in str(step.get('with', '')) or 'working-directory' in step:
-                assert 'hashFiles' in str(step.get('if', ''))
+    def test_no_step_swallows_a_failure(self):
+        for step in self._steps():
+            assert step.get('continue-on-error') in (None, False)
+            assert '|| true' not in step.get('run', '')
 
 
 # CI-6 -------------------------------------------------------------------------
@@ -332,3 +367,24 @@ class TestRepositoryHygiene:
     def test_gitignore_has_the_frontend_entries(self, entry):
         lines = [line.strip() for line in (ROOT / '.gitignore').read_text().splitlines()]
         assert entry in lines
+
+
+# CI-9 -------------------------------------------------------------------------
+
+class TestFrontendHygiene:
+    def test_dist_is_ignored_by_git(self):
+        import subprocess
+        # a file inside, so the answer does not depend on `frontend/dist` existing (clean checkout)
+        result = subprocess.run(['git', 'check-ignore', '-q', 'frontend/dist/index.html'], cwd=ROOT)
+        assert result.returncode == 0
+
+    def test_node_modules_and_the_vite_cache_are_ignored_too(self):
+        import subprocess
+        for path in ('frontend/node_modules/react/index.js', 'frontend/.vite/deps/x.js'):
+            assert subprocess.run(['git', 'check-ignore', '-q', path], cwd=ROOT).returncode == 0, path
+
+    def test_the_lockfile_is_not_ignored(self):
+        import subprocess
+        lock = 'frontend/package-lock.json'
+        assert (ROOT / lock).is_file()
+        assert subprocess.run(['git', 'check-ignore', '-q', lock], cwd=ROOT).returncode == 1

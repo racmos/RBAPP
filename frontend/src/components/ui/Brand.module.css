@@ -1,0 +1,17 @@
+@layer components {
+  /* Heights are the default sizes; callers override through className. */
+  .brand {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    user-select: none;
+  }
+
+  .mark {
+    height: 2rem;
+  }
+
+  .wordmark {
+    height: 2rem;
+  }
+}

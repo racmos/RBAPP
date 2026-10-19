@@ -66,6 +66,20 @@ TEST_POSTGRES_URL=postgresql+psycopg://user:password@localhost:5432/riftbound_te
 
 CI (GitHub Actions) runs the suite on Python 3.12 and the PostgreSQL tests on PostgreSQL 18.
 
+## Frontend
+
+The React app in `frontend/` needs Node 24 (`.nvmrc`):
+
+```bash
+cd frontend
+nvm use                # Node 24
+npm ci
+npm run dev            # Vite dev server, proxies the API to Flask on 127.0.0.1:5000
+npm run build          # production build in frontend/dist
+```
+
+`npm run lint`, `npm run typecheck` and `npx vitest run` are what CI runs besides the build.
+
 ## Database migrations
 
 The schema is built and changed only by Alembic (`flask db ...`); see [docs/migrations.md](docs/migrations.md) for the full runbook, including how to back up first.

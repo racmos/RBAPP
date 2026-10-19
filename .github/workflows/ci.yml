@@ -83,9 +83,8 @@ jobs:
         run: |
           TEST_POSTGRES_URL='postgresql+psycopg://rb:rb@localhost:5432/riftbound_test' pytest -m postgres
 
-  # Placeholder for the React app (F1). While `frontend/package.json` does not
-  # exist every Node step is skipped and the job passes. `hashFiles` is not
-  # allowed in a job-level `if`, so each step carries the guard (CI-5).
+  # The React app (F1). Every step runs: `frontend/package.json` exists (CI-5).
+  # The dist is uploaded for the deploy step; it needs no write permission.
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -94,24 +93,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm ci
       - name: Lint
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm run lint
       - name: Typecheck
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm run typecheck
       - name: Unit tests
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npx vitest run
       - name: Build
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm run build
+      - name: Check the build output
+        run: npm run check:dist
+      - name: Upload the build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          if-no-files-found: error
+          retention-days: 7
