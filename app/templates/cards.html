@@ -129,7 +129,11 @@
 
 <!-- Toolbar con Paginación CENTRADA -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    {% if current_user.is_admin %}
     <button onclick="openAddModal()" class="btn btn-primary">Add New Card</button>
+    {% else %}
+    <span></span>
+    {% endif %}
 
     <!-- PAGINACIÓN EN EL CENTRO -->
     {% if pagination.pages > 1 %}
@@ -181,7 +185,7 @@
                 <th>Power</th>
                 <th>Might</th>
                 <th>Banned</th>
-                <th>Actions</th>
+                {% if current_user.is_admin %}<th>Actions</th>{% endif %}
             </tr>
         </thead>
         <tbody>
@@ -207,8 +211,10 @@
                 <td>{{ card.rbcar_power or '-' }}</td>
                 <td>{{ card.rbcar_might or '-' }}</td>
                 <td>{{ card.rbcar_banned }}</td>
+                {% if current_user.is_admin %}
                 <td><button onclick="openEditModal({{ loop.index0 }})" class="btn btn-secondary btn-sm">Edit</button>
                 </td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
@@ -238,7 +244,9 @@
                         class="banned-badge {% if card.rbcar_banned == 'S' %}banned-yes{% else %}banned-no{% endif %}">
                         {% if card.rbcar_banned == 'S' %}BANNED{% else %}ALLOWED{% endif %}
                     </span>
+                    {% if current_user.is_admin %}
                     <button onclick="openEditModal({{ loop.index0 }})" class="btn btn-secondary btn-sm">Edit</button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -246,6 +254,7 @@
     </div>
 </div>
 
+{% if current_user.is_admin %}
 <div id="addModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -473,6 +482,7 @@
         </form>
     </div>
 </div>
+{% endif %}
 <!-- Paginación INFERIOR (duplicada) -->
 {% if pagination.pages > 1 %}
 <div class="pagination" style="margin-top: 2rem;">
@@ -926,6 +936,7 @@
         this.appendChild(viewInput);
     });
 
+    {% if current_user.is_admin %}
     document.getElementById('add_rbcar_domain_selector').addEventListener('change', function () {
         if (this.value && !addSelectedDomains.includes(this.value)) {
             addSelectedDomains.push(this.value);
@@ -942,6 +953,7 @@
         }
         this.value = '';
     });
+    {% endif %}
 
     function updateDomainTags(mode = 'add') {
         const domains = mode === 'add' ? addSelectedDomains : editSelectedDomains;
@@ -1045,6 +1057,7 @@
         }
     }
 
+    {% if current_user.is_admin %}
     document.getElementById('addForm').addEventListener('submit', async function (e) {
         e.preventDefault();
 
@@ -1133,6 +1146,7 @@
             alert(result.message);
         }
     });
+    {% endif %}
 
 </script>
 {% endblock %}

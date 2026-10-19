@@ -630,6 +630,143 @@ class TestQuantityDowngrade:
         assert rows('SELECT rbcol_quantity FROM riftbound.rbcollection') == [('0',)]
 
 
+# --- 3.2 Revision 0004: rbusers.is_admin / is_blocked (ACL-1, D10, R1) -------
+
+USER_FLAGS = '0004_user_admin_flags'
+
+
+def user_columns():
+    return {c['name']: c for c in inspector().get_columns('rbusers', schema='riftbound')}
+
+
+@pytest.fixture
+def at_quantity(migration_app):
+    upgrade(QUANTITY)
+    return migration_app
+
+
+class TestUserAdminFlags:
+    def test_existing_users_are_neither_admin_nor_blocked(self, at_quantity):
+        seed_users('alice', 'bob')
+        upgrade(USER_FLAGS)
+        assert rows('SELECT username, is_admin, is_blocked FROM riftbound.rbusers'
+                    ' ORDER BY id') == [('alice', 0, 0), ('bob', 0, 0)]
+
+    def test_columns_are_boolean_not_null_with_a_false_default(self, at_quantity):
+        upgrade(USER_FLAGS)
+        columns = user_columns()
+        for name in ('is_admin', 'is_blocked'):
+            assert isinstance(columns[name]['type'], sa.Boolean), name
+            assert columns[name]['nullable'] is False, name
+        run("INSERT INTO riftbound.rbusers (username, email, password_hash)"
+            " VALUES ('new', 'new@x.io', 'h')")
+        assert rows("SELECT is_admin, is_blocked FROM riftbound.rbusers"
+                    " WHERE username = 'new'") == [(0, 0)]
+
+    def test_user_model_reads_the_flags_and_is_active_follows_is_blocked(self, at_quantity):
+        from app.models import User
+        seed_users('alice')
+        upgrade(USER_FLAGS)
+        user = User.query.filter_by(username='alice').one()
+        assert (user.is_admin, user.is_blocked, user.is_active) == (False, False, True)
+        user.is_blocked = True
+        assert user.is_active is False
+
+    def test_downgrade_drops_both_columns_and_keeps_the_users(self, at_quantity):
+        seed_users('alice')
+        upgrade(USER_FLAGS)
+        run("UPDATE riftbound.rbusers SET is_admin = 1")
+        downgrade(QUANTITY)
+        assert {'is_admin', 'is_blocked'}.isdisjoint(user_columns())
+        assert rows('SELECT username FROM riftbound.rbusers') == [('alice',)]
+
+    def test_unique_constraints_survive_the_table_rebuild(self, at_quantity):
+        upgrade(USER_FLAGS)
+        assert {u['name'] for u in inspector().get_unique_constraints(
+            'rbusers', schema='riftbound')} == {'rbusers_username_key', 'rbusers_email_key'}
+
+    def test_no_drift_at_this_revision(self, at_quantity):
+        # The models carry the flags, so head must equal them (comments revision aside).
+        upgrade()
+        assert drift() == []
+
+
+# --- 3.0 Revision 0004a: table / column COMMENTs (found in 2.34) --------------
+#
+# The dev database carries COMMENTs the models and 0001 did not know, so
+# `flask db check` on dev was never clean. Models now declare them and 0004a
+# sets them (PostgreSQL only; SQLite has no comments). Alembic's SQLite
+# comparison ignores comments, so the migration's text is pinned against the
+# models here, and `test_migrations_pg` checks the real thing on PostgreSQL.
+
+SCHEMA_COMMENTS = '0004a_schema_comments'
+COMMENTED_TABLES = {
+    'rbcardmarket', 'rbcards', 'rbcm_expansions', 'rbcm_ignored', 'rbcm_price',
+    'rbcm_product_card_map', 'rbcollection', 'rbset',
+}
+
+
+def load_revision(filename):
+    """The migration module as Alembic sees it (loaded from its file)."""
+    import importlib.util
+    path = ROOT / 'migrations' / 'versions' / filename
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def model_comments():
+    """{table: {'table': text|None, 'columns': {name: text}}} declared on the models."""
+    found = {}
+    for table in db.metadata.tables.values():
+        columns = {c.name: c.comment for c in table.columns if c.comment}
+        if table.comment or columns:
+            found[table.name] = {'table': table.comment, 'columns': columns}
+    return found
+
+
+class TestSchemaComments:
+    def test_revision_chains_after_the_admin_flags(self):
+        module = load_revision('0004a_schema_comments.py')
+        assert (module.revision, module.down_revision) == (SCHEMA_COMMENTS, USER_FLAGS)
+
+    def test_exactly_the_dev_tables_carry_comments_on_the_models(self, migration_app):
+        assert set(model_comments()) == COMMENTED_TABLES
+
+    @pytest.mark.parametrize('table, text', [
+        ('rbset', 'Tabla de expansiones'),
+        ('rbcards', 'Tabla de cartas'),
+        ('rbcollection', 'Tabla de cartas en posesión'),
+        ('rbcardmarket', 'Tabla de precios de Cardmarket'),
+    ])
+    def test_table_comment_text_is_the_one_dev_has(self, migration_app, table, text):
+        assert db.metadata.tables[f'riftbound.{table}'].comment == text
+
+    def test_column_comments_keep_the_dev_text_including_accents(self, migration_app):
+        tables_ = db.metadata.tables
+        assert tables_['riftbound.rbset'].c.rbset_name.comment == 'Nombre expansión'
+        assert tables_['riftbound.rbcards'].c.rbcar_banned.comment == (
+            'Si ha sido baneada para jugarse en competitivo, S o N')
+        assert tables_['riftbound.rbcm_price'].c.rbprc_low_ex.comment == (
+            'Precio minimo ex+ (excluye foil)')
+
+    def test_the_migration_sets_exactly_what_the_models_declare(self, migration_app):
+        module = load_revision('0004a_schema_comments.py')
+        assert module.COMMENTS == model_comments()
+
+    def test_sqlite_upgrade_and_downgrade_leave_the_schema_untouched(self, migration_app):
+        upgrade(USER_FLAGS)
+        before = structure()
+        upgrade(SCHEMA_COMMENTS)
+        assert rows('SELECT version_num FROM riftbound.alembic_version') == [(SCHEMA_COMMENTS,)]
+        assert structure() == before
+        assert drift() == []
+        downgrade(USER_FLAGS)
+        assert rows('SELECT version_num FROM riftbound.alembic_version') == [(USER_FLAGS,)]
+        assert structure() == before
+
+
 # --- 2.19 Models match the migrated schema (MIG-6, MIG-7) ---------------------
 
 

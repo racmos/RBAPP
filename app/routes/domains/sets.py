@@ -4,6 +4,7 @@ Sets routes module with Pydantic validation.
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from app import db
+from app.security import admin_required
 from app.models import RbSet
 from app.schemas.validators import SetCreate, SetUpdate
 from app.schemas.validation import validate_json
@@ -29,7 +30,7 @@ def sets():
 
 
 @sets_bp.route('/add', methods=['POST'])
-@login_required
+@admin_required
 @validate_json(SetCreate)
 def add_set():
     """Add a new set."""
@@ -55,7 +56,7 @@ def add_set():
 
 
 @sets_bp.route('/update/<set_id>', methods=['POST'])
-@login_required
+@admin_required
 @validate_json(SetUpdate)
 def update_set(set_id):
     """Update an existing set."""

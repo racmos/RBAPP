@@ -3,6 +3,7 @@ Price routes module with Pydantic validation.
 """
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
+from pydantic import ValidationError
 from sqlalchemy import func
 from app import db
 from app.models import RbSet, RbCard
@@ -15,9 +16,14 @@ from app.schemas.validators import (
     IgnoredAdd, IgnoredRestore, AutoMatchApply,
 )
 from app.schemas.validation import validate_json
+from app.security import require_admin
 from app.services.cardmarket_loader import CARDMARKET_URLS
 
 price_bp = Blueprint('price', __name__, url_prefix='/riftbound/price')
+
+# ACL-3: every price route is admin-only. A blueprint hook (not per-view
+# decorators) so routes added later are covered automatically.
+price_bp.before_request(require_admin)
 
 
 @price_bp.route('')
@@ -87,18 +93,30 @@ def extract_riot_cards():
 def cardmarket_load():
     """Load Cardmarket data tables (price guide + products)."""
     from app.services.cardmarket_loader import CardmarketLoader, CARDMARKET_URLS
-    
+
+    # Overrides are checked against the allow-list BEFORE anything is downloaded (ACL-7).
+    data = request.get_json(silent=True)
     try:
-        # Build URLs dict with optional overrides from request
-        data = request.get_json(silent=True) or {}
+        overrides = CardmarketLoad(**(data if isinstance(data, dict) else {}))
+    except ValidationError as e:
+        problems = [f"{'.'.join(str(p) for p in err['loc'])}: "
+                    f"{err['msg'].removeprefix('Value error, ')}" for err in e.errors()]
+        return jsonify({
+            'success': False,
+            'error': 'Validation Error',
+            'message': '; '.join(problems),
+        }), 400
+
+    try:
+        # Build URLs dict with the (validated) optional overrides
         urls = dict(CARDMARKET_URLS)
-        if data.get('singles_url'):
-            urls['singles'] = data['singles_url']
-        if data.get('nonsingles_url'):
-            urls['nonsingles'] = data['nonsingles_url']
-        if data.get('price_guide_url'):
-            urls['price_guide'] = data['price_guide_url']
-        
+        if overrides.singles_url:
+            urls['singles'] = overrides.singles_url
+        if overrides.nonsingles_url:
+            urls['nonsingles'] = overrides.nonsingles_url
+        if overrides.price_guide_url:
+            urls['price_guide'] = overrides.price_guide_url
+
         loader = CardmarketLoader()
         result = loader.run(urls=urls)
         return jsonify(result)

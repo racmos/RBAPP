@@ -38,7 +38,7 @@ class RbcmPrice(db.Model):
     rbprc_avg1_foil = db.Column(db.Numeric)
     rbprc_avg7_foil = db.Column(db.Numeric)
     rbprc_avg30_foil = db.Column(db.Numeric)
-    rbprc_low_ex = db.Column(db.Numeric)                         # low ex+ price tier
+    rbprc_low_ex = db.Column(db.Numeric, comment='Precio minimo ex+ (excluye foil)')  # low ex+ price tier
 
 
 class RbcmCategory(db.Model):
@@ -68,7 +68,10 @@ class RbcmExpansion(db.Model):
 
     rbexp_id = db.Column(db.Integer, primary_key=True)
     rbexp_name = db.Column(db.Text)
-    rbexp_rbset_id = db.Column(db.Text, nullable=True)
+    rbexp_rbset_id = db.Column(
+        db.Text, nullable=True,
+        comment='FK blanda (sin constraint) al set interno riftbound.rbset.rbset_id. '
+                'NULL = expansión de Cardmarket sin mapear todavía al catálogo de la app.')
 
 
 class RbcmLoadHistory(db.Model):
@@ -104,7 +107,7 @@ class RbcmProductCardMap(db.Model):
     rbpcm_id_product = db.Column(db.Integer, primary_key=True)
     rbpcm_rbset_id = db.Column(db.Text, nullable=False)
     rbpcm_rbcar_id = db.Column(db.Text, nullable=False)
-    rbpcm_foil = db.Column(db.String(1), nullable=True)          # 'N' | 'S' | NULL
+    rbpcm_foil = db.Column(db.String(1), nullable=True, comment='N=normal, S=foil, NULL=no aplica (rare/epic) o mapping legacy')  # 'N' | 'S' | NULL
     rbpcm_match_type = db.Column(db.Text, default='manual')      # auto | manual
     rbpcm_confidence = db.Column(db.Numeric)
 
@@ -118,12 +121,14 @@ class RbcmIgnored(db.Model):
     __tablename__ = 'rbcm_ignored'
     __table_args__ = (
         db.Index('idx_rbcm_ignored_id', 'rbig_id_product'),
-        {"schema": "riftbound"},
+        {"schema": "riftbound",
+         "comment": 'Products explicitly ignored by users in the mappings browser. '
+                    'Identified by (idProduct, name) composite PK.'},
     )
 
-    rbig_id_product = db.Column(db.Integer, primary_key=True)
-    rbig_name = db.Column(db.Text, primary_key=True)
-    rbig_ignored_at = db.Column(db.DateTime, default=db.func.now())
+    rbig_id_product = db.Column(db.Integer, primary_key=True, comment='Cardmarket idProduct')
+    rbig_name = db.Column(db.Text, primary_key=True, comment='Product name (part of composite PK to distinguish variants)')
+    rbig_ignored_at = db.Column(db.DateTime, default=db.func.now(), comment='When the product was ignored')
 
 
 class RbProducts(db.Model):

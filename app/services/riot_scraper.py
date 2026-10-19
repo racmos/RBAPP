@@ -1,7 +1,10 @@
 """
 Riot Card Gallery scraper.
 Fetches card data + images from https://riftbound.leagueoflegends.com/en-us/card-gallery/
-Inserts into rbcards table and saves images to app/static/images/cards/<set_id>/
+Inserts into rbcards table and saves each image under
+<static>/images/cards/<folder>/, where <folder> is the one `RbCard.image_src`
+reads from: the filename prefix ('ogn_257.png' -> ogn/, also for the OGNX promo
+set), else the lower-cased set id (see `card_image_folder`).
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import requests
 from flask import current_app
 from app import db
 from app.models import RbCard, RbSet
+from app.services.card_images import card_image_path
 
 logger = logging.getLogger(__name__)
 
@@ -369,20 +373,23 @@ def extract_riot_cards(filter_sets: list[str] | None = None) -> dict:
     # Step 4: Download images
     steps.append({'step': '4. Download images', 'status': 'RUNNING', 'message': 'Downloading card images...'})
     try:
-        # Resolve images base dir
         static_dir = current_app.static_folder or os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static'
         )
-        cards_img_base = os.path.join(static_dir, 'images', 'cards')
 
         for card_data in parsed_cards:
-            set_folder = os.path.join(cards_img_base, card_data['rbcar_rbset_id'].lower())
-            Path(set_folder).mkdir(parents=True, exist_ok=True)
+            # Same folder rule the UI reads with; refuses anything outside images/cards/.
+            try:
+                dest = card_image_path(static_dir, card_data['image'], card_data['rbcar_rbset_id'])
+            except ValueError as e:
+                logger.warning(f"Image skipped for {card_data['rbcar_rbset_id']}-{card_data['rbcar_id']}: {e}")
+                stats['images_failed'] += 1
+                continue
 
-            dest = os.path.join(set_folder, card_data['image'])
             if os.path.exists(dest):
                 stats['images_existed'] += 1
             else:
+                Path(dest).parent.mkdir(parents=True, exist_ok=True)
                 if _download_image(session, card_data['image_url'], dest):
                     stats['images_downloaded'] += 1
                 else:

@@ -1,10 +1,13 @@
 """
 Cards routes module with Pydantic validation.
 """
-from flask import Blueprint, render_template, request, jsonify
+import re
+from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required
 from app import db
+from app.security import admin_required
 from app.models import RbSet, RbCard
+from app.services.card_images import card_image_path
 from app.schemas.validators import CardCreate, CardUpdate
 from app.schemas.validation import validate_json
 from sqlalchemy import or_, func, cast, Integer
@@ -141,7 +144,7 @@ def cards():
 
 
 @cards_bp.route('/upload_image', methods=['POST'])
-@login_required
+@admin_required
 def upload_card_image():
     """Upload card image."""
     try:
@@ -153,6 +156,11 @@ def upload_card_image():
         
         if file.filename == '':
             return jsonify({'success': False, 'message': 'No file selected'}), 400
+
+        # The set id names a folder: letters and digits only (IMG-2).
+        if not re.fullmatch(r'[a-z0-9]+', set_id.lower()):
+            return jsonify({'success': False,
+                            'message': 'Invalid set id: use letters and digits only'}), 400
         
         file.seek(0, os.SEEK_END)
         file_length = file.tell()
@@ -165,10 +173,13 @@ def upload_card_image():
         if '.' not in filename or filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             return jsonify({'success': False, 'message': 'Invalid file type. Allowed: jpg, jpeg, png, webp'}), 400
         
-        upload_dir = os.path.join('app', 'static', 'images', 'cards', set_id.lower())
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        file_path = os.path.join(upload_dir, filename)
+        # Same folder rule the page reads with (IMG-1), rooted at the app's static
+        # folder (never the working directory), and never outside images/cards/.
+        try:
+            file_path = card_image_path(current_app.static_folder, filename, set_id)
+        except ValueError as e:
+            return jsonify({'success': False, 'message': f'Invalid image destination: {e}'}), 400
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         file.save(file_path)
         
         return jsonify({'success': True, 'filename': filename})
@@ -177,7 +188,7 @@ def upload_card_image():
 
 
 @cards_bp.route('/add', methods=['POST'])
-@login_required
+@admin_required
 @validate_json(CardCreate)
 def add_card():
     """Add a new card."""
@@ -211,7 +222,7 @@ def add_card():
 
 
 @cards_bp.route('/update/<set_id>/<card_id>', methods=['POST'])
-@login_required
+@admin_required
 @validate_json(CardUpdate)
 def update_card(set_id, card_id):
     """Update an existing card."""

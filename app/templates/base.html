@@ -21,7 +21,9 @@
                 <li><a href="{{ url_for('cards.cards') }}">Cards</a></li>
                 <li><a href="{{ url_for('collection.collection') }}">Collection</a></li>
                 <li><a href="{{ url_for('deck.deck') }}">Decks</a></li>
+                {% if current_user.is_admin %}
                 <li><a href="{{ url_for('price.price') }}">Price</a></li>
+                {% endif %}
                 <li><a href="{{ url_for('profile.profile') }}">Profile</a></li>
                 <li><a href="{{ url_for('auth.logout') }}" class="btn-danger">Logout</a></li>
             </ul>
