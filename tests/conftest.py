@@ -2,6 +2,7 @@
 Pytest configuration and fixtures for Riftbound tests.
 """
 import os
+from datetime import datetime, timedelta
 
 # D1: pin the environment BEFORE importing the app so `.env` is never read
 # and the production-only checks never run against the test overrides.
@@ -17,6 +18,11 @@ from app import create_app, db
 CONFIG_ENV_NAMES = (
     'RB_ENV', 'SECRET_KEY', 'DATABASE_URL', 'FLASK_DEBUG', 'RB_HOST', 'RB_PORT',
     'PROXY_FIX_X_FOR', 'PROXY_FIX_X_PROTO', 'PROXY_FIX_X_HOST',
+    # unit d
+    'SESSION_COOKIE_SECURE', 'REMEMBER_COOKIE_SECURE', 'WTF_CSRF_ENABLED',
+    'RATELIMIT_ENABLED', 'RATELIMIT_STORAGE_URI', 'CAPTCHA_PROVIDER', 'ALTCHA_HMAC_KEY',
+    'ALTCHA_EXPIRE_SECONDS', 'ALTCHA_MAX_NUMBER', 'LANDING_CACHE_TTL',
+    'LOGIN_MAX_FAILURES', 'LOGIN_LOCK_BASE_MINUTES', 'LOGIN_LOCK_MAX_MINUTES',
 )
 
 
@@ -50,9 +56,12 @@ def app():
     # first user loaded would be "logged in" for every other client too. Drop
     # it before each request so every test client is identified by its own
     # session cookie (needed once a test uses more than one client, ACL-8).
+    # Same for Flask-WTF's cached CSRF token (`g.csrf_token`): without this a
+    # second client would be handed the first client's token.
     @app.before_request
     def _forget_cached_login():
         g.pop('_login_user', None)
+        g.pop('csrf_token', None)
 
     with app.app_context():
         try:
@@ -177,6 +186,73 @@ def sample_card(app, sample_set):
         
         db.session.refresh(card)
         yield card
+
+
+# --- Unit d: protections that are OFF in the default `app` (4.4) ---------------
+#
+# The default `app` has CSRF, the rate limiter and the captcha off, so the 93
+# baseline tests (and everything written since) are untouched. These fixtures
+# turn ONE protection on, on top of `app`, so they combine with `make_user`,
+# `admin_client` and friends.
+#
+# Fixture ORDER matters when a test also asks for a logged-in client:
+# `admin_client` and `other_user_client` log in through the real form, so
+# request them BEFORE `csrf_app` (the login would otherwise need a token).
+
+@pytest.fixture
+def csrf_app(app):
+    """`app` with CSRF protection on (CSRFProtect reads the flag per request)."""
+    app.config['WTF_CSRF_ENABLED'] = True
+    yield app
+    app.config['WTF_CSRF_ENABLED'] = False
+
+
+@pytest.fixture
+def limited_app(app):
+    """`app` with the rate limiter on and empty counters. The limiter is a
+    process-wide singleton, so it is switched off and reset again on teardown."""
+    from app import limiter
+    app.config['RATELIMIT_ENABLED'] = True
+    limiter.enabled = True
+    limiter.reset()
+    yield app
+    limiter.reset()
+    limiter.enabled = False
+    app.config['RATELIMIT_ENABLED'] = False
+
+
+@pytest.fixture
+def altcha_app(app):
+    """`app` with the ALTCHA provider and a tiny `max_number`, so a test can
+    solve a challenge by brute force in milliseconds."""
+    app.config['CAPTCHA_PROVIDER'] = 'altcha'
+    app.config['ALTCHA_MAX_NUMBER'] = 1000
+    yield app
+    app.config['CAPTCHA_PROVIDER'] = 'none'
+
+
+class FrozenClock:
+    """Callable stand-in for `clock.utcnow` that only moves when told to."""
+
+    def __init__(self, now):
+        self.now = now
+
+    def __call__(self):
+        return self.now
+
+    def advance(self, **delta):
+        self.now = self.now + timedelta(**delta)
+        return self.now
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch):
+    """Freeze `app.utils.clock.utcnow` at 2030-01-01 12:00 UTC; call
+    `frozen_clock.advance(minutes=16)` to move it (no sleeping, D17)."""
+    from app.utils import clock
+    frozen = FrozenClock(datetime(2030, 1, 1, 12, 0, 0))
+    monkeypatch.setattr(clock, 'utcnow', frozen)
+    return frozen
 
 
 # --- Migrations (unit b) ------------------------------------------------------

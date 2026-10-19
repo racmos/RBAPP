@@ -4,6 +4,7 @@ from .card import RbCard
 from .collection import RbCollection
 from .market import RbCardMarket
 from .deck import RbDeck
+from .captcha import RbCaptchaUsed
 from .cardmarket import (
     RbcmProduct, RbcmPrice, RbcmCategory, RbcmExpansion,
     RbcmLoadHistory, RbcmProductCardMap, RbProducts, RbcmIgnored

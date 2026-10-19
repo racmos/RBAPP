@@ -1,7 +1,11 @@
 """
 Error handlers for the application.
 """
-from flask import render_template, jsonify
+import math
+import time
+
+from flask import render_template, jsonify, make_response, request
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 
 
@@ -65,6 +69,37 @@ def register_error_handlers(app):
             }), 400
         return render_template('errors/400.html', error=error), 400
     
+    @app.errorhandler(CSRFError)
+    def csrf_error(error):
+        """Missing, invalid or cross-origin CSRF token (CSRF-1, CSRF-2).
+
+        A browser navigation gets the HTML 400 page; everything else (fetch,
+        JSON, no Accept header) gets the JSON envelope.
+        """
+        if _browser_navigation():
+            return render_template('errors/400.html', error=error, csrf_error=True), 400
+        return jsonify({
+            'success': False,
+            'error': 'CSRF Error',
+            'message': error.description
+        }), 400
+
+    @app.errorhandler(429)
+    def too_many_requests(error):
+        """Rate limit hit (LOGIN-7): always carries an integer Retry-After."""
+        retry_after = _retry_after_seconds()
+        if _browser_navigation():
+            response = make_response(render_template('errors/429.html', error=error,
+                                                     retry_after=retry_after), 429)
+        else:
+            response = make_response(jsonify({
+                'success': False,
+                'error': 'Too Many Requests',
+                'message': 'Too many requests. Please wait before trying again.'
+            }), 429)
+        response.headers['Retry-After'] = str(retry_after)
+        return response
+
     @app.errorhandler(Exception)
     def handle_exception(error):
         """Handle all other exceptions."""
@@ -89,6 +124,28 @@ def register_error_handlers(app):
             }), 500
         
         return render_template('errors/500.html', error=error), 500
+
+
+def _retry_after_seconds(default=60):
+    """Seconds until the limit that was just hit resets (at least 1)."""
+    from app import limiter
+    current = limiter.current_limit
+    if current is None:
+        return default
+    reset_epoch = current.window[0]            # when the window of the breached limit ends
+    return max(1, math.ceil(reset_epoch - time.time()))
+
+
+def _browser_navigation():
+    """True when the client asked for a page: it prefers text/html over JSON.
+
+    Interim predicate for the CSRF handler; unit e replaces it with
+    `wants_json()` (D18). `fetch` sends `Accept: */*`, which resolves to JSON
+    here (first in the server list), and a request without Accept gets JSON too.
+    """
+    if request.is_json:
+        return False
+    return request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'text/html'
 
 
 def request_wants_json():

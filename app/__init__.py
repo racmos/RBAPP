@@ -3,6 +3,9 @@ from dotenv import dotenv_values, load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
@@ -13,6 +16,11 @@ db = SQLAlchemy()
 migrate = Migrate()
 login = LoginManager()
 login.login_view = 'auth.login'
+# CSRF for every unsafe method, no exemptions (CSRF-1, D14).
+csrf = CSRFProtect()
+# Per-IP limits (LOGIN-7, D15). get_remote_address reads request.remote_addr,
+# which ProxyFix already rewrote from X-Forwarded-For.
+limiter = Limiter(get_remote_address)
 
 _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -38,6 +46,23 @@ def _maybe_load_dotenv():
         declared = (dotenv_values(DOTENV_PATH).get('RB_ENV') or '').strip()
     if declared.lower() == 'development':
         load_dotenv(DOTENV_PATH, override=False)
+
+
+def _init_limiter(app):
+    """Wire Flask-Limiter into `app` and honour RATELIMIT_ENABLED.
+
+    Flask-Limiter registers its request hooks only when it is enabled at
+    `init_app` time. Here the hooks are always wired and the switch is read per
+    request (`limiter.enabled`), so a test fixture can turn the limiter on for
+    an existing app, exactly like CSRFProtect's WTF_CSRF_ENABLED. The limiter is
+    a process-wide singleton: the last app created decides, which is fine for
+    one app per process and for one test at a time.
+    """
+    enabled = bool(app.config.get('RATELIMIT_ENABLED', True))
+    app.config['RATELIMIT_ENABLED'] = True          # init_app returns early otherwise
+    limiter.init_app(app)
+    app.config['RATELIMIT_ENABLED'] = enabled
+    limiter.enabled = enabled
 
 
 def create_app(**overrides):
@@ -104,6 +129,8 @@ def create_app(**overrides):
     from app.cli import register_cli
     register_cli(app)
     login.init_app(app)
+    csrf.init_app(app)
+    _init_limiter(app)
     # Asegurar que Flask respete X-Forwarded-* y X-Forwarded-Prefix enviados por NGINX
     # El número de saltos de confianza viene de PROXY_FIX_X_FOR/PROTO/HOST (CFG-7).
     app.wsgi_app = ProxyFix(

@@ -9,7 +9,7 @@ phases:
   spec: done
   design: done
   tasks: done
-  apply: in_progress  # units a (PR #11) and b (PR #12) merged; dev DB at 0003; unit c implemented on feat/f0c-admin-authz (3.0-3.36, 3.38 done; 3.37 is USER: upgrade dev, promote racmos, restart); next unit d
+  apply: in_progress  # units a (#11), b (#12), c (#13) merged; unit d implemented on feat/f0d-csrf-login (4.1-4.29, 4.34 done; 4.30-4.33 manual/user pending, not committed); dev DB still at 0004a; next: user steps 4.30-4.33 then merge, then unit e
   verify: pending
   archive: pending
 updated: 2026-10-18

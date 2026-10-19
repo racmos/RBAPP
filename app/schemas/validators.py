@@ -262,6 +262,45 @@ class CollectionImportRow(BaseModel):
             raise ValueError(str(exc.errors()[0]['ctx']['error'])) from None
 
 
+# ============== Auth Schemas ==============
+
+USERNAME_PATTERN = re.compile(r'[A-Za-z0-9_.-]{3,32}')
+EMAIL_MAX_LENGTH = 120
+_EMAIL_PATTERN = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
+
+
+class LoginRequest(BaseModel):
+    """Login input (LOGIN-9): only non-empty. No username pattern, so legacy names such as
+    'Old User (1)' keep working; the upper bounds only stop absurd inputs."""
+    username: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=1, max_length=1024)
+
+
+class RegisterRequest(BaseModel):
+    """Register input (LOGIN-9), shared by the Jinja form and the API. Extra fields (for
+    example `is_admin`) are ignored by Pydantic and never reach the model."""
+    username: str = Field(...)
+    email: str = Field(...)
+    password: str = Field(..., min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        if not USERNAME_PATTERN.fullmatch(v):
+            raise ValueError('Username must be 3-32 characters: letters, digits, ".", "_" or "-"')
+        return v
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) > EMAIL_MAX_LENGTH:
+            raise ValueError(f'Email must have at most {EMAIL_MAX_LENGTH} characters')
+        if not _EMAIL_PATTERN.fullmatch(v):
+            raise ValueError('Invalid email format')
+        return v
+
+
 # ============== Profile Schemas ==============
 
 class ProfileUpdate(BaseModel):

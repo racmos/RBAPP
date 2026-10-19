@@ -15,6 +15,7 @@ from flask.cli import AppGroup
 from app import db
 from app.models import User
 from app.schemas.validators import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH
+from app.utils import clock
 
 users_cli = AppGroup('users', help='Manage user accounts (roles, blocking, passwords).')
 
@@ -89,8 +90,20 @@ def list_users():
         click.echo('No users.')
         return
     for user in accounts:
-        flags = [name for name, on in (('admin', user.is_admin), ('blocked', user.is_blocked)) if on]
+        locked = user.locked_until is not None and user.locked_until > clock.utcnow()
+        flags = [name for name, on in (('admin', user.is_admin), ('blocked', user.is_blocked),
+                                       ('locked', locked)) if on]
         click.echo(f"{user.username}  {user.email}  {','.join(flags)}".rstrip())
+
+
+@users_cli.command('unlock')
+@click.argument('username')
+def unlock(username):
+    """Clear USERNAME's failed-login count and temporary lock (LOGIN-6)."""
+    from app.services.auth import unlock_user
+    if not unlock_user(username):
+        raise click.ClickException(f"No such user: '{username}'")
+    click.echo(f"'{username}' is unlocked")
 
 
 # Spec names (ACL-6) for the same commands.

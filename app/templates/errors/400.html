@@ -6,7 +6,11 @@
 <div class="error-container">
     <h1>400</h1>
     <h2>Solicitud Inválida</h2>
+    {% if csrf_error %}
+    <p>No se pudo verificar la solicitud (token de seguridad ausente o caducado). Recarga la página e intenta de nuevo.</p>
+    {% else %}
     <p>La solicitud enviada no es válida. Por favor, verifica los datos e intenta de nuevo.</p>
+    {% endif %}
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Volver al Inicio</a>
 </div>
 {% endblock %}
