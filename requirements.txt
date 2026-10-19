@@ -21,6 +21,9 @@ Flask-Login==0.6.3
 psycopg[binary]==3.2.13
 SQLAlchemy==2.0.36
 Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.1.0
+alembic==1.20.0
+Mako==1.4.3
 
 # Utilities
 requests==2.32.3

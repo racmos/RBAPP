@@ -120,3 +120,52 @@ def sample_card(app, sample_set):
         
         db.session.refresh(card)
         yield card
+
+
+# --- Migrations (unit b) ------------------------------------------------------
+
+@pytest.fixture
+def migration_app(tmp_path):
+    """App on empty in-memory SQLite (`riftbound` attached) with NO create_all:
+    the schema is whatever Alembic builds. Legacy-table backups go to
+    `tmp_path/backups` (MIG-4). Yielded inside an app context."""
+    app = create_app(
+        TESTING=True,
+        SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
+        SECRET_KEY='test-secret-key',
+        LEGACY_BACKUP_DIR=str(tmp_path / 'backups'),
+    )
+    with app.app_context():
+        yield app
+        db.session.remove()
+        db.engine.dispose()
+
+
+@pytest.fixture
+def pg_url():
+    """URL of a throw-away PostgreSQL database (D20).
+
+    Skips unless TEST_POSTGRES_URL is set; REFUSES any database whose name does
+    not contain "test" (never point this at dev data). Schema `riftbound` is
+    dropped before and after each test, so each test starts from nothing and
+    `flask db upgrade` has to create it (MIG-1)."""
+    from sqlalchemy import create_engine, text
+    from tests.migration_helpers import checked_test_database_url
+
+    url = os.environ.get('TEST_POSTGRES_URL')
+    if not url:
+        pytest.skip('TEST_POSTGRES_URL is not set')
+    try:
+        checked_test_database_url(url)
+    except ValueError as exc:
+        pytest.fail(str(exc))
+
+    engine = create_engine(url, isolation_level='AUTOCOMMIT')
+    try:
+        with engine.connect() as conn:
+            conn.execute(text('DROP SCHEMA IF EXISTS riftbound CASCADE'))
+        yield url
+        with engine.connect() as conn:
+            conn.execute(text('DROP SCHEMA IF EXISTS riftbound CASCADE'))
+    finally:
+        engine.dispose()

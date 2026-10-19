@@ -58,7 +58,13 @@ class RbcmExpansion(db.Model):
     data tables y pide al usuario el set interno equivalente.
     """
     __tablename__ = 'rbcm_expansions'
-    __table_args__ = {"schema": "riftbound"}
+    # Índice parcial: solo las expansiones sin mapear (rbexp_rbset_id IS NULL).
+    __table_args__ = (
+        db.Index('idx_rbcm_expansions_unmapped', 'rbexp_rbset_id',
+                 postgresql_where=db.text('rbexp_rbset_id IS NULL'),
+                 sqlite_where=db.text('rbexp_rbset_id IS NULL')),
+        {"schema": "riftbound"},
+    )
 
     rbexp_id = db.Column(db.Integer, primary_key=True)
     rbexp_name = db.Column(db.Text)
@@ -88,7 +94,12 @@ class RbcmProductCardMap(db.Model):
     deja NULL.
     """
     __tablename__ = 'rbcm_product_card_map'
-    __table_args__ = {"schema": "riftbound"}
+    __table_args__ = (
+        db.CheckConstraint("rbpcm_foil IS NULL OR rbpcm_foil IN ('N', 'S')",
+                           name='rbcm_pcm_foil_chk'),
+        db.Index('idx_rbcm_pcm_card_foil', 'rbpcm_rbset_id', 'rbpcm_rbcar_id', 'rbpcm_foil'),
+        {"schema": "riftbound"},
+    )
 
     rbpcm_id_product = db.Column(db.Integer, primary_key=True)
     rbpcm_rbset_id = db.Column(db.Text, nullable=False)
@@ -105,7 +116,10 @@ class RbcmIgnored(db.Model):
     sharing the same idProduct but different names are tracked separately.
     """
     __tablename__ = 'rbcm_ignored'
-    __table_args__ = {"schema": "riftbound"}
+    __table_args__ = (
+        db.Index('idx_rbcm_ignored_id', 'rbig_id_product'),
+        {"schema": "riftbound"},
+    )
 
     rbig_id_product = db.Column(db.Integer, primary_key=True)
     rbig_name = db.Column(db.Text, primary_key=True)

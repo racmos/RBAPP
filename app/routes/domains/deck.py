@@ -130,12 +130,8 @@ def _enrich_cards_for_view(rbdeck, owner_username):
             db.tuple_(RbCollection.rbcol_rbset_id, RbCollection.rbcol_rbcar_id).in_(keys),
         ).all()
         for r in rows:
-            try:
-                q = int(r.rbcol_quantity)
-            except (TypeError, ValueError):
-                q = 0
             owned_by_key.setdefault((r.rbcol_rbset_id, r.rbcol_rbcar_id), 0)
-            owned_by_key[(r.rbcol_rbset_id, r.rbcol_rbcar_id)] += q
+            owned_by_key[(r.rbcol_rbset_id, r.rbcol_rbcar_id)] += r.rbcol_quantity
 
     def _build(c, sideboard_flag):
         set_id = c.get('set') or ''

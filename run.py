@@ -1,6 +1,6 @@
 import os
 
-from app import create_app, db
+from app import create_app
 
 app = create_app()
 
@@ -24,8 +24,6 @@ class PrefixMiddleware:
 #app.wsgi_app = PrefixMiddleware(app.wsgi_app, '/riftbound')
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     # Solo para desarrollo local (SESS-2): bind a loopback y debug apagado por
     # defecto. El debugger de Werkzeug solo se activa con FLASK_DEBUG=1 (y
     # create_app lo rechaza en produccion); ampliar el bind requiere RB_HOST.

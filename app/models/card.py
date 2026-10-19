@@ -17,7 +17,12 @@ def _image_folder(image_filename):
 
 class RbCard(db.Model):
     __tablename__ = 'rbcards'
-    __table_args__ = {"schema": "riftbound"}
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['rbcar_rbset_id'], ['riftbound.rbset.rbset_id'],
+            name='rbcards_rbset_fk_1', onupdate='CASCADE', ondelete='CASCADE'),
+        {"schema": "riftbound"},
+    )
     
     rbcar_rbset_id = db.Column(db.Text, primary_key=True)
     rbcar_id = db.Column(db.Text, primary_key=True)

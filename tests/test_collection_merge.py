@@ -77,7 +77,7 @@ class TestAutoMergeDuplicates:
                 rbcol_rbset_id='TEST1', rbcol_rbcar_id='001'
             ).all()
             assert len(rows) == 1
-            assert int(rows[0].rbcol_quantity) == 1
+            assert rows[0].rbcol_quantity == 1
 
     def test_add_merges_when_exact_duplicate(self, app, authenticated_client, setup_card):
         """Adding the SAME card twice with identical fields MUST merge (qty summed, merged=True)."""
@@ -102,7 +102,7 @@ class TestAutoMergeDuplicates:
                 rbcol_rbset_id='TEST1', rbcol_rbcar_id='001'
             ).all()
             assert len(rows) == 1
-            assert int(rows[0].rbcol_quantity) == 5
+            assert rows[0].rbcol_quantity == 5
 
     def test_add_inserts_new_when_field_differs(self, app, authenticated_client, setup_card):
         """Adding same card but with a DIFFERENT condition MUST create a new row (merged=False)."""
@@ -141,4 +141,4 @@ class TestAutoMergeDuplicates:
                 rbcol_rbset_id='TEST1', rbcol_rbcar_id='001'
             ).all()
             assert len(rows) == 1
-            assert int(rows[0].rbcol_quantity) == 2
+            assert rows[0].rbcol_quantity == 2

@@ -9,7 +9,7 @@ phases:
   spec: done
   design: done
   tasks: done
-  apply: in_progress  # unit a done (pending PR), next unit b
+  apply: in_progress  # unit a merged (PR #11); unit b in progress on feat/f0b-alembic
   verify: pending
   archive: pending
 updated: 2026-10-18

@@ -21,3 +21,7 @@ build/
 app/static/images/cards/**/
 !app/static/images/cards/.gitkeep
 .coverage
+
+# Runtime data (legacy-table backups contain emails and password hashes; never commit)
+instance/
+legacy_tables_*.sql
