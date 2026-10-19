@@ -15,7 +15,7 @@ from app.schemas.validators import (
     CollectionAdd, CollectionUpdateQuantity,
     CollectionDelete, CollectionUpdateSelling, CollectionUpdatePlayset,
     CollectionUpdateSellPrice, CollectionUpdateCondition, CollectionUpdateLanguage,
-    CollectionExport,
+    CollectionExport, CollectionImport, CollectionImportRow,
 )
 from app.schemas.validation import validate_json
 from datetime import datetime
@@ -29,14 +29,6 @@ def _sanitize_filename_part(value: str) -> str:
         return 'ALL'
     cleaned = re.sub(r'[^A-Za-z0-9]+', '_', value).strip('_')
     return cleaned or 'ALL'
-
-
-def _qty_int(raw) -> int:
-    """rbcol_quantity se guarda como TEXT; convertir a int de forma tolerante."""
-    try:
-        return int(raw)
-    except (TypeError, ValueError):
-        return 0
 
 
 def _collection_query():
@@ -334,7 +326,9 @@ def add_collection():
     )
 
     if existing:
-        existing.rbcol_quantity = str(_qty_int(existing.rbcol_quantity) + data.rbcol_quantity)
+        # Incremento atómico en SQL (QTY-3): sin leer-modificar-escribir, dos
+        # peticiones simultáneas no pierden ninguna suma.
+        existing.rbcol_quantity = RbCollection.rbcol_quantity + data.rbcol_quantity
         existing.rbcol_chadat = datetime.utcnow()
         db.session.commit()
         return jsonify({'success': True, 'rbcol_id': existing.rbcol_id, 'merged': True})
@@ -343,7 +337,7 @@ def add_collection():
         rbcol_rbset_id=data.rbcol_rbset_id,
         rbcol_rbcar_id=data.rbcol_rbcar_id,
         rbcol_foil=data.rbcol_foil,
-        rbcol_quantity=str(data.rbcol_quantity),
+        rbcol_quantity=data.rbcol_quantity,
         rbcol_selling=selling,
         rbcol_sell_price=data.rbcol_sell_price,
         rbcol_condition=data.rbcol_condition,
@@ -368,7 +362,7 @@ def update_collection_quantity():
         db.session.commit()
         return jsonify({'success': True, 'deleted': True})
 
-    col.rbcol_quantity = str(data.quantity)
+    col.rbcol_quantity = data.quantity
     col.rbcol_chadat = datetime.utcnow()
     db.session.commit()
     return jsonify({'success': True})
@@ -406,7 +400,7 @@ def update_playset():
     col.rbcol_playset = data.rbcol_playset
 
     # Auto-selling según sobrante de playset
-    qty = _qty_int(col.rbcol_quantity)
+    qty = col.rbcol_quantity
     if data.rbcol_playset is None:
         pass  # no tocamos el selling manual
     elif qty > data.rbcol_playset:
@@ -549,7 +543,7 @@ def bulk_apply():
     # --- Aplicar campos simples ---
     for col in rows:
         if quantity is not None:
-            col.rbcol_quantity = str(quantity)
+            col.rbcol_quantity = quantity
         if sell_price != 'UNSET':
             col.rbcol_sell_price = sell_price
         if condition != 'UNSET':
@@ -571,7 +565,7 @@ def bulk_apply():
             cols.sort(key=lambda c: 0 if c.rbcol_foil == 'S' else 1)
             remaining = playset
             for col in cols:
-                available = _qty_int(col.rbcol_quantity)
+                available = col.rbcol_quantity
                 assigned = min(available, remaining)
                 col.rbcol_playset = assigned if assigned > 0 else None
                 col.rbcol_selling = 'Y' if available > assigned else 'N'
@@ -670,35 +664,57 @@ def api_cards():
 
 @collection_bp.route('/import_csv', methods=['POST'])
 @login_required
+@validate_json(CollectionImport)
 def import_collection_csv():
-    data = request.get_json()
-    for line in data.get('csv_data', '').strip().split('\n'):
-        parts = line.split(';')
-        if len(parts) != 4:
+    """Importa líneas `set;card;foil;quantity` en la colección del usuario (QTY-4).
+
+    Una línea es válida si foil es N|S, la cantidad es un entero 1..9999 y la
+    carta existe en rbcards. Las válidas se aplican (si ya existe la línea
+    set/card/foil del usuario, su cantidad se SOBRESCRIBE; si no, se crea). Las
+    inválidas se omiten y se informan con su número de línea (1-based, contando
+    líneas en blanco) y el motivo.
+    """
+    imported = 0
+    skipped = []
+    for number, raw in enumerate(request.validated_data.csv_data.splitlines(), start=1):
+        line = raw.strip()
+        if not line:
             continue
-        rbset_id, rbcar_id, rbcol_foil, rbcol_quantity = parts
+        try:
+            row = CollectionImportRow.from_line(line)
+        except ValueError as exc:
+            skipped.append({'line': number, 'reason': str(exc)})
+            continue
+
+        if db.session.get(RbCard, (row.rbset_id, row.rbcar_id)) is None:
+            skipped.append({
+                'line': number,
+                'reason': f'card {row.rbset_id}/{row.rbcar_id} does not exist',
+            })
+            continue
 
         existing = RbCollection.query.filter_by(
-            rbcol_rbset_id=rbset_id,
-            rbcol_rbcar_id=rbcar_id,
-            rbcol_foil=rbcol_foil,
-            rbcol_user=current_user.username
-        ).first()
+            rbcol_rbset_id=row.rbset_id,
+            rbcol_rbcar_id=row.rbcar_id,
+            rbcol_foil=row.rbcol_foil,
+            rbcol_user=current_user.username,
+        ).order_by(RbCollection.rbcol_id).first()
 
         if existing:
-            existing.rbcol_quantity = rbcol_quantity
+            existing.rbcol_quantity = row.rbcol_quantity
             existing.rbcol_chadat = datetime.utcnow()
         else:
             db.session.add(RbCollection(
-                rbcol_rbset_id=rbset_id,
-                rbcol_rbcar_id=rbcar_id,
-                rbcol_foil=rbcol_foil,
-                rbcol_quantity=rbcol_quantity,
+                rbcol_rbset_id=row.rbset_id,
+                rbcol_rbcar_id=row.rbcar_id,
+                rbcol_foil=row.rbcol_foil,
+                rbcol_quantity=row.rbcol_quantity,
                 rbcol_chadat=datetime.utcnow(),
-                rbcol_user=current_user.username
+                rbcol_user=current_user.username,
             ))
+        imported += 1
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'imported': imported, 'skipped': skipped})
 
 
 @collection_bp.route('/export_csv', methods=['POST'])
@@ -732,7 +748,7 @@ def export_csv():
 
     rows_written = 0
     for col, card, price_obj, product in query.all():
-        qty_total = _qty_int(col.rbcol_quantity)
+        qty_total = col.rbcol_quantity
         qty_sell = qty_total - (col.rbcol_playset or 0)
         if qty_sell <= 0:
             continue

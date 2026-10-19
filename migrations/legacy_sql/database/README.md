@@ -21,7 +21,7 @@ Este documento describe el orden de instalación de las migraciones de base de d
 **Archivo**: `01_create_tables.sql`
 
 ```bash
-psql -U postgres -d postgres -f migrations/database/01_create_tables.sql
+psql -U postgres -d postgres -f migrations/legacy_sql/database/01_create_tables.sql
 ```
 
 **Contenido**:
@@ -40,14 +40,14 @@ psql -U postgres -d postgres -f migrations/database/01_create_tables.sql
 **Archivo**: `02_sample_data.sql`
 
 ```bash
-psql -U postgres -d postgres -f migrations/database/02_sample_data.sql
+psql -U postgres -d postgres -f migrations/legacy_sql/database/02_sample_data.sql
 ```
 
 ### Paso 3: Tablas de Cardmarket + Fix Deck
 **Archivo**: `03_cardmarket_tables.sql`
 
 ```bash
-psql -U postgres -d postgres -f migrations/database/03_cardmarket_tables.sql
+psql -U postgres -d postgres -f migrations/legacy_sql/database/03_cardmarket_tables.sql
 ```
 
 **Contenido**:

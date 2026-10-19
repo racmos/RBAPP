@@ -5,12 +5,18 @@ from flask_login import UserMixin
 
 class User(UserMixin, db.Model):
     __tablename__ = 'rbusers'
-    __table_args__ = {"schema": "riftbound"}
+    # Names match the dev database (MIG-6, D6): the UNIQUE constraints already
+    # create their indexes, so the columns carry no extra `index=True`.
+    __table_args__ = (
+        db.UniqueConstraint('username', name='rbusers_username_key'),
+        db.UniqueConstraint('email', name='rbusers_email_key'),
+        {"schema": "riftbound"},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), index=True, unique=True, nullable=False)
-    email = db.Column(db.String(120), index=True, unique=True, nullable=False)
-    password_hash = db.Column(db.String(256))
+    username = db.Column(db.String(64), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):

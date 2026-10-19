@@ -1,9 +1,10 @@
 """
 Pydantic schemas for request validation.
 """
+import re
 from datetime import date
 from typing import Optional, List
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 
 # ============== Set Schemas ==============
@@ -200,6 +201,61 @@ class CollectionExport(BaseModel):
     """Schema for CSV export filter."""
     rbset_id: str = Field(..., min_length=1, description="Expansion/Set ID (required)")
     rarity: str = Field(..., min_length=1, description="Card rarity (required)")
+
+
+QUANTITY_MIN, QUANTITY_MAX = 1, 9999
+
+
+class CollectionImport(BaseModel):
+    """Body of POST /collection/import_csv: `{"csv_data": "<lines>"}` (QTY-4)."""
+    csv_data: str
+
+
+class CollectionImportRow(BaseModel):
+    """One `set;card;foil;quantity` line of the CSV import (QTY-4).
+
+    Use `CollectionImportRow.from_line(text)`: it raises ValueError with a short
+    human reason, which the importer reports per line. Whether the card exists
+    is checked by the route (it needs the database)."""
+    rbset_id: str = Field(..., min_length=1)
+    rbcar_id: str = Field(..., min_length=1)
+    rbcol_foil: str
+    rbcol_quantity: int
+
+    @field_validator('rbset_id', 'rbcar_id', mode='before')
+    @classmethod
+    def required_text(cls, v):
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError('set and card are required')
+        return v.strip()
+
+    @field_validator('rbcol_foil', mode='before')
+    @classmethod
+    def foil_is_n_or_s(cls, v):
+        if v not in ('N', 'S'):
+            raise ValueError("foil must be 'N' or 'S'")
+        return v
+
+    @field_validator('rbcol_quantity', mode='before')
+    @classmethod
+    def quantity_in_range(cls, v):
+        # ASCII digits only (no sign, no decimals, no other scripts), then the range.
+        if (not isinstance(v, str) or not re.fullmatch(r'[0-9]+', v)
+                or not QUANTITY_MIN <= int(v) <= QUANTITY_MAX):
+            raise ValueError(
+                f'quantity must be a whole number between {QUANTITY_MIN} and {QUANTITY_MAX}')
+        return int(v)
+
+    @classmethod
+    def from_line(cls, line: str) -> 'CollectionImportRow':
+        parts = [part.strip() for part in line.split(';')]
+        if len(parts) != 4:
+            raise ValueError('expected 4 fields (set;card;foil;quantity)')
+        try:
+            return cls(rbset_id=parts[0], rbcar_id=parts[1],
+                       rbcol_foil=parts[2], rbcol_quantity=parts[3])
+        except ValidationError as exc:
+            raise ValueError(str(exc.errors()[0]['ctx']['error'])) from None
 
 
 # ============== Profile Schemas ==============

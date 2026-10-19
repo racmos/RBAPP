@@ -2,12 +2,15 @@ from flask import Flask
 from dotenv import dotenv_values, load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_migrate import Migrate
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
+from app.db_schema import MIGRATE_OPTIONS
 from config import engine_options, load_settings, resolve_env, validate_settings
 
 db = SQLAlchemy()
+migrate = Migrate()
 login = LoginManager()
 login.login_view = 'auth.login'
 
@@ -15,6 +18,9 @@ _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # `<repo>/.env`. Module-level so tests can point it at a temporary file.
 DOTENV_PATH = os.path.join(os.path.dirname(_APP_DIR), '.env')
+
+# Alembic environment (`flask db ...`). Absolute so it works from any CWD.
+MIGRATIONS_DIR = os.path.join(os.path.dirname(_APP_DIR), 'migrations')
 
 
 def _maybe_load_dotenv():
@@ -94,6 +100,9 @@ def create_app(**overrides):
     app.jinja_env.globals['max'] = _max
     
     db.init_app(app)
+    migrate.init_app(app, db, directory=MIGRATIONS_DIR, **MIGRATE_OPTIONS)
+    from app.cli import register_cli
+    register_cli(app)
     login.init_app(app)
     # Asegurar que Flask respete X-Forwarded-* y X-Forwarded-Prefix enviados por NGINX
     # El número de saltos de confianza viene de PROXY_FIX_X_FOR/PROTO/HOST (CFG-7).

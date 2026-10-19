@@ -69,3 +69,73 @@ jobs:
     found = dict(_env_blocks(workflow))
     assert found == {'workflow': {'A': '1'}, 'job j': {'B': '2'},
                      'job j step 0': {'DATABASE_URL': 'y'}}
+
+
+# --- migrations-pg job (unit b pulled it forward from unit e; D20, CI-4) -----
+
+import re
+
+
+def _ci():
+    return _load(ROOT / '.github' / 'workflows' / 'ci.yml')
+
+
+def _pg_job():
+    return _ci()['jobs']['migrations-pg']
+
+
+def _run_text(job):
+    return '\n'.join(step['run'] for step in job['steps'] if 'run' in step)
+
+
+class TestMigrationsPostgresJob:
+    def test_job_exists(self):
+        assert 'migrations-pg' in _ci()['jobs']
+
+    def test_token_is_read_only(self):
+        # least privilege: the workflow-level default is contents: read
+        assert _ci()['permissions'] == {'contents': 'read'}
+        assert 'permissions' not in _pg_job() or _pg_job()['permissions'] == {'contents': 'read'}
+
+    def test_runs_on_python_3_12(self):
+        setups = [s for s in _pg_job()['steps'] if str(s.get('uses', '')).startswith('actions/setup-python')]
+        assert [str(s['with']['python-version']) for s in setups] == ['3.12']
+
+    def test_uses_a_postgresql_18_service_that_must_be_healthy_first(self):
+        service = _pg_job()['services']['postgres']
+        assert service['image'] == 'postgres:18'
+        assert '--health-cmd' in service['options']
+        assert '5432:5432' in [str(p) for p in service['ports']]
+
+    def test_database_name_contains_test(self):
+        # the pg_url fixture refuses any other name (D20)
+        text = _run_text(_pg_job())
+        urls = re.findall(r"TEST_POSTGRES_URL='?([^\s']+)", text)
+        assert urls, 'pytest must receive TEST_POSTGRES_URL'
+        for url in urls:
+            assert url.startswith('postgresql+psycopg://')
+            assert 'test' in url.rsplit('/', 1)[1]
+        assert service_db(_pg_job()) in urls[0]
+
+    def test_migration_round_trip_runs_before_the_postgres_tests(self):
+        text = _run_text(_pg_job())
+        order = [text.index(cmd) for cmd in (
+            'flask db upgrade', 'flask db check', 'flask db downgrade base')]
+        assert order == sorted(order)
+        assert text.rindex('flask db upgrade') > text.index('flask db downgrade base')
+        assert text.index('pytest -m postgres') > text.rindex('flask db upgrade')
+
+    def test_database_url_is_defined_inline_not_in_an_env_block(self):
+        # CI-1 / R9: no env block may carry DATABASE_URL or SECRET_KEY
+        assert 'DATABASE_URL=' in _run_text(_pg_job())
+        assert [n for _w, env in _env_blocks(_ci()) for n in env if n in FORBIDDEN_ENV_NAMES] == []
+
+    def test_development_environment_gets_an_ephemeral_secret_key(self):
+        # no SECRET_KEY anywhere: RB_ENV=development generates one per process (D2)
+        text = _run_text(_pg_job())
+        assert 'RB_ENV=development' in text
+        assert 'SECRET_KEY' not in text
+
+
+def service_db(job):
+    return job['services']['postgres']['env']['POSTGRES_DB']
