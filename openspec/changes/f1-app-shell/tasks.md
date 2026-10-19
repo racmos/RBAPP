@@ -129,38 +129,38 @@ Specs: DS-1..DS-10, CI-5 (job shape, R9), CI-9. Depends: none. Rollback: revert 
 Specs: HOST-1..7. Depends: none (needs unit a only for a real dist at dev rollout). Rollback: revert the PR or stop registering `spa_bp`; Jinja unaffected.
 
 ### 2.A Baseline and config
-- [ ] 2.1 Suite green on updated `main`; assert in the PR that no rule in `app.url_map` starts with `/riftbound/app` today.
-- [ ] 2.2 CHAR `tests/test_spa_hosting.py::TestExistingRoutes` (HOST-1): `GET /riftbound/login`, `GET /riftbound/api/v1/health` and an existing `/riftbound/static/...` file respond with the same status and content type as before (pin before registering `spa_bp`).
-- [ ] 2.3 RED `tests/test_config.py`: `load_settings` returns `FRONTEND_DIST` = env value when set, else `<repo>/frontend/dist`; `create_app` copies it into `app.config`; empty string counts as unset.
-- [ ] 2.4 GREEN `config.py` (`load_settings`) and `app/__init__.py` config pass-through. Turns 2.3 green.
-- [ ] 2.5 `tests/conftest.py`: add `FRONTEND_DIST` to `CONFIG_ENV_NAMES` (trap); suite stays green.
-- [ ] 2.6 Fixtures in `tests/conftest.py`: `spa_dist` (tmp dir with `index.html`, `assets/app-abc123.js`, `sw.js`, `manifest.webmanifest`, `pwa-192x192.png`, plus a `secret.txt` beside, not inside, the dist) and `spa_app` (app whose `FRONTEND_DIST` points at it; read per request, D1).
+- [x] 2.1 (done 2026-10-19: baseline 1182 passed, 30 skipped; `TestExistingRoutes::test_no_existing_rule_lives_under_the_spa_prefix` pins that no non-spa rule starts with `/riftbound/app`) Suite green on updated `main`; assert in the PR that no rule in `app.url_map` starts with `/riftbound/app` today.
+- [x] 2.2 (done 2026-10-19: `TestExistingRoutes` (5 tests) passed before `spa_bp` was registered) CHAR `tests/test_spa_hosting.py::TestExistingRoutes` (HOST-1): `GET /riftbound/login`, `GET /riftbound/api/v1/health` and an existing `/riftbound/static/...` file respond with the same status and content type as before (pin before registering `spa_bp`).
+- [x] 2.3 (done 2026-10-19: RED seen (KeyError FRONTEND_DIST), `tests/test_config.py::TestFrontendDist`) RED `tests/test_config.py`: `load_settings` returns `FRONTEND_DIST` = env value when set, else `<repo>/frontend/dist`; `create_app` copies it into `app.config`; empty string counts as unset.
+- [x] 2.4 (done 2026-10-19: `config.py` `DEFAULT_FRONTEND_DIST` + `load_settings`; `create_app` needs no change because it already copies `load_settings`) GREEN `config.py` (`load_settings`) and `app/__init__.py` config pass-through. Turns 2.3 green.
+- [x] 2.5 (done 2026-10-19: `FRONTEND_DIST` added to `CONFIG_ENV_NAMES`) `tests/conftest.py`: add `FRONTEND_DIST` to `CONFIG_ENV_NAMES` (trap); suite stays green.
+- [x] 2.6 (done 2026-10-19: `spa_dist` / `spa_app` fixtures in `tests/conftest.py`) Fixtures in `tests/conftest.py`: `spa_dist` (tmp dir with `index.html`, `assets/app-abc123.js`, `sw.js`, `manifest.webmanifest`, `pwa-192x192.png`, plus a `secret.txt` beside, not inside, the dist) and `spa_app` (app whose `FRONTEND_DIST` points at it; read per request, D1).
 
 ### 2.B RED (one task per requirement group)
-- [ ] 2.7 RED HOST-1: `/riftbound/app` gives a redirect whose `Location` ends `/riftbound/app/`; `/riftbound/app/` gives 200 `text/html` and the exact `index.html` body for an anonymous client.
-- [ ] 2.8 RED HOST-2: `assets/app-abc123.js` has `Cache-Control` containing `public`, `max-age=31536000`, `immutable`; `index.html`, `sw.js`, `manifest.webmanifest` have `no-cache` and no `immutable`; `pwa-192x192.png` is not `immutable`; repeat `sw.js` with `If-None-Match: <etag>` gives 304.
-- [ ] 2.9 RED HOST-3 pure: `_is_file_like` classifies `a/b.js`, `x.woff2`, `x.map` as file-like and `account/interface`, `cards` as routes (D2); `_cache_control(path)` per D3.
-- [ ] 2.10 RED HOST-3 routes: deep link `/riftbound/app/account/interface` gives 200 with the `index.html` body and `no-cache`; `assets/missing.js`, `missing.css`, `missing.woff2`, `missing.js.map` give 404 and a body that is not `index.html`; traversal `/riftbound/app/..%2Fsecret.txt` and `/riftbound/app/../secret.txt` never return the content.
-- [ ] 2.11 RED HOST-4 / D4: `manifest.webmanifest` starts with `application/manifest+json`; `.woff2` `font/woff2`, `.webp` `image/webp`, `.js` `text/javascript`, `.svg` `image/svg+xml`.
-- [ ] 2.12 RED HOST-5 / R11: with `FRONTEND_DIST` nonexistent and with a dir lacking `index.html`, `/riftbound/app/` and `/riftbound/app/assets/x.js` give 503 with a non-empty message; browser `Accept` gets minimal HTML (no `base.html` markup, no CSRF cookie), `Accept: */*` / JSON gets the `json_error` envelope; `Cache-Control: no-store`; `create_app` starts; `/riftbound/api/v1/health` is 200 `status:"ok"`.
-- [ ] 2.13 RED HOST-6 / D3: `GET /riftbound/app/` and an asset have no `Set-Cookie`; every SPA response has `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`; `index.html` contains no `csrf` string (fixture check).
-- [ ] 2.14 RED `tests/test_authz_matrix.py`: add `'spa.*': 'P'` and a probe that an anonymous client gets 200 on `/riftbound/app/` (fails until registered).
+- [x] 2.7 (done 2026-10-19: `TestMountAndRedirect`) RED HOST-1: `/riftbound/app` gives a redirect whose `Location` ends `/riftbound/app/`; `/riftbound/app/` gives 200 `text/html` and the exact `index.html` body for an anonymous client.
+- [x] 2.8 (done 2026-10-19: `TestCacheControlHelper`, `TestCacheRules`) RED HOST-2: `assets/app-abc123.js` has `Cache-Control` containing `public`, `max-age=31536000`, `immutable`; `index.html`, `sw.js`, `manifest.webmanifest` have `no-cache` and no `immutable`; `pwa-192x192.png` is not `immutable`; repeat `sw.js` with `If-None-Match: <etag>` gives 304.
+- [x] 2.9 (done 2026-10-19: `TestFileLikeHelper`, `TestCacheControlHelper`) RED HOST-3 pure: `_is_file_like` classifies `a/b.js`, `x.woff2`, `x.map` as file-like and `account/interface`, `cards` as routes (D2); `_cache_control(path)` per D3.
+- [x] 2.10 (done 2026-10-19: `TestExtensionAwareCatchAll`) RED HOST-3 routes: deep link `/riftbound/app/account/interface` gives 200 with the `index.html` body and `no-cache`; `assets/missing.js`, `missing.css`, `missing.woff2`, `missing.js.map` give 404 and a body that is not `index.html`; traversal `/riftbound/app/..%2Fsecret.txt` and `/riftbound/app/../secret.txt` never return the content.
+- [x] 2.11 (done 2026-10-19: `TestMimetypes`) RED HOST-4 / D4: `manifest.webmanifest` starts with `application/manifest+json`; `.woff2` `font/woff2`, `.webp` `image/webp`, `.js` `text/javascript`, `.svg` `image/svg+xml`.
+- [x] 2.12 (done 2026-10-19: `TestMissingBuild` (missing dir and dir without index.html)) RED HOST-5 / R11: with `FRONTEND_DIST` nonexistent and with a dir lacking `index.html`, `/riftbound/app/` and `/riftbound/app/assets/x.js` give 503 with a non-empty message; browser `Accept` gets minimal HTML (no `base.html` markup, no CSRF cookie), `Accept: */*` / JSON gets the `json_error` envelope; `Cache-Control: no-store`; `create_app` starts; `/riftbound/api/v1/health` is 200 `status:"ok"`.
+- [x] 2.13 (done 2026-10-19: `TestNoSecretsInTheShell`) RED HOST-6 / D3: `GET /riftbound/app/` and an asset have no `Set-Cookie`; every SPA response has `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`; `index.html` contains no `csrf` string (fixture check).
+- [x] 2.14 (done 2026-10-19: `TestSpaIsPublic` + `spa.*` in MATRIX) RED `tests/test_authz_matrix.py`: add `'spa.*': 'P'` and a probe that an anonymous client gets 200 on `/riftbound/app/` (fails until registered).
 
 ### 2.C GREEN
-- [ ] 2.15 GREEN `app/routes/spa.py` pure helpers: `SPA_MIMETYPES`, `FILE_LIKE`, `_is_file_like`, `_cache_control`. Turns 2.9 and 2.11 (unit part) green.
-- [ ] 2.16 GREEN `_spa_error(status, message)` (R11, D5) and the 503 guard (`dist/index.html` missing). Turns 2.12 green.
-- [ ] 2.17 GREEN routes `index()` and `asset(path)` with `send_from_directory(... mimetype from map, conditional=True)`, headers of D3, no use of `session`/`current_user`. Turns 2.7, 2.8, 2.10, 2.13 green.
-- [ ] 2.18 GREEN register `spa_bp` in `create_app` after the domain blueprints (`app/__init__.py`). Turns 2.14 and 2.2 green; full suite green.
-- [ ] 2.19 REFACTOR `spa.py` (single `_serve(path)` used by both routes); suite green.
+- [x] 2.15 (done 2026-10-19: `app/routes/spa.py` helpers) GREEN `app/routes/spa.py` pure helpers: `SPA_MIMETYPES`, `FILE_LIKE`, `_is_file_like`, `_cache_control`. Turns 2.9 and 2.11 (unit part) green.
+- [x] 2.16 (done 2026-10-19: `_spa_error` + 503 guard in `_serve`) GREEN `_spa_error(status, message)` (R11, D5) and the 503 guard (`dist/index.html` missing). Turns 2.12 green.
+- [x] 2.17 (done 2026-10-19: `index()` / `asset()` via `_send`) GREEN routes `index()` and `asset(path)` with `send_from_directory(... mimetype from map, conditional=True)`, headers of D3, no use of `session`/`current_user`. Turns 2.7, 2.8, 2.10, 2.13 green.
+- [x] 2.18 (done 2026-10-19: registered in `create_app` after the domain blueprints; full suite 1303 passed, 30 skipped) GREEN register `spa_bp` in `create_app` after the domain blueprints (`app/__init__.py`). Turns 2.14 and 2.2 green; full suite green.
+- [x] 2.19 (done 2026-10-19: single `_serve(path)` written from the start, suite green) REFACTOR `spa.py` (single `_serve(path)` used by both routes); suite green.
 
 ### 2.D Docs
-- [ ] 2.20 `docs/frontend.md`: build (`npm ci && npm run build`), `FRONTEND_DIST`, deploy options (build on server with Node 24, or unpack the `frontend-dist` artifact), the short 503 window during rebuild and the optional atomic swap, "Nginx needs no change in F1", rollout order, smoke checklist.
-- [ ] 2.21 `.env.example`: `FRONTEND_DIST` as a commented variable. README describes it (HOST-7).
-- [ ] 2.22 `AGENTS.md`: tree entry `app/routes/spa.py`, blueprint `spa_bp` named. Run `tests/test_docs.py` (trap).
-- [ ] 2.23 `docs/nginx_config`: optional notes (gzip, HSTS) without any new `proxy_pass`; run `tests/test_nginx_config_doc.py` (still exactly two).
+- [x] 2.20 (done 2026-10-19: `docs/frontend.md`) `docs/frontend.md`: build (`npm ci && npm run build`), `FRONTEND_DIST`, deploy options (build on server with Node 24, or unpack the `frontend-dist` artifact), the short 503 window during rebuild and the optional atomic swap, "Nginx needs no change in F1", rollout order, smoke checklist.
+- [x] 2.21 (done 2026-10-19: `.env.example` (commented `FRONTEND_DIST`) + README table row and "New app hosting" section) `.env.example`: `FRONTEND_DIST` as a commented variable. README describes it (HOST-7).
+- [x] 2.22 (done 2026-10-19: `AGENTS.md` tree entry + "SPA hosting (`spa_bp`)" subsection; `test_docs.py` green) `AGENTS.md`: tree entry `app/routes/spa.py`, blueprint `spa_bp` named. Run `tests/test_docs.py` (trap).
+- [x] 2.23 (done 2026-10-19: `docs/nginx_config` comment notes only; `test_nginx_config_doc.py` green (2 proxy_pass)) `docs/nginx_config`: optional notes (gzip, HSTS) without any new `proxy_pass`; run `tests/test_nginx_config_doc.py` (still exactly two).
 
 ### 2.E Verify and PR checkpoint
-- [ ] 2.24 Full pytest green; confirm the tests run with no Node installed (CI-9 "No Node in pytest").
+- [x] 2.24 (done 2026-10-19: full pytest 1303 passed, 30 skipped (no `frontend/` directory exists in this branch and no test spawns node or reads the real dist)) Full pytest green; confirm the tests run with no Node installed (CI-9 "No Node in pytest").
 - [ ] 2.25 USER [MANUAL] dev rollout (after unit a merged): `cd frontend && npm ci && npm run build`, restart the service. Smoke (HOST-7): `/riftbound/app/` loads, a deep link reloads, `/riftbound/app` redirects, F0 pending manual checks pass.
 - [ ] 2.26 PR checkpoint (`feat/f1-b`): HOST-1..7 mapped to tests or 2.25; docs updated; USER merges.
 

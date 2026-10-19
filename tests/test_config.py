@@ -570,3 +570,36 @@ class TestServiceUnit:
 
     def test_stale_port_comment_is_gone(self):
         assert 'changed to port 8001' not in SERVICE_FILE.read_text().lower()
+
+
+# ---------------------------------------------------------------------------
+# F1 unit b: FRONTEND_DIST (HOST-1, HOST-7)
+# ---------------------------------------------------------------------------
+
+DEFAULT_FRONTEND_DIST = str(ROOT / 'frontend' / 'dist')
+
+
+class TestFrontendDist:
+    def test_defaults_to_frontend_dist_in_the_repository(self):
+        assert config.load_settings('testing', {})['FRONTEND_DIST'] == DEFAULT_FRONTEND_DIST
+
+    def test_the_environment_value_wins(self):
+        settings = config.load_settings('testing', {'FRONTEND_DIST': '/srv/rb-dist'})
+        assert settings['FRONTEND_DIST'] == '/srv/rb-dist'
+
+    @pytest.mark.parametrize('blank', ['', '   '])
+    def test_blank_counts_as_unset(self, blank):
+        settings = config.load_settings('testing', {'FRONTEND_DIST': blank})
+        assert settings['FRONTEND_DIST'] == DEFAULT_FRONTEND_DIST
+
+    def test_create_app_copies_it_into_the_config(self, clean_env, tmp_path):
+        _prod_env(clean_env, FRONTEND_DIST=str(tmp_path))
+        assert create_app().config['FRONTEND_DIST'] == str(tmp_path)
+
+    def test_create_app_default(self, clean_env):
+        _prod_env(clean_env)
+        assert create_app().config['FRONTEND_DIST'] == DEFAULT_FRONTEND_DIST
+
+    def test_conftest_resets_it_between_tests(self):
+        from tests.conftest import CONFIG_ENV_NAMES
+        assert 'FRONTEND_DIST' in CONFIG_ENV_NAMES

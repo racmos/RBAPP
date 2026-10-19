@@ -168,6 +168,10 @@ def create_app(**overrides):
     app.register_blueprint(price_bp)
     app.register_blueprint(profile_bp)
 
+    # Single-page app (/riftbound/app/), served from FRONTEND_DIST
+    from app.routes.spa import spa_bp
+    app.register_blueprint(spa_bp)
+
     # JSON API v1 (/riftbound/api/v1)
     from app.api.v1 import api_v1
     app.register_blueprint(api_v1)

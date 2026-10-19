@@ -41,6 +41,7 @@ Settings come from environment variables only (see [.env.example](.env.example),
 | `LANDING_CACHE_TTL` | Seconds the landing feeds are cached per worker (0 = off) |
 | `CARDMARKET_ALLOWED_HOSTS` | Hosts the Cardmarket loader may download from |
 | `RB_LEGACY_BACKUP_DIR` | Where migration 0002 saves the legacy tables (contains personal data, never commit) |
+| `FRONTEND_DIST` | Directory with the built new app, served at `/riftbound/app/` (default `<project>/frontend/dist`; see [New app hosting](#new-app-hosting)) |
 
 ## Running
 
@@ -93,6 +94,16 @@ flask users list
 ## JSON API
 
 `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`. Responses are `{"success": true, "data": ...}` or `{"success": false, "error": "...", "message": "..."}`. Unsafe requests need the `X-CSRFToken` header; read the token from `GET /auth/session`.
+
+## New app hosting
+
+The React app (built from `frontend/`) is served by Flask itself at `/riftbound/app/`, from the directory in `FRONTEND_DIST` (default `frontend/dist`). Build it with:
+
+```bash
+cd frontend && npm ci && npm run build
+```
+
+Hashed files under `assets/` are cached for a year; `index.html`, `sw.js` and `manifest.webmanifest` always revalidate. A path without a file extension (a client route such as `/riftbound/app/account/interface`) gets `index.html`; a missing `.js`, `.css` or `.map` is a real 404. With no build, `/riftbound/app/` answers 503 and the rest of the application keeps working. Nginx needs no change. Build and deploy details: [docs/frontend.md](docs/frontend.md).
 
 ## Deployment
 

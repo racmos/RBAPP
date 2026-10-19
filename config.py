@@ -14,6 +14,7 @@ Nothing in this module may hold a credential or a default secret.
 import hashlib
 import logging
 import secrets
+from pathlib import Path
 from typing import Any, Mapping, Optional
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,9 @@ SECRET_KEY_DENYLIST_SHA256 = frozenset({
 CARDMARKET_ALLOWED_HOSTS = ('downloads.s3.cardmarket.com',)
 
 CAPTCHA_PROVIDERS = ('none', 'altcha')
+
+# Where the Vite build lives (HOST-1). Overridden by FRONTEND_DIST.
+DEFAULT_FRONTEND_DIST = str(Path(__file__).resolve().parent / 'frontend' / 'dist')
 
 _TRUE_WORDS = frozenset({'1', 'true', 'yes', 'on'})
 _FALSE_WORDS = frozenset({'0', 'false', 'no', 'off'})
@@ -120,6 +124,7 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
         settings[name] = _int_setting(environ, name, default)
     settings['CARDMARKET_ALLOWED_HOSTS'] = _host_list(
         environ, 'CARDMARKET_ALLOWED_HOSTS', CARDMARKET_ALLOWED_HOSTS)
+    settings['FRONTEND_DIST'] = (environ.get('FRONTEND_DIST') or '').strip() or DEFAULT_FRONTEND_DIST
     settings.update(_session_settings(env, environ))
     settings.update(_protection_settings(env, environ))
     return settings
