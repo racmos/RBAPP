@@ -43,6 +43,7 @@ MATRIX = {
     'api_v1.auth_captcha': 'P',
     'api_v1.auth_login': 'P',
     'api_v1.auth_register': 'P',
+    'spa.*': 'P',                           # SPA shell (F1 unit b): the SPA hosts the login screen
     # --- authenticated ----------------------------------------------------
     'auth.logout': 'U',
     'api_v1.auth_logout': 'U',
@@ -217,6 +218,19 @@ class TestPublicRules:
                 return f'denied with {resp.status_code}'
         failed = failures_for(rules, 'P', check)
         assert not failed, '\n'.join(failed)
+
+
+class TestSpaIsPublic:
+    """HOST-1: the SPA routes are public (F1 unit b)."""
+
+    def test_the_spa_rules_are_classified_public(self, rules):
+        spa_rules = [r for r in rules if r.endpoint.startswith('spa.')]
+        assert len(spa_rules) == 2
+        assert {classify(r) for r in spa_rules} == {'P'}
+
+    @pytest.mark.parametrize('url', ['/riftbound/app/', '/riftbound/app/account/interface'])
+    def test_anonymous_gets_the_shell(self, spa_app, client, url):
+        assert client.get(url).status_code == 200
 
 
 class TestAuthenticatedRules:

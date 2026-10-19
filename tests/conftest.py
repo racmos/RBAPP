@@ -23,6 +23,8 @@ CONFIG_ENV_NAMES = (
     'RATELIMIT_ENABLED', 'RATELIMIT_STORAGE_URI', 'CAPTCHA_PROVIDER', 'ALTCHA_HMAC_KEY',
     'ALTCHA_EXPIRE_SECONDS', 'ALTCHA_MAX_NUMBER', 'LANDING_CACHE_TTL',
     'LOGIN_MAX_FAILURES', 'LOGIN_LOCK_BASE_MINUTES', 'LOGIN_LOCK_MAX_MINUTES',
+    # F1 unit b
+    'FRONTEND_DIST',
 )
 
 
@@ -302,3 +304,32 @@ def pg_url():
             conn.execute(text('DROP SCHEMA IF EXISTS riftbound CASCADE'))
     finally:
         engine.dispose()
+
+
+# --- F1 unit b: SPA hosting (2.6) -------------------------------------------------
+#
+# A temporary `dist/` stands in for the Vite build, so the Python lane never
+# needs Node (CI-9). `secret.txt` sits NEXT TO the dist, not inside it.
+
+SPA_INDEX_HTML = '<!doctype html><html><head><title>Rift Manager</title></head><body><div id="root"></div></body></html>\n'
+
+
+@pytest.fixture
+def spa_dist(tmp_path):
+    """A fake frontend build. Returns the dist directory."""
+    dist = tmp_path / 'dist'
+    (dist / 'assets').mkdir(parents=True)
+    (dist / 'index.html').write_text(SPA_INDEX_HTML, encoding='utf-8')
+    (dist / 'assets' / 'app-abc123.js').write_text('console.log("rb");\n', encoding='utf-8')
+    (dist / 'sw.js').write_text('self.skipWaiting;\n', encoding='utf-8')
+    (dist / 'manifest.webmanifest').write_text('{"name":"Rift Manager"}\n', encoding='utf-8')
+    (dist / 'pwa-192x192.png').write_bytes(b'\x89PNG\r\n\x1a\n' + b'\x00' * 16)
+    (tmp_path / 'secret.txt').write_text('TOP-SECRET-OUTSIDE-DIST', encoding='utf-8')
+    return dist
+
+
+@pytest.fixture
+def spa_app(app, spa_dist):
+    """`app` whose FRONTEND_DIST points at `spa_dist` (read per request)."""
+    app.config['FRONTEND_DIST'] = str(spa_dist)
+    return app

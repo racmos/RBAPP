@@ -85,6 +85,20 @@ server {
         proxy_pass http://riftbound_app;
     }
 
+    # The new app (/riftbound/app/) is served by Flask too: it is covered by the location
+    # below and needs no change. Optional notes, none of them required:
+    #  - gzip: `gzip on; gzip_types text/css text/javascript application/json
+    #    image/svg+xml application/manifest+json;` at http or server level shrinks the
+    #    JS/CSS of /riftbound/app/assets/.
+    #  - HSTS: `add_header Strict-Transport-Security "max-age=31536000" always;` once
+    #    every subdomain is HTTPS-only.
+    #  - Do not add a `Referrer-Policy: no-referrer` header here (see above), and do not
+    #    add a second proxy_pass for /riftbound/app/: Flask must keep answering it
+    #    (no-cache, immutable assets and the 503 without a build come from the app).
+    #  - Serving /riftbound/app/assets/ straight from disk with a static `location` (no
+    #    proxy_pass) is possible only when this host can read the build; it is deferred
+    #    to the deploy-tooling phase (F12).
+
     # The application and the JSON API.
     location /riftbound/ {
         proxy_pass http://riftbound_app;

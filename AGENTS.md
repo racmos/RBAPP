@@ -60,6 +60,7 @@ riftbound/
 │   ├── routes/
 │   │   ├── auth.py          # Login / register / logout (Jinja forms)
 │   │   ├── landing.py       # Public landing page and its HTMX partials (/ and /api/*)
+│   │   ├── spa.py           # spa_bp: serves the React build from FRONTEND_DIST at /riftbound/app/
 │   │   ├── routes.py        # Dashboard + domain blueprint imports
 │   │   └── domains/         # Domain routes
 │   │       ├── sets.py      # Sets
@@ -144,6 +145,9 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 
 ### Blueprints
 `landing_bp`, `main_bp` (dashboard), `auth_bp`, `sets_bp`, `cards_bp`, `collection_bp`, `deck_bp`, `price_bp`, `profile_bp` and `api_v1` (JSON API).
+
+### SPA hosting (`spa_bp`)
+`app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise, never the Jinja error templates). It is registered after the domain blueprints; `tests/test_spa_hosting.py` uses a temporary dist (`spa_dist` / `spa_app` fixtures), no Node needed. See `docs/frontend.md`.
 
 ### Color Scheme (Dark Teal Theme)
 | Element | Color | Hex |
