@@ -9,6 +9,8 @@ written SQL is archived, frozen, in `migrations/legacy_sql/`.
 | `0001_baseline` | Exact copy of the dev database on 2026-10-18 (16 tables, including the legacy `old1_rbusers` and `old_rbdecks`). Reference: `tests/fixtures/dev_schema_snapshot.txt`. |
 | `0002_drop_legacy_tables` | Backs up and drops the two legacy tables; repoints `rbdecks.fk_deck_user` to `rbusers(username)`. |
 | `0003_collection_quantity_integer` | `rbcollection.rbcol_quantity` Text -> Integer NOT NULL, plus CHECK `rbcollection_quantity_chk` (`>= 1`). |
+| `0004_user_admin_flags` | `rbusers.is_admin` and `rbusers.is_blocked`, BOOLEAN NOT NULL DEFAULT false. Nobody becomes admin by migrating: see "Admin accounts" below. |
+| `0004a_schema_comments` | The table and column COMMENTs the dev database already had (8 tables). PostgreSQL only (a no-op on SQLite). Setting a comment twice is harmless, so it is safe on dev. |
 
 `flask` finds the app through `.flaskenv` (`FLASK_APP=wsgi.py`) and reads
 `DATABASE_URL` like the application does (see `.env.example`).
@@ -45,10 +47,10 @@ Do these in order. Stop at the first surprise.
 3. **Stamp**: records the baseline revision, executes no DDL.
    ```bash
    flask db stamp 0001_baseline
-   flask db current          # 0001_baseline (head is 0003...)
+   flask db current          # 0001_baseline (head is a later revision)
    ```
    Row counts must not change.
-4. **Upgrade** (runs 0002 and 0003):
+4. **Upgrade** (runs 0002, 0003 and the later revisions; see "Admin accounts" below for 0004):
    ```bash
    flask db upgrade
    ```
@@ -63,6 +65,38 @@ Do these in order. Stop at the first surprise.
    ls -l instance/backups/   # -rw------- legacy_tables_....sql
    git status                # the backup must NOT appear
    ```
+
+## Admin accounts: upgrade to 0004, promote the owner, then restart
+
+From revision `0004` the catalog write routes (set/card add and edit, image
+upload) and every `/riftbound/price/...` route are admin-only. Nobody is admin
+after the migration, so promote the owner BEFORE restarting the service, or the
+owner loses those screens until you do.
+
+```bash
+flask db upgrade                 # 0004 and 0004a (additive: the old code keeps working)
+flask users promote <owner>      # first admin; works while no admin exists
+flask users list                 # confirm: the owner shows "admin"
+sudo systemctl restart rbapp     # only now start the new code
+```
+
+Then log in as the owner (the Price link and the Add/Edit buttons appear) and as
+a second ordinary account (none of them appear and the routes answer 403).
+
+`flask users` commands (all exit 1 and change nothing for an unknown user;
+`promote`, `demote`, `block`, `unblock` are idempotent):
+
+| Command | Effect |
+|---|---|
+| `promote <user>` (alias `make-admin`) | grants the admin role |
+| `demote <user>` (alias `revoke-admin`) | removes it |
+| `block <user>` / `unblock <user>` | a blocked user cannot log in and a live session ends on its next request |
+| `set-password <user>` | hidden prompt, asked twice, 8-128 characters |
+| `list` | accounts with role and state (never hashes) |
+
+Rollback of this step: `flask db downgrade 0003_collection_quantity_integer`
+(drops `is_admin`, `is_blocked` and, on PostgreSQL, removes the COMMENTs that
+`0004a` set; `flask db upgrade` puts them back), then revert the code.
 
 ## The legacy-table backup contains personal data
 

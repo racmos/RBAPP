@@ -54,9 +54,9 @@ class TestRbcmIgnoredModel:
 
 class TestIgnoredAdd:
 
-    def test_post_ignored_add_inserts(self, authenticated_client, app):
+    def test_post_ignored_add_inserts(self, admin_client, app):
         """POST /price/ignored/add must insert a row and return {success: true}."""
-        resp = authenticated_client.post(
+        resp = admin_client.post(
             '/riftbound/price/ignored/add',
             json={'id_product': 99001, 'name': 'Fire Imp Foil'},
         )
@@ -72,11 +72,11 @@ class TestIgnoredAdd:
             ).first()
             assert row is not None
 
-    def test_post_ignored_add_idempotent(self, authenticated_client):
+    def test_post_ignored_add_idempotent(self, admin_client):
         """POSTing the same (id_product, name) twice must not error (upsert/ignore)."""
         payload = {'id_product': 99002, 'name': 'Shadow Blade'}
-        authenticated_client.post('/riftbound/price/ignored/add', json=payload)
-        resp = authenticated_client.post('/riftbound/price/ignored/add', json=payload)
+        admin_client.post('/riftbound/price/ignored/add', json=payload)
+        resp = admin_client.post('/riftbound/price/ignored/add', json=payload)
         data = resp.get_json()
         assert resp.status_code == 200
         assert data['success'] is True
@@ -84,14 +84,14 @@ class TestIgnoredAdd:
 
 class TestIgnoredRestore:
 
-    def test_post_ignored_restore_deletes(self, authenticated_client, app):
+    def test_post_ignored_restore_deletes(self, admin_client, app):
         """POST /price/ignored/restore must delete the row and return {success: true}."""
         with app.app_context():
             from app.models.cardmarket import RbcmIgnored
             db.session.add(RbcmIgnored(rbig_id_product=88001, rbig_name='Restore Me'))
             db.session.commit()
 
-        resp = authenticated_client.post(
+        resp = admin_client.post(
             '/riftbound/price/ignored/restore',
             json={'id_product': 88001, 'name': 'Restore Me'},
         )
@@ -107,9 +107,9 @@ class TestIgnoredRestore:
             ).first()
             assert row is None
 
-    def test_post_ignored_restore_nonexistent_returns_success(self, authenticated_client):
+    def test_post_ignored_restore_nonexistent_returns_success(self, admin_client):
         """Restoring a non-existent entry should still return success (idempotent)."""
-        resp = authenticated_client.post(
+        resp = admin_client.post(
             '/riftbound/price/ignored/restore',
             json={'id_product': 99999, 'name': 'Does Not Exist'},
         )
@@ -120,14 +120,14 @@ class TestIgnoredRestore:
 
 class TestIgnoredList:
 
-    def test_get_ignored_returns_list(self, authenticated_client, app):
+    def test_get_ignored_returns_list(self, admin_client, app):
         """GET /price/ignored must return list of {id_product, name, ignored_at}."""
         with app.app_context():
             from app.models.cardmarket import RbcmIgnored
             db.session.add(RbcmIgnored(rbig_id_product=77001, rbig_name='Listed Card'))
             db.session.commit()
 
-        resp = authenticated_client.get('/riftbound/price/ignored')
+        resp = admin_client.get('/riftbound/price/ignored')
         data = resp.get_json()
         assert resp.status_code == 200
         assert data['success'] is True
@@ -143,9 +143,9 @@ class TestIgnoredList:
         assert item['name'] == 'Listed Card'
         assert 'ignored_at' in item
 
-    def test_get_ignored_empty_when_none(self, authenticated_client):
+    def test_get_ignored_empty_when_none(self, admin_client):
         """GET /price/ignored with no rows returns empty list."""
-        resp = authenticated_client.get('/riftbound/price/ignored')
+        resp = admin_client.get('/riftbound/price/ignored')
         data = resp.get_json()
         assert resp.status_code == 200
         assert data['success'] is True
@@ -158,7 +158,7 @@ class TestIgnoredList:
 
 class TestMappingsBrowserExcludesIgnored:
 
-    def test_mappings_browser_excludes_ignored(self, authenticated_client, app):
+    def test_mappings_browser_excludes_ignored(self, admin_client, app):
         """cardmarket-unmatched must NOT include products that are in rbcm_ignored."""
         with app.app_context():
             # Seed: one RbcmProduct that should be ignored
@@ -181,7 +181,7 @@ class TestMappingsBrowserExcludesIgnored:
             db.session.add(RbcmIgnored(rbig_id_product=55001, rbig_name='Ignored Product'))
             db.session.commit()
 
-        resp = authenticated_client.get('/riftbound/price/cardmarket-unmatched')
+        resp = admin_client.get('/riftbound/price/cardmarket-unmatched')
         data = resp.get_json()
         assert resp.status_code == 200
         assert data['success'] is True
@@ -270,14 +270,14 @@ class TestAutoMatchApply:
             db.session.add(c)
             db.session.commit()
 
-    def test_auto_match_apply_inserts_only_selected(self, authenticated_client, app):
+    def test_auto_match_apply_inserts_only_selected(self, admin_client, app):
         """POST /price/auto-match/apply must insert only the selected pairings."""
         self._seed_set_card(app)
 
         pairings = [
             {'id_product': 71001, 'rbset_id': 'APL', 'rbcar_id': '01', 'foil': 'N'},
         ]
-        resp = authenticated_client.post(
+        resp = admin_client.post(
             '/riftbound/price/auto-match/apply',
             json={'pairings': pairings},
         )
@@ -294,7 +294,7 @@ class TestAutoMatchApply:
             assert mapping.rbpcm_rbcar_id == '01'
             assert mapping.rbpcm_foil == 'N'
 
-    def test_auto_match_apply_skips_duplicate(self, authenticated_client, app):
+    def test_auto_match_apply_skips_duplicate(self, admin_client, app):
         """Pairings for already-mapped products must be counted as review, not inserted again."""
         self._seed_set_card(app)
 
@@ -313,7 +313,7 @@ class TestAutoMatchApply:
             {'id_product': 72001, 'rbset_id': 'APL', 'rbcar_id': '01', 'foil': None},
             {'id_product': 72002, 'rbset_id': 'APL', 'rbcar_id': '01', 'foil': 'S'},
         ]
-        resp = authenticated_client.post(
+        resp = admin_client.post(
             '/riftbound/price/auto-match/apply',
             json={'pairings': pairings},
         )

@@ -23,7 +23,9 @@
     </form>
 </div>
 
+{% if current_user.is_admin %}
 <button onclick="openAddModal()" class="btn btn-primary" style="margin-bottom: 1rem;">Add New Set</button>
+{% endif %}
 
 <table>
     <thead>
@@ -32,7 +34,7 @@
             <th>Set Name</th>
             <th>Number of Cards</th>
             <th>Release Date</th>
-            <th>Actions</th>
+            {% if current_user.is_admin %}<th>Actions</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -42,16 +44,19 @@
             <td>{{ set.rbset_name }}</td>
             <td>{{ set.rbset_ncard or 'N/A' }}</td>
             <td>{{ set.rbset_outdat or 'N/A' }}</td>
+            {% if current_user.is_admin %}
             <td>
                 <button
                     onclick="openEditModal('{{ set.rbset_id }}', '{{ set.rbset_name }}', '{{ set.rbset_ncard }}', '{{ set.rbset_outdat }}')"
                     class="btn btn-secondary">Edit</button>
             </td>
+            {% endif %}
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
+{% if current_user.is_admin %}
 <!-- Add Modal -->
 <div id="addModal" class="modal">
     <div class="modal-content">
@@ -112,9 +117,11 @@
         </form>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
+{% if current_user.is_admin %}
 <script>
     function openAddModal() {
         document.getElementById('addModal').classList.add('active');
@@ -185,4 +192,5 @@
         }
     });
 </script>
+{% endif %}
 {% endblock %}

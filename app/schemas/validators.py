@@ -4,7 +4,11 @@ Pydantic schemas for request validation.
 import re
 from datetime import date
 from typing import Optional, List
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+
+# One rule for every way of choosing a password: profile update, CLI, registration.
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 128
 
 
 # ============== Set Schemas ==============
@@ -261,10 +265,17 @@ class CollectionImportRow(BaseModel):
 # ============== Profile Schemas ==============
 
 class ProfileUpdate(BaseModel):
-    """Schema for updating profile."""
+    """Schema for updating profile.
+
+    Changing the password needs the current one (PROF-2); an email-only update
+    does not.
+    """
     email: Optional[str] = Field(None, max_length=120)
-    password: Optional[str] = Field(None, min_length=6, max_length=128)
-    
+    password: Optional[str] = Field(None, min_length=PASSWORD_MIN_LENGTH,
+                                    max_length=PASSWORD_MAX_LENGTH)
+    # Generous bound: it only has to fit whatever password the account already has.
+    current_password: Optional[str] = Field(None, max_length=1024)
+
     @field_validator('email')
     @classmethod
     def validate_email(cls, v: Optional[str]) -> Optional[str]:
@@ -273,6 +284,12 @@ class ProfileUpdate(BaseModel):
             if '@' not in v:
                 raise ValueError('Invalid email format')
         return v
+
+    @model_validator(mode='after')
+    def current_password_goes_with_a_new_password(self):
+        if self.password is not None and not self.current_password:
+            raise ValueError('current_password is required to change the password')
+        return self
 
 
 # ============== Price Schemas ==============
@@ -326,6 +343,17 @@ class CardmarketLoad(BaseModel):
     singles_url: Optional[str] = Field(None, description="Override URL for products_singles JSON")
     nonsingles_url: Optional[str] = Field(None, description="Override URL for products_nonsingles JSON")
     price_guide_url: Optional[str] = Field(None, description="Override URL for price_guide JSON")
+
+    @field_validator('singles_url', 'nonsingles_url', 'price_guide_url')
+    @classmethod
+    def validate_allowed_url(cls, v: Optional[str]) -> Optional[str]:
+        """ACL-7: an override must be https on an allow-listed Cardmarket host.
+        Empty means "no override"."""
+        if not v:
+            return None
+        from flask import current_app
+        from app.services.cardmarket_loader import validate_override_url
+        return validate_override_url(v, current_app.config['CARDMARKET_ALLOWED_HOSTS'])
 
 
 class IgnoredAdd(BaseModel):

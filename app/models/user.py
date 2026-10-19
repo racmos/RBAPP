@@ -18,6 +18,18 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Roles / access (ACL-1, D10). Only the CLI (`flask users promote|block`)
+    # changes them; no request input ever does.
+    is_admin = db.Column(db.Boolean, nullable=False, default=False,
+                         server_default=db.false())
+    is_blocked = db.Column(db.Boolean, nullable=False, default=False,
+                           server_default=db.false())
+
+    @property
+    def is_active(self):
+        """Flask-Login reads this: a blocked user can't log in and loses the
+        session on the next request (UserMixin.is_authenticated follows it)."""
+        return not self.is_blocked
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

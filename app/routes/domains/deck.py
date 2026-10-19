@@ -3,14 +3,14 @@ Deck routes module.
 """
 from types import SimpleNamespace
 from urllib.parse import urlencode
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from app import db
 from app.models import RbDeck, RbSet, RbCard, RbCollection
-from app.models.cardmarket import RbcmPrice, RbcmProductCardMap
 from app.schemas.validators import DeckSave
 from app.schemas.validation import validate_json
+from app.services.pricing import latest_price_for_card
 from datetime import datetime
 
 
@@ -61,54 +61,30 @@ def _row_for_listing(rbdeck):
     )
 
 
-def _latest_price_for_card(rbset_id, rbcar_id, rarity=None):
-    """Devuelve el último precio para una carta interna del deck.
-
-    Origen exacto:
-      1. Se busca el `idProduct` mapeado en `riftbound.rbcm_product_card_map`
-         para (rbset_id, rbcar_id). Si hay varios mappings (ej. normal+foil
-         para una common), se usa el primero — para decks asumimos versión
-         normal por defecto.
-      2. Se obtiene la fecha más reciente del producto en `riftbound.rbcm_price`
-         (`MAX(rbprc_date)`).
-      3. Se elige la columna según rareza (regla del proyecto):
-            common / uncommon -> rbprc_avg7         (precio carta normal)
-            rare / epic       -> rbprc_avg7_foil    (precio único por rareza)
-         Si la columna preferida es NULL, hace fallback a la otra.
-
-    Devuelve float o None.
-    """
-    map_row = RbcmProductCardMap.query.filter_by(
-        rbpcm_rbset_id=rbset_id, rbpcm_rbcar_id=rbcar_id
-    ).first()
-    if not map_row:
-        return None
-    latest_date = db.session.query(
-        func.max(RbcmPrice.rbprc_date)
-    ).filter(RbcmPrice.rbprc_id_product == map_row.rbpcm_id_product).scalar()
-    if not latest_date:
-        return None
-    p = RbcmPrice.query.filter_by(
-        rbprc_id_product=map_row.rbpcm_id_product,
-        rbprc_date=latest_date,
-    ).first()
-    if not p:
-        return None
-
-    rarity_l = (rarity or '').lower()
-    is_rare_or_epic = rarity_l in ('rare', 'epic')
-    primary = p.rbprc_avg7_foil if is_rare_or_epic else p.rbprc_avg7
-    fallback = p.rbprc_avg7 if is_rare_or_epic else p.rbprc_avg7_foil
-    val = primary if primary is not None else fallback
-    return float(val) if val is not None else None
+def _owned_quantities(username, keys):
+    """{(set_id, card_id): total copies} the user owns, all foil variants and
+    collection lines added up. `keys` is an iterable of (set_id, card_id)."""
+    keys = list(keys)
+    owned = {}
+    if not keys or not username:
+        return owned
+    rows = RbCollection.query.filter(
+        RbCollection.rbcol_user == username,
+        db.tuple_(RbCollection.rbcol_rbset_id, RbCollection.rbcol_rbcar_id).in_(keys),
+    ).all()
+    for r in rows:
+        key = (r.rbcol_rbset_id, r.rbcol_rbcar_id)
+        owned[key] = owned.get(key, 0) + r.rbcol_quantity
+    return owned
 
 
-def _enrich_cards_for_view(rbdeck, owner_username):
+def _enrich_cards_for_view(rbdeck, viewer_username):
     """Construye la lista plana de cartas para `deck_view.html` con los campos
     que la plantilla espera: set_id, card_id, card_name, quantity, sideboard
     ('N'/'S'), image, have, missing, price.
-    Las cantidades de "have" se calculan sobre la colección del propietario
-    del deck (no del usuario que lo está viendo).
+    `have` = min(copias que tiene el USUARIO QUE MIRA, copias necesarias): se
+    calcula con la colección del visitante, nunca con la del propietario del
+    deck (DECK-1).
     """
     raw = rbdeck.rbdck_cards or {}
     main = raw.get('main', []) or []
@@ -122,16 +98,7 @@ def _enrich_cards_for_view(rbdeck, owner_username):
     ).all() if keys else []
     cards_by_key = {(c.rbcar_rbset_id, c.rbcar_id): c for c in rbcards}
 
-    # Colecciones del owner agrupadas por (set, card) -> total quantity
-    owned_by_key = {}
-    if keys and owner_username:
-        rows = RbCollection.query.filter(
-            RbCollection.rbcol_user == owner_username,
-            db.tuple_(RbCollection.rbcol_rbset_id, RbCollection.rbcol_rbcar_id).in_(keys),
-        ).all()
-        for r in rows:
-            owned_by_key.setdefault((r.rbcol_rbset_id, r.rbcol_rbcar_id), 0)
-            owned_by_key[(r.rbcol_rbset_id, r.rbcol_rbcar_id)] += r.rbcol_quantity
+    owned_by_key = _owned_quantities(viewer_username, keys)
 
     def _build(c, sideboard_flag):
         set_id = c.get('set') or ''
@@ -141,7 +108,9 @@ def _enrich_cards_for_view(rbdeck, owner_username):
         image = rbc.image_src if rbc else None
         have = min(owned_by_key.get((set_id, card_id), 0), qty)
         missing = max(0, qty - have)
-        price = _latest_price_for_card(set_id, card_id, rbc.rbcar_rarity if rbc else None)
+        # Deck cards are priced as non-foil with the same chain as the collection (PRC-2).
+        price = latest_price_for_card(set_id, card_id,
+                                      rarity=rbc.rbcar_rarity if rbc else None, foil='N')
         return {
             'set_id': set_id,
             'card_id': card_id,
@@ -158,10 +127,10 @@ def _enrich_cards_for_view(rbdeck, owner_username):
     return enriched
 
 
-def _wrap_deck_for_view(rbdeck):
+def _wrap_deck_for_view(rbdeck, viewer_username):
     """Devuelve un SimpleNamespace con la forma que `deck_view.html` espera:
        deck.name, .user, .mode, .format, .description, .max_set, .max_set_name,
-       .cards (plana, enriquecida)."""
+       .cards (plana, enriquecida con have/missing del visitante)."""
     max_set = rbdeck.rbdck_max_set
     max_set_name = None
     if max_set:
@@ -177,7 +146,7 @@ def _wrap_deck_for_view(rbdeck):
         max_set=max_set,
         max_set_name=max_set_name,
         seq=rbdeck.rbdck_seq or 1,
-        cards=_enrich_cards_for_view(rbdeck, rbdeck.rbdck_user),
+        cards=_enrich_cards_for_view(rbdeck, viewer_username),
     )
 
 
@@ -380,60 +349,63 @@ def api_legends():
 @deck_bp.route('/view/<int:deck_id>')
 @login_required
 def view_deck_by_id(deck_id):
-    """View deck by primary key (id sintético)."""
+    """View a deck by primary key. Decks are visible to every logged-in user
+    (this is how shared decks are reached); have/missing come from the viewer."""
     rbdeck = RbDeck.query.get(deck_id)
     if not rbdeck:
-        from flask import abort
         abort(404)
-    return render_template('deck_view.html', deck=_wrap_deck_for_view(rbdeck))
+    return render_template('deck_view.html',
+                           deck=_wrap_deck_for_view(rbdeck, current_user.username))
 
 
 @deck_bp.route('/view/<name>')
 @login_required
 def view_deck_by_name(name):
-    """View latest version of a deck by name (lookup en cualquier user; los decks
-    son públicos por defecto)."""
+    """View the viewer's latest version of a deck by name. Only the viewer's own
+    decks are looked up, so a name never reveals who else has it (D19)."""
     rbdeck = (
-        RbDeck.query.filter(RbDeck.rbdck_name == name)
+        RbDeck.query.filter(RbDeck.rbdck_user == current_user.username,
+                            RbDeck.rbdck_name == name)
                     .order_by(RbDeck.rbdck_seq.desc())
                     .first()
     )
     if not rbdeck:
-        from flask import abort
         abort(404)
-    return render_template('deck_view.html', deck=_wrap_deck_for_view(rbdeck))
+    return render_template('deck_view.html',
+                           deck=_wrap_deck_for_view(rbdeck, current_user.username))
 
 
 @deck_bp.route('/view/<name>/<int:seq>')
 @login_required
 def view_deck_by_name_and_seq(name, seq):
-    """View specific version (name + seq) — público (acepta decks de cualquier user)."""
+    """View one of the viewer's own versions (name + seq); 404 if they have none (D19)."""
     rbdeck = (
-        RbDeck.query.filter(RbDeck.rbdck_name == name, RbDeck.rbdck_seq == seq).first()
+        RbDeck.query.filter(RbDeck.rbdck_user == current_user.username,
+                            RbDeck.rbdck_name == name,
+                            RbDeck.rbdck_seq == seq).first()
     )
     if not rbdeck:
-        from flask import abort
         abort(404)
-    return render_template('deck_view.html', deck=_wrap_deck_for_view(rbdeck))
+    return render_template('deck_view.html',
+                           deck=_wrap_deck_for_view(rbdeck, current_user.username))
 
 
 @deck_bp.route('/versions/<name>')
 @login_required
 def deck_versions(name):
-    """Get all versions of a deck."""
+    """The current user's versions of a deck, newest first (DECK-3)."""
     decks = RbDeck.get_versions(current_user.username, name)
-    
+
     return jsonify({
         'success': True,
         'versions': [{
-            'set_id': d.rbdck_rbset_id,
-            'card_id': d.rbdck_rbcar_id,
+            'id': d.id,
             'name': d.rbdck_name,
-            'seq': getattr(d, 'rbdck_seq', 1) or 1,
+            'seq': d.rbdck_seq or 1,
             'snapshot': d.rbdck_snapshot.isoformat(),
             'mode': d.rbdck_mode,
             'format': d.rbdck_format,
-            'ncards': d.rbdck_ncards
+            'ncards': d.rbdck_ncards,
         } for d in decks]
     })
 
@@ -496,106 +468,3 @@ def save_deck():
         'name': new_deck.rbdck_name,
         'seq': new_deck.rbdck_seq,
     })
-
-
-@deck_bp.route('/update/<set_id>/<card_id>', methods=['POST'])
-@login_required
-def update_deck_legacy(set_id, card_id):
-    """Update deck using legacy composite key."""
-    rbdeck = RbDeck.query.filter_by(
-        rbdck_rbset_id=set_id,
-        rbdck_rbcar_id=card_id,
-        rbdck_user=current_user.username
-    ).first()
-    
-    if not rbdeck:
-        from flask import abort
-        abort(404)
-    
-    data = request.get_json() or {}
-    
-    if 'rbdck_name' in data:
-        # Nombre cambiado -> crear nueva versión
-        new_seq = RbDeck.get_next_seq(current_user.username, data['rbdck_name'])
-        
-        # Obtener datos actuales
-        new_deck = RbDeck(
-            rbdck_user=current_user.username,
-            rbdck_name=data['rbdck_name'],
-            rbdck_seq=new_seq,
-            rbdck_snapshot=datetime.utcnow(),
-            rbdck_rbset_id=set_id,
-            rbdck_rbcar_id=card_id,
-            rbdck_description=data.get('rbdck_description', rbdeck.rbdck_description),
-            rbdck_mode=data.get('rbdck_mode', rbdeck.rbdck_mode),
-            rbdck_format=data.get('rbdck_format', rbdeck.rbdck_format),
-            rbdck_max_set=data.get('rbdck_max_set', rbdeck.rbdck_max_set),
-            rbdck_ncards=rbdeck.rbdck_ncards,
-            rbdck_cards=rbdeck.rbdck_cards
-        )
-        
-        if 'rbdck_cards' in data:
-            main = data['rbdck_cards'].get('main', [])
-            sideboard = data['rbdck_cards'].get('sideboard', [])
-            total = sum(c.get('qty', 1) for c in main + sideboard)
-            new_deck.rbdck_ncards = total
-            new_deck.rbdck_cards = data['rbdck_cards']
-        
-        db.session.add(new_deck)
-    else:
-        # Solo actualizar metadatos (sin crear nueva versión)
-        if 'rbdck_description' in data:
-            rbdeck.rbdck_description = data['rbdck_description']
-        if 'rbdck_mode' in data:
-            rbdeck.rbdck_mode = data['rbdck_mode']
-        if 'rbdck_format' in data:
-            rbdeck.rbdck_format = data['rbdck_format']
-        if 'rbdck_max_set' in data:
-            rbdeck.rbdck_max_set = data['rbdck_max_set']
-        if 'rbdck_cards' in data:
-            # Crear nueva versión al cambiar cartas
-            new_seq = RbDeck.get_next_seq(current_user.username, rbdeck.rbdck_name)
-            
-            main = data['rbdck_cards'].get('main', [])
-            sideboard = data['rbdck_cards'].get('sideboard', [])
-            total = sum(c.get('qty', 1) for c in main + sideboard)
-            
-            new_deck = RbDeck(
-                rbdck_user=current_user.username,
-                rbdck_name=rbdeck.rbdck_name,
-                rbdck_seq=new_seq,
-                rbdck_snapshot=datetime.utcnow(),
-                rbdck_rbset_id=set_id,
-                rbdck_rbcar_id=card_id,
-                rbdck_description=rbdeck.rbdck_description,
-                rbdck_mode=rbdeck.rbdck_mode,
-                rbdck_format=rbdeck.rbdck_format,
-                rbdck_max_set=rbdeck.rbdck_max_set,
-                rbdck_ncards=total,
-                rbdck_cards=data['rbdck_cards']
-            )
-            db.session.add(new_deck)
-    
-    db.session.commit()
-    
-    return jsonify({'success': True})
-
-
-@deck_bp.route('/delete/<set_id>/<card_id>', methods=['DELETE'])
-@login_required
-def delete_deck_legacy(set_id, card_id):
-    """Delete a specific deck version using legacy composite key."""
-    rbdeck = RbDeck.query.filter_by(
-        rbdck_rbset_id=set_id,
-        rbdck_rbcar_id=card_id,
-        rbdck_user=current_user.username
-    ).first()
-    
-    if not rbdeck:
-        from flask import abort
-        abort(404)
-    
-    db.session.delete(rbdeck)
-    db.session.commit()
-    
-    return jsonify({'success': True})

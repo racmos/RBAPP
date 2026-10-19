@@ -9,7 +9,7 @@ phases:
   spec: done
   design: done
   tasks: done
-  apply: in_progress  # unit a merged (PR #11); unit b in progress on feat/f0b-alembic
+  apply: in_progress  # units a (PR #11) and b (PR #12) merged; dev DB at 0003; unit c implemented on feat/f0c-admin-authz (3.0-3.36, 3.38 done; 3.37 is USER: upgrade dev, promote racmos, restart); next unit d
   verify: pending
   archive: pending
 updated: 2026-10-18

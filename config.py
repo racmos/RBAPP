@@ -32,6 +32,11 @@ SECRET_KEY_DENYLIST_SHA256 = frozenset({
     '192f0a7b20fac1f96c28c62fc6a1a0f998b9efb97ad76e020445b46789289a3c',
 })
 
+# Hosts the admin may point the Cardmarket loader at (ACL-7). Default: the host
+# of the built-in download URLs. Override with a comma-separated list in
+# CARDMARKET_ALLOWED_HOSTS.
+CARDMARKET_ALLOWED_HOSTS = ('downloads.s3.cardmarket.com',)
+
 # Trusted reverse-proxy hops (CFG-7): name -> default
 _PROXY_FIX_DEFAULTS = {
     'PROXY_FIX_X_FOR': 1,
@@ -65,6 +70,12 @@ def _int_setting(environ: Mapping[str, str], name: str, default: int) -> int:
     return int(text)
 
 
+def _host_list(environ: Mapping[str, str], name: str, default: tuple) -> tuple:
+    """A comma-separated list of host names, lower-cased; blank keeps `default`."""
+    hosts = tuple(h.strip().lower() for h in (environ.get(name) or '').split(',') if h.strip())
+    return hosts or default
+
+
 def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
     """Read the Flask config values that come from the environment (CFG-1, CFG-7).
 
@@ -88,6 +99,8 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
     }
     for name, default in _PROXY_FIX_DEFAULTS.items():
         settings[name] = _int_setting(environ, name, default)
+    settings['CARDMARKET_ALLOWED_HOSTS'] = _host_list(
+        environ, 'CARDMARKET_ALLOWED_HOSTS', CARDMARKET_ALLOWED_HOSTS)
     return settings
 
 

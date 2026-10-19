@@ -8,7 +8,9 @@ import os
 os.environ['RB_ENV'] = 'testing'
 
 import pytest
+from flask import g
 from unittest.mock import patch
+from werkzeug.security import generate_password_hash
 from app import create_app, db
 
 # Variables read by the app factory / entry points (unit a).
@@ -43,6 +45,15 @@ def app():
         SECRET_KEY='test-secret-key'
     )
     
+    # The fixture keeps one app context open for the whole test, so Flask-Login's
+    # per-context cache (`g._login_user`) would outlive the request and the
+    # first user loaded would be "logged in" for every other client too. Drop
+    # it before each request so every test client is identified by its own
+    # session cookie (needed once a test uses more than one client, ACL-8).
+    @app.before_request
+    def _forget_cached_login():
+        g.pop('_login_user', None)
+
     with app.app_context():
         try:
             db.create_all()
@@ -79,6 +90,52 @@ def authenticated_client(app, client):
         }, follow_redirects=True)
         
         yield client
+
+
+# --- Users and roles (unit c, ACL-8) -------------------------------------------
+
+DEFAULT_PASSWORD = 'testpass123'
+
+
+@pytest.fixture
+def make_user(app):
+    """Factory: create (and commit) a user. Returns the User; the caller logs in
+    through `login_as` or one of the *_client fixtures."""
+    from app.models import User
+
+    def _make(username, email=None, password=DEFAULT_PASSWORD, is_admin=False,
+              is_blocked=False):
+        user = User(username=username, email=email or f'{username}@test.com')
+        # A cheap hash: the default (scrypt) costs ~0.2 s per user and most tests
+        # create several. check_password() reads the method from the hash itself.
+        user.password_hash = generate_password_hash(password, method='pbkdf2:sha256:1000')
+        user.is_admin = is_admin
+        user.is_blocked = is_blocked
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+    return _make
+
+
+def login_as(client, username, password=DEFAULT_PASSWORD):
+    """Log `client` in through the real login form."""
+    client.post('/riftbound/login', data={'username': username, 'password': password})
+    return client
+
+
+@pytest.fixture
+def admin_client(app, make_user):
+    """Its own test client, logged in as an admin (`admin`)."""
+    make_user('admin', is_admin=True)
+    return login_as(app.test_client(), 'admin')
+
+
+@pytest.fixture
+def other_user_client(app, make_user):
+    """Its own test client, logged in as a second ordinary user (`otheruser`)."""
+    make_user('otheruser')
+    return login_as(app.test_client(), 'otheruser')
 
 
 @pytest.fixture

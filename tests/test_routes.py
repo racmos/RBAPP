@@ -116,9 +116,9 @@ class TestSetsAPI:
         response = authenticated_client.get('/riftbound/set')
         assert response.status_code == 200
     
-    def test_add_set_success(self, authenticated_client, app):
+    def test_add_set_success(self, admin_client, app):
         """Should add a new set."""
-        response = authenticated_client.post('/riftbound/set/add',
+        response = admin_client.post('/riftbound/set/add',
             json={'rbset_id': 'NEW1', 'rbset_name': 'New Set'},
             content_type='application/json'
         )
@@ -133,9 +133,9 @@ class TestSetsAPI:
             assert set is not None
             assert set.rbset_name == 'New Set'
     
-    def test_add_set_duplicate_id(self, authenticated_client, sample_set):
+    def test_add_set_duplicate_id(self, admin_client, sample_set):
         """Should fail when adding set with duplicate ID."""
-        response = authenticated_client.post('/riftbound/set/add',
+        response = admin_client.post('/riftbound/set/add',
             json={'rbset_id': 'TEST1', 'rbset_name': 'Duplicate'},
             content_type='application/json'
         )
@@ -144,9 +144,9 @@ class TestSetsAPI:
         assert data['success'] is False
         assert 'already exists' in data['message']
     
-    def test_add_set_duplicate_name(self, authenticated_client, sample_set):
+    def test_add_set_duplicate_name(self, admin_client, sample_set):
         """Should fail when adding set with duplicate name."""
-        response = authenticated_client.post('/riftbound/set/add',
+        response = admin_client.post('/riftbound/set/add',
             json={'rbset_id': 'DIFF1', 'rbset_name': 'Test Set 1'},
             content_type='application/json'
         )
@@ -168,9 +168,9 @@ class TestCardsAPI:
         response = authenticated_client.get('/riftbound/card?page=1&per_page=10')
         assert response.status_code == 200
     
-    def test_add_card_success(self, authenticated_client, sample_set):
+    def test_add_card_success(self, admin_client, sample_set):
         """Should add a new card."""
-        response = authenticated_client.post('/riftbound/card/add',
+        response = admin_client.post('/riftbound/card/add',
             json={
                 'rbcar_rbset_id': 'TEST1',
                 'rbcar_id': 'NEW001',
@@ -183,9 +183,9 @@ class TestCardsAPI:
         data = json.loads(response.data)
         assert data['success'] is True
     
-    def test_add_card_duplicate(self, authenticated_client, sample_card):
+    def test_add_card_duplicate(self, admin_client, sample_card):
         """Should fail when adding duplicate card."""
-        response = authenticated_client.post('/riftbound/card/add',
+        response = admin_client.post('/riftbound/card/add',
             json={
                 'rbcar_rbset_id': 'TEST1',
                 'rbcar_id': '001',
@@ -256,7 +256,7 @@ class TestProfileAPI:
     def test_update_password(self, authenticated_client):
         """Should update user password."""
         response = authenticated_client.post('/riftbound/profile/update',
-            json={'password': 'newpassword123'},
+            json={'password': 'newpassword123', 'current_password': 'testpass123'},
             content_type='application/json'
         )
         assert response.status_code == 200

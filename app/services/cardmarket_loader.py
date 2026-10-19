@@ -7,8 +7,10 @@ validates changes via SHA-256, and loads to PostgreSQL tables.
 import hashlib
 import json
 import logging
+import re
 from datetime import datetime
-from typing import Optional
+from typing import Iterable, Optional
+from urllib.parse import urlsplit
 
 import requests
 from app import db
@@ -24,6 +26,40 @@ CARDMARKET_URLS = {
     'singles': 'https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_22.json',
     'nonsingles': 'https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_22.json',
 }
+
+# Spaces, control characters and backslashes make clients disagree about where
+# the host ends (`https://evil.example\@good.example/`), so they are refused outright.
+_UNSAFE_URL_CHARS = re.compile(r'[\x00-\x20\x7f\\]')
+
+
+def validate_override_url(url, allowed_hosts: Iterable[str]) -> str:
+    """Return `url` if an admin may make the server download it, else raise ValueError.
+
+    ACL-7: https only, host in `allowed_hosts` (exact match, case-insensitive),
+    no userinfo, port 443 or none. Keeps the loader from being pointed at
+    cloud-metadata or internal addresses (SSRF).
+    """
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError('the URL is empty')
+    if _UNSAFE_URL_CHARS.search(url):
+        raise ValueError('the URL contains spaces, control characters or backslashes')
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        raise ValueError('the URL is malformed or has an invalid port') from None
+    if parts.scheme.lower() != 'https':
+        raise ValueError('only https URLs are allowed')
+    if parts.username is not None or parts.password is not None or '@' in parts.netloc:
+        raise ValueError('URLs with user information are not allowed')
+    host = (parts.hostname or '').lower()
+    if not host:
+        raise ValueError('the URL has no host')
+    if port not in (None, 443):
+        raise ValueError('only port 443 is allowed')
+    if host not in {h.lower() for h in allowed_hosts}:
+        raise ValueError(f'host {host!r} is not in the Cardmarket allow-list')
+    return url
 
 
 class CardmarketLoader:

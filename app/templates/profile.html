@@ -18,6 +18,11 @@
             <input type="email" id="email" value="{{ user.email }}" required>
         </div>
         <div class="form-group">
+            <label for="current_password">Current Password (only needed to change the password)</label>
+            <input type="password" id="current_password" autocomplete="current-password"
+                placeholder="Enter your current password">
+        </div>
+        <div class="form-group">
             <label for="password">New Password (leave blank to keep current)</label>
             <input type="password" id="password" placeholder="Enter new password">
         </div>
@@ -37,9 +42,14 @@
 
         const password = document.getElementById('password').value;
         const passwordConfirm = document.getElementById('password_confirm').value;
+        const currentPassword = document.getElementById('current_password').value;
 
         if (password && password !== passwordConfirm) {
             alert('Passwords do not match');
+            return;
+        }
+        if (password && !currentPassword) {
+            alert('Enter your current password to change it');
             return;
         }
 
@@ -49,6 +59,7 @@
 
         if (password) {
             data.password = password;
+            data.current_password = currentPassword;
         }
 
         const response = await fetch('/riftbound/profile/update', {
@@ -62,8 +73,10 @@
             alert('Profile updated successfully');
             document.getElementById('password').value = '';
             document.getElementById('password_confirm').value = '';
+            document.getElementById('current_password').value = '';
         } else {
-            alert(result.message);
+            const details = (result.details || []).map(d => d.message).join('\n');
+            alert(details ? result.message + ':\n' + details : result.message);
         }
     });
 </script>

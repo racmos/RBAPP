@@ -8,7 +8,7 @@
 --   1. rbcards has Ahri Alluring with rbcar_rarity = 'Rare'
 --   2. rbcm_product_card_map has a mapping for that (rbset_id, rbcar_id)
 --   3. rbcm_price has avg7_foil for the mapped idProduct on the latest date
---   4. _resolve_price picks avg7_foil for Rare/Epic (see collection.py:127)
+--   4. resolve_price picks avg7_foil for Rare/Epic (see app/services/pricing.py)
 -- =============================================================================
 
 -- Step 1: Find Ahri Alluring in rbcards
@@ -58,8 +58,8 @@ WHERE c.rbcar_name ILIKE '%ahri%'
   )
 ORDER BY p.rbprc_date DESC;
 
--- Step 4: Verify what _resolve_price would pick
--- For Rare: uses avg7_foil (see collection.py:_resolve_price)
+-- Step 4: Verify what resolve_price would pick
+-- For Rare: uses avg7_foil (see app/services/pricing.py:resolve_price)
 -- If avg7_foil IS NULL but avg7 is populated -> price shows as NULL (BUG)
 -- If rbpcm_foil = 'S' on a rare card -> mapping was wrong (rare has no foil)
 SELECT

@@ -23,6 +23,8 @@ pytestmark = pytest.mark.postgres
 BASELINE = '0001_baseline'
 DROP_LEGACY = '0002_drop_legacy_tables'
 QUANTITY = '0003_collection_quantity_integer'
+USER_FLAGS = '0004_user_admin_flags'
+SCHEMA_COMMENTS = '0004a_schema_comments'
 LEGACY_SEQUENCE = 'rbusers_rbus_id_seq'
 
 
@@ -240,6 +242,97 @@ class TestSeededDatabase:
         assert rows('SELECT version_num FROM riftbound.alembic_version') == [(BASELINE,)]
         assert {'old1_rbusers', 'old_rbdecks'} <= tables()
         assert backups(pg_app) == []
+
+
+class TestUserAdminFlags:
+    """0004 (ACL-1) on real PostgreSQL: boolean NOT NULL DEFAULT false, existing
+    rows valid, both columns removed on downgrade."""
+
+    def test_existing_users_get_false_flags_and_the_columns_are_boolean(self, pg_app):
+        upgrade(QUANTITY)
+        run("INSERT INTO riftbound.rbusers (username, email, password_hash) VALUES"
+            " ('alice', 'alice@x.io', 'h'), ('bob', 'bob@x.io', 'h')")
+        upgrade(USER_FLAGS)
+        assert rows('SELECT username, is_admin, is_blocked FROM riftbound.rbusers ORDER BY id') \
+            == [('alice', False, False), ('bob', False, False)]
+        assert rows("SELECT column_name, data_type, is_nullable, column_default"
+                    " FROM information_schema.columns WHERE table_schema = 'riftbound'"
+                    " AND table_name = 'rbusers' AND column_name IN ('is_admin', 'is_blocked')"
+                    " ORDER BY column_name") == [
+            ('is_admin', 'boolean', 'NO', 'false'), ('is_blocked', 'boolean', 'NO', 'false')]
+
+    def test_new_users_default_to_false_and_nulls_are_refused(self, pg_app):
+        upgrade(USER_FLAGS)
+        run("INSERT INTO riftbound.rbusers (username, email, password_hash)"
+            " VALUES ('carol', 'carol@x.io', 'h')")
+        assert rows("SELECT is_admin, is_blocked FROM riftbound.rbusers") == [(False, False)]
+        with pytest.raises(sa.exc.IntegrityError):
+            run("UPDATE riftbound.rbusers SET is_admin = NULL")
+
+    def test_downgrade_drops_both_columns_and_keeps_the_users(self, pg_app):
+        upgrade(USER_FLAGS)
+        run("INSERT INTO riftbound.rbusers (username, email, password_hash, is_admin)"
+            " VALUES ('alice', 'alice@x.io', 'h', true)")
+        downgrade(QUANTITY)
+        names = {c['name'] for c in inspector().get_columns('rbusers', schema='riftbound')}
+        assert {'is_admin', 'is_blocked'}.isdisjoint(names)
+        assert rows('SELECT username FROM riftbound.rbusers') == [('alice',)]
+        upgrade(USER_FLAGS)
+        assert rows('SELECT is_admin FROM riftbound.rbusers') == [(False,)]
+
+
+def catalog_comments():
+    """{table: {'table': text|None, 'columns': {name: text}}} read from PostgreSQL,
+    only for the objects that have at least one comment."""
+    insp = inspector()
+    found = {}
+    for table in sorted(tables()):
+        text = insp.get_table_comment(table, schema='riftbound')['text']
+        columns = {c['name']: c['comment'] for c in insp.get_columns(table, schema='riftbound')
+                   if c.get('comment')}
+        if text or columns:
+            found[table] = {'table': text, 'columns': columns}
+    return found
+
+
+class TestSchemaComments:
+    """0004a: the COMMENTs dev already had (task 3.0). `flask db check` is the
+    goal: models, migrations and the catalog all say the same."""
+
+    def test_fresh_database_at_head_has_no_comment_drift(self, pg_app):
+        upgrade()
+        assert drift() == []
+        result = pg_app.test_cli_runner().invoke(args=['db', 'check'])
+        assert result.exit_code == 0, result.output
+
+    def test_the_catalog_holds_exactly_the_text_of_the_migration_and_models(self, pg_app):
+        from tests.test_migrations import load_revision, model_comments
+        upgrade()
+        wanted = load_revision('0004a_schema_comments.py').COMMENTS
+        assert catalog_comments() == wanted
+        assert catalog_comments() == model_comments()
+        assert len(wanted) == 8
+
+    def test_without_the_revision_the_models_would_drift_on_comments(self, pg_app):
+        upgrade(USER_FLAGS)
+        assert catalog_comments() == {}
+        found = [repr(op) for item in drift() for op in (item if isinstance(item, list) else [item])]
+        assert found and all('comment' in line for line in found)
+
+    def test_running_it_on_a_database_that_already_has_the_comments_is_harmless(self, pg_app):
+        upgrade(USER_FLAGS)
+        run("COMMENT ON TABLE riftbound.rbset IS 'Tabla de expansiones'")
+        run("COMMENT ON COLUMN riftbound.rbset.rbset_name IS 'Nombre expansión'")
+        upgrade(SCHEMA_COMMENTS)
+        assert drift() == []
+        upgrade(SCHEMA_COMMENTS)          # again: nothing to do, nothing breaks
+
+    def test_downgrade_removes_every_comment_again(self, pg_app):
+        upgrade()
+        downgrade(USER_FLAGS)
+        assert catalog_comments() == {}
+        upgrade()
+        assert drift() == []
 
 
 class TestRoundTrip:

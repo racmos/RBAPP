@@ -18,6 +18,7 @@ from app.schemas.validators import (
     CollectionExport, CollectionImport, CollectionImportRow,
 )
 from app.schemas.validation import validate_json
+from app.services.pricing import resolve_price
 from datetime import datetime
 
 collection_bp = Blueprint('collection', __name__, url_prefix='/riftbound/collection')
@@ -120,42 +121,6 @@ def _collection_query():
     )
 
 
-def _resolve_price(col, price_obj, card=None):
-    """Elige el precio correcto según la rareza de la carta y el tipo de foil.
-
-    Cadena de fallback (es mejor mostrar un precio aproximado que ninguno):
-
-      rare / epic / showcase:
-        avg7_foil → avg7 → low_foil → low
-      common / uncommon + foil='S':
-        avg7_foil → avg7 → low_foil → low
-      common / uncommon + foil='N':
-        avg7 → avg7_foil → low → low_foil
-
-    Para cartas nuevas puede que avg7 y avg7_foil sean NULL pero low/low_foil
-    ya tenga dato. Los campos low son el último recurso.
-    """
-    if not price_obj:
-        return None
-
-    rarity = (card.rbcar_rarity if card else '') or ''
-    rarity_lower = rarity.lower()
-    is_premium = rarity_lower in ('rare', 'epic', 'showcase')
-
-    if is_premium or col.rbcol_foil == 'S':
-        raw = (price_obj.rbprc_avg7_foil
-               or price_obj.rbprc_avg7
-               or price_obj.rbprc_low_foil
-               or price_obj.rbprc_low)
-    else:
-        raw = (price_obj.rbprc_avg7
-               or price_obj.rbprc_avg7_foil
-               or price_obj.rbprc_low
-               or price_obj.rbprc_low_foil)
-
-    return float(raw) if raw is not None else None
-
-
 @collection_bp.route('')
 @login_required
 def collection():
@@ -228,7 +193,7 @@ def collection():
         {
             'collection': c,
             'card': cd,
-            'price': _resolve_price(c, p, cd),
+            'price': resolve_price(p, rarity=cd.rbcar_rarity, foil=c.rbcol_foil),
             'product_name': prod.rbprd_name if prod else None,
         }
         for c, cd, p, prod in pagination.items
@@ -761,7 +726,7 @@ def export_csv():
         if col.rbcol_sell_price is not None:
             sell_price = float(col.rbcol_sell_price)
         else:
-            market_price = _resolve_price(col, price_obj, card)
+            market_price = resolve_price(price_obj, rarity=card.rbcar_rarity, foil=col.rbcol_foil)
             sell_price = market_price if market_price is not None else 0.0
 
         writer.writerow([name, language, str(qty_sell), f'{sell_price:.2f}'])

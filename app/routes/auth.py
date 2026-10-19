@@ -15,7 +15,9 @@ def login():
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         
-        if user is None or not user.check_password(password):
+        # A blocked account is answered exactly like a wrong password, so the
+        # response never reveals that the account exists (ACL-2).
+        if user is None or not user.check_password(password) or not user.is_active:
             flash('Invalid username or password', 'error')
             return redirect(url_for('auth.login'))
         

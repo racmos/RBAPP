@@ -26,10 +26,12 @@
         <p>Build and manage decks</p>
     </a>
 
+    {% if current_user.is_admin %}
     <a href="{{ url_for('price.price') }}" class="dashboard-card">
         <h3>Generate Prices</h3>
         <p>Generate price lists</p>
     </a>
+    {% endif %}
 
     <a href="{{ url_for('profile.profile') }}" class="dashboard-card">
         <h3>Profile</h3>
