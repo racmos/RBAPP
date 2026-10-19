@@ -27,6 +27,7 @@
 | Validation | Pydantic 2.10.5 |
 | Testing | pytest 8.3.4, pytest-cov 6.0.0 |
 | Server | Gunicorn 23.0.0 behind Nginx |
+| Frontend | React 19.3.0 + TypeScript 6.0.3 + Vite 8.3.2 in `frontend/` (Node 24, exact pins in `frontend/package.json`); tests with Vitest 5.0.3 |
 
 The exact pins live in `requirements.txt`; if you change one, update this table (`tests/test_docs.py` fails when they differ).
 
@@ -101,6 +102,15 @@ riftbound/
 │   ├── env.py
 │   ├── versions/            # 0001_baseline ... one file per revision
 │   └── legacy_sql/          # Frozen pre-Alembic SQL (reference only)
+├── frontend/                # React app (F1); see "Frontend" below
+│   ├── package.json         # Exact pins, scripts (dev, build, lint, typecheck, test, check:dist)
+│   ├── assets-src/          # Brand and background sources (never shipped)
+│   ├── scripts/             # brand-trace.mjs, make-bg.mjs, check-dist.mjs
+│   └── src/
+│       ├── components/ui/   # Primitives (Brand so far)
+│       ├── lib/             # breakpoints, contrast, format, background
+│       ├── styles/          # Layered tokens, base, background, fonts
+│       └── test/            # Vitest setup, viewport mock, CSS helpers
 ├── tests/
 │   ├── conftest.py          # Fixtures (see Testing)
 │   └── test_*.py
@@ -328,3 +338,17 @@ HTTP errors are handled in `app/errors.py`: 400, 401, 403, 404, 405, 429, 500 an
 - **POST returns 400 "CSRF"**: the request has no token, or Nginx strips `Referer` / does not send `X-Forwarded-Proto`.
 - **Locked out**: `flask users unlock <username>`.
 - **Template not found**: check it exists in `app/templates/`.
+
+## Frontend
+
+The React app lives in `frontend/` (Node 24, see `.nvmrc`). Work there with `npm`:
+
+| Command | What it does |
+|---------|--------------|
+| `npm ci` | Install the exact versions of `package-lock.json` |
+| `npm run dev` | Vite dev server; proxies `/riftbound/api` and `/riftbound/static` to Flask |
+| `npm run lint` / `typecheck` | ESLint (folder boundaries, a11y) plus Prettier check / `tsc -b` |
+| `npx vitest run` | Unit and component tests (strict TDD: test first) |
+| `npm run build` then `npm run check:dist` | Production build in `frontend/dist` and its checks |
+
+Conventions: dependencies are pinned without `^` or `~` (`frontend/.npmrc`); CSS is layered (`@layer reset, tokens, base, layout, components, utilities`) and every `*.module.css` wraps its rules in `@layer components`; `@media` widths come only from `src/lib/breakpoints.ts`; the background never brightens the map and body text keeps at least 4.5:1 contrast over it (`src/lib/background.ts`).
