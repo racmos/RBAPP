@@ -10,7 +10,7 @@ import pytest
 
 from app import db
 from app.models import RbDeck
-from tests.auth_helpers import META_TOKEN, form_token, meta_token
+from tests.auth_helpers import META_TOKEN, form_token, meta_token, token_payload
 
 TEMPLATES = Path(__file__).resolve().parent.parent / 'app' / 'templates'
 NON_LANDING = sorted(
@@ -85,7 +85,7 @@ class TestRenderedPages:
 
     def test_the_token_is_the_same_on_every_page_of_a_session(self, admin_client, csrf_app):
         first = meta_token(admin_client, '/riftbound/')
-        assert meta_token(admin_client, '/riftbound/set') == first
+        assert token_payload(meta_token(admin_client, '/riftbound/set')) == token_payload(first)
 
     def test_pages_render_with_csrf_off_too(self, admin_client):
         self.assert_page(admin_client.get('/riftbound/'))
@@ -101,7 +101,7 @@ class TestLogoutControl:
         match = re.search(r'<form[^>]*method="post"[^>]*action="/riftbound/logout"[^>]*>(.*?)</form>',
                           nav, re.S | re.I)
         assert match, 'logout is not a POST form inside the nav'
-        assert form_token(match.group(1)) == meta_token(admin_client, '/riftbound/')
+        assert token_payload(form_token(match.group(1))) == token_payload(meta_token(admin_client, '/riftbound/'))
 
     def test_no_link_points_at_logout(self, admin_client, csrf_app):
         html, _ = self.nav(admin_client)

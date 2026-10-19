@@ -13,6 +13,13 @@ def meta_token(client, path='/riftbound/login', **kwargs):
     return match.group(1)
 
 
+def token_payload(token):
+    """The session secret inside a signed CSRF token. Flask-WTF signs it with a
+    timestamp, so two renders a second apart differ as strings but carry the
+    same payload."""
+    return token.rsplit('.', 2)[0]
+
+
 def form_token(html):
     """The hidden `csrf_token` input of a rendered form, or None."""
     match = FORM_TOKEN.search(html)
