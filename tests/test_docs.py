@@ -113,6 +113,10 @@ class TestAgentsRules:
         '/riftbound/api/v1', '"success"', 'flask db migrate', 'flask db upgrade',
         'flask db check', 'flask users promote', 'RB_ENV', 'Strict TDD',
         'gunicorn', 'run:app', 'rbcaptcha_used',
+        # unit c of f1-app-shell: preferences, remember cookie, error codes
+        'rbuserprefs', 'RbUserPrefs', 'app/api/v1/me.py', 'app/services/prefs.py',
+        'app/api/error_codes.py', 'app/schemas/prefs_domain.py', '/me/prefs', 'remember_token',
+        'REMEMBER_COOKIE_DURATION', '`prefs`', '`code`', '`params`', 'retry_after',
     ])
     def test_documents(self, agents, needle):
         assert needle in agents

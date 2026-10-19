@@ -40,10 +40,12 @@ riftbound/
 │   ├── security.py          # admin_required / require_admin
 │   ├── db_schema.py         # Schema name + Alembic options shared by the app and migrations/env.py
 │   ├── api/                 # JSON API
+│   │   ├── error_codes.py   # ErrorCode / DetailCode: machine-readable error `code`s
 │   │   ├── responses.py     # ok() / fail() envelopes
 │   │   └── v1/              # Blueprint api_v1 at /riftbound/api/v1
 │   │       ├── __init__.py
 │   │       ├── auth.py      # session, captcha, login, logout, register
+│   │       ├── me.py        # GET/PATCH /me/prefs (interface preferences)
 │   │       └── meta.py      # health, meta/config
 │   ├── cli/                 # Flask CLI groups
 │   │   ├── schema.py        # flask schema snapshot
@@ -56,7 +58,8 @@ riftbound/
 │   │   ├── deck.py          # RbDeck (rbdecks)
 │   │   ├── market.py        # RbCardMarket (rbcardmarket)
 │   │   ├── cardmarket.py    # Rbcm* models (rbcm_* tables, Cardmarket loader) and RbProducts (rbproducts)
-│   │   └── captcha.py       # RbCaptchaUsed (rbcaptcha_used)
+│   │   ├── captcha.py       # RbCaptchaUsed (rbcaptcha_used)
+│   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto
 │   ├── routes/
 │   │   ├── auth.py          # Login / register / logout (Jinja forms)
 │   │   ├── landing.py       # Public landing page and its HTMX partials (/ and /api/*)
@@ -72,6 +75,7 @@ riftbound/
 │   ├── services/            # Business logic, no Flask request objects
 │   │   ├── auth.py          # authenticate (lockout), register_user, unlock_user
 │   │   ├── captcha.py       # none / altcha providers, replay store
+│   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
 │   │   ├── pricing.py       # resolve_price, latest_price_for_card
 │   │   ├── card_images.py   # Safe image paths
 │   │   ├── cardmarket_loader.py
@@ -79,6 +83,7 @@ riftbound/
 │   │   ├── riot_scraper.py
 │   │   └── scraper.py       # Landing feeds with a TTL cache
 │   ├── schemas/             # Pydantic
+│   │   ├── prefs_domain.py  # Value domains of the interface preferences (schema + model CHECKs)
 │   │   ├── validators.py    # Request schemas
 │   │   └── validation.py    # @validate_json decorator
 │   ├── utils/
@@ -130,7 +135,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 
@@ -182,12 +187,18 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 ## API v1
 
-Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`.
+Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`.
+
+- `GET /auth/session` returns `{authenticated, csrf_token}` for anonymous callers and `{authenticated, user, prefs, csrf_token}` when signed in. `prefs` always has the five keys `lang`, `density`, `accent`, `bg_intensity`, `collection_view`; `null` means Auto (a user without a row gets five `null`s and no row is created).
+- `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
+- `GET`/`PATCH /me/prefs` (`app/api/v1/me.py`): a key that is absent stays unchanged, `null` resets it to Auto, an invalid value is a 400 and nothing is stored (all-or-nothing), unknown keys are ignored. Domains live in `app/schemas/prefs_domain.py` (shared by the schema and the model CHECKs). Logic is in `app/services/prefs.py`.
 
 ```json
 {"success": true, "data": {}, "meta": {}}
 {"success": false, "error": "Validation Error", "message": "Invalid request data", "details": [{"field": "password", "message": "...", "type": "..."}]}
 ```
+
+Errors may also carry a machine-readable `code` and `params` (`{"code": "locked", "params": {"retry_after": 30}}`); `message` is always the fallback and codeless errors keep the F0 shape. The codes are the `ErrorCode` values of `app/api/error_codes.py`: `invalid_credentials`, `locked`, `rate_limited`, `username_taken`, `email_taken`, `captcha_failed`, `csrf_invalid`, `unauthenticated`, `validation_error`. Each item of `details` keeps `field`, `message`, `type` and adds `code` (`required`, `too_short`, `too_long`, `invalid_format`, `invalid_value`, `out_of_range`) and, when it applies, `params` (`{"min": 8}`). The codes are additive and also appear on the legacy JSON endpoints that use `@validate_json`, the CSRF and 429 handlers and the 401 handler. A new code needs the enum value, both frontend catalogs and the contract test.
 
 Use `ok()` / `fail()` from `app/api/responses.py`. Error names: `Validation Error`, `Unauthorized`, `Forbidden`, `Not Found`, `Method Not Allowed`, `Conflict`, `Captcha Error`, `CSRF Error`, `Too Many Requests`, `Service Unavailable`, `Internal Server Error`. 500 responses never include exception text.
 

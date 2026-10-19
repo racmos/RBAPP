@@ -12,6 +12,7 @@ written SQL is archived, frozen, in `migrations/legacy_sql/`.
 | `0004_user_admin_flags` | `rbusers.is_admin` and `rbusers.is_blocked`, BOOLEAN NOT NULL DEFAULT false. Nobody becomes admin by migrating: see "Admin accounts" below. |
 | `0004a_schema_comments` | The table and column COMMENTs the dev database already had (8 tables). PostgreSQL only (a no-op on SQLite). Setting a comment twice is harmless, so it is safe on dev. |
 | `0005_login_protection` | `rbusers.failed_login_count` (INTEGER NOT NULL DEFAULT 0), `locked_until` and `last_login_at` (TIMESTAMP NULL), and the table `rbcaptcha_used` (replay store of the ALTCHA captcha). Nobody is locked after migrating. See "Login protection" below. |
+| `0006_user_prefs` | The table `rbuserprefs`: interface preferences of one account (`rbprf_lang`, `rbprf_density`, `rbprf_accent`, `rbprf_bg_intensity`, `rbprf_collection_view`, all nullable, NULL = Auto, plus `rbprf_updated_at`). 1:1 with `rbusers` (primary key and foreign key `rbprf_user_id`, ON DELETE CASCADE), five named CHECK constraints. No rows are created by migrating. See "Interface preferences" below. |
 
 `flask` finds the app through `.flaskenv` (`FLASK_APP=wsgi.py`) and reads
 `DATABASE_URL` like the application does (see `.env.example`).
@@ -138,6 +139,46 @@ production and off in development unless `SESSION_COOKIE_SECURE` /
 Rollback of this step: `flask db downgrade 0004a_schema_comments` (drops the three
 columns and `rbcaptcha_used`; users are kept), then revert the code. A user locked
 by mistake needs only `flask users unlock <user>`.
+
+## Interface preferences: upgrade to 0006, then restart (F1 app shell)
+
+Revision `0006` adds one table, `riftbound.rbuserprefs`. It is additive: the old
+code does not know the table and keeps working. The NEW code reads it on every
+`GET /api/v1/auth/session` of a signed-in user, so the order matters:
+**upgrade the database, only then restart**.
+
+```bash
+pg_dump -h <host> -U <user> -d <database> -n riftbound -Fc -f ~/backups/rbapp/riftbound_pre_0006_$(date +%Y%m%d_%H%M).dump
+pg_restore -l ~/backups/rbapp/riftbound_pre_0006_*.dump | head   # the dump is readable
+flask db upgrade                     # 0006 (additive)
+flask db check                       # "No new upgrade operations detected."
+sudo systemctl restart rbapp         # only now start the new code
+```
+
+What the table holds, and how it behaves:
+
+| Column | Type | Allowed values (CHECK) |
+|---|---|---|
+| `rbprf_user_id` | INTEGER, primary key, foreign key to `rbusers.id` ON DELETE CASCADE | an existing user |
+| `rbprf_lang` | VARCHAR(2) NULL | `es`, `en` |
+| `rbprf_density` | VARCHAR(10) NULL | `compact`, `regular`, `comfy` |
+| `rbprf_accent` | VARCHAR(10) NULL | `cyan`, `orange` |
+| `rbprf_bg_intensity` | SMALLINT NULL | 0 to 100 |
+| `rbprf_collection_view` | VARCHAR(10) NULL | `table`, `grid` |
+| `rbprf_updated_at` | TIMESTAMP NOT NULL, default `now()` | set again on every write |
+
+- NULL means Auto: the client decides. A user with no row has every preference on Auto;
+  the row is created by the first `PATCH /api/v1/me/prefs`.
+- Deleting a user deletes the row (PostgreSQL; SQLite does not enforce foreign keys here).
+- The CHECK names are `rbuserprefs_lang_chk`, `rbuserprefs_density_chk`,
+  `rbuserprefs_accent_chk`, `rbuserprefs_bg_intensity_chk` and
+  `rbuserprefs_collection_view_chk`. The models and the `PrefsUpdate` schema build their
+  domains from `app/schemas/prefs_domain.py`, so all three layers agree.
+
+Rollback of this step: `flask db downgrade 0005_login_protection` (drops
+`rbuserprefs`; the stored preferences are lost, the users are kept), then revert the
+code. Run the downgrade while the NEW code is stopped, or the session endpoint will
+fail until the revert.
 
 ## The legacy-table backup contains personal data
 

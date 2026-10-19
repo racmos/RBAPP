@@ -11,6 +11,8 @@ from flask import render_template, jsonify, make_response, request
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 
+from app.api.error_codes import ErrorCode
+
 # Everything under this prefix is the JSON API: always JSON, whatever the headers.
 API_PREFIX = '/riftbound/api/'
 
@@ -46,11 +48,20 @@ def wants_json():
     return request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'
 
 
-def json_error(error, message, status, details=None):
-    """The error envelope: {success:false, error, message, details?}."""
+def json_error(error, message, status, details=None, *, code=None, params=None):
+    """The error envelope: {success:false, error, message, details?, code?, params?}.
+
+    `code` (an `ErrorCode`) and `params` are added only when given (API-9), so a
+    codeless error is byte-identical to the F0 body. `params` only travels with a
+    code: it is the code's variables.
+    """
     body = {'success': False, 'error': error, 'message': message}
     if details:
         body['details'] = details
+    if code is not None:
+        body['code'] = str(code)
+        if params:
+            body['params'] = params
     return make_response(jsonify(body), status)
 
 
@@ -90,7 +101,7 @@ def register_error_handlers(app):
         get the JSON envelope.
         """
         if wants_json():
-            return json_error('CSRF Error', error.description, 400)
+            return json_error('CSRF Error', error.description, 400, code=ErrorCode.CSRF_INVALID)
         return render_template('errors/400.html', error=error, csrf_error=True), 400
 
     @app.errorhandler(429)
@@ -99,7 +110,8 @@ def register_error_handlers(app):
         retry_after = _retry_after_seconds()
         if wants_json():
             response = json_error('Too Many Requests',
-                                  'Too many requests. Please wait before trying again.', 429)
+                                  'Too many requests. Please wait before trying again.', 429,
+                                  code=ErrorCode.RATE_LIMITED, params={'retry_after': retry_after})
         else:
             response = make_response(render_template('errors/429.html', error=error,
                                                      retry_after=retry_after), 429)

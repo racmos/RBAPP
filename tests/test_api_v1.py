@@ -111,7 +111,7 @@ class TestEnvelope:
 
     def test_every_endpoint_of_the_blueprint_sits_under_the_prefix(self, app):
         rules = [r for r in app.url_map.iter_rules() if r.endpoint.startswith('api_v1.')]
-        assert len(rules) == 7
+        assert len(rules) == 9        # 7 of F0 + GET/PATCH /me/prefs (unit c of f1-app-shell)
         assert all(r.rule.startswith(f'{API}/') for r in rules)
 
     def test_landing_api_routes_do_not_collide(self, app, client):

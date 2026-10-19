@@ -14,6 +14,7 @@ Nothing in this module may hold a credential or a default secret.
 import hashlib
 import logging
 import secrets
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
@@ -130,6 +131,9 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
     return settings
 
 
+REMEMBER_COOKIE_DURATION = timedelta(days=30)
+
+
 def _session_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
     """Session and remember cookie flags (SESS-1).
 
@@ -144,6 +148,10 @@ def _session_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
         cookies[f'{prefix}_COOKIE_SAMESITE'] = 'Lax'
         cookies[f'{prefix}_COOKIE_SECURE'] = _bool_setting(
             environ, f'{prefix}_COOKIE_SECURE', secure_default)
+    # "Remember me" lasts 30 days from login (absolute: the cookie is not
+    # refreshed on use, so a stolen one cannot live for ever). A constant, not
+    # an env var: nobody asked for it to vary (D8).
+    cookies['REMEMBER_COOKIE_DURATION'] = REMEMBER_COOKIE_DURATION
     return cookies
 
 

@@ -93,7 +93,7 @@ flask users list
 
 ## JSON API
 
-`/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`. Responses are `{"success": true, "data": ...}` or `{"success": false, "error": "...", "message": "..."}`. Unsafe requests need the `X-CSRFToken` header; read the token from `GET /auth/session`.
+`/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`. Responses are `{"success": true, "data": ...}` or `{"success": false, "error": "...", "message": "..."}`; an error may add a machine-readable `code` and `params`. Unsafe requests need the `X-CSRFToken` header; read the token from `GET /auth/session`, which also returns the signed-in user's `prefs` (interface preferences, `null` = Auto). `POST /auth/login` accepts `remember: true` to keep the session for 30 days. Details are in `AGENTS.md`.
 
 ## New app hosting
 
