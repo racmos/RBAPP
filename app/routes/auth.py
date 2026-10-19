@@ -42,7 +42,9 @@ def login():
 
     if request.method == 'POST':
         try:
-            credentials = LoginRequest(**request.form.to_dict())
+            # "Remember me" is an API option (API-5); the form never offers it.
+            form = {k: v for k, v in request.form.to_dict().items() if k != 'remember'}
+            credentials = LoginRequest(**form)
         except ValidationError:
             flash(INVALID_MESSAGE, 'error')
             return redirect(url_for('auth.login'))

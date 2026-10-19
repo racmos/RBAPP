@@ -771,8 +771,10 @@ class TestLoginProtection:
             'rbusers', schema='riftbound')} == {'rbusers_username_key', 'rbusers_email_key'}
 
     def test_models_equal_the_schema_at_this_revision(self, at_schema_comments):
+        # 0006 (unit c of f1-app-shell) added `rbuserprefs` to the models, so at
+        # 0005 they are compared without it.
         upgrade(LOGIN_PROTECTION)
-        assert drift() == []
+        assert drift(models_without('rbuserprefs')) == []
 
     def test_round_trip_leaves_an_identical_schema(self, at_schema_comments):
         upgrade(LOGIN_PROTECTION)
@@ -780,6 +782,141 @@ class TestLoginProtection:
         downgrade(SCHEMA_COMMENTS)
         upgrade(LOGIN_PROTECTION)
         assert structure() == before
+        assert drift(models_without('rbuserprefs')) == []
+
+
+# --- 3.5 Revision 0006: rbuserprefs (PREF-1, D6; unit c of f1-app-shell) -------
+#
+# One nullable row of interface preferences per user (NULL = Auto), created
+# lazily. Domains are enforced by named CHECKs, which a NULL passes.
+
+USER_PREFS = '0006_user_prefs'
+PREF_CHECKS = {'rbuserprefs_lang_chk', 'rbuserprefs_density_chk', 'rbuserprefs_accent_chk',
+               'rbuserprefs_bg_intensity_chk', 'rbuserprefs_collection_view_chk'}
+PREF_COLUMNS = ['rbprf_user_id', 'rbprf_lang', 'rbprf_density', 'rbprf_accent',
+                'rbprf_bg_intensity', 'rbprf_collection_view', 'rbprf_updated_at']
+
+
+@pytest.fixture
+def at_login_protection(migration_app):
+    upgrade(LOGIN_PROTECTION)
+    return migration_app
+
+
+def prefs_columns():
+    return {c['name']: c for c in inspector().get_columns('rbuserprefs', schema='riftbound')}
+
+
+def insert_prefs(**values):
+    values.setdefault('rbprf_user_id', 1)
+    names = ', '.join(values)
+    marks = ', '.join(f':{name}' for name in values)
+    run(f'INSERT INTO riftbound.rbuserprefs ({names}) VALUES ({marks})', **values)
+
+
+class TestUserPrefs0006:
+    def test_revision_chains_after_login_protection(self):
+        module = load_revision('0006_user_prefs.py')
+        assert (module.revision, module.down_revision) == (USER_PREFS, LOGIN_PROTECTION)
+
+    def test_upgrade_creates_the_table_with_the_columns_and_types_of_the_design(
+            self, at_login_protection):
+        assert 'rbuserprefs' not in tables()
+        upgrade(USER_PREFS)
+        assert 'rbuserprefs' in tables()
+        columns = prefs_columns()
+        assert list(columns) == PREF_COLUMNS
+        assert isinstance(columns['rbprf_user_id']['type'], sa.Integer)
+        assert columns['rbprf_user_id']['nullable'] is False
+        for name, length in (('rbprf_lang', 2), ('rbprf_density', 10), ('rbprf_accent', 10),
+                             ('rbprf_collection_view', 10)):
+            assert isinstance(columns[name]['type'], sa.String), name
+            assert columns[name]['type'].length == length, name
+        assert isinstance(columns['rbprf_bg_intensity']['type'], sa.SmallInteger)
+        assert isinstance(columns['rbprf_updated_at']['type'], sa.DateTime)
+        assert columns['rbprf_updated_at']['nullable'] is False
+        assert columns['rbprf_updated_at']['default'] is not None     # server_default now()
+
+    def test_every_preference_column_is_nullable_meaning_auto(self, at_login_protection):
+        upgrade(USER_PREFS)
+        columns = prefs_columns()
+        for name in PREF_COLUMNS[1:-1]:
+            assert columns[name]['nullable'] is True, name
+
+    def test_keys_and_checks_have_their_names(self, at_login_protection):
+        upgrade(USER_PREFS)
+        insp = inspector()
+        pk = insp.get_pk_constraint('rbuserprefs', schema='riftbound')
+        assert (pk['name'], pk['constrained_columns']) == ('rbuserprefs_pkey', ['rbprf_user_id'])
+        [fk] = insp.get_foreign_keys('rbuserprefs', schema='riftbound')
+        assert (fk['name'], fk['referred_table'], fk['referred_columns'],
+                fk['constrained_columns']) == (
+            'rbuserprefs_user_fk', 'rbusers', ['id'], ['rbprf_user_id'])
+        assert fk['options'].get('ondelete') == 'CASCADE'
+        assert {c['name'] for c in insp.get_check_constraints(
+            'rbuserprefs', schema='riftbound')} == PREF_CHECKS
+
+    @pytest.mark.parametrize('column, bad', [
+        ('rbprf_bg_intensity', 101), ('rbprf_bg_intensity', -1),
+        ('rbprf_density', 'huge'), ('rbprf_lang', 'fr'), ('rbprf_accent', 'purple'),
+        ('rbprf_collection_view', 'list'),
+    ])
+    def test_check_constraints_reject_values_outside_the_domain(
+            self, at_login_protection, column, bad):
+        seed_users('alice')
+        upgrade(USER_PREFS)
+        with pytest.raises(sa.exc.IntegrityError):
+            insert_prefs(**{column: bad})
+        assert rows('SELECT count(*) FROM riftbound.rbuserprefs') == [(0,)]
+
+    @pytest.mark.parametrize('column, good', [
+        ('rbprf_bg_intensity', 0), ('rbprf_bg_intensity', 100), ('rbprf_bg_intensity', 40),
+        ('rbprf_density', 'comfy'), ('rbprf_lang', 'en'), ('rbprf_accent', 'cyan'),
+        ('rbprf_collection_view', 'grid'),
+    ])
+    def test_check_constraints_accept_values_inside_the_domain(
+            self, at_login_protection, column, good):
+        seed_users('alice')
+        upgrade(USER_PREFS)
+        insert_prefs(**{column: good})
+        assert rows(f'SELECT {column} FROM riftbound.rbuserprefs') == [(good,)]
+
+    def test_null_passes_every_check_and_the_timestamp_defaults(self, at_login_protection):
+        seed_users('alice')
+        upgrade(USER_PREFS)
+        insert_prefs()                                   # only the key: everything is Auto
+        assert rows('SELECT rbprf_lang, rbprf_density, rbprf_accent, rbprf_bg_intensity,'
+                    ' rbprf_collection_view FROM riftbound.rbuserprefs') == [
+            (None, None, None, None, None)]
+        assert rows('SELECT rbprf_updated_at FROM riftbound.rbuserprefs')[0][0] is not None
+
+    def test_one_row_per_user(self, at_login_protection):
+        seed_users('alice')
+        upgrade(USER_PREFS)
+        insert_prefs()
+        with pytest.raises(sa.exc.IntegrityError):
+            insert_prefs()
+
+    def test_downgrade_drops_the_table_and_keeps_the_users(self, at_login_protection):
+        seed_users('alice')
+        upgrade(USER_PREFS)
+        insert_prefs(rbprf_lang='en')
+        downgrade(LOGIN_PROTECTION)
+        assert 'rbuserprefs' not in tables()
+        assert rows('SELECT username FROM riftbound.rbusers') == [('alice',)]
+        assert rows('SELECT version_num FROM riftbound.alembic_version') == [(LOGIN_PROTECTION,)]
+
+    def test_up_down_up_leaves_an_identical_schema_and_no_drift(self, at_login_protection):
+        upgrade(USER_PREFS)
+        first = structure()
+        downgrade(LOGIN_PROTECTION)
+        upgrade(USER_PREFS)
+        assert structure() == first
+        assert drift() == []
+
+    def test_models_equal_the_schema_at_head(self, at_login_protection):
+        upgrade()
+        assert 'rbuserprefs' in tables()
         assert drift() == []
 
 
@@ -868,6 +1005,15 @@ def models_copy():
     copy = sa.MetaData()
     for table in db.metadata.tables.values():
         table.to_metadata(copy)
+    return copy
+
+
+def models_without(*table_names):
+    """The models' metadata minus some tables: what the schema looked like at an
+    older revision, for the drift guard."""
+    copy = models_copy()
+    for name in table_names:
+        copy.remove(copy.tables[f'riftbound.{name}'])
     return copy
 
 
@@ -976,7 +1122,9 @@ class TestRoundTrip:
     def test_upgrade_downgrade_upgrade_leaves_an_identical_schema(self, migration_app):
         upgrade()
         first = structure()
-        assert len(first) == 15       # 16 baseline tables - 2 dropped legacy ones + rbcaptcha_used (0005)
+        # 16 baseline tables - 2 dropped legacy ones + rbcaptcha_used (0005) + rbuserprefs (0006)
+        assert len(first) == 16
+        assert {'rbcaptcha_used', 'rbuserprefs'} <= set(first)
 
         downgrade('base')
         assert tables() == {'alembic_version'}
@@ -1022,6 +1170,9 @@ class TestRunbook:
         'flask db stamp 0001_baseline', 'flask db upgrade', 'flask db check',
         'flask db downgrade 0001_baseline', 'flask db stamp base', 'pg_restore --clean',
         'RB_LEGACY_BACKUP_DIR', 'e-mail addresses and password hashes', 'never be committed',
+        # 0006 (unit c of f1-app-shell)
+        '0006_user_prefs', 'rbuserprefs', 'flask db downgrade 0005_login_protection',
+        'rbuserprefs_bg_intensity_chk', 'ON DELETE CASCADE',
     ])
     def test_runbook_mentions(self, needle):
         assert needle in self.DOC.read_text(encoding='utf-8')

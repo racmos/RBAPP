@@ -7,6 +7,7 @@ URL, so no test override can hide a wrong default.
 """
 import logging
 import re
+from datetime import timedelta
 
 import pytest
 
@@ -192,6 +193,7 @@ class TestLoginCookie:
         assert app.config['REMEMBER_COOKIE_HTTPONLY'] is True
         assert app.config['REMEMBER_COOKIE_SAMESITE'] == 'Lax'
         assert app.config['REMEMBER_COOKIE_SECURE'] is True
+        assert app.config['REMEMBER_COOKIE_DURATION'] == timedelta(days=30)   # SESS-1
 
     def test_secure_flag_override_reaches_the_cookie(self, clean_env):
         app = build_app(clean_env, 'development', SESSION_COOKIE_SECURE='true')

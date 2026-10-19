@@ -26,6 +26,7 @@ QUANTITY = '0003_collection_quantity_integer'
 USER_FLAGS = '0004_user_admin_flags'
 SCHEMA_COMMENTS = '0004a_schema_comments'
 LOGIN_PROTECTION = '0005_login_protection'
+USER_PREFS = '0006_user_prefs'
 LEGACY_SEQUENCE = 'rbusers_rbus_id_seq'
 
 
@@ -318,8 +319,9 @@ class TestSchemaComments:
         upgrade(USER_FLAGS)
         assert catalog_comments() == {}
         found = [repr(op) for item in drift() for op in (item if isinstance(item, list) else [item])]
-        # Comments, plus what 0005 adds (the models are already at head).
-        later = ('rbcaptcha_used', 'failed_login_count', 'locked_until', 'last_login_at')
+        # Comments, plus what 0005 and 0006 add (the models are already at head).
+        later = ('rbcaptcha_used', 'failed_login_count', 'locked_until', 'last_login_at',
+                 'rbuserprefs')
         assert any('comment' in line for line in found)
         assert all('comment' in line or any(name in line for name in later) for line in found)
 
@@ -460,6 +462,98 @@ class TestLoginProtection:
         assert auth.authenticate('u', 'right-pass-1').status is auth.AuthStatus.OK
         assert rows('SELECT failed_login_count, locked_until, last_login_at IS NOT NULL'
                     ' FROM riftbound.rbusers') == [(0, None, True)]
+
+
+PREF_CHECKS = {'rbuserprefs_lang_chk', 'rbuserprefs_density_chk', 'rbuserprefs_accent_chk',
+               'rbuserprefs_bg_intensity_chk', 'rbuserprefs_collection_view_chk'}
+
+
+def add_user(name='alice'):
+    run("INSERT INTO riftbound.rbusers (username, email, password_hash)"
+        " VALUES (:u, :e, 'h')", u=name, e=f'{name}@x.io')
+    return rows('SELECT id FROM riftbound.rbusers WHERE username = :u', u=name)[0][0]
+
+
+class TestUserPrefs:
+    """0006 (PREF-1) on real PostgreSQL: CHECKs, cascade, up/down/up, `flask db check`."""
+
+    def test_up_down_up_from_0005_and_flask_db_check_is_clean(self, pg_app):
+        upgrade(LOGIN_PROTECTION)
+        assert 'rbuserprefs' not in tables()
+        upgrade(USER_PREFS)
+        assert 'rbuserprefs' in tables()
+        downgrade(LOGIN_PROTECTION)
+        assert 'rbuserprefs' not in tables()
+        assert rows('SELECT version_num FROM riftbound.alembic_version') == [(LOGIN_PROTECTION,)]
+        upgrade()
+        assert rows('SELECT version_num FROM riftbound.alembic_version') == [(USER_PREFS,)]
+        assert drift() == []
+        result = pg_app.test_cli_runner().invoke(args=['db', 'check'])
+        assert result.exit_code == 0, result.output
+
+    def test_columns_types_and_names_on_postgresql(self, pg_app):
+        upgrade()
+        assert rows("SELECT column_name, data_type, character_maximum_length, is_nullable"
+                    " FROM information_schema.columns WHERE table_schema = 'riftbound'"
+                    " AND table_name = 'rbuserprefs' ORDER BY ordinal_position") == [
+            ('rbprf_user_id', 'integer', None, 'NO'),
+            ('rbprf_lang', 'character varying', 2, 'YES'),
+            ('rbprf_density', 'character varying', 10, 'YES'),
+            ('rbprf_accent', 'character varying', 10, 'YES'),
+            ('rbprf_bg_intensity', 'smallint', None, 'YES'),
+            ('rbprf_collection_view', 'character varying', 10, 'YES'),
+            ('rbprf_updated_at', 'timestamp without time zone', None, 'NO')]
+        insp = inspector()
+        assert insp.get_pk_constraint('rbuserprefs', schema='riftbound')['name'] == 'rbuserprefs_pkey'
+        [fk] = insp.get_foreign_keys('rbuserprefs', schema='riftbound')
+        assert (fk['name'], fk['referred_table'], fk['options']) == (
+            'rbuserprefs_user_fk', 'rbusers', {'ondelete': 'CASCADE'})
+        assert {c['name'] for c in insp.get_check_constraints(
+            'rbuserprefs', schema='riftbound')} == PREF_CHECKS
+
+    @pytest.mark.parametrize('column, bad', [
+        ('rbprf_bg_intensity', 101), ('rbprf_bg_intensity', -1), ('rbprf_density', 'huge'),
+        ('rbprf_lang', 'fr'), ('rbprf_accent', 'purple'), ('rbprf_collection_view', 'list')])
+    def test_check_constraints_reject_bad_values_and_null_passes(self, pg_app, column, bad):
+        upgrade()
+        uid = add_user()
+        with pytest.raises(sa.exc.IntegrityError):
+            run(f'INSERT INTO riftbound.rbuserprefs (rbprf_user_id, {column}) VALUES (:id, :v)',
+                id=uid, v=bad)
+        run('INSERT INTO riftbound.rbuserprefs (rbprf_user_id) VALUES (:id)', id=uid)   # all Auto
+        assert rows('SELECT rbprf_lang, rbprf_density, rbprf_accent, rbprf_bg_intensity,'
+                    ' rbprf_collection_view, rbprf_updated_at IS NOT NULL'
+                    ' FROM riftbound.rbuserprefs') == [(None, None, None, None, None, True)]
+
+    def test_deleting_a_user_deletes_the_prefs_row(self, pg_app):
+        upgrade()
+        keep, gone = add_user('keep'), add_user('gone')
+        run('INSERT INTO riftbound.rbuserprefs (rbprf_user_id, rbprf_lang) VALUES (:a, \'en\'),'
+            ' (:b, \'es\')', a=keep, b=gone)
+        run('DELETE FROM riftbound.rbusers WHERE id = :id', id=gone)
+        assert rows('SELECT rbprf_user_id FROM riftbound.rbuserprefs') == [(keep,)]
+
+    def test_a_prefs_row_needs_an_existing_user(self, pg_app):
+        upgrade()
+        with pytest.raises(sa.exc.IntegrityError):
+            run('INSERT INTO riftbound.rbuserprefs (rbprf_user_id) VALUES (9999)')
+
+    def test_the_service_and_the_endpoints_work_on_postgresql(self, pg_app):
+        from app.models import User
+        from app.services import prefs
+        upgrade()
+        user = User(username='u', email='u@x.io', password_hash='h')
+        db.session.add(user)
+        db.session.commit()
+        assert prefs.get_prefs(user.id)['lang'] is None
+        assert rows('SELECT count(*) FROM riftbound.rbuserprefs') == [(0,)]
+        prefs.update_prefs(user.id, {'lang': 'en', 'bg_intensity': 40})
+        prefs.update_prefs(user.id, {'lang': None, 'accent': 'cyan'})
+        assert rows('SELECT rbprf_lang, rbprf_accent, rbprf_bg_intensity FROM'
+                    ' riftbound.rbuserprefs') == [(None, 'cyan', 40)]
+        assert prefs.get_prefs(user.id) == {
+            'lang': None, 'density': None, 'accent': 'cyan', 'bg_intensity': 40,
+            'collection_view': None}
 
 
 class TestRoundTrip:

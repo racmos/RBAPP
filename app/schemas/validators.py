@@ -3,8 +3,14 @@ Pydantic schemas for request validation.
 """
 import re
 from datetime import date
-from typing import Optional, List
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from typing import Annotated, Literal, Optional, List
+
+from pydantic import (BaseModel, Field, StrictBool, StrictInt, ValidationError, field_validator,
+                      model_validator)
+from pydantic_core import PydanticCustomError
+
+from app.schemas.prefs_domain import (ACCENTS, BG_INTENSITY_MAX, BG_INTENSITY_MIN,
+                                      COLLECTION_VIEWS, DENSITIES, LANGS)
 
 # One rule for every way of choosing a password: profile update, CLI, registration.
 PASSWORD_MIN_LENGTH = 8
@@ -274,6 +280,9 @@ class LoginRequest(BaseModel):
     'Old User (1)' keep working; the upper bounds only stop absurd inputs."""
     username: str = Field(..., min_length=1, max_length=255)
     password: str = Field(..., min_length=1, max_length=1024)
+    # API only (API-5): the SPA sends true by default. StrictBool refuses "yes" and 1.
+    # The Jinja form has no such field and drops it before validating.
+    remember: StrictBool = False
 
 
 class RegisterRequest(BaseModel):
@@ -287,7 +296,8 @@ class RegisterRequest(BaseModel):
     @classmethod
     def validate_username(cls, v: str) -> str:
         if not USERNAME_PATTERN.fullmatch(v):
-            raise ValueError('Username must be 3-32 characters: letters, digits, ".", "_" or "-"')
+            raise PydanticCustomError(
+                'invalid_format', 'Username must be 3-32 characters: letters, digits, ".", "_" or "-"')
         return v
 
     @field_validator('email')
@@ -295,10 +305,35 @@ class RegisterRequest(BaseModel):
     def validate_email(cls, v: str) -> str:
         v = v.strip()
         if len(v) > EMAIL_MAX_LENGTH:
-            raise ValueError(f'Email must have at most {EMAIL_MAX_LENGTH} characters')
+            raise PydanticCustomError(
+                'string_too_long', 'Email must have at most {max_length} characters',
+                {'max_length': EMAIL_MAX_LENGTH})
         if not _EMAIL_PATTERN.fullmatch(v):
-            raise ValueError('Invalid email format')
+            raise PydanticCustomError('invalid_format', 'Invalid email format')
         return v
+
+
+# ============== Preferences Schemas ==============
+
+def _one_of(values: tuple[str, ...]):
+    """`Literal[...]` over a domain tuple (PREF-2)."""
+    return Literal[values]          # a tuple subscript means Literal['a', 'b']
+
+
+class PrefsUpdate(BaseModel):
+    """PATCH /me/prefs body (PREF-4, D7, R12).
+
+    Every field is optional and `None` means Auto. The caller applies only
+    `model_fields_set`: absent = unchanged, `null` = reset. Unknown fields are
+    ignored (never stored), so an older server tolerates a newer client.
+    `bg_intensity` is a strict integer: `true`, `50.0` and `"50"` are refused.
+    """
+    lang: Optional[_one_of(LANGS)] = None
+    density: Optional[_one_of(DENSITIES)] = None
+    accent: Optional[_one_of(ACCENTS)] = None
+    bg_intensity: Optional[Annotated[StrictInt, Field(ge=BG_INTENSITY_MIN,
+                                                      le=BG_INTENSITY_MAX)]] = None
+    collection_view: Optional[_one_of(COLLECTION_VIEWS)] = None
 
 
 # ============== Profile Schemas ==============

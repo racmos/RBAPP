@@ -200,9 +200,11 @@ def create_app(**overrides):
         flash and redirect to the login page (with `next`)."""
         from flask import flash, redirect, request
         from flask_login.utils import login_url
+        from app.api.error_codes import ErrorCode
         from app.errors import json_error, wants_json
         if wants_json():
-            return json_error('Unauthorized', 'Authentication is required', 401)
+            return json_error('Unauthorized', 'Authentication is required', 401,
+                              code=ErrorCode.UNAUTHENTICATED)
         flash(login.login_message, login.login_message_category)
         return redirect(login_url(login.login_view, request.url))
 
