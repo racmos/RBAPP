@@ -9,7 +9,7 @@ phases:
   spec: done
   design: done
   tasks: done
-  apply: in_progress  # units a (#11), b (#12), c (#13) merged; unit d implemented on feat/f0d-csrf-login (4.1-4.29, 4.34 done; 4.30-4.33 manual/user pending, not committed); dev DB still at 0004a; next: user steps 4.30-4.33 then merge, then unit e
+  apply: in_progress  # units a (#11), b (#12), c (#13), d (#14) merged; unit e implemented on feat/f0e-api-v1 (5.1-5.18, 5.21 done, not committed); open: 5.19 (GH Actions run), 5.20 (CI-8 doc review), 5.22 (success criteria walk + PR); user manual leftovers: 4.31/4.32 (pending CT 102 nginx repoint), 0.2-0.5, 1.24
   verify: pending
   archive: pending
-updated: 2026-10-18
+updated: 2026-10-19

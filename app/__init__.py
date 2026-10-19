@@ -168,6 +168,10 @@ def create_app(**overrides):
     app.register_blueprint(price_bp)
     app.register_blueprint(profile_bp)
 
+    # JSON API v1 (/riftbound/api/v1)
+    from app.api.v1 import api_v1
+    app.register_blueprint(api_v1)
+
     from app.models import User
     @login.user_loader
     def load_user(id):
@@ -185,5 +189,17 @@ def create_app(**overrides):
     # Register error handlers
     from app.errors import register_error_handlers
     register_error_handlers(app)
+
+    @login.unauthorized_handler
+    def unauthorized():
+        """Not logged in (API-8, D18): JSON 401 for JSON clients, else the usual
+        flash and redirect to the login page (with `next`)."""
+        from flask import flash, redirect, request
+        from flask_login.utils import login_url
+        from app.errors import json_error, wants_json
+        if wants_json():
+            return json_error('Unauthorized', 'Authentication is required', 401)
+        flash(login.login_message, login.login_message_category)
+        return redirect(login_url(login.login_view, request.url))
 
     return app

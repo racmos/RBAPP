@@ -8,17 +8,29 @@ on:
         required: true
         default: 'v1.0.1'
 
+# Read-only by default; only the release job may write (it pushes a tag and
+# creates the GitHub release).
+permissions:
+  contents: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Create Tag
+        # The input reaches the shell through env, never interpolated into the
+        # script, and must look like a version tag.
+        env:
+          VERSION: ${{ github.event.inputs.version }}
         run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid version: $VERSION"; exit 1; }
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          git tag "$VERSION"
+          git push origin "$VERSION"
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:

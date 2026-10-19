@@ -504,10 +504,19 @@ class TestRateLimits:
         assert body['message']
         assert resp.headers['Retry-After'].isdigit()
 
-    def test_requests_without_accept_get_the_envelope(self, limited_app, client):
+    def test_requests_without_accept_get_an_html_page(self, limited_app, client):
+        # API-8: no Accept header means HTML (unit d answered JSON with its interim predicate).
         wrong_login(client, 10)
         resp = wrong_login(client)
+        assert resp.status_code == 429
+        assert resp.content_type.startswith('text/html')
+        assert resp.headers['Retry-After'].isdigit()
+
+    def test_fetch_wildcard_accept_gets_the_envelope(self, limited_app, client):
+        wrong_login(client, 10)
+        resp = wrong_login(client, Accept='*/*')
         assert resp.status_code == 429 and resp.is_json
+        assert resp.get_json()['error'] == 'Too Many Requests'
 
     def test_browsers_get_an_html_page(self, limited_app, client):
         wrong_login(client, 10)

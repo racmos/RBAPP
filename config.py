@@ -113,6 +113,8 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
         'SECRET_KEY': secret_key,
         'SQLALCHEMY_DATABASE_URI': environ.get('DATABASE_URL') or None,
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+        # Reported by GET /riftbound/api/v1/health; set RB_VERSION at deploy time.
+        'APP_VERSION': (environ.get('RB_VERSION') or '').strip() or 'dev',
     }
     for name, default in _PROXY_FIX_DEFAULTS.items():
         settings[name] = _int_setting(environ, name, default)

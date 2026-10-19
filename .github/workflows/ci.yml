@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -18,14 +18,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
+          cache: pip
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      # The suite configures itself (RB_ENV=testing, in-memory SQLite): no
+      # application secret is passed to this job (CI-1).
       - name: Run tests with pytest
         run: |
-          pytest -vv --tb=long --cov=app
+          pytest -vv --tb=long --cov=app --cov-report=term --cov-report=xml
+      - name: Upload the coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
 
   # Real PostgreSQL (same major version as dev): the migrations must upgrade,
   # check clean, downgrade to base and upgrade again, and the `postgres`-marked
@@ -74,3 +82,36 @@ jobs:
       - name: PostgreSQL tests
         run: |
           TEST_POSTGRES_URL='postgresql+psycopg://rb:rb@localhost:5432/riftbound_test' pytest -m postgres
+
+  # Placeholder for the React app (F1). While `frontend/package.json` does not
+  # exist every Node step is skipped and the job passes. `hashFiles` is not
+  # allowed in a job-level `if`, so each step carries the guard (CI-5).
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        run: npm ci
+      - name: Lint
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        run: npm run lint
+      - name: Typecheck
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        run: npm run typecheck
+      - name: Unit tests
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        run: npx vitest run
+      - name: Build
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        run: npm run build
