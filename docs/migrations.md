@@ -11,6 +11,7 @@ written SQL is archived, frozen, in `migrations/legacy_sql/`.
 | `0003_collection_quantity_integer` | `rbcollection.rbcol_quantity` Text -> Integer NOT NULL, plus CHECK `rbcollection_quantity_chk` (`>= 1`). |
 | `0004_user_admin_flags` | `rbusers.is_admin` and `rbusers.is_blocked`, BOOLEAN NOT NULL DEFAULT false. Nobody becomes admin by migrating: see "Admin accounts" below. |
 | `0004a_schema_comments` | The table and column COMMENTs the dev database already had (8 tables). PostgreSQL only (a no-op on SQLite). Setting a comment twice is harmless, so it is safe on dev. |
+| `0005_login_protection` | `rbusers.failed_login_count` (INTEGER NOT NULL DEFAULT 0), `locked_until` and `last_login_at` (TIMESTAMP NULL), and the table `rbcaptcha_used` (replay store of the ALTCHA captcha). Nobody is locked after migrating. See "Login protection" below. |
 
 `flask` finds the app through `.flaskenv` (`FLASK_APP=wsgi.py`) and reads
 `DATABASE_URL` like the application does (see `.env.example`).
@@ -97,6 +98,46 @@ a second ordinary account (none of them appear and the routes answer 403).
 Rollback of this step: `flask db downgrade 0003_collection_quantity_integer`
 (drops `is_admin`, `is_blocked` and, on PostgreSQL, removes the COMMENTs that
 `0004a` set; `flask db upgrade` puts them back), then revert the code.
+
+## Login protection: upgrade to 0005, then restart (CSRF, lockout, captcha)
+
+Revision `0005` adds the lockout columns and the captcha replay table. It is
+additive, but the NEW code reads the new `rbusers` columns on every login, so the
+order matters: **install, upgrade the database, only then restart**.
+
+```bash
+pip install -r requirements.txt      # Flask-WTF, Flask-Limiter, altcha and their dependencies
+pg_dump -h <host> -U <user> -d <database> -n riftbound -Fc -f ~/backups/rbapp/riftbound_pre_0005_$(date +%Y%m%d_%H%M).dump
+flask db upgrade                     # 0005 (additive: the old code keeps working until the restart)
+flask db check                       # "No new upgrade operations detected."
+sudo systemctl restart rbapp         # only now start the new code
+```
+
+Then, in a browser over HTTPS: log in as the owner (the nav Logout is now a button),
+use a page that saves something (Profile, Sets), and open `/riftbound/register`
+(the ALTCHA widget needs HTTPS or localhost).
+
+What the new code does, and what to touch when it misbehaves:
+
+| Protection | Switch (env, see `.env.example`) | Notes |
+|---|---|---|
+| CSRF on every POST/PUT/PATCH/DELETE | `WTF_CSRF_ENABLED=false` | the page script `static/js/csrf.js` adds the token to same-origin `fetch` calls; on HTTPS the `Referer` of a POST must match the public host (Nginx must pass `Host` and `X-Forwarded-Proto`) |
+| Per-IP rate limit (login 10/min + 50/h, register 5/h) | `RATELIMIT_ENABLED=false` | in-memory, per Gunicorn worker; the Nginx `limit_req` zone in `docs/nginx_config` is the global one |
+| Account lockout (5th wrong password: 15 min, then 30, 60 ... 24 h) | `LOGIN_MAX_FAILURES`, `LOGIN_LOCK_BASE_MINUTES`, `LOGIN_LOCK_MAX_MINUTES` | `flask users unlock <user>` clears it at once; `flask users list` marks locked accounts |
+| ALTCHA captcha on register | `CAPTCHA_PROVIDER=none` | replays are stored in `rbcaptcha_used`; `ALTCHA_HMAC_KEY` defaults to a key derived from `SECRET_KEY` |
+| Landing feed cache | `LANDING_CACHE_TTL` (seconds, 0 = off) | per worker |
+
+Put a switch in `.env` (development) or `/etc/riftbound/riftbound.env` (the service)
+and restart. Every switch that is off outside testing logs a warning at start-up.
+They are for rollback, not for normal use.
+
+Cookies: `session` and `remember` are HttpOnly + `SameSite=Lax`; `Secure` is on in
+production and off in development unless `SESSION_COOKIE_SECURE` /
+`REMEMBER_COOKIE_SECURE` say otherwise.
+
+Rollback of this step: `flask db downgrade 0004a_schema_comments` (drops the three
+columns and `rbcaptcha_used`; users are kept), then revert the code. A user locked
+by mistake needs only `flask users unlock <user>`.
 
 ## The legacy-table backup contains personal data
 

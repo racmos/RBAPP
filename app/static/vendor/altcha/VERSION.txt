@@ -1,0 +1,18 @@
+ALTCHA widget (vendored, not modified)
+
+package   : altcha (npm) 2.3.0, MIT licence (see LICENSE)
+source    : https://registry.npmjs.org/altcha/-/altcha-2.3.0.tgz  (package/dist/altcha.umd.cjs)
+tarball   : npm integrity sha512-vl8I0dQvSQB7/Mx09XuWZ1+LdSP7vEda6OLbg9kUQ2ZO2LT7MzgUyLK7Iips+GAV6c0ntVcS1XWOqhEPpwbDhQ==
+file      : altcha.min.js = dist/altcha.umd.cjs (minified UMD, registers <altcha-widget>)
+sha256    : 0f557a9f535a15acbe0fc7abb4fe896502a6d4c27de1c4145cfa001d0d2be099
+
+Why 2.3.0: it speaks the PoW v1 protocol (`challengejson` with algorithm / challenge /
+maxNumber / salt / signature) that the pinned Python library altcha==2.3.0 serves through
+create_challenge_v1 / verify_solution_v1. Widget 3.x moves to PoW v2 and would need the
+unprefixed (v2) server API and a different challenge shape.
+
+Needs a secure context (HTTPS or localhost: crypto.subtle). It starts its solver in a
+Worker from a data: URL, so a future Content-Security-Policy must allow `worker-src data:`.
+
+To update: download the new tarball, replace altcha.min.js, update this file and the
+Python pin together, run tests/test_captcha.py.

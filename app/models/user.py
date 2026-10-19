@@ -24,6 +24,13 @@ class User(UserMixin, db.Model):
                          server_default=db.false())
     is_blocked = db.Column(db.Boolean, nullable=False, default=False,
                            server_default=db.false())
+    # Login protection (LOGIN-1, R3). `failed_login_count` is also the lockout
+    # level: services.auth derives the lock length from it. The temporary lock
+    # (`locked_until`) is checked only when logging in, never on a live session.
+    failed_login_count = db.Column(db.Integer, nullable=False, default=0,
+                                   server_default='0')
+    locked_until = db.Column(db.DateTime, nullable=True)
+    last_login_at = db.Column(db.DateTime, nullable=True)
 
     @property
     def is_active(self):

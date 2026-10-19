@@ -1,3 +1,22 @@
+# =====================================================================
+# Rate limit for the login / register forms and the API auth endpoints
+# (LOGIN-7). Goes at http level (this file is included there).
+#
+# The key is the client IP only for POSTs to those URLs; every other request
+# gets an empty key and is never limited. The application has its own limiter
+# (10/min + 50/h for login, 5/h for register, per IP) but it counts PER GUNICORN
+# WORKER (in-memory storage), so with N workers the effective limit is up to N
+# times higher. This zone is the strict, global one. Keep it a bit looser than
+# the app limit so legitimate users meet the friendly app message first.
+# =====================================================================
+map "$request_method:$request_uri" $rb_auth_limit_key {
+    default "";
+    ~^POST:/riftbound/(login|register)(\?|$)     $binary_remote_addr;
+    ~^POST:/riftbound/api/v1/auth/               $binary_remote_addr;
+}
+limit_req_zone $rb_auth_limit_key zone=rb_auth:10m rate=20r/m;
+limit_req_status 429;
+
 server {
     if ($host = www.racmosdev.es) {
         return 301 https://$host$request_uri;
@@ -51,10 +70,24 @@ server {
     location /riftbound/ {
     # Main App movida a 8000 (puerto principal)
     proxy_pass http://192.168.1.31:8000;
+
+    # The app trusts exactly these three headers (ProxyFix, PROXY_FIX_X_* = 1):
+    #  - Host and X-Forwarded-Proto: CSRF protection (Flask-WTF) checks on HTTPS that the
+    #    Referer of every POST matches https://<Host>/. Without X-Forwarded-Proto the app
+    #    believes the request is plain http (cookies, CSRF Referer check); with a wrong
+    #    Host every POST is rejected with "The referrer does not match the host".
+    #  - X-Forwarded-For: the client IP used by the in-app rate limiter.
+    # Do NOT strip the Referer header and do not send `Referrer-Policy: no-referrer`
+    # from Nginx: the browser would then omit it and every HTTPS POST would fail the
+    # CSRF check (the default policy, strict-origin-when-cross-origin, is fine).
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Login / register / API auth: at most 20 requests per minute per IP (+ a burst of 10),
+    # see the zone at the top of this file. Over the limit: 429.
+    limit_req zone=rb_auth burst=10 nodelay;
 
     # CRITICO para que ProxyFix/DispatcherMiddleware sepan el prefijo
     # proxy_set_header X-Forwarded-Prefix /riftbound;

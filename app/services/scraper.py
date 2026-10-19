@@ -7,13 +7,18 @@ Sync version using requests (converted from httpx async original in rb_landing).
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Callable, Optional
 import random
+
+from flask import current_app, has_app_context
 
 import requests
 from bs4 import BeautifulSoup
+
+from app.utils import clock
 
 logger = logging.getLogger(__name__)
 
@@ -207,8 +212,10 @@ def _placeholder_decks() -> list[DeckItem]:
 
 
 # ─── Scraping functions (with fallback) ───
+# The `_raw_*` functions do the work (network scraping or placeholders). The public
+# `fetch_*` names at the end of the module are the cached versions (LAND-1).
 
-def fetch_noticias() -> list[NewsItem]:
+def _raw_noticias() -> list[NewsItem]:
     """Attempt to scrape Riftbound news, fallback to placeholders."""
     try:
         resp = requests.get(
@@ -237,17 +244,17 @@ def fetch_noticias() -> list[NewsItem]:
     return _placeholder_noticias()
 
 
-def fetch_discord() -> list[NewsItem]:
+def _raw_discord() -> list[NewsItem]:
     """Discord requires bot token for API. Using placeholders."""
     return _placeholder_discord()
 
 
-def fetch_torneos_online() -> list[TournamentItem]:
+def _raw_torneos_online() -> list[TournamentItem]:
     """Placeholder online tournaments."""
     return _placeholder_torneos_online()
 
 
-def fetch_torneos_fisicos() -> list[TournamentItem]:
+def _raw_torneos_fisicos() -> list[TournamentItem]:
     """Attempt to scrape UVS locator, fallback to placeholders."""
     try:
         resp = requests.get(
@@ -275,12 +282,12 @@ def fetch_torneos_fisicos() -> list[TournamentItem]:
     return _placeholder_torneos_fisicos()
 
 
-def fetch_videos() -> list[VideoItem]:
+def _raw_videos() -> list[VideoItem]:
     """YouTube scraping is heavily rate-limited. Using placeholders."""
     return _placeholder_videos()
 
 
-def fetch_decks() -> list[DeckItem]:
+def _raw_decks() -> list[DeckItem]:
     """Attempt to scrape riftbound.gg decks, fallback to placeholders."""
     try:
         resp = requests.get(
@@ -303,3 +310,97 @@ def fetch_decks() -> list[DeckItem]:
     except Exception as e:
         logger.warning(f"Scraping decks failed: {e}")
     return _placeholder_decks()
+
+
+# ─── TTL cache (LAND-1, D22) ───
+# One entry per feed, per worker process (Gunicorn runs several workers; each keeps
+# its own, which is fine for public content). Time comes from the injectable clock.
+
+DEFAULT_CACHE_TTL = 300
+
+
+class _FeedCache:
+    """Per-feed TTL cache. Each feed has its own lock, so a slow upstream (10 s timeout)
+    never blocks another feed, and simultaneous misses on one feed call it once."""
+
+    def __init__(self):
+        self._guard = threading.Lock()                    # protects the two dicts below
+        self._entries: dict[str, tuple[datetime, list]] = {}
+        self._locks: dict[str, threading.Lock] = {}
+
+    def get(self, key: str, load: Callable[[], list], ttl: int) -> list:
+        if ttl <= 0:                                      # caching switched off
+            return load()
+        hit = self._fresh(key)
+        if hit is not None:
+            return hit
+        with self._lock_for(key):
+            hit = self._fresh(key)                        # another thread may have refilled it
+            if hit is not None:
+                return hit
+            items = load()                                # an exception here is not cached
+            with self._guard:
+                self._entries[key] = (clock.utcnow() + timedelta(seconds=ttl), items)
+            return list(items)
+
+    def clear(self) -> None:
+        with self._guard:
+            self._entries.clear()
+
+    def _fresh(self, key: str) -> Optional[list]:
+        with self._guard:
+            entry = self._entries.get(key)
+        if entry is not None and clock.utcnow() < entry[0]:
+            return list(entry[1])                         # a copy: callers can't corrupt the cache
+        return None
+
+    def _lock_for(self, key: str) -> threading.Lock:
+        with self._guard:
+            return self._locks.setdefault(key, threading.Lock())
+
+
+_cache = _FeedCache()
+
+
+def _ttl() -> int:
+    """LANDING_CACHE_TTL seconds, read on every call (default 300, 0 = off)."""
+    if has_app_context():
+        return int(current_app.config.get('LANDING_CACHE_TTL', DEFAULT_CACHE_TTL))
+    return DEFAULT_CACHE_TTL
+
+
+def clear_cache() -> None:
+    """Forget every cached feed (tests, or after a deploy that changes the scrapers)."""
+    _cache.clear()
+
+
+# The `lambda` looks the raw function up at call time, so it can be patched.
+
+def fetch_noticias() -> list[NewsItem]:
+    """Riftbound news (cached)."""
+    return _cache.get('noticias', lambda: _raw_noticias(), _ttl())
+
+
+def fetch_discord() -> list[NewsItem]:
+    """Discord news (cached)."""
+    return _cache.get('discord', lambda: _raw_discord(), _ttl())
+
+
+def fetch_torneos_online() -> list[TournamentItem]:
+    """Online tournaments (cached)."""
+    return _cache.get('torneos_online', lambda: _raw_torneos_online(), _ttl())
+
+
+def fetch_torneos_fisicos() -> list[TournamentItem]:
+    """Physical tournaments (cached)."""
+    return _cache.get('torneos_fisicos', lambda: _raw_torneos_fisicos(), _ttl())
+
+
+def fetch_videos() -> list[VideoItem]:
+    """Videos (cached)."""
+    return _cache.get('videos', lambda: _raw_videos(), _ttl())
+
+
+def fetch_decks() -> list[DeckItem]:
+    """Deck listings (cached)."""
+    return _cache.get('decks', lambda: _raw_decks(), _ttl())

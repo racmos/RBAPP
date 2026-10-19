@@ -25,6 +25,7 @@ DROP_LEGACY = '0002_drop_legacy_tables'
 QUANTITY = '0003_collection_quantity_integer'
 USER_FLAGS = '0004_user_admin_flags'
 SCHEMA_COMMENTS = '0004a_schema_comments'
+LOGIN_PROTECTION = '0005_login_protection'
 LEGACY_SEQUENCE = 'rbusers_rbus_id_seq'
 
 
@@ -317,15 +318,21 @@ class TestSchemaComments:
         upgrade(USER_FLAGS)
         assert catalog_comments() == {}
         found = [repr(op) for item in drift() for op in (item if isinstance(item, list) else [item])]
-        assert found and all('comment' in line for line in found)
+        # Comments, plus what 0005 adds (the models are already at head).
+        later = ('rbcaptcha_used', 'failed_login_count', 'locked_until', 'last_login_at')
+        assert any('comment' in line for line in found)
+        assert all('comment' in line or any(name in line for name in later) for line in found)
 
     def test_running_it_on_a_database_that_already_has_the_comments_is_harmless(self, pg_app):
         upgrade(USER_FLAGS)
         run("COMMENT ON TABLE riftbound.rbset IS 'Tabla de expansiones'")
         run("COMMENT ON COLUMN riftbound.rbset.rbset_name IS 'Nombre expansión'")
         upgrade(SCHEMA_COMMENTS)
-        assert drift() == []
+        found = [repr(op) for item in drift() for op in (item if isinstance(item, list) else [item])]
+        assert not [line for line in found if 'comment' in line]
         upgrade(SCHEMA_COMMENTS)          # again: nothing to do, nothing breaks
+        upgrade()
+        assert drift() == []
 
     def test_downgrade_removes_every_comment_again(self, pg_app):
         upgrade()
@@ -333,6 +340,126 @@ class TestSchemaComments:
         assert catalog_comments() == {}
         upgrade()
         assert drift() == []
+
+
+class TestLoginProtection:
+    """0005 (LOGIN-1, LOGIN-8) on real PostgreSQL, including the captcha replay path."""
+
+    def test_existing_users_get_a_zero_count_and_null_dates(self, pg_app):
+        upgrade(SCHEMA_COMMENTS)
+        run("INSERT INTO riftbound.rbusers (username, email, password_hash) VALUES"
+            " ('alice', 'alice@x.io', 'h'), ('bob', 'bob@x.io', 'h')")
+        upgrade(LOGIN_PROTECTION)
+        assert rows('SELECT username, failed_login_count, locked_until, last_login_at'
+                    ' FROM riftbound.rbusers ORDER BY id') == [
+            ('alice', 0, None, None), ('bob', 0, None, None)]
+        assert rows("SELECT column_name, data_type, is_nullable, column_default"
+                    " FROM information_schema.columns WHERE table_schema = 'riftbound'"
+                    " AND table_name = 'rbusers' AND column_name IN"
+                    " ('failed_login_count', 'locked_until', 'last_login_at')"
+                    " ORDER BY column_name") == [
+            ('failed_login_count', 'integer', 'NO', '0'),
+            ('last_login_at', 'timestamp without time zone', 'YES', None),
+            ('locked_until', 'timestamp without time zone', 'YES', None)]
+
+    def test_captcha_replay_table_shape(self, pg_app):
+        upgrade(LOGIN_PROTECTION)
+        assert rows("SELECT column_name, data_type, character_maximum_length, is_nullable"
+                    " FROM information_schema.columns WHERE table_schema = 'riftbound'"
+                    " AND table_name = 'rbcaptcha_used' ORDER BY ordinal_position") == [
+            ('rbcap_hash', 'character varying', 64, 'NO'),
+            ('rbcap_expires_at', 'timestamp without time zone', None, 'NO')]
+        assert rows("SELECT indexname FROM pg_indexes WHERE schemaname = 'riftbound'"
+                    " AND tablename = 'rbcaptcha_used' ORDER BY indexname") == [
+            ('idx_rbcaptcha_used_expires',), ('rbcaptcha_used_pkey',)]
+
+    def test_models_equal_the_database_and_flask_db_check_is_clean(self, pg_app):
+        upgrade()
+        assert drift() == []
+        result = pg_app.test_cli_runner().invoke(args=['db', 'check'])
+        assert result.exit_code == 0, result.output
+
+    def test_downgrade_removes_the_columns_and_the_table_and_keeps_the_users(self, pg_app):
+        upgrade(SCHEMA_COMMENTS)
+        run("INSERT INTO riftbound.rbusers (username, email, password_hash)"
+            " VALUES ('alice', 'alice@x.io', 'h')")
+        upgrade(LOGIN_PROTECTION)
+        run("UPDATE riftbound.rbusers SET failed_login_count = 4")
+        downgrade(SCHEMA_COMMENTS)
+        names = {c['name'] for c in inspector().get_columns('rbusers', schema='riftbound')}
+        assert {'failed_login_count', 'locked_until', 'last_login_at'}.isdisjoint(names)
+        assert 'rbcaptcha_used' not in tables()
+        assert rows('SELECT username FROM riftbound.rbusers') == [('alice',)]
+        upgrade(LOGIN_PROTECTION)
+        assert rows('SELECT failed_login_count FROM riftbound.rbusers') == [(0,)]
+
+    def test_a_second_insert_of_the_same_hash_is_an_integrity_error(self, pg_app):
+        upgrade(LOGIN_PROTECTION)
+        insert = ("INSERT INTO riftbound.rbcaptcha_used (rbcap_hash, rbcap_expires_at)"
+                  " VALUES ('abc', '2030-01-01 00:00:00')")
+        run(insert)
+        with pytest.raises(sa.exc.IntegrityError):
+            run(insert)
+
+    def test_replay_is_refused_without_poisoning_the_transaction(self, pg_app):
+        """The savepoint path of the ALTCHA provider on the real database: a replay
+        fails inside begin_nested(), and the SAME session keeps working afterwards
+        (a plain failed INSERT would leave PostgreSQL in 'transaction is aborted')."""
+        from tests.test_captcha import solve
+        from app.services import captcha
+
+        upgrade()
+        pg_app.config.update(CAPTCHA_PROVIDER='altcha', ALTCHA_MAX_NUMBER=1000)
+        provider = captcha.get_captcha_provider()
+        payload = solve(provider.challenge())
+
+        assert provider.verify(payload) is True
+        db.session.execute(sa.text("INSERT INTO riftbound.rbusers (username, email, password_hash)"
+                                   " VALUES ('pending', 'pending@x.io', 'h')"))     # uncommitted work
+        assert provider.verify(payload) is False                                      # the replay
+        assert db.session.execute(sa.text('SELECT 1')).scalar() == 1                  # not aborted
+        db.session.commit()
+        assert rows('SELECT username FROM riftbound.rbusers') == [('pending',)]       # kept
+        assert rows('SELECT count(*) FROM riftbound.rbcaptcha_used') == [(1,)]
+        # and a fresh payload still verifies in the same session
+        assert provider.verify(solve(provider.challenge())) is True
+
+    def test_register_with_a_replayed_payload_creates_one_user(self, pg_app):
+        from tests.test_captcha import challenge_of, solve
+        upgrade()
+        pg_app.config.update(CAPTCHA_PROVIDER='altcha', ALTCHA_MAX_NUMBER=1000)
+        client = pg_app.test_client()
+        page = client.get('/riftbound/register').get_data(as_text=True)
+        payload = solve(challenge_of(page))
+        first = client.post('/riftbound/register', data={
+            'username': 'newbie', 'email': 'newbie@x.io', 'password': 'longenough1',
+            'altcha': payload})
+        second = client.post('/riftbound/register', data={
+            'username': 'second', 'email': 'second@x.io', 'password': 'longenough1',
+            'altcha': payload})
+        assert (first.status_code, second.status_code) == (302, 302)
+        assert rows('SELECT username FROM riftbound.rbusers ORDER BY id') == [('newbie',)]
+
+    def test_lockout_columns_work_through_the_service(self, pg_app):
+        """authenticate() on PostgreSQL: SQL-side increment, lock, reset."""
+        from werkzeug.security import generate_password_hash
+        from app.models import User
+        from app.services import auth
+
+        upgrade()
+        user = User(username='u', email='u@x.io')
+        user.password_hash = generate_password_hash('right-pass-1', method='pbkdf2:sha256:1000')
+        db.session.add(user)
+        db.session.commit()
+        for _ in range(5):
+            assert auth.authenticate('u', 'wrong-pass').status is auth.AuthStatus.INVALID
+        assert rows('SELECT failed_login_count, locked_until IS NOT NULL FROM riftbound.rbusers') \
+            == [(5, True)]
+        assert auth.authenticate('u', 'right-pass-1').status is auth.AuthStatus.LOCKED
+        assert auth.unlock_user('u') is True
+        assert auth.authenticate('u', 'right-pass-1').status is auth.AuthStatus.OK
+        assert rows('SELECT failed_login_count, locked_until, last_login_at IS NOT NULL'
+                    ' FROM riftbound.rbusers') == [(0, None, True)]
 
 
 class TestRoundTrip:

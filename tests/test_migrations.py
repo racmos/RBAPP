@@ -666,7 +666,7 @@ class TestUserAdminFlags:
     def test_user_model_reads_the_flags_and_is_active_follows_is_blocked(self, at_quantity):
         from app.models import User
         seed_users('alice')
-        upgrade(USER_FLAGS)
+        upgrade()      # head: the model also maps the later (0005) columns
         user = User.query.filter_by(username='alice').one()
         assert (user.is_admin, user.is_blocked, user.is_active) == (False, False, True)
         user.is_blocked = True
@@ -688,6 +688,98 @@ class TestUserAdminFlags:
     def test_no_drift_at_this_revision(self, at_quantity):
         # The models carry the flags, so head must equal them (comments revision aside).
         upgrade()
+        assert drift() == []
+
+
+# --- 4.5 Revision 0005: login protection (LOGIN-1, LOGIN-8, D16) -------------
+#
+# Lockout columns on rbusers plus `rbcaptcha_used`, the shared replay store of
+# the ALTCHA provider. R3: escalation uses `failed_login_count` only, so there
+# is NO `lockout_level` column.
+
+LOGIN_PROTECTION = '0005_login_protection'
+
+
+@pytest.fixture
+def at_schema_comments(migration_app):
+    upgrade(SCHEMA_COMMENTS)
+    return migration_app
+
+
+class TestLoginProtection:
+    def test_revision_chains_after_the_schema_comments(self):
+        module = load_revision('0005_login_protection.py')
+        assert (module.revision, module.down_revision) == (LOGIN_PROTECTION, SCHEMA_COMMENTS)
+
+    def test_existing_users_get_a_zero_count_and_null_dates(self, at_schema_comments):
+        seed_users('alice', 'bob')
+        upgrade(LOGIN_PROTECTION)
+        assert rows('SELECT username, failed_login_count, locked_until, last_login_at'
+                    ' FROM riftbound.rbusers ORDER BY id') == [
+            ('alice', 0, None, None), ('bob', 0, None, None)]
+
+    def test_column_types_and_nullability(self, at_schema_comments):
+        upgrade(LOGIN_PROTECTION)
+        columns = user_columns()
+        assert isinstance(columns['failed_login_count']['type'], sa.Integer)
+        assert columns['failed_login_count']['nullable'] is False
+        for name in ('locked_until', 'last_login_at'):
+            assert isinstance(columns[name]['type'], sa.DateTime), name
+            assert columns[name]['nullable'] is True, name
+        assert 'lockout_level' not in columns          # R3
+        run("INSERT INTO riftbound.rbusers (username, email, password_hash)"
+            " VALUES ('new', 'new@x.io', 'h')")
+        assert rows("SELECT failed_login_count FROM riftbound.rbusers"
+                    " WHERE username = 'new'") == [(0,)]
+
+    def test_captcha_replay_table_shape(self, at_schema_comments):
+        upgrade(LOGIN_PROTECTION)
+        assert 'rbcaptcha_used' in tables()
+        insp = inspector()
+        columns = {c['name']: c for c in insp.get_columns('rbcaptcha_used', schema='riftbound')}
+        assert set(columns) == {'rbcap_hash', 'rbcap_expires_at'}
+        assert isinstance(columns['rbcap_hash']['type'], sa.String)
+        assert columns['rbcap_hash']['type'].length == 64
+        assert isinstance(columns['rbcap_expires_at']['type'], sa.DateTime)
+        assert columns['rbcap_expires_at']['nullable'] is False
+        assert insp.get_pk_constraint('rbcaptcha_used', schema='riftbound')[
+            'constrained_columns'] == ['rbcap_hash']
+        assert [(i['name'], i['column_names']) for i in insp.get_indexes(
+            'rbcaptcha_used', schema='riftbound')] == [
+            ('idx_rbcaptcha_used_expires', ['rbcap_expires_at'])]
+
+    def test_a_second_insert_of_the_same_hash_is_refused(self, at_schema_comments):
+        upgrade(LOGIN_PROTECTION)
+        insert = ("INSERT INTO riftbound.rbcaptcha_used (rbcap_hash, rbcap_expires_at)"
+                  " VALUES ('abc', '2030-01-01 00:00:00')")
+        run(insert)
+        with pytest.raises(sa.exc.IntegrityError):
+            run(insert)
+
+    def test_downgrade_drops_columns_and_table_and_keeps_the_users(self, at_schema_comments):
+        seed_users('alice')
+        upgrade(LOGIN_PROTECTION)
+        run("UPDATE riftbound.rbusers SET failed_login_count = 3")
+        downgrade(SCHEMA_COMMENTS)
+        assert {'failed_login_count', 'locked_until', 'last_login_at'}.isdisjoint(user_columns())
+        assert 'rbcaptcha_used' not in tables()
+        assert rows('SELECT username FROM riftbound.rbusers') == [('alice',)]
+
+    def test_unique_constraints_survive_the_table_rebuild(self, at_schema_comments):
+        upgrade(LOGIN_PROTECTION)
+        assert {u['name'] for u in inspector().get_unique_constraints(
+            'rbusers', schema='riftbound')} == {'rbusers_username_key', 'rbusers_email_key'}
+
+    def test_models_equal_the_schema_at_this_revision(self, at_schema_comments):
+        upgrade(LOGIN_PROTECTION)
+        assert drift() == []
+
+    def test_round_trip_leaves_an_identical_schema(self, at_schema_comments):
+        upgrade(LOGIN_PROTECTION)
+        before = structure()
+        downgrade(SCHEMA_COMMENTS)
+        upgrade(LOGIN_PROTECTION)
+        assert structure() == before
         assert drift() == []
 
 
@@ -761,6 +853,7 @@ class TestSchemaComments:
         upgrade(SCHEMA_COMMENTS)
         assert rows('SELECT version_num FROM riftbound.alembic_version') == [(SCHEMA_COMMENTS,)]
         assert structure() == before
+        upgrade()     # head (0005 adds columns the models carry, so drift is only [] at head)
         assert drift() == []
         downgrade(USER_FLAGS)
         assert rows('SELECT version_num FROM riftbound.alembic_version') == [(USER_FLAGS,)]
@@ -883,7 +976,7 @@ class TestRoundTrip:
     def test_upgrade_downgrade_upgrade_leaves_an_identical_schema(self, migration_app):
         upgrade()
         first = structure()
-        assert len(first) == 14       # 16 baseline tables minus the 2 dropped legacy ones
+        assert len(first) == 15       # 16 baseline tables - 2 dropped legacy ones + rbcaptcha_used (0005)
 
         downgrade('base')
         assert tables() == {'alembic_version'}

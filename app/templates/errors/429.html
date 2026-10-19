@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}429 - Demasiadas Solicitudes{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <h1>429</h1>
+    <h2>Demasiadas Solicitudes</h2>
+    <p>Has realizado demasiados intentos en poco tiempo. Espera unos minutos antes de volver a intentarlo.</p>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Volver al Login</a>
+</div>
+{% endblock %}

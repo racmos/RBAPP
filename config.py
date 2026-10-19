@@ -37,6 +37,11 @@ SECRET_KEY_DENYLIST_SHA256 = frozenset({
 # CARDMARKET_ALLOWED_HOSTS.
 CARDMARKET_ALLOWED_HOSTS = ('downloads.s3.cardmarket.com',)
 
+CAPTCHA_PROVIDERS = ('none', 'altcha')
+
+_TRUE_WORDS = frozenset({'1', 'true', 'yes', 'on'})
+_FALSE_WORDS = frozenset({'0', 'false', 'no', 'off'})
+
 # Trusted reverse-proxy hops (CFG-7): name -> default
 _PROXY_FIX_DEFAULTS = {
     'PROXY_FIX_X_FOR': 1,
@@ -70,6 +75,18 @@ def _int_setting(environ: Mapping[str, str], name: str, default: int) -> int:
     return int(text)
 
 
+def _bool_setting(environ: Mapping[str, str], name: str, default: bool) -> bool:
+    """A true/false switch (1/0, true/false, yes/no, on/off). Blank keeps `default`."""
+    text = (environ.get(name) or '').strip().lower()
+    if not text:
+        return default
+    if text in _TRUE_WORDS:
+        return True
+    if text in _FALSE_WORDS:
+        return False
+    raise ConfigError(f'{name} must be true or false')
+
+
 def _host_list(environ: Mapping[str, str], name: str, default: tuple) -> tuple:
     """A comma-separated list of host names, lower-cased; blank keeps `default`."""
     hosts = tuple(h.strip().lower() for h in (environ.get(name) or '').split(',') if h.strip())
@@ -101,7 +118,67 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
         settings[name] = _int_setting(environ, name, default)
     settings['CARDMARKET_ALLOWED_HOSTS'] = _host_list(
         environ, 'CARDMARKET_ALLOWED_HOSTS', CARDMARKET_ALLOWED_HOSTS)
+    settings.update(_session_settings(env, environ))
+    settings.update(_protection_settings(env, environ))
     return settings
+
+
+def _session_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
+    """Session and remember cookie flags (SESS-1).
+
+    HttpOnly always; SameSite=Lax, never Strict (future OAuth callbacks are
+    cross-site top-level GETs); Secure only in production unless the
+    environment says otherwise.
+    """
+    secure_default = env == 'production'
+    cookies: dict[str, Any] = {}
+    for prefix in ('SESSION', 'REMEMBER'):
+        cookies[f'{prefix}_COOKIE_HTTPONLY'] = True
+        cookies[f'{prefix}_COOKIE_SAMESITE'] = 'Lax'
+        cookies[f'{prefix}_COOKIE_SECURE'] = _bool_setting(
+            environ, f'{prefix}_COOKIE_SECURE', secure_default)
+    return cookies
+
+
+def _protection_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
+    """CSRF, rate limiter, lockout, captcha and landing cache (unit d).
+
+    The three protections default to ON everywhere except `testing`, where the
+    93 baseline tests rely on them being off; dedicated fixtures turn them on.
+    Each has an environment kill switch for rollback. Turning one off outside
+    testing is logged as a warning.
+    """
+    protected = env != 'testing'
+    csrf = _bool_setting(environ, 'WTF_CSRF_ENABLED', protected)
+    limiter = _bool_setting(environ, 'RATELIMIT_ENABLED', protected)
+    provider = (environ.get('CAPTCHA_PROVIDER') or '').strip().lower() or (
+        'altcha' if protected else 'none')
+    if provider not in CAPTCHA_PROVIDERS:
+        raise ConfigError(
+            f"CAPTCHA_PROVIDER is not valid; allowed values: {', '.join(CAPTCHA_PROVIDERS)}")
+
+    if env != 'testing':
+        for name, active in (('WTF_CSRF_ENABLED', csrf), ('RATELIMIT_ENABLED', limiter),
+                             ('CAPTCHA_PROVIDER', provider != 'none')):
+            if not active:
+                logger.warning('%s is switched off in RB_ENV=%s: this protection '
+                               'is a kill switch for rollback, not a normal setting', name, env)
+
+    return {
+        'WTF_CSRF_ENABLED': csrf,
+        'WTF_CSRF_TIME_LIMIT': None,        # a token lives as long as the session (CSRF-1)
+        'RATELIMIT_ENABLED': limiter,
+        'RATELIMIT_STORAGE_URI': (environ.get('RATELIMIT_STORAGE_URI') or '').strip()
+                                 or 'memory://',
+        'LOGIN_MAX_FAILURES': _int_setting(environ, 'LOGIN_MAX_FAILURES', 5),
+        'LOGIN_LOCK_BASE_MINUTES': _int_setting(environ, 'LOGIN_LOCK_BASE_MINUTES', 15),
+        'LOGIN_LOCK_MAX_MINUTES': _int_setting(environ, 'LOGIN_LOCK_MAX_MINUTES', 1440),
+        'CAPTCHA_PROVIDER': provider,
+        'ALTCHA_HMAC_KEY': (environ.get('ALTCHA_HMAC_KEY') or '').strip() or None,
+        'ALTCHA_EXPIRE_SECONDS': _int_setting(environ, 'ALTCHA_EXPIRE_SECONDS', 300),
+        'ALTCHA_MAX_NUMBER': _int_setting(environ, 'ALTCHA_MAX_NUMBER', 1_000_000),
+        'LANDING_CACHE_TTL': _int_setting(environ, 'LANDING_CACHE_TTL', 300),
+    }
 
 
 def _secret_key_problem(key: Optional[str]) -> Optional[str]:
