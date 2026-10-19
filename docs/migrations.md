@@ -4,15 +4,15 @@ The schema `riftbound` is built and changed ONLY by Alembic, through
 Flask-Migrate (`flask db ...`). `run.py` no longer creates tables. The old hand
 written SQL is archived, frozen, in `migrations/legacy_sql/`.
 
-| Revision | What it does |
-|---|---|
-| `0001_baseline` | Exact copy of the dev database on 2026-10-18 (16 tables, including the legacy `old1_rbusers` and `old_rbdecks`). Reference: `tests/fixtures/dev_schema_snapshot.txt`. |
-| `0002_drop_legacy_tables` | Backs up and drops the two legacy tables; repoints `rbdecks.fk_deck_user` to `rbusers(username)`. |
-| `0003_collection_quantity_integer` | `rbcollection.rbcol_quantity` Text -> Integer NOT NULL, plus CHECK `rbcollection_quantity_chk` (`>= 1`). |
-| `0004_user_admin_flags` | `rbusers.is_admin` and `rbusers.is_blocked`, BOOLEAN NOT NULL DEFAULT false. Nobody becomes admin by migrating: see "Admin accounts" below. |
-| `0004a_schema_comments` | The table and column COMMENTs the dev database already had (8 tables). PostgreSQL only (a no-op on SQLite). Setting a comment twice is harmless, so it is safe on dev. |
-| `0005_login_protection` | `rbusers.failed_login_count` (INTEGER NOT NULL DEFAULT 0), `locked_until` and `last_login_at` (TIMESTAMP NULL), and the table `rbcaptcha_used` (replay store of the ALTCHA captcha). Nobody is locked after migrating. See "Login protection" below. |
-| `0006_user_prefs` | The table `rbuserprefs`: interface preferences of one account (`rbprf_lang`, `rbprf_density`, `rbprf_accent`, `rbprf_bg_intensity`, `rbprf_collection_view`, all nullable, NULL = Auto, plus `rbprf_updated_at`). 1:1 with `rbusers` (primary key and foreign key `rbprf_user_id`, ON DELETE CASCADE), five named CHECK constraints. No rows are created by migrating. See "Interface preferences" below. |
+| Revision                           | What it does                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0001_baseline`                    | Exact copy of the dev database on 2026-10-18 (16 tables, including the legacy `old1_rbusers` and `old_rbdecks`). Reference: `tests/fixtures/dev_schema_snapshot.txt`.                                                                                                                                                                                                                                     |
+| `0002_drop_legacy_tables`          | Backs up and drops the two legacy tables; repoints `rbdecks.fk_deck_user` to `rbusers(username)`.                                                                                                                                                                                                                                                                                                         |
+| `0003_collection_quantity_integer` | `rbcollection.rbcol_quantity` Text -> Integer NOT NULL, plus CHECK `rbcollection_quantity_chk` (`>= 1`).                                                                                                                                                                                                                                                                                                  |
+| `0004_user_admin_flags`            | `rbusers.is_admin` and `rbusers.is_blocked`, BOOLEAN NOT NULL DEFAULT false. Nobody becomes admin by migrating: see "Admin accounts" below.                                                                                                                                                                                                                                                               |
+| `0004a_schema_comments`            | The table and column COMMENTs the dev database already had (8 tables). PostgreSQL only (a no-op on SQLite). Setting a comment twice is harmless, so it is safe on dev.                                                                                                                                                                                                                                    |
+| `0005_login_protection`            | `rbusers.failed_login_count` (INTEGER NOT NULL DEFAULT 0), `locked_until` and `last_login_at` (TIMESTAMP NULL), and the table `rbcaptcha_used` (replay store of the ALTCHA captcha). Nobody is locked after migrating. See "Login protection" below.                                                                                                                                                      |
+| `0006_user_prefs`                  | The table `rbuserprefs`: interface preferences of one account (`rbprf_lang`, `rbprf_density`, `rbprf_accent`, `rbprf_bg_intensity`, `rbprf_collection_view`, all nullable, NULL = Auto, plus `rbprf_updated_at`). 1:1 with `rbusers` (primary key and foreign key `rbprf_user_id`, ON DELETE CASCADE), five named CHECK constraints. No rows are created by migrating. See "Interface preferences" below. |
 
 `flask` finds the app through `.flaskenv` (`FLASK_APP=wsgi.py`) and reads
 `DATABASE_URL` like the application does (see `.env.example`).
@@ -88,13 +88,13 @@ a second ordinary account (none of them appear and the routes answer 403).
 `flask users` commands (all exit 1 and change nothing for an unknown user;
 `promote`, `demote`, `block`, `unblock` are idempotent):
 
-| Command | Effect |
-|---|---|
-| `promote <user>` (alias `make-admin`) | grants the admin role |
-| `demote <user>` (alias `revoke-admin`) | removes it |
-| `block <user>` / `unblock <user>` | a blocked user cannot log in and a live session ends on its next request |
-| `set-password <user>` | hidden prompt, asked twice, 8-128 characters |
-| `list` | accounts with role and state (never hashes) |
+| Command                                | Effect                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| `promote <user>` (alias `make-admin`)  | grants the admin role                                                    |
+| `demote <user>` (alias `revoke-admin`) | removes it                                                               |
+| `block <user>` / `unblock <user>`      | a blocked user cannot log in and a live session ends on its next request |
+| `set-password <user>`                  | hidden prompt, asked twice, 8-128 characters                             |
+| `list`                                 | accounts with role and state (never hashes)                              |
 
 Rollback of this step: `flask db downgrade 0003_collection_quantity_integer`
 (drops `is_admin`, `is_blocked` and, on PostgreSQL, removes the COMMENTs that
@@ -120,13 +120,13 @@ use a page that saves something (Profile, Sets), and open `/riftbound/register`
 
 What the new code does, and what to touch when it misbehaves:
 
-| Protection | Switch (env, see `.env.example`) | Notes |
-|---|---|---|
-| CSRF on every POST/PUT/PATCH/DELETE | `WTF_CSRF_ENABLED=false` | the page script `static/js/csrf.js` adds the token to same-origin `fetch` calls; on HTTPS the `Referer` of a POST must match the public host (Nginx must pass `Host` and `X-Forwarded-Proto`) |
-| Per-IP rate limit (login 10/min + 50/h, register 5/h) | `RATELIMIT_ENABLED=false` | in-memory, per Gunicorn worker; the Nginx `limit_req` zone in `docs/nginx_config` is the global one |
-| Account lockout (5th wrong password: 15 min, then 30, 60 ... 24 h) | `LOGIN_MAX_FAILURES`, `LOGIN_LOCK_BASE_MINUTES`, `LOGIN_LOCK_MAX_MINUTES` | `flask users unlock <user>` clears it at once; `flask users list` marks locked accounts |
-| ALTCHA captcha on register | `CAPTCHA_PROVIDER=none` | replays are stored in `rbcaptcha_used`; `ALTCHA_HMAC_KEY` defaults to a key derived from `SECRET_KEY` |
-| Landing feed cache | `LANDING_CACHE_TTL` (seconds, 0 = off) | per worker |
+| Protection                                                         | Switch (env, see `.env.example`)                                          | Notes                                                                                                                                                                                         |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSRF on every POST/PUT/PATCH/DELETE                                | `WTF_CSRF_ENABLED=false`                                                  | the page script `static/js/csrf.js` adds the token to same-origin `fetch` calls; on HTTPS the `Referer` of a POST must match the public host (Nginx must pass `Host` and `X-Forwarded-Proto`) |
+| Per-IP rate limit (login 10/min + 50/h, register 5/h)              | `RATELIMIT_ENABLED=false`                                                 | in-memory, per Gunicorn worker; the Nginx `limit_req` zone in `docs/nginx_config` is the global one                                                                                           |
+| Account lockout (5th wrong password: 15 min, then 30, 60 ... 24 h) | `LOGIN_MAX_FAILURES`, `LOGIN_LOCK_BASE_MINUTES`, `LOGIN_LOCK_MAX_MINUTES` | `flask users unlock <user>` clears it at once; `flask users list` marks locked accounts                                                                                                       |
+| ALTCHA captcha on register                                         | `CAPTCHA_PROVIDER=none`                                                   | replays are stored in `rbcaptcha_used`; `ALTCHA_HMAC_KEY` defaults to a key derived from `SECRET_KEY`                                                                                         |
+| Landing feed cache                                                 | `LANDING_CACHE_TTL` (seconds, 0 = off)                                    | per worker                                                                                                                                                                                    |
 
 Put a switch in `.env` (development) or `/etc/riftbound/riftbound.env` (the service)
 and restart. Every switch that is off outside testing logs a warning at start-up.
@@ -157,15 +157,15 @@ sudo systemctl restart rbapp         # only now start the new code
 
 What the table holds, and how it behaves:
 
-| Column | Type | Allowed values (CHECK) |
-|---|---|---|
-| `rbprf_user_id` | INTEGER, primary key, foreign key to `rbusers.id` ON DELETE CASCADE | an existing user |
-| `rbprf_lang` | VARCHAR(2) NULL | `es`, `en` |
-| `rbprf_density` | VARCHAR(10) NULL | `compact`, `regular`, `comfy` |
-| `rbprf_accent` | VARCHAR(10) NULL | `cyan`, `orange` |
-| `rbprf_bg_intensity` | SMALLINT NULL | 0 to 100 |
-| `rbprf_collection_view` | VARCHAR(10) NULL | `table`, `grid` |
-| `rbprf_updated_at` | TIMESTAMP NOT NULL, default `now()` | set again on every write |
+| Column                  | Type                                                                | Allowed values (CHECK)        |
+| ----------------------- | ------------------------------------------------------------------- | ----------------------------- |
+| `rbprf_user_id`         | INTEGER, primary key, foreign key to `rbusers.id` ON DELETE CASCADE | an existing user              |
+| `rbprf_lang`            | VARCHAR(2) NULL                                                     | `es`, `en`                    |
+| `rbprf_density`         | VARCHAR(10) NULL                                                    | `compact`, `regular`, `comfy` |
+| `rbprf_accent`          | VARCHAR(10) NULL                                                    | `cyan`, `orange`              |
+| `rbprf_bg_intensity`    | SMALLINT NULL                                                       | 0 to 100                      |
+| `rbprf_collection_view` | VARCHAR(10) NULL                                                    | `table`, `grid`               |
+| `rbprf_updated_at`      | TIMESTAMP NOT NULL, default `now()`                                 | set again on every write      |
 
 - NULL means Auto: the client decides. A user with no row has every preference on Auto;
   the row is created by the first `PATCH /api/v1/me/prefs`.

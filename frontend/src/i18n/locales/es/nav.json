@@ -1,0 +1,12 @@
+{
+  "home": "Inicio",
+  "logout": "Cerrar sesión",
+  "logoutFailed": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+  "welcome": "Hola, {{username}}",
+  "underConstruction": "La nueva aplicación está en construcción.",
+  "notFound": {
+    "title": "Página no encontrada",
+    "body": "La página que buscas no existe o ya no está disponible.",
+    "home": "Ir al inicio"
+  }
+}

@@ -1,0 +1,69 @@
+@layer components {
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition:
+      filter 0.15s,
+      background 0.15s;
+  }
+
+  .sm {
+    min-height: 32px;
+    padding: 7px 12px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+  }
+
+  .block {
+    width: 100%;
+  }
+
+  .primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: 0 8px 22px -10px var(--accent);
+  }
+
+  .primary:hover:not(:disabled) {
+    filter: brightness(1.07);
+  }
+
+  .ghost {
+    background: rgba(120, 205, 228, 0.06);
+    color: var(--text);
+    border-color: var(--line);
+  }
+
+  .ghost:hover:not(:disabled) {
+    background: rgba(120, 205, 228, 0.12);
+  }
+
+  .danger {
+    background: rgba(220, 74, 49, 0.16);
+    color: var(--red-text);
+    border-color: rgba(220, 74, 49, 0.4);
+  }
+
+  .danger:hover:not(:disabled) {
+    background: var(--red-strong);
+    color: var(--on-red);
+  }
+
+  .button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .button[aria-busy='true'] {
+    cursor: progress;
+  }
+}

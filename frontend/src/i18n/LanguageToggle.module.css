@@ -1,0 +1,24 @@
+@layer components {
+  .group {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .option {
+    min-width: 40px;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .option[aria-pressed='true'] {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+}

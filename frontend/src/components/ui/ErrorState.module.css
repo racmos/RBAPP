@@ -1,0 +1,20 @@
+@layer components {
+  .state {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--text);
+  }
+
+  .icon {
+    color: var(--red-text);
+  }
+
+  .message {
+    margin: 0;
+    max-width: 44ch;
+    color: var(--muted);
+  }
+}

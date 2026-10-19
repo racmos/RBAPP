@@ -1,0 +1,45 @@
+@layer components {
+  .page {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: calc(var(--pad) + var(--safe-top)) calc(var(--pad) + var(--safe-right))
+      calc(var(--pad) + var(--safe-bottom)) calc(var(--pad) + var(--safe-left));
+  }
+
+  .language {
+    position: absolute;
+    top: calc(var(--pad) + var(--safe-top));
+    right: calc(var(--pad) + var(--safe-right));
+  }
+
+  .panel {
+    width: min(100%, 440px);
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .brand {
+    display: block;
+    height: 40px;
+    margin: 0 auto 22px;
+  }
+
+  @media (max-width: 859.98px) {
+    .page {
+      align-items: start;
+      padding-top: calc(72px + var(--safe-top));
+    }
+
+    .panel {
+      padding: 22px 18px;
+    }
+  }
+}

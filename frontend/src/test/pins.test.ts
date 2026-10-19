@@ -22,13 +22,19 @@ const REQUIRED: Record<string, string> = {
   vite: '8.3.2',
   '@vitejs/plugin-react': '6.1.1',
   typescript: '6.0.3',
+  // Unit d (4.1, 4.3): routing, server state, i18n, captcha widget and the test tooling.
+  'react-router': '8.4.0',
+  '@tanstack/react-query': '5.104.1',
+  i18next: '26.4.2',
+  'react-i18next': '17.0.15',
+  altcha: '2.3.0',
+  msw: '3.0.2',
+  'vitest-axe': '0.1.0',
 };
 // DS-10: pinned for later units; checked only once they are installed.
 const EXPECTED_IF_PRESENT: Record<string, string> = {
-  'react-router': '8.4.0',
   'vite-plugin-pwa': '1.3.0',
   'workbox-window': '7.4.1',
-  altcha: '2.3.0',
 };
 const REQUIRED_PACKAGES = ['@fontsource-variable/manrope', '@fontsource-variable/space-grotesk'];
 const REQUIRED_SCRIPTS = [

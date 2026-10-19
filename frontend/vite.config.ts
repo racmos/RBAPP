@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
-    build: { sourcemap: false, emptyOutDir: true },
+    build: { sourcemap: false, emptyOutDir: true, manifest: true },
     server: {
       proxy: {
         '/riftbound/api': { target, changeOrigin: false },
