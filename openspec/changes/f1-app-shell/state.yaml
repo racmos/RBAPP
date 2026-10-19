@@ -1,0 +1,15 @@
+change: f1-app-shell
+branch: feat/f1-*  # one branch + PR per unit (a..g)
+artifact_store: openspec
+execution_mode: interactive
+roadmap: openspec/roadmap.md
+phases:
+  explore: done  # 2026-10-19, exploration.md; Q1-Q8 answered 2026-10-19 (all defaults accepted)
+  proposal: done  # 2026-10-19, proposal.md; app name "Rift Manager", brand assets in brand/
+  spec: done  # 2026-10-19, openspec/changes/f1-app-shell/specs/ (7 new + 3 modified capabilities)
+  design: done  # 2026-10-19, design.md; D1-D26, reconciliation R1-R12
+  tasks: done  # 2026-10-19, tasks.md; 7 units (a-g) + unit 0, 250 tasks, R1-R12 decided
+  apply: pending
+  verify: pending
+  archive: pending
+updated: 2026-10-19
