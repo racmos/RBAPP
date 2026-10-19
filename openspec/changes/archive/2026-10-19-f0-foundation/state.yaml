@@ -1,0 +1,15 @@
+change: f0-foundation
+branch: feat/f0-foundation
+artifact_store: openspec
+execution_mode: interactive
+roadmap: openspec/roadmap.md
+phases:
+  explore: done
+  proposal: done
+  spec: done
+  design: done
+  tasks: done
+  apply: done  # units a (#11), b (#12), c (#13), d (#14), e (#15) merged to main; see apply-progress.md. Open (non-blocking): 0.2, 0.4, 0.5, 1.24; deferred after archive: 4.31 (nginx limit_req burst + LOGIN-5 timing), 5.20 (README/AGENTS prose review)
+  verify: done  # 2026-10-19 PASS WITH WARNINGS (0 CRITICAL, 5 WARNING, 5 SUGGESTION): 1181 passed + 30 PG passed; see verify-report.md. W2-W5 addressed in the pre-archive fixes; W1 accepted as deferred follow-ups
+  archive: done  # 2026-10-19: delta specs merged into openspec/specs/ (14 domains, 74 requirements, 184 scenarios); archive-report.md written; folder moved to openspec/changes/archive/2026-10-19-f0-foundation/ by the orchestrator
+updated: 2026-10-19

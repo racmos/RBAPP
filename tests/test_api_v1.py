@@ -78,6 +78,37 @@ class TestEnvelope:
         assert 'ValueError' not in resp.get_data(as_text=True)
         assert 'Traceback' not in body['message']
 
+    def test_the_blueprint_handler_answers_an_unhandled_exception(
+            self, app, client, monkeypatch, caplog):
+        """API-1: the generic 500 comes from the `api_v1` handler itself.
+
+        The app-level handler would give the same envelope, so the test
+        spies on the name the blueprint handler calls (the app-level one
+        registered its own reference at startup and is not affected) and
+        raises from a REAL endpoint of the blueprint.
+        """
+        import app.api.v1 as api_pkg
+        calls = []
+        real = api_pkg.unexpected_error_response
+
+        def spy(error):
+            calls.append(error)
+            return real(error)
+
+        def boom():
+            raise ValueError('secret detail')
+
+        monkeypatch.setattr(api_pkg, 'unexpected_error_response', spy)
+        monkeypatch.setitem(app.view_functions, 'api_v1.health', boom)
+        resp = client.get(f'{API}/health', headers={'Accept': 'text/html'})
+        body = assert_error(resp, 500, 'Internal Server Error')
+        assert len(calls) == 1 and isinstance(calls[0], ValueError)
+        text = resp.get_data(as_text=True)
+        assert 'secret detail' not in text
+        assert 'ValueError' not in text
+        assert 'Traceback' not in body['message']
+        assert 'secret detail' in caplog.text  # logged, never shown
+
     def test_every_endpoint_of_the_blueprint_sits_under_the_prefix(self, app):
         rules = [r for r in app.url_map.iter_rules() if r.endpoint.startswith('api_v1.')]
         assert len(rules) == 7
