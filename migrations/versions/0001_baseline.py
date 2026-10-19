@@ -1,6 +1,6 @@
 """baseline: the dev database as of 2026-10-18
 
-Reproduces openspec/changes/f0-foundation/dev-schema-snapshot.txt (copy in
+Reproduces openspec/changes/archive/2026-10-19-f0-foundation/dev-schema-snapshot.txt (copy in
 tests/fixtures/dev_schema_snapshot.txt): 16 tables, including the legacy
 `old1_rbusers` / `old_rbdecks` and the wrong `rbdecks.fk_deck_user ->
 old1_rbusers(rbus_username)`. 0002 repoints and drops them (D4).
