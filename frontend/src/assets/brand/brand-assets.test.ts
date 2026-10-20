@@ -93,3 +93,39 @@ describe('viewBox crop', () => {
     expect(width / height).toBeLessThan(1.25);
   });
 });
+
+describe('mark-simple.svg (D20, favicon source)', () => {
+  /** Sub-paths: every moveto in the path data (the mark is a single <path> with several). */
+  const shapes = (name: string) => {
+    const { doc } = svgDocument(name);
+    const data = [...doc.querySelectorAll('path')].map((p) => p.getAttribute('d') ?? '');
+    return { data, count: data.join(' ').match(/[Mm]/g)?.length ?? 0, size: data.join('').length };
+  };
+
+  it('exists, parses as SVG and is vector only', () => {
+    expect(existsSync(brandDir + 'mark-simple.svg')).toBe(true);
+    const { source, root } = svgDocument('mark-simple.svg');
+    expect(root.localName).toBe('svg');
+    expect(root.querySelector('parsererror')).toBeNull();
+    expect(root.getAttribute('viewBox')).toMatch(/^-?[\d.]+ -?[\d.]+ [\d.]+ [\d.]+$/);
+    expect(root.querySelectorAll('path').length).toBeGreaterThan(0);
+    expect(source).not.toMatch(/<image\b|<script\b|base64|data:/i);
+  });
+
+  it('is no more complex than the full mark (fewer sub-paths or less path data)', () => {
+    const [simple, full] = [shapes('mark-simple.svg'), shapes('mark.svg')];
+    expect(simple.count).toBeLessThanOrEqual(full.count);
+    expect(simple.size).toBeLessThan(full.size);
+  });
+
+  it('keeps the brand gradient and stays close to square', () => {
+    const { source, doc, root } = svgDocument('mark-simple.svg');
+    expect(doc.querySelectorAll('linearGradient').length).toBe(1);
+    for (const colour of paintColors(doc, source)) {
+      expect(relativeLuminance(parseColor(colour))).toBeLessThanOrEqual(0.95);
+    }
+    const [, , width, height] = root.getAttribute('viewBox')!.split(' ').map(Number);
+    expect(width / height).toBeGreaterThan(0.8);
+    expect(width / height).toBeLessThan(1.25);
+  });
+});

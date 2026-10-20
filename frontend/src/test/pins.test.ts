@@ -30,12 +30,13 @@ const REQUIRED: Record<string, string> = {
   altcha: '2.3.0',
   msw: '3.0.2',
   'vitest-axe': '0.1.0',
-};
-// DS-10: pinned for later units; checked only once they are installed.
-const EXPECTED_IF_PRESENT: Record<string, string> = {
+  // Unit f (6.1, 6.2): the PWA toolchain (peer ^1.0.0 of the plugin excludes assets-generator 2.x).
   'vite-plugin-pwa': '1.3.0',
   'workbox-window': '7.4.1',
+  '@vite-pwa/assets-generator': '1.0.4',
 };
+// Resolved transitively: the plugin must land on this Workbox build (6.1).
+const LOCK_ONLY: Record<string, string> = { 'workbox-build': '7.4.1' };
 const REQUIRED_PACKAGES = ['@fontsource-variable/manrope', '@fontsource-variable/space-grotesk'];
 const REQUIRED_SCRIPTS = [
   'dev',
@@ -68,10 +69,6 @@ describe('exact pins (DS-10)', () => {
 
   it.each(REQUIRED_PACKAGES)('depends on %s', (name) => {
     expect(deps[name]).toMatch(/^\d+\.\d+\.\d+$/);
-  });
-
-  it.each(Object.entries(EXPECTED_IF_PRESENT))('pins %s to %s when installed', (name, version) => {
-    if (name in deps) expect(deps[name]).toBe(version);
   });
 
   it('keeps TanStack Query on an exact version when installed', () => {
@@ -108,6 +105,9 @@ describe('toolchain files (DS-10)', () => {
       packages: Record<string, { version?: string }>;
     };
     for (const [name, version] of Object.entries(REQUIRED)) {
+      expect(lock.packages[`node_modules/${name}`]?.version).toBe(version);
+    }
+    for (const [name, version] of Object.entries(LOCK_ONLY)) {
       expect(lock.packages[`node_modules/${name}`]?.version).toBe(version);
     }
   });

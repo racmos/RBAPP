@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { setViewport } from './viewport';
+import { resetViewport, setDisplayMode, setViewport } from './viewport';
 
 describe('setViewport / matchMedia mock', () => {
   it('matches max-width queries below the breakpoint and not above', () => {
@@ -68,5 +68,24 @@ describe('setViewport / matchMedia mock', () => {
 
   it('is installed by the global test setup', () => {
     expect(typeof window.matchMedia).toBe('function');
+  });
+});
+
+describe('setDisplayMode / matchMedia mock (PWA-6)', () => {
+  it('is a browser tab by default and models (display-mode: standalone)', () => {
+    expect(window.matchMedia('(display-mode: standalone)').matches).toBe(false);
+    expect(window.matchMedia('(display-mode: browser)').matches).toBe(true);
+    setDisplayMode('standalone');
+    expect(window.matchMedia('(display-mode: standalone)').matches).toBe(true);
+    expect(window.matchMedia('(display-mode: browser)').matches).toBe(false);
+  });
+
+  it('notifies listeners when the mode changes and is reset with the viewport', () => {
+    const listener = vi.fn();
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', listener);
+    setDisplayMode('standalone');
+    expect(listener).toHaveBeenCalledTimes(1);
+    resetViewport();
+    expect(window.matchMedia('(display-mode: standalone)').matches).toBe(false);
   });
 });

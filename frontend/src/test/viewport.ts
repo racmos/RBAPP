@@ -1,6 +1,7 @@
 /**
  * matchMedia mock for jsdom. It evaluates `min-width` / `max-width` clauses (joined with
- * `and`) against a width set by `setViewport`; any other media feature does not match.
+ * `and`) against a width set by `setViewport`, and `display-mode` against the mode set by
+ * `setDisplayMode` (a browser tab by default); any other media feature does not match.
  */
 const DEFAULT_WIDTH = 1280;
 
@@ -13,12 +14,16 @@ type Entry = {
 };
 
 let width = DEFAULT_WIDTH;
+let displayMode = 'browser';
 const subscribed = new Set<Entry>();
 
 const CLAUSE = /^\(\s*(min|max)-width\s*:\s*([\d.]+)px\s*\)$/;
+const DISPLAY_MODE = /^\(\s*display-mode\s*:\s*([\w-]+)\s*\)$/;
 
 function evaluate(media: string): boolean {
   return media.split(/\s+and\s+/).every((part) => {
+    const mode = DISPLAY_MODE.exec(part.trim());
+    if (mode) return mode[1] === displayMode;
     const match = CLAUSE.exec(part.trim());
     if (!match) return false;
     const limit = Number(match[2]);
@@ -70,10 +75,8 @@ export function installMatchMedia(): void {
   });
 }
 
-/** Set the viewport width and notify the listeners whose result changed. */
-export function setViewport(next: number): void {
-  width = next;
-  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: next });
+/** Notify the listeners whose result changed since they were last told. */
+function notify(): void {
   for (const entry of [...subscribed]) {
     const matches = evaluate(entry.media);
     if (matches === entry.last) continue;
@@ -84,8 +87,22 @@ export function setViewport(next: number): void {
   }
 }
 
+/** Set the viewport width and notify the listeners whose result changed. */
+export function setViewport(next: number): void {
+  width = next;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: next });
+  notify();
+}
+
+/** `standalone` for an installed app window, `browser` for a tab. */
+export function setDisplayMode(next: 'browser' | 'standalone'): void {
+  displayMode = next;
+  notify();
+}
+
 /** Back to the default desktop width and no live subscriptions. */
 export function resetViewport(): void {
   subscribed.clear();
+  displayMode = 'browser';
   setViewport(DEFAULT_WIDTH);
 }

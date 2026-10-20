@@ -76,9 +76,12 @@ nvm use                # Node 24
 npm ci
 npm run dev            # Vite dev server, proxies the API to Flask on 127.0.0.1:5000
 npm run build          # production build in frontend/dist
+npm run icons          # regenerate the committed PWA icons in frontend/public (only when the brand mark changes)
 ```
 
 `npm run lint`, `npm run typecheck` and `npx vitest run` are what CI runs besides the build.
+
+The app is an installable PWA called "Rift Manager" (service worker at `/riftbound/app/sw.js`, scope `/riftbound/app/`). Install, update, offline behaviour, the device checklist and how to roll the service worker back (`VITE_PWA_SELF_DESTROY=true`) are in [docs/frontend.md](docs/frontend.md).
 
 ## Database migrations
 

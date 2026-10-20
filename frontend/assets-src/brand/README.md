@@ -26,6 +26,13 @@ npm run brand:trace
 4. write a single `<path>` filled with that `linearGradient`, crop the `viewBox` to the
    silhouette bounding box plus a 1 % margin, and clean the result with `svgo`.
 
-Outputs: `src/assets/brand/mark.svg` and `src/assets/brand/wordmark.svg`. A human reviews them
+Part 3 (unit f) builds `mark-simple.svg`, the favicon source, from the mark: the silhouette is
+grown by 1 % of the larger side on every side (blur plus a low threshold, a round dilation of about
+2 % across) and traced with a higher `turdSize`, so the thin swirl tips and slits do not turn to
+noise at 16 to 48 px. It keeps the same gradient. To rebuild only that file run
+`npm run brand:trace -- mark-simple` (the names after `--` filter the outputs).
+
+Outputs: `src/assets/brand/mark.svg`, `src/assets/brand/wordmark.svg` and
+`src/assets/brand/mark-simple.svg`. A human reviews them
 (path count, swirl tips, gradient direction, no white fringe on `#06222c`) before they are
 committed; the review renders are described in the unit-a pull request.

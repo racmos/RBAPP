@@ -1,6 +1,6 @@
 import { QueryClient, QueryObserver, focusManager } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/errors';
 import { getCsrfToken, clearCsrfToken } from '@/api/csrf';
 import {
@@ -103,6 +103,13 @@ describe('shouldRetry (D11)', () => {
     const network = new ApiError({ kind: 'network' });
     expect(shouldRetry(0, network)).toBe(true);
     expect(shouldRetry(1, network)).toBe(false);
+  });
+
+  it('does not retry while the browser reports it is offline (PWA-7)', () => {
+    const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    expect(shouldRetry(0, new ApiError({ kind: 'network' }))).toBe(false);
+    offline.mockRestore();
+    expect(shouldRetry(0, new ApiError({ kind: 'network' }))).toBe(true);
   });
 
   it('does not retry a parse error or a server error', () => {

@@ -7,6 +7,7 @@ import { setUnauthorizedHandler } from '@/api/client';
 import { LiveAnnouncer } from '@/components/ui/LiveAnnouncer';
 import { ToastStack } from '@/components/ui/Toast';
 import { PrefsProvider } from '@/prefs';
+import { UpdateToast } from '@/pwa';
 import { createUnauthorizedHandler } from './unauthorized';
 
 type AppProvidersProps = {
@@ -16,7 +17,7 @@ type AppProvidersProps = {
   children: ReactNode;
 };
 
-/** Everything the screens share: query cache, translations, preferences, live region, toasts, 401 hook. */
+/** Everything the screens share: query cache, translations, preferences, live region, toasts, update prompt, 401 hook. */
 export function AppProviders({ router, queryClient, i18n, children }: AppProvidersProps) {
   useEffect(() => {
     setUnauthorizedHandler(createUnauthorizedHandler(router, queryClient));
@@ -30,6 +31,7 @@ export function AppProviders({ router, queryClient, i18n, children }: AppProvide
           {children}
           <LiveAnnouncer />
           <ToastStack />
+          <UpdateToast />
         </PrefsProvider>
       </I18nextProvider>
     </QueryClientProvider>

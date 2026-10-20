@@ -20,5 +20,11 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "scripts/**/*.ts"]
+  "include": [
+    "vite.config.ts",
+    "pwa-options.ts",
+    "pwa-options.test.ts",
+    "pwa-assets.config.ts",
+    "scripts/**/*.ts"
+  ]
 }

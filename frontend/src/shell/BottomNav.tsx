@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/auth';
 import { Icon } from '@/components/ui/Icon';
+import { InstallItem } from '@/pwa';
 import styles from './BottomNav.module.css';
 import { MoreSheet } from './MoreSheet';
 import { NavItem } from './NavItem';
@@ -42,7 +43,12 @@ export function BottomNav() {
           </li>
         </ul>
       </nav>
-      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} returnFocusRef={moreButton} />
+      <MoreSheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        returnFocusRef={moreButton}
+        install={<InstallItem />}
+      />
     </>
   );
 }

@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { useLogout, useSession } from '@/auth';
+import { useLogout, useOffline, useSession } from '@/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Brand } from '@/components/ui/Brand';
 import { Icon } from '@/components/ui/Icon';
 import { AccountLanguageToggle } from '@/prefs';
+import { InstallItem } from '@/pwa';
 import { NavItem } from './NavItem';
 import { navEntries } from './navRegistry';
 import styles from './Topbar.module.css';
@@ -18,6 +19,7 @@ export function Topbar({ desktop }: { desktop: boolean }) {
   const { t } = useTranslation('nav');
   const session = useSession();
   const { logout, pending } = useLogout();
+  const offline = useOffline();
   const username = session?.user?.username ?? '';
   const entries = navEntries('top', { isAdmin: session?.user?.is_admin === true });
 
@@ -45,6 +47,9 @@ export function Topbar({ desktop }: { desktop: boolean }) {
 
         <div className={styles.right}>
           {desktop && <AccountLanguageToggle />}
+          {desktop && (
+            <InstallItem className={styles.install} labelClassName={styles.installText} />
+          )}
           <Link
             to="/account/interface"
             className={styles.account}
@@ -58,7 +63,7 @@ export function Topbar({ desktop }: { desktop: boolean }) {
             className={styles.logout}
             aria-label={t('logout')}
             aria-busy={pending || undefined}
-            disabled={pending}
+            disabled={pending || offline}
             onClick={logout}
           >
             <Icon name="logout" size={16} />

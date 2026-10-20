@@ -1,0 +1,32 @@
+@layer components {
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: var(--row-h);
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .item:hover {
+    background: rgba(120, 205, 228, 0.08);
+  }
+
+  .intro {
+    margin: 0 0 12px;
+    color: var(--muted);
+  }
+
+  .steps {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding-left: 22px;
+  }
+}

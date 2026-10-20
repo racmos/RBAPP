@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLogout, useSession } from '@/auth';
+import { useLogout, useOffline, useSession } from '@/auth';
 import { Icon } from '@/components/ui/Icon';
 import { Sheet } from '@/components/ui/Sheet';
 import { AccountLanguageToggle } from '@/prefs';
@@ -21,6 +21,7 @@ export function MoreSheet({ open, onClose, returnFocusRef, install }: MoreSheetP
   const { t } = useTranslation('nav');
   const session = useSession();
   const { logout, pending } = useLogout();
+  const offline = useOffline();
   const entries = navEntries('more', { isAdmin: session?.user?.is_admin === true });
   const account = entries.filter((entry) => entry.id === 'interface');
   const admin = entries.filter((entry) => entry.id === 'admin');
@@ -68,7 +69,7 @@ export function MoreSheet({ open, onClose, returnFocusRef, install }: MoreSheetP
           type="button"
           className={styles.logout}
           aria-busy={pending || undefined}
-          disabled={pending}
+          disabled={pending || offline}
           onClick={() => {
             onClose();
             logout();

@@ -10,6 +10,8 @@ export type PrefsApi = {
   effective: EffectivePrefs;
   phone: boolean;
   signedIn: boolean;
+  /** No connection (or an offline boot): saving is off and the settings are read-only (PWA-7). */
+  offline: boolean;
   /** Apply now and save (optimistic, PREF-8). Does nothing for an anonymous visitor. */
   set: PrefsSync['set'];
   /** Send pending slider changes now (pointerup, blur). */

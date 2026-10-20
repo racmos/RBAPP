@@ -7,6 +7,7 @@ import { createQueryClient } from './queryClient';
 import { createAppRoutes } from './routes';
 import { createI18n } from '@/i18n';
 import { bootstrapPrefs } from '@/prefs';
+import { listenForInstallPrompt } from '@/pwa';
 
 export const BASENAME = '/riftbound/app';
 
@@ -14,14 +15,16 @@ type StartOptions = { reload?: () => void };
 
 /**
  * Boot the app into `host` (D13, D18): the stored preferences are applied to `<html>` first (no
- * theme flash), then the language, the stale-chunk listener and the router. Returns a function
- * that tears everything down.
+ * theme flash), then the install-prompt listener (the browser may fire `beforeinstallprompt`
+ * before React renders), the language, the stale-chunk listener and the router. Returns a
+ * function that tears everything down.
  */
 export async function startApp(
   host: HTMLElement,
   { reload }: StartOptions = {},
 ): Promise<() => void> {
   const { lang } = bootstrapPrefs();
+  const stopInstallListener = listenForInstallPrompt();
   const uninstallChunkReload = installChunkReload({ reload });
   const i18n = await createI18n(lang);
   const queryClient = createQueryClient();
@@ -39,5 +42,6 @@ export async function startApp(
     router.dispose();
     queryClient.clear();
     uninstallChunkReload();
+    stopInstallListener();
   };
 }

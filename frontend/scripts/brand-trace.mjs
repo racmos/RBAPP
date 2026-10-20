@@ -1,4 +1,4 @@
-// Traces the brand WebP sources to clean SVG (task 1.33/1.34, D20). Run by hand:
+// Traces the brand WebP sources to clean SVG (task 1.33/1.34, 6.4, D20). Run by hand:
 //   npm run brand:trace
 // Not part of CI. See assets-src/brand/README.md.
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -21,28 +21,55 @@ const MARGIN = 0.01; // viewBox margin, as a fraction of the larger side
 const TAIL = 0.06; // share of pixels averaged for each gradient end colour
 const INTERIOR_ALPHA = 250; // only fully opaque pixels are colour samples
 
+// Part 3 (D20): `mark-simple` is the favicon source. The silhouette is dilated (it grows by
+// `dilate` of the larger side on every side, about 2 % across) so the thin swirl tips and slits
+// survive at 16-32 px, and potrace drops the small specks with a higher turdSize.
+const SIMPLE = { dilate: 0.01, turdSize: 400 };
+
 const ASSETS = [
   { name: 'mark', file: 'rift-manager-mark.webp', gradient: 'plane' },
   { name: 'wordmark', file: 'rift-manager-wordmark.webp', gradient: 'vertical' },
+  { name: 'mark-simple', file: 'rift-manager-mark.webp', gradient: 'plane', simple: SIMPLE },
 ];
 
 const hex = (rgb) => '#' + rgb.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('');
 
+/**
+ * Opaque region as a 1-channel raw mask at 1x (255 inside). With `dilate` (a fraction of the
+ * larger side) the region is grown by that radius first.
+ */
+async function alphaMask(image, width, height, dilate = 0) {
+  const alpha = await image.clone().extractChannel('alpha').raw().toBuffer();
+  let mask = sharp(alpha, { raw: { width, height, channels: 1 } }).threshold(ALPHA_THRESHOLD);
+  if (dilate > 0) {
+    // Round dilation: blur, then threshold low. At distance `radius` outside a straight edge the
+    // blurred coverage is about Phi(-radius / sigma) = Phi(-1.5) = 6.7 %, so the edge moves out by
+    // `radius`. (sharp's erode/dilate use a square kernel and leave boxy corners.) The sources keep
+    // a transparent margin wider than the radius, so nothing is clipped.
+    const radius = Math.round(Math.max(width, height) * dilate);
+    mask = sharp(await mask.extractChannel(0).raw().toBuffer(), {
+      raw: { width, height, channels: 1 },
+    })
+      .blur(radius / 1.5)
+      .threshold(17);
+  }
+  return mask.extractChannel(0).raw().toBuffer({ resolveWithObject: true });
+}
+
 /** Black silhouette on white from the alpha channel, at UPSCALE x. */
-async function silhouette(image, width, height) {
-  return sharp(await image.clone().extractChannel('alpha').raw().toBuffer(), {
-    raw: { width, height, channels: 1 },
-  })
-    .resize(width * UPSCALE, height * UPSCALE, { kernel: 'lanczos3' })
+async function silhouette(image, width, height, dilate = 0) {
+  const { data, info } = await alphaMask(image, width, height, dilate);
+  return sharp(data, { raw: { width: info.width, height: info.height, channels: 1 } })
+    .resize(info.width * UPSCALE, info.height * UPSCALE, { kernel: 'lanczos3' })
     .threshold(ALPHA_THRESHOLD)
     .negate()
     .png()
     .toBuffer();
 }
 
-function tracePath(png) {
+function tracePath(png, turdSize = POTRACE.turdSize) {
   return new Promise((resolve, reject) => {
-    potrace.trace(png, POTRACE, (error, svg) => {
+    potrace.trace(png, { ...POTRACE, turdSize }, (error, svg) => {
       if (error) return reject(error);
       const d = /<path[^>]* d="([^"]+)"/.exec(svg)?.[1];
       return d ? resolve(d) : reject(new Error('potrace returned no path'));
@@ -50,12 +77,12 @@ function tracePath(png) {
   });
 }
 
-/** Bounding box of the silhouette in original pixels. */
-function boundingBox(rgba, width, height) {
+/** Bounding box of the silhouette in original pixels (`pixels` has `channels` bytes each, alpha last). */
+function boundingBox(pixels, width, height, channels = 4) {
   let [x0, y0, x1, y1] = [width, height, 0, 0];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (rgba[(y * width + x) * 4 + 3] >= ALPHA_THRESHOLD) {
+      if (pixels[(y * width + x) * channels + channels - 1] >= ALPHA_THRESHOLD) {
         x0 = Math.min(x0, x);
         y0 = Math.min(y0, y);
         x1 = Math.max(x1, x + 1);
@@ -145,11 +172,26 @@ function compose({ d, box, gradient }) {
 }
 
 await mkdir(OUT, { recursive: true });
-for (const { name, file, gradient: mode } of ASSETS) {
+// Optional filter: `npm run brand:trace -- mark-simple` regenerates only the named outputs.
+const only = process.argv.slice(2);
+for (const { name, file, gradient: mode, simple } of ASSETS) {
+  if (only.length > 0 && !only.includes(name)) continue;
   const image = sharp(SOURCES + file).ensureAlpha();
   const { data, info } = await image.clone().raw().toBuffer({ resolveWithObject: true });
-  const box = boundingBox(data, info.width, info.height);
-  const d = await tracePath(await silhouette(image, info.width, info.height));
+  const dilate = simple?.dilate ?? 0;
+  const box = simple
+    ? boundingBox(
+        (await alphaMask(image, info.width, info.height, dilate)).data,
+        info.width,
+        info.height,
+        1,
+      )
+    : boundingBox(data, info.width, info.height);
+  const d = await tracePath(
+    await silhouette(image, info.width, info.height, dilate),
+    simple?.turdSize,
+  );
+  // colours and direction come from the original opaque pixels, never from the grown fringe
   const gradient = sampleGradient(data, info.width, info.height, mode, box);
   const svg = compose({ d, box, gradient });
   await writeFile(OUT + `${name}.svg`, svg + '\n');
