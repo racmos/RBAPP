@@ -1,0 +1,114 @@
+@layer components {
+  .layout {
+    display: grid;
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+    gap: var(--gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: var(--row-h);
+    padding: 14px var(--pad);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    transition:
+      border-color 0.15s,
+      background 0.15s;
+  }
+
+  .card:hover {
+    border-color: var(--accent-ring);
+    background: var(--panel-2);
+  }
+
+  .icon {
+    flex: none;
+    color: var(--accent);
+  }
+
+  .text {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .description {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .classic {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    color: var(--muted-2);
+  }
+
+  .side {
+    min-width: 0;
+  }
+
+  .who {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: var(--gap);
+  }
+
+  .username {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .email {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .customize {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: var(--row-h);
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+  }
+
+  .customize:hover {
+    border-color: var(--accent-ring);
+    background: var(--accent-soft);
+  }
+
+  /* Desktop uses the room: the account panel sits beside the launchers. */
+  @media (min-width: 1240px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+  }
+}

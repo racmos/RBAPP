@@ -37,8 +37,12 @@ export function failure(
 
 export const anonymousSession = () => ok({ authenticated: false, csrf_token: ANON_TOKEN });
 
-export const signedInSession = () =>
-  ok({ authenticated: true, csrf_token: USER_TOKEN, user: USER, prefs: NO_PREFS });
+export const signedInSession = (prefs: Record<string, unknown> = NO_PREFS) =>
+  ok({ authenticated: true, csrf_token: USER_TOKEN, user: USER, prefs });
+
+export const ADMIN = { ...USER, id: 1, username: 'root', is_admin: true };
+export const adminSession = () =>
+  ok({ authenticated: true, csrf_token: USER_TOKEN, user: ADMIN, prefs: NO_PREFS });
 
 /**
  * Default handlers: an anonymous visitor on a server without captcha. Tests override what they

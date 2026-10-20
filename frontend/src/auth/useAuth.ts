@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { logout as logoutRequest } from '@/api/endpoints';
@@ -6,12 +7,25 @@ import { ApiError } from '@/api/errors';
 import { pushToast } from '@/components/ui/toastStore';
 import { storeLang, translateError } from '@/i18n';
 import { resetToAnonymous } from './signOut';
+import type { Session } from '@/api/types';
 import { sessionQuery } from './session';
 
 /** The cached session (always defined under a guarded route: the loader filled the cache). */
 export function useSession() {
   const { data } = useQuery(sessionQuery);
   return data ?? null;
+}
+
+/**
+ * The session as the cache holds it, without observing the query: it never fetches and survives
+ * `queryClient.clear()` (a 401 or a logout) without triggering a refetch. For app-wide providers.
+ */
+export function useCachedSession(): Session | undefined {
+  const queryClient = useQueryClient();
+  return useSyncExternalStore(
+    (onChange) => queryClient.getQueryCache().subscribe(onChange),
+    () => queryClient.getQueryData<Session>(sessionQuery.queryKey),
+  );
 }
 
 /**

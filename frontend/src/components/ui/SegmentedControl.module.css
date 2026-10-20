@@ -1,0 +1,58 @@
+@layer components {
+  .group {
+    display: inline-flex;
+    max-width: 100%;
+    flex-wrap: wrap;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .option {
+    position: relative;
+    display: flex;
+    min-height: 36px;
+    cursor: pointer;
+  }
+
+  .input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: inherit;
+  }
+
+  .text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .option:hover .text {
+    color: var(--text);
+    background: rgba(120, 205, 228, 0.08);
+  }
+
+  .input:checked + .text {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  /* The input is invisible, so the visible segment carries the focus ring. */
+  .input:focus-visible + .text {
+    outline: 2px solid var(--accent);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 4px var(--bg-0);
+  }
+
+  .input:disabled + .text {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

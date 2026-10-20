@@ -18,6 +18,8 @@ type Options = {
   width?: number;
   /** Routes added next to the real ones (test-only pages); they get the query client. */
   extraRoutes?: (queryClient: QueryClient) => RouteObject[];
+  /** Test-only pages inside the app shell (and its error boundary), next to the real ones. */
+  shellRoutes?: (queryClient: QueryClient) => RouteObject[];
 };
 
 export type RenderedApp = ReturnType<typeof render> & {
@@ -34,12 +36,16 @@ export async function renderApp({
   lang = 'es',
   width,
   extraRoutes,
+  shellRoutes,
 }: Options = {}): Promise<RenderedApp> {
   if (width !== undefined) setViewport(width);
   const queryClient = createQueryClient();
   const i18n = await createI18n(lang);
   const router = createMemoryRouter(
-    createAppRoutes(queryClient, { extraRoutes: extraRoutes?.(queryClient) }),
+    createAppRoutes(queryClient, {
+      extraRoutes: extraRoutes?.(queryClient),
+      shellRoutes: shellRoutes?.(queryClient),
+    }),
     {
       initialEntries: [`${BASENAME}${path}`],
       basename: BASENAME,

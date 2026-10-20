@@ -3,7 +3,15 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { API, NO_PREFS, USER, ok, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { clearCsrfToken, getCsrfToken } from './csrf';
-import { fetchSession, getCaptcha, getMetaConfig, login, logout, register } from './endpoints';
+import {
+  fetchSession,
+  getCaptcha,
+  getMetaConfig,
+  login,
+  logout,
+  patchPrefs,
+  register,
+} from './endpoints';
 
 beforeEach(() => clearCsrfToken());
 
@@ -68,6 +76,24 @@ describe('write endpoints', () => {
     );
     await logout();
     expect(called).toBe(true);
+  });
+});
+
+describe('patchPrefs (PREF-4)', () => {
+  it('sends only the given fields, null included, with the CSRF token, and returns the full prefs', async () => {
+    const seen: { body: unknown; token: string | null }[] = [];
+    server.use(
+      http.patch(`${API}/me/prefs`, async ({ request }) => {
+        seen.push({ body: await request.json(), token: request.headers.get('x-csrftoken') });
+        return ok({ prefs: { ...NO_PREFS, density: null, accent: 'cyan' } });
+      }),
+    );
+    await fetchSession();
+    const prefs = await patchPrefs({ accent: 'cyan' });
+    await patchPrefs({ density: null });
+    expect(prefs).toEqual({ ...NO_PREFS, accent: 'cyan' });
+    expect(seen.map((call) => call.body)).toEqual([{ accent: 'cyan' }, { density: null }]);
+    expect(seen[0].token).toBe('token-anon');
   });
 });
 

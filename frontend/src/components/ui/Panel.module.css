@@ -1,0 +1,24 @@
+@layer components {
+  .panel {
+    padding: var(--pad);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: var(--gap);
+  }
+
+  .title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: -0.01em;
+  }
+}

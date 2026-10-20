@@ -1,10 +1,12 @@
 import type { QueryClient } from '@tanstack/react-query';
-import type { RouteObject } from 'react-router';
+import { redirect, type RouteObject } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { requireAnon, requireAuth } from '@/auth/guards';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { AppShell } from '@/shell/AppShell';
+import { HomeHub } from '@/shell/HomeHub';
 import { NotFound } from '@/shell/NotFound';
-import { HomePlaceholder } from './HomePlaceholder';
+import { ShellError } from '@/shell/ShellError';
 import { RouteError } from './RouteError';
 
 /** Shown by the router while the loaders (session first) run, so nothing flashes (FAUTH-1). */
@@ -21,15 +23,26 @@ function LoadingScreen() {
   );
 }
 
-type RouteOptions = { extraRoutes?: RouteObject[] };
+const kitchenRoute: RouteObject = {
+  path: '/_kitchen',
+  lazy: async () => ({ Component: (await import('@/dev/KitchenSink')).KitchenSink }),
+};
+
+type RouteOptions = {
+  /** Routes next to the shell (tests: a route guarded by `requireAdmin`). */
+  extraRoutes?: RouteObject[];
+  /** Routes inside the shell and its error boundary (tests: a page that throws). */
+  shellRoutes?: RouteObject[];
+};
 
 /**
  * The route table (D13, basename `/riftbound/app`). Route modules load lazily; `altcha` lives
- * only in the register module (D22). Unit e wraps the guarded group in the app shell.
+ * only in the register module (D22). Signed-in pages render inside `AppShell`; their errors
+ * render inside it too (a pathless route carries the `errorElement`), so the topbar survives.
  */
 export function createAppRoutes(
   queryClient: QueryClient,
-  { extraRoutes = [] }: RouteOptions = {},
+  { extraRoutes = [], shellRoutes = [] }: RouteOptions = {},
 ): RouteObject[] {
   return [
     {
@@ -52,9 +65,25 @@ export function createAppRoutes(
         },
         {
           loader: requireAuth(queryClient),
+          Component: AppShell,
           children: [
-            { path: '/', Component: HomePlaceholder },
-            { path: '*', Component: NotFound },
+            {
+              errorElement: <ShellError />,
+              children: [
+                { path: '/', Component: HomeHub },
+                { path: '/account', loader: () => redirect('/account/interface') },
+                {
+                  path: '/account/interface',
+                  lazy: async () => ({
+                    Component: (await import('@/account/InterfacePage')).InterfacePage,
+                  }),
+                },
+                // Development only; Vite replaces the flag at build time and drops the branch.
+                ...(import.meta.env.DEV ? [kitchenRoute] : []),
+                ...shellRoutes,
+                { path: '*', Component: NotFound },
+              ],
+            },
           ],
         },
         ...extraRoutes,

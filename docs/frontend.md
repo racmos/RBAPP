@@ -144,6 +144,58 @@ Server errors are translated by `code` (`translateError` in `src/i18n/translateE
 An older server may answer without codes: `deriveCode` in `src/api/errors.ts` maps the
 F0 bodies (401 login, 409 duplicates, 429) so the screens still work.
 
+## App shell, navigation and preferences (unit e)
+
+**Shell anatomy.** Signed-in routes render inside `src/shell/AppShell.tsx`: a skip link
+(first tab stop), the sticky `Topbar` (64 px, 56 px below `sm`), one `main`
+(content capped at `--maxw`, `--maxw-wide` from `2xl`) and, below 860 px, the `BottomNav`
+(Inicio, Cartas, Colección, Mazos and "Más", which opens a native `<dialog>` sheet).
+The top or the bottom navigation is *mounted* by `useMediaQuery(up('md'))`, not hidden, and
+`main` carries `data-botnav` (bottom padding) only while the bottom navigation exists.
+Pages sit under a pathless route with `ShellError` as its `errorElement`, so a page that
+throws keeps the topbar; its retry resets the failed queries and renders the page again.
+Unknown paths render `NotFound` inside the shell.
+
+**Navigation registry.** `src/shell/navRegistry.ts` is the one list behind the topbar, the
+bottom navigation, the sheet and the home hub. Every entry has a `status`:
+`spa` (a router link, `to` is a path under the basename), `legacy` (a plain `<a href>` to a
+Jinja page, key in `legacy-routes.json`) or `planned` (never rendered). `placements` says
+where it appears (`top`, `bottom`, `hub`, `more`); `adminOnly` hides it from non-admins (UX
+only, the server still enforces). **To port a module, flip its entry**: change
+`status: 'legacy', legacy: 'cards'` to `status: 'spa', to: '/cards'`, add the route in
+`src/app/routes.tsx` and keep the label in `nav.json`. `legacy-routes.json` is checked by
+`tests/test_frontend_contracts.py::TestLegacyRoutes` against the Flask `url_map`.
+
+**Preferences.** The account stores five values (`lang`, `density`, `accent`,
+`bg_intensity`, `collection_view`; `null` is Auto). `src/prefs/`:
+
+- `bootstrap.ts` runs before React renders: it reads the `rb_prefs_v1` mirror (corrupt or
+  out-of-domain values are dropped), resolves Auto for the viewport and writes
+  `data-accent`, `data-density` (absent for regular), `lang` and the background variables to
+  `<html>`. Auto means compact density and grid view below 860 px, regular and table above;
+  accent orange; background 100.
+- `PrefsProvider` keeps `<html>` in step with the session query, re-resolves Auto when the
+  viewport crosses 860 px, copies the server prefs into the mirror and lets the account
+  language drive i18next. `rb_lang` stays the device choice (written by the toggle and on
+  logout).
+- `sync.ts` saves optimistically: the change is written to the session cache at once, one
+  PATCH is in flight at a time, each request carries only the changed fields (`null` for
+  Auto), the slider waits 400 ms (and flushes on pointerup, blur and pagehide), and a failure
+  restores the previous value with an error toast and a "Reintentar" action.
+- `AccountLanguageToggle` is the ES/EN toggle of the login screen, the topbar and the sheet:
+  it always writes `rb_lang`; when signed in it also saves `lang` to the account.
+
+`/account/interface` (`src/account/InterfacePage.tsx`) edits all five; at 1240 px and above a
+live preview sits beside the controls.
+
+**How to add a catalog namespace.** Create `locales/es/<ns>.json` and `locales/en/<ns>.json`,
+import both in `src/i18n/resources.ts`, add the name to `NAMESPACES` and to both `resources`
+objects, and call `useTranslation('<ns>')`. Spanish types the keys; the parity test covers
+English.
+
+**Development.** `/riftbound/app/_kitchen` shows every primitive; the route exists only in
+`npm run dev` (the production table has no `/_kitchen`).
+
 ## Build output
 
 The production build writes `dist/.vite/manifest.json` (`build.manifest`). It lists the

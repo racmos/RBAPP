@@ -28,6 +28,11 @@
     outline-offset: 2px;
   }
 
+  /* Scroll lock behind an open modal dialog (D17). */
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;

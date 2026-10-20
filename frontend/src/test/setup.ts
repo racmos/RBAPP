@@ -25,5 +25,10 @@ if (typeof window !== 'undefined') {
     server.resetHandlers();
     localStorage.clear();
     sessionStorage.clear();
+    // What applyPrefs writes to <html> must not leak from one test into the next.
+    const root = document.documentElement;
+    for (const name of ['data-accent', 'data-density', 'data-bg', 'style']) {
+      root.removeAttribute(name);
+    }
   });
 }

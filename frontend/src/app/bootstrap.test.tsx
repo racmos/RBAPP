@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react';
-import { http } from 'msw';
+import { delay, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { API, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
@@ -71,5 +71,15 @@ describe('startApp (task 4.36)', () => {
     window.dispatchEvent(event);
     window.dispatchEvent(new Event('vite:preloadError', { cancelable: true }));
     expect(reloads).toBe(1);
+  });
+
+  it('applies the stored preferences before the session answers (PREF-7)', async () => {
+    localStorage.setItem('rb_prefs_v1', JSON.stringify({ accent: 'cyan', density: 'comfy' }));
+    server.use(http.get(`${API}/auth/session`, () => delay('infinite')));
+    window.history.replaceState({}, '', '/riftbound/app/login');
+    stop = await startApp(host);
+    expect(document.documentElement.dataset.accent).toBe('cyan');
+    expect(document.documentElement.dataset.density).toBe('comfy');
+    expect(document.documentElement.dataset.bg).toBe('on');
   });
 });

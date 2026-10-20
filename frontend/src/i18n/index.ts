@@ -3,7 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import { NAMESPACES, resources as bundled, type Lang } from './resources';
 
 export { LANGUAGES, type Lang } from './resources';
-export { initialLang, resolveLang, storeLang, storedLang } from './resolveLang';
+export { clearStoredLang, initialLang, resolveLang, storeLang, storedLang } from './resolveLang';
 export { translateDetail, translateError } from './translateError';
 export { useDocumentTitle } from './useDocumentTitle';
 export { LanguageToggle } from './LanguageToggle';

@@ -2,6 +2,51 @@
   "language": {
     "label": "Idioma",
     "es": "Español",
-    "en": "English"
+    "en": "English",
+    "auto": "Auto"
+  },
+  "saveFailed": "No se pudo guardar el cambio. Inténtalo de nuevo.",
+  "interface": {
+    "title": "Interfaz",
+    "subtitle": "Personaliza cómo se ve y se comporta la aplicación. Los cambios se guardan en tu cuenta.",
+    "appearance": "Apariencia",
+    "appearanceHint": "Se aplica al instante.",
+    "density": {
+      "label": "Densidad",
+      "hint": "El espacio entre los elementos. Auto usa Compacta en el móvil.",
+      "auto": "Auto",
+      "compact": "Compacta",
+      "regular": "Regular",
+      "comfy": "Cómoda"
+    },
+    "accent": {
+      "label": "Color de acento",
+      "hint": "El color de botones y resaltados.",
+      "cyan": "Cian",
+      "orange": "Naranja"
+    },
+    "background": {
+      "label": "Intensidad del fondo",
+      "hint": "0 oculta el mapa del fondo."
+    },
+    "language": {
+      "label": "Idioma",
+      "hint": "Auto usa el idioma de tu navegador."
+    },
+    "collectionView": {
+      "label": "Vista de la colección",
+      "hint": "Auto usa Cuadrícula en el móvil y Tabla en el escritorio.",
+      "auto": "Auto",
+      "table": "Tabla",
+      "grid": "Cuadrícula"
+    },
+    "preview": {
+      "title": "Vista previa",
+      "heading": "Así se verá",
+      "body": "Texto de ejemplo sobre el fondo con el acento y la densidad elegidos.",
+      "button": "Botón principal",
+      "row": "Fila de ejemplo",
+      "badge": "Nuevo"
+    }
   }
 }

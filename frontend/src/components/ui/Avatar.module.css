@@ -1,0 +1,14 @@
+@layer components {
+  .avatar {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(150deg, var(--cyan-dim), var(--bg-1));
+    color: var(--text);
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1;
+    user-select: none;
+  }
+}

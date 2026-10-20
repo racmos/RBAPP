@@ -1,0 +1,9 @@
+{
+  "dashboard": "/riftbound/",
+  "sets": "/riftbound/set",
+  "cards": "/riftbound/card",
+  "collection": "/riftbound/collection",
+  "decks": "/riftbound/deck",
+  "profile": "/riftbound/profile",
+  "price": "/riftbound/price"
+}

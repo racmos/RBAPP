@@ -2,6 +2,51 @@
   "language": {
     "label": "Language",
     "es": "Español",
-    "en": "English"
+    "en": "English",
+    "auto": "Auto"
+  },
+  "saveFailed": "Couldn't save the change. Try again.",
+  "interface": {
+    "title": "Interface",
+    "subtitle": "Customize how the app looks and behaves. Changes are saved to your account.",
+    "appearance": "Appearance",
+    "appearanceHint": "Applied instantly.",
+    "density": {
+      "label": "Density",
+      "hint": "The space between elements. Auto uses Compact on a phone.",
+      "auto": "Auto",
+      "compact": "Compact",
+      "regular": "Regular",
+      "comfy": "Comfy"
+    },
+    "accent": {
+      "label": "Accent color",
+      "hint": "The color of buttons and highlights.",
+      "cyan": "Cyan",
+      "orange": "Orange"
+    },
+    "background": {
+      "label": "Background intensity",
+      "hint": "0 hides the background map."
+    },
+    "language": {
+      "label": "Language",
+      "hint": "Auto uses your browser language."
+    },
+    "collectionView": {
+      "label": "Collection view",
+      "hint": "Auto uses Grid on a phone and Table on a desktop.",
+      "auto": "Auto",
+      "table": "Table",
+      "grid": "Grid"
+    },
+    "preview": {
+      "title": "Preview",
+      "heading": "This is how it will look",
+      "body": "Sample text over the background with the accent and density you picked.",
+      "button": "Primary button",
+      "row": "Sample row",
+      "badge": "New"
+    }
   }
 }

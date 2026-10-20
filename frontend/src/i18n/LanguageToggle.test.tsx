@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithI18n } from '@/test/i18n';
 import { LanguageToggle } from './LanguageToggle';
 
@@ -36,6 +36,15 @@ describe('LanguageToggle (I18N-3, R4)', () => {
     // Any request would fail the test: MSW errors on unhandled requests and this one has no handler.
     await renderWithI18n(<LanguageToggle />);
     await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(localStorage.getItem('rb_lang')).toBe('en');
+  });
+
+  it('tells the caller which language was chosen, after applying it', async () => {
+    const onChoose = vi.fn();
+    await renderWithI18n(<LanguageToggle onChoose={onChoose} />);
+    await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(onChoose).toHaveBeenCalledTimes(1);
+    expect(onChoose).toHaveBeenCalledWith('en');
     expect(localStorage.getItem('rb_lang')).toBe('en');
   });
 });
