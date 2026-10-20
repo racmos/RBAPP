@@ -1,0 +1,206 @@
+@layer components {
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-topbar);
+    padding: var(--safe-top) calc(var(--pad) + var(--safe-right)) 0
+      calc(var(--pad) + var(--safe-left));
+    border-bottom: 1px solid var(--line);
+    background: var(--header);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 56px;
+    max-width: var(--maxw);
+    margin: 0 auto;
+  }
+
+  .brand {
+    display: flex;
+    flex: none;
+    align-items: center;
+    min-height: 40px;
+    border-radius: var(--radius-sm);
+  }
+
+  .logo {
+    height: 30px;
+  }
+
+  .nav {
+    min-width: 0;
+    margin-left: 6px;
+  }
+
+  .list {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      color 0.15s,
+      background 0.15s;
+  }
+
+  .link:hover {
+    background: rgba(120, 205, 228, 0.08);
+    color: var(--text);
+  }
+
+  .link[aria-current='page'] {
+    color: var(--text);
+  }
+
+  .link[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    bottom: -9px;
+    left: 10px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  .icon {
+    display: none;
+    opacity: 0.8;
+  }
+
+  .right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(120, 205, 228, 0.05);
+    color: var(--text);
+    transition:
+      border-color 0.15s,
+      background 0.15s;
+  }
+
+  .account:hover,
+  .account[aria-current='page'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .name {
+    max-width: 110px;
+    overflow: hidden;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--red-strong);
+    color: var(--on-red);
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+
+  .logout:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  .logout:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  @media (min-width: 680px) {
+    .bar {
+      height: 64px;
+    }
+  }
+
+  .name,
+  .logoutText {
+    display: none;
+  }
+
+  @media (min-width: 960px) {
+    .link {
+      padding: 0 12px;
+    }
+  }
+
+  /* Room for the icons, the name and the logout text once the links have space. */
+  @media (min-width: 1240px) {
+    .bar {
+      gap: 18px;
+    }
+
+    .link {
+      padding: 0 14px;
+    }
+
+    .icon {
+      display: block;
+    }
+
+    .name {
+      display: inline;
+    }
+
+    .logoutText {
+      display: inline;
+    }
+
+    .link[aria-current='page']::after {
+      right: 14px;
+      left: 14px;
+      bottom: -12px;
+    }
+  }
+
+  /* Same width as the page content. */
+  @media (min-width: 1600px) {
+    .bar {
+      max-width: var(--maxw-wide);
+    }
+  }
+}

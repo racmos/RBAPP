@@ -1,0 +1,80 @@
+@layer components {
+  .panel {
+    position: sticky;
+    top: 88px;
+  }
+
+  /* The same stack as the page background: map, then overlay, then content. */
+  .frame {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-0);
+  }
+
+  .frame::before,
+  .frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+
+  .frame::before {
+    background-image: url('../assets/bg/new_rift-1280.webp');
+    background-size: cover;
+    background-position: center;
+    filter: var(--bg-image-filter);
+    opacity: var(--bg-image-opacity);
+  }
+
+  .frame::after {
+    background: var(--bg-overlay);
+  }
+
+  .sample {
+    display: grid;
+    gap: var(--gap);
+    justify-items: start;
+    padding: calc(var(--pad) + 6px);
+  }
+
+  .heading {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .body {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: var(--row-h);
+    padding: 0 var(--pad);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+  }
+}

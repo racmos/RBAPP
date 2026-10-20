@@ -5,25 +5,25 @@ import { App } from './App';
 import { installChunkReload } from './chunkReload';
 import { createQueryClient } from './queryClient';
 import { createAppRoutes } from './routes';
-import { BG_DEFAULT_PERCENT, applyBackground } from '@/lib/background';
-import { createI18n, initialLang } from '@/i18n';
+import { createI18n } from '@/i18n';
+import { bootstrapPrefs } from '@/prefs';
 
 export const BASENAME = '/riftbound/app';
 
 type StartOptions = { reload?: () => void };
 
 /**
- * Boot the app into `host` (D13, D18): language from `rb_lang` or the browser, the background
- * layer, the stale-chunk listener, then the router. The preferences bootstrap that precedes
- * this arrives with unit e. Returns a function that tears everything down.
+ * Boot the app into `host` (D13, D18): the stored preferences are applied to `<html>` first (no
+ * theme flash), then the language, the stale-chunk listener and the router. Returns a function
+ * that tears everything down.
  */
 export async function startApp(
   host: HTMLElement,
   { reload }: StartOptions = {},
 ): Promise<() => void> {
-  applyBackground(document.documentElement, BG_DEFAULT_PERCENT);
+  const { lang } = bootstrapPrefs();
   const uninstallChunkReload = installChunkReload({ reload });
-  const i18n = await createI18n(initialLang());
+  const i18n = await createI18n(lang);
   const queryClient = createQueryClient();
   const router = createBrowserRouter(createAppRoutes(queryClient), { basename: BASENAME });
 

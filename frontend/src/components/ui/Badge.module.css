@@ -1,0 +1,43 @@
+@layer components {
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .neutral {
+    background: rgba(120, 205, 228, 0.08);
+    color: var(--muted);
+  }
+
+  .accent {
+    border-color: var(--accent-ring);
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  .success {
+    border-color: rgba(51, 178, 123, 0.5);
+    background: rgba(51, 178, 123, 0.16);
+    color: #7fe0b4;
+  }
+
+  .warning {
+    border-color: rgba(224, 185, 74, 0.5);
+    background: rgba(224, 185, 74, 0.14);
+    color: var(--gold);
+  }
+
+  .danger {
+    border-color: rgba(220, 74, 49, 0.45);
+    background: rgba(220, 74, 49, 0.16);
+    color: var(--red-text);
+  }
+}

@@ -1,4 +1,4 @@
-import { readStorage, writeStorage } from '@/lib/storage';
+import { readStorage, removeStorage, writeStorage } from '@/lib/storage';
 import { LANGUAGES, type Lang } from './resources';
 
 /** The device's language choice; the account preference overrides it when signed in (R4). */
@@ -29,6 +29,9 @@ export function storedLang(): Lang | null {
 }
 
 export const storeLang = (lang: Lang): void => writeStorage(LANG_STORAGE_KEY, lang);
+
+/** Back to "no device choice": the browser language decides again (Auto). */
+export const clearStoredLang = (): void => removeStorage(LANG_STORAGE_KEY);
 
 /** Language before any session is known (main.tsx, anonymous screens). */
 export function initialLang(browserLanguages: readonly string[] = navigator.languages): Lang {

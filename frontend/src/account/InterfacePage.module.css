@@ -1,0 +1,34 @@
+@layer components {
+  .layout {
+    display: grid;
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .text {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+
+  .label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .hint {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .slider {
+    flex: 1 1 100%;
+  }
+
+  /* Desktop uses the room: the live preview sits beside the controls. */
+  @media (min-width: 1240px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr) 420px;
+    }
+  }
+}

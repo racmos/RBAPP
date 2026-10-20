@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{% block title %}Riftbound Manager{% endblock %}</title>
+    <title>{% block title %}Rift Manager{% endblock %}</title>
     <script src="{{ url_for('static', filename='js/csrf.js') }}"></script>
     <link rel="stylesheet" href="/riftbound/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -16,7 +16,7 @@
     {% if current_user.is_authenticated %}
     <nav>
         <div class="nav-content">
-            <a href="{{ url_for('main.dashboard') }}" class="logo">Riftbound Manager</a>
+            <a href="{{ url_for('main.dashboard') }}" class="logo">Rift Manager</a>
             <ul class="nav-links">
                 <li><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
                 <li><a href="{{ url_for('sets.sets') }}">Sets</a></li>
@@ -27,6 +27,7 @@
                 <li><a href="{{ url_for('price.price') }}">Price</a></li>
                 {% endif %}
                 <li><a href="{{ url_for('profile.profile') }}">Profile</a></li>
+                <li><a href="/riftbound/app/" class="nav-new-app">Nueva app</a></li>
                 <li>
                     <form method="post" action="{{ url_for('auth.logout') }}" class="nav-logout-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -56,7 +57,7 @@
 
     {% if current_user.is_authenticated %}
     <footer>
-        <p>&copy; 2024 Riftbound Manager. All rights reserved.</p>
+        <p>&copy; 2024 Rift Manager. All rights reserved.</p>
     </footer>
     {% endif %}
 

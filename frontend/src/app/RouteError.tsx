@@ -10,7 +10,13 @@ export function RouteError({ reload = () => window.location.reload() }: { reload
   const error = useRouteError();
   const { t } = useTranslation('errors');
   const { t: common } = useTranslation('common');
-  if (isRouteErrorResponse(error) && error.status === 404) return <NotFound />;
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <main style={{ minHeight: '60dvh', padding: 'var(--pad)' }}>
+        <NotFound />
+      </main>
+    );
+  }
 
   const message = isChunkLoadError(error) ? t('route.chunk') : t('route.body');
   return (

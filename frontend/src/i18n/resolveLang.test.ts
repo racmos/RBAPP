@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { initialLang, resolveLang, storeLang, storedLang } from './resolveLang';
+import { clearStoredLang, initialLang, resolveLang, storeLang, storedLang } from './resolveLang';
 
 describe('resolveLang (I18N-2)', () => {
   it('prefers the account language over the browser', () => {
@@ -64,5 +64,15 @@ describe('rb_lang storage and initialLang', () => {
     localStorage.clear();
     expect(initialLang(['fr', 'en-US'])).toBe('en');
     expect(initialLang(['fr'])).toBe('es');
+  });
+});
+
+describe('clearStoredLang (Auto language, PREF-8)', () => {
+  it('forgets the device choice so the browser language applies again', () => {
+    storeLang('en');
+    expect(storedLang()).toBe('en');
+    clearStoredLang();
+    expect(storedLang()).toBeNull();
+    expect(initialLang(['es-ES'])).toBe('es');
   });
 });

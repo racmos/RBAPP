@@ -63,3 +63,40 @@ class TestErrorCodeCatalogs:
     def test_the_catalog_has_no_entry_for_a_code_the_backend_dropped(self, lang):
         known = {c.value for c in ErrorCode}
         assert set(_errors_catalog(lang)['code']) <= known
+
+
+LEGACY_ROUTES = FRONTEND / 'src' / 'shell' / 'legacy-routes.json'
+
+# The Jinja pages the app shell links to, with the Flask endpoint that must answer each URL.
+LEGACY_ENDPOINTS = {
+    'dashboard': 'main.dashboard',
+    'sets': 'sets.sets',
+    'cards': 'cards.cards',
+    'collection': 'collection.collection',
+    'decks': 'deck.deck',
+    'profile': 'profile.profile',
+    'price': 'price.price',
+}
+
+
+def _legacy_routes():
+    return json.loads(LEGACY_ROUTES.read_text(encoding='utf-8'))
+
+
+class TestLegacyRoutes:
+    """SHELL-5 (D25): the URLs the shell links to are real Flask GET routes."""
+
+    def test_the_file_lists_every_module_of_the_hub(self):
+        assert set(_legacy_routes()) == set(LEGACY_ENDPOINTS)
+
+    @pytest.mark.parametrize('key', sorted(LEGACY_ENDPOINTS))
+    def test_every_url_matches_a_get_rule_of_the_url_map(self, app, key):
+        url = _legacy_routes()[key]
+        assert url.startswith('/riftbound/')
+        endpoint, _args = app.url_map.bind('localhost').match(url, method='GET')
+        assert endpoint == LEGACY_ENDPOINTS[key]
+
+    def test_a_url_that_does_not_exist_is_caught(self, app):
+        from werkzeug.exceptions import NotFound
+        with pytest.raises(NotFound):
+            app.url_map.bind('localhost').match('/riftbound/no-such-page', method='GET')

@@ -1,4 +1,4 @@
-# Riftbound Manager
+# Rift Manager
 
 Web application to manage the Riftbound trading card game: user accounts, card sets and cards, your collection, decks, Cardmarket prices, and a public landing page. Flask + PostgreSQL, with a JSON API (`/riftbound/api/v1`) for a future React client.
 

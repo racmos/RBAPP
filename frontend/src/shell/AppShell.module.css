@@ -1,0 +1,51 @@
+@layer components {
+  .shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Off screen until focused; the first tab stop of every page (SHELL-1). */
+  .skip {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: var(--z-modal);
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+    transform: translateY(-200%);
+  }
+
+  .skip:focus-visible {
+    transform: none;
+  }
+
+  .main {
+    flex: 1;
+    padding: calc(var(--pad) + 4px) calc(var(--pad) + var(--safe-right)) var(--gap)
+      calc(var(--pad) + var(--safe-left));
+  }
+
+  .content {
+    width: 100%;
+    max-width: var(--maxw);
+    margin: 0 auto;
+  }
+
+  @media (min-width: 1600px) {
+    .content {
+      max-width: var(--maxw-wide);
+    }
+  }
+
+  /* Room for the bottom navigation, only while it is on screen. */
+  @media (max-width: 859.98px) {
+    .main[data-botnav='true'] {
+      padding-bottom: calc(76px + var(--safe-bottom) + var(--gap));
+    }
+  }
+}

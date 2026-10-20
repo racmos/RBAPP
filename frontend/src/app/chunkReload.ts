@@ -4,12 +4,7 @@ export const CHUNK_RELOAD_KEY = 'rb_chunk_reload';
 /** After this long without another failure the next one counts as a fresh deploy. */
 const HEALTHY_AFTER_MS = 10_000;
 
-const CHUNK_ERROR =
-  /dynamically imported module|importing a module script failed|unable to preload|error loading dynamically/i;
-
-/** True for the errors a stale tab gets when a deploy removed the old hashed assets. */
-export const isChunkLoadError = (error: unknown): boolean =>
-  error instanceof Error && CHUNK_ERROR.test(error.message);
+export { isChunkLoadError } from '@/lib/chunkError';
 
 type Options = { reload?: () => void };
 

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Riftbound Manager** is a web application to manage the Riftbound trading card game:
+**Rift Manager** is a web application to manage the Riftbound trading card game:
 - Authentication, profiles and roles (user / admin)
 - Card sets and individual cards
 - Personal collection tracking (quantities, foil, playsets, selling)
@@ -111,7 +111,9 @@ riftbound/
 │       ├── api/             # Typed fetch client, CSRF token, ApiError, endpoints
 │       ├── auth/            # Session query, guards, safeNext, login and register screens
 │       ├── i18n/            # es/en catalogs, resolveLang, translateError, parity check
-│       ├── shell/           # NotFound for now; the app shell arrives in unit e
+│       ├── prefs/           # Preferences: bootstrap, resolve, apply, mirror, optimistic sync, provider
+│       ├── account/         # Interface settings page and its live preview
+│       ├── shell/           # AppShell, Topbar, BottomNav, MoreSheet, HomeHub, nav registry, NotFound
 │       ├── components/ui/   # Primitives (Brand, Button, Field, Input, Toast, ...)
 │       ├── lib/             # breakpoints, contrast, format, background, storage
 │       ├── styles/          # Layered tokens, base, background, fonts
@@ -357,5 +359,7 @@ The React app lives in `frontend/` (Node 24, see `.nvmrc`). Work there with `npm
 | `npm run build` then `npm run check:dist` | Production build in `frontend/dist` and its checks |
 
 Conventions: dependencies are pinned without `^` or `~` (`frontend/.npmrc`); CSS is layered (`@layer reset, tokens, base, layout, components, utilities`) and every `*.module.css` wraps its rules in `@layer components`; `@media` widths come only from `src/lib/breakpoints.ts`; the background never brightens the map and body text keeps at least 4.5:1 contrast over it (`src/lib/background.ts`).
+
+App shell and preferences (unit e): signed-in pages render inside `frontend/src/shell/AppShell.tsx`; `shell/navRegistry.ts` is the single list behind the topbar, the bottom navigation, the "Más" sheet and the home hub (each entry is `spa`, `legacy` or `planned`; legacy entries are plain links to the Jinja pages listed in `shell/legacy-routes.json`, which `tests/test_frontend_contracts.py::TestLegacyRoutes` checks against the Flask `url_map`). Interface preferences live in `frontend/src/prefs/` (`rb_prefs_v1` mirror applied before the first render, Auto resolved below 860 px, optimistic PATCH with revert) and are edited at `/riftbound/app/account/interface`. The Jinja layout (`app/templates/base.html`) links to the new app ("Nueva app"). See `docs/frontend.md`.
 
 Authentication and API access (unit d): `frontend/src/api/client.ts` is the only code that calls `fetch`. It unwraps `{success, data}`, throws `ApiError` (`kind` http, network, timeout or parse; `code` normalised from `body.code` or derived from the F0 body), keeps the CSRF token in memory only (`api/csrf.ts`, never in web storage), sends `X-CSRFToken` on POST, PATCH, PUT and DELETE, retries once after `csrf_invalid`, and calls the registered unauthorized handler on a 401 from any path except `/auth/login` and `/auth/logout`. The session is the TanStack Query entry `['session']` (`auth/session.ts`); route loaders `requireAuth`, `requireAnon` and `requireAdmin` (`auth/guards.ts`) run before anything renders. `next` is always an absolute `/riftbound/...` path and `auth/safeNext.ts` decides between a router navigation and a full page load. `altcha` is imported only by `auth/AltchaWidget.tsx` (lazy register route) and must keep the version pinned in `requirements.txt`. Text lives in `src/i18n/locales/{es,en}/*.json` (`es` is the typed source; `src/i18n/parity.test.ts` fails on a missing key, different `{{placeholders}}` or a missing plural form). A backend error code needs `code.<value>` in both `errors.json` files; `tests/test_frontend_contracts.py` checks it. See `docs/frontend.md`.

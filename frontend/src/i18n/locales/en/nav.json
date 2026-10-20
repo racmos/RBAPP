@@ -1,12 +1,80 @@
 {
-  "home": "Home",
   "logout": "Sign out",
   "logoutFailed": "Could not sign out. Please try again.",
   "welcome": "Hello, {{username}}",
-  "underConstruction": "The new app is under construction.",
   "notFound": {
     "title": "Page not found",
     "body": "The page you are looking for does not exist or is no longer available.",
     "home": "Go to home"
+  },
+  "primary": "Main navigation",
+  "account": "{{username}}'s account",
+  "more": {
+    "label": "More",
+    "title": "More options",
+    "account": "Account",
+    "modules": "Classic modules",
+    "language": "Language"
+  },
+  "hub": {
+    "subtitle": "Pick a module to get started.",
+    "classic": "Classic version",
+    "account": "Your account",
+    "customize": "Customize the interface",
+    "customizeHint": "Density, accent, background and language."
+  },
+  "items": {
+    "home": {
+      "label": "Home",
+      "description": "Your starting point"
+    },
+    "interface": {
+      "label": "Interface",
+      "description": "Density, accent, background and language"
+    },
+    "dashboard": {
+      "label": "Dashboard",
+      "description": "A summary of your activity"
+    },
+    "sets": {
+      "label": "Sets",
+      "description": "Game expansions"
+    },
+    "cards": {
+      "label": "Cards",
+      "description": "Card catalog"
+    },
+    "collection": {
+      "label": "Collection",
+      "description": "What you own and what you sell"
+    },
+    "decks": {
+      "label": "Decks",
+      "description": "Build and review decks"
+    },
+    "profile": {
+      "label": "Profile",
+      "description": "Your account details"
+    },
+    "price": {
+      "label": "Prices",
+      "description": "Pricing tools"
+    },
+    "admin": {
+      "label": "Admin",
+      "description": "Administration tools"
+    },
+    "events": {
+      "label": "Events",
+      "description": "Tournaments and meetups"
+    },
+    "sales": {
+      "label": "Sales",
+      "description": "Your cards for sale"
+    },
+    "stats": {
+      "label": "Statistics",
+      "description": "Value and trends"
+    }
   }
 }

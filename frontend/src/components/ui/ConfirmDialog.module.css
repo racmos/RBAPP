@@ -1,0 +1,13 @@
+@layer components {
+  .message {
+    margin: 0 0 20px;
+    color: var(--muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+}

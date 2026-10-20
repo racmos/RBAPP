@@ -3,6 +3,7 @@ import type {
   CaptchaData,
   LoginBody,
   MetaConfig,
+  Prefs,
   RegisterBody,
   Session,
   UserPayload,
@@ -31,3 +32,7 @@ export const getCaptcha = (signal?: AbortSignal) =>
 
 export const getMetaConfig = (signal?: AbortSignal) =>
   request<MetaConfig>('/meta/config', { signal });
+
+/** `PATCH /me/prefs`: absent fields stay, `null` resets to Auto (PREF-4). Returns the full prefs. */
+export const patchPrefs = async (changes: Partial<Prefs>): Promise<Prefs> =>
+  (await request<{ prefs: Prefs }>('/me/prefs', { method: 'PATCH', body: changes })).prefs;
