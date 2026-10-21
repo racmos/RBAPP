@@ -64,7 +64,7 @@
 | **F9 Account** | Perfil ampliado + avatar, **2FA TOTP**, sesiones/dispositivos (tabla de sesiones en servidor), **login Discord/Google** (guiar al usuario paso a paso con las apps OAuth), API key. Sin pagos ni recuperación por email. |
 | **F10 Admin** | Sets, edición de cartas, carga Cardmarket, mappings, ignorados, **usuarios** (bloquear, restablecer contraseña), **baneos por modo**. Pensado para escritorio. |
 | **F11 Cierre** | Landing `/` con el estilo nuevo + botón instalar app, retirar Jinja, auditoría a11y, documentación final. |
-| **F12 Paso a producción** | Hoy **no existe producción** (este servidor y la BD 192.168.1.33 son desarrollo). Plan de despliegue, URL final, HTTPS, secretos de producción nuevos, BD de producción desde Alembic, backups, monitorización. |
+| **F12 Paso a producción** | Hoy **no existe producción** (el servidor y la BD actuales son de desarrollo). Plan de despliegue, URL final, HTTPS, secretos de producción nuevos, BD de producción desde Alembic, backups, monitorización. |
 
 ## 6. Datos
 
