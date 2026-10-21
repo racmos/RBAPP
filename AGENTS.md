@@ -1,5 +1,16 @@
 # Riftbound - Agent Instructions
 
+## Workflow (read first)
+
+Work arrives as a unit requirement in `docs/requirements/F<n>/F<n>-<x>-<slug>.md` (format: `docs/requirements/TEMPLATE.md`), written by the planner (a Claude Project) from the phase spec `docs/requirements/F<n>/README.md`. The full cycle, roles and rules are in `docs/knowledge/workflow.md`.
+
+- Before changing anything read `docs/knowledge/state.md` (status), `docs/knowledge/conventions.md` (rules) and the requirement's "Read first" list. `docs/knowledge/product.md` holds the owner's binding decisions.
+- One requirement = one branch from up-to-date `origin/main` = one PR. Work in a git worktree, never in the deployed checkout (it serves the dev app; see `docs/knowledge/ops-runbook.md`).
+- Strict TDD: observe the failing test before the code. Finish with every lane green (`pytest`; `cd frontend && npm run lint && npm run typecheck && npx vitest run && npm run build && npm run check:dist`).
+- Update `docs/knowledge/state.md` in the same PR, plus this file and `docs/*.md` when structure, commands, endpoints or conventions change.
+- Push, PR creation and merge are the owner's decisions; the owner merges. Deploy to dev only when asked, following `docs/knowledge/ops-runbook.md` and the local `ops.local.md` (git-ignored, never committed).
+- A requirement that contradicts the code, `openspec/specs/` or `product.md`: stop and report instead of guessing.
+
 ## Project Overview
 
 **Rift Manager** is a web application to manage the Riftbound trading card game:
@@ -126,6 +137,8 @@ riftbound/
 │   ├── conftest.py          # Fixtures (see Testing)
 │   └── test_*.py
 ├── docs/
+│   ├── knowledge/           # Product, architecture, conventions, state, roadmap, workflow, ops runbook
+│   ├── requirements/        # Phase specs (F<n>/README.md) and unit requirements for gentle-shell
 │   ├── migrations.md        # Migration runbook
 │   ├── nginx_config         # Nginx template
 │   └── riftbound.service    # systemd unit
