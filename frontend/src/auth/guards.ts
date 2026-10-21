@@ -1,7 +1,12 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { data, redirect, redirectDocument, type LoaderFunctionArgs } from 'react-router';
-import { sessionQuery } from './session';
+import { ApiError } from '@/api/errors';
+import type { Session } from '@/api/types';
+import { hasSignedInHint } from './hint';
+import { markBootedOffline } from './offline';
 import { safeNext } from './safeNext';
+import { sessionQuery } from './session';
+import { resetToAnonymous } from './signOut';
 
 /** Route loaders (D13). They run before anything renders, so the login form never flashes. */
 type Loader = (args: LoaderFunctionArgs) => Promise<null>;
@@ -12,13 +17,31 @@ const absolutePath = (request: Request): string => {
   return url.pathname + url.search;
 };
 
+const unreachable = (error: unknown): boolean =>
+  error instanceof ApiError && (error.kind === 'network' || error.kind === 'timeout');
+
 export const requireAuth =
   (queryClient: QueryClient): Loader =>
   async ({ request }) => {
-    const session = await queryClient.ensureQueryData(sessionQuery);
-    if (!session.authenticated) {
-      throw redirect(`/login?next=${encodeURIComponent(absolutePath(request))}`);
+    const toLogin = () => redirect(`/login?next=${encodeURIComponent(absolutePath(request))}`);
+    let session: Session;
+    try {
+      session = await queryClient.ensureQueryData(sessionQuery);
+    } catch (error) {
+      // PWA-7: the server cannot be reached. A browser that was signed in gets the shell from the
+      // precache with the offline banner; one that was not gets the error screen with a retry.
+      if (unreachable(error) && hasSignedInHint()) {
+        markBootedOffline();
+        return null;
+      }
+      // A 401 always means "sign in again", hint or not (FAUTH-7).
+      if (error instanceof ApiError && error.status === 401) {
+        resetToAnonymous(queryClient);
+        throw toLogin();
+      }
+      throw error;
     }
+    if (!session.authenticated) throw toLogin();
     return null;
   };
 

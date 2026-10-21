@@ -6,9 +6,13 @@ import { clearSignedInHint, setSignedInHint } from './hint';
 
 export const SESSION_STALE_MS = 5 * 60 * 1000;
 
-/** No retry on 4xx or server answers; one retry when the network or the clock failed (D11). */
+/**
+ * No retry on 4xx or server answers; one retry when the network or the clock failed (D11), but
+ * none while the browser says it is offline: a second attempt only delays the offline screen.
+ */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
   if (!(error instanceof ApiError)) return false;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
   return (error.kind === 'network' || error.kind === 'timeout') && failureCount < 1;
 }
 

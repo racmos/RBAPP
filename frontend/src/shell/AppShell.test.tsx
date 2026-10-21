@@ -1,7 +1,8 @@
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { listen, resetInstallPrompt } from '@/pwa/installPrompt';
 import { API, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
@@ -110,6 +111,29 @@ describe('AppShell at 1280 px (SHELL-1, SHELL-2)', () => {
     const nav = screen.getByRole('navigation', { name: 'Main navigation' });
     expect(within(nav).getByRole('link', { name: 'Collection' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  });
+});
+
+describe('AppShell install entry on the desktop topbar (PWA-6)', () => {
+  afterEach(() => resetInstallPrompt());
+
+  it('has no install button until the browser offers the install', async () => {
+    await open(1280);
+    expect(screen.queryByRole('button', { name: 'Instalar app' })).not.toBeInTheDocument();
+  });
+
+  it('shows "Instalar app" in the banner once it does, and runs the saved prompt', async () => {
+    const stopListening = listen();
+    const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt: vi.fn(() => Promise.resolve()),
+      userChoice: Promise.resolve({ outcome: 'accepted' as const }),
+    });
+    await open(1280);
+    act(() => void window.dispatchEvent(event));
+    const banner = screen.getByRole('banner');
+    await userEvent.click(within(banner).getByRole('button', { name: 'Instalar app' }));
+    expect(event.prompt).toHaveBeenCalledTimes(1);
+    stopListening();
   });
 });
 

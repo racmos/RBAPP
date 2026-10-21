@@ -196,6 +196,84 @@ English.
 **Development.** `/riftbound/app/_kitchen` shows every primitive; the route exists only in
 `npm run dev` (the production table has no `/_kitchen`).
 
+## Service worker and install
+
+The app is an installable PWA named **Rift Manager**. Nothing about it needs a server change:
+Flask already sends `sw.js`, `workbox-*.js` and `manifest.webmanifest` with `no-cache`, and the
+manifest as `application/manifest+json`.
+
+| Piece | Value |
+|---|---|
+| Worker | `/riftbound/app/sw.js` (Workbox `generateSW`, prompt mode), so its **scope is `/riftbound/app/`** and it never controls the Jinja pages or the API |
+| Manifest | `id` and `scope` `/riftbound/`, `start_url` `/riftbound/app/`, standalone, `#06222c`. The scope is wider than the worker on purpose: the installed window may still open a legacy page |
+| Precache | The app shell only: hashed JS and CSS, `index.html`, latin fonts, the background images, the brand SVGs and the icons. **No runtime caching** of `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages |
+| Offline | The shell opens from the precache with an offline banner; F1 is read-only offline |
+| Updates | A new worker waits. The app shows a "Nueva versión" toast; "Actualizar" activates it and reloads. It checks every hour and when the window becomes visible |
+| Development | The worker is disabled in `npm run dev` |
+
+`npm run check:dist` (also run by CI before the upload) fails the build when the manifest has
+another name, id, scope or start URL, when an icon is missing or its PNG size differs from the
+declared one, when `index.html` lacks the manifest link, `theme-color`, the title or the apple
+tags, when the precache lacks `index.html` or a background image or lists an API URL, when a route
+is registered for the API, and when `altcha` ends up in the entry chunk.
+
+### Icons
+
+The icons in `frontend/public/` are generated from the brand mark and **committed**; CI only
+checks them. To regenerate after the mark changes:
+
+```bash
+cd frontend
+npm run brand:trace -- mark-simple        # only if the favicon silhouette changed
+npm run icons                             # pwa-{64,192,512}, maskable-icon-512, apple-touch-icon-180, favicon.ico, favicon.svg
+```
+
+`npm run icons` uses the presets of `frontend/pwa-assets.config.ts`: the mark on `#06222c` with 10 %
+padding for the normal icons, 30 % padding for the maskable one (the mark stays inside the central
+80 % circle) and 20 % for the iOS icon. The favicon comes from the simplified mark
+(`src/assets/brand/mark-simple.svg`), which keeps the swirl legible at 16 to 48 px.
+
+## Rolling back the PWA
+
+A plain revert of the frontend is **not** a rollback of the PWA: every browser that already
+installed the worker keeps serving the old shell from its cache. Use the self-destroying worker
+first.
+
+1. Build the frontend with the self-destroying option and deploy that build as usual:
+   `cd frontend && VITE_PWA_SELF_DESTROY=true npm run build` (no restart: the files are
+   read per request). Check it with `node scripts/check-dist.mjs --self-destroy dist`. This build
+   serves a `sw.js` that unregisters itself, deletes every cache and reloads the open windows, and
+   the app does not register a worker at all.
+2. Wait until clients have fetched it. Browsers re-check `sw.js` on every navigation inside the
+   scope, so a day is plenty for devices that are used; a device that is switched off picks it up
+   the next time it opens the app.
+3. Only then revert the frontend (or deploy the normal build again). Reverting earlier brings the
+   old worker back to the devices that have not updated yet.
+
+CI builds the self-destroying worker on every run (outside the uploaded artifact) and checks it, so
+this procedure cannot rot unnoticed. Rehearse it on dev at least once (task 6.34).
+
+## PWA device checklist
+
+Run on the dev server over HTTPS (a service worker needs it; `localhost` is the only exception).
+
+- **Lighthouse (desktop Chrome):** open `/riftbound/app/`, DevTools, Lighthouse, category
+  "Progressive Web App" or the installability audit: it passes with no failed item.
+- **Android (Chrome):** the menu offers "Install app" (also the "Instalar app" item in "Más"). The
+  launched window is called "Rift Manager" and shows the swirl icon on the dark teal background.
+- **iPhone (Safari):** "Más" then "Instalar app" shows the three steps; Share, Add to Home Screen.
+  Name "Rift Manager" and the mark icon, no black corners.
+- **Desktop (Chrome or Edge):** the install button in the address bar and "Instalar app" in the
+  topbar; the app opens in its own window.
+- **Scope:** DevTools, Application, Service Workers shows the scope `/riftbound/app/`; a Jinja page
+  (for example `/riftbound/deck`) is "not controlled".
+- **Offline:** with the installed app, airplane mode, open it: the shell opens with the offline
+  banner and the preference controls and "Cerrar sesión" are disabled. Back online: the banner goes.
+- **Update:** deploy a second build, reopen the installed app, wait for the "Nueva versión" toast,
+  accept it and see the new version. Dismissing it must keep a half-filled form.
+- **Session:** sign in with "Recordarme", close the installed app completely and reopen it the next
+  day: still signed in.
+
 ## Build output
 
 The production build writes `dist/.vite/manifest.json` (`build.manifest`). It lists the

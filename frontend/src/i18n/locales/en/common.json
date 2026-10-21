@@ -17,5 +17,22 @@
   "loadingRegion": "Loading content",
   "errorState": {
     "title": "Could not load"
+  },
+  "pwa": {
+    "update": {
+      "message": "New version available.",
+      "action": "Update"
+    },
+    "install": {
+      "label": "Install app",
+      "iosTitle": "Install on iPhone or iPad",
+      "iosIntro": "In Safari, Rift Manager is added to your home screen in three steps.",
+      "iosStep1": "Tap “Share” in the Safari toolbar.",
+      "iosStep2": "Scroll down and choose “Add to Home Screen”.",
+      "iosStep3": "Confirm with “Add”."
+    }
+  },
+  "offline": {
+    "banner": "You are offline. You can keep browsing, but changes will not be saved."
   }
 }

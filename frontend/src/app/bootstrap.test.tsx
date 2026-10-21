@@ -1,8 +1,9 @@
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { delay, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { API, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
+import { resetInstallPrompt } from '@/pwa/installPrompt';
 import { startApp } from './bootstrap';
 
 let host: HTMLDivElement;
@@ -22,6 +23,22 @@ afterEach(() => {
   window.history.replaceState({}, '', '/');
   document.documentElement.removeAttribute('data-bg');
   document.documentElement.removeAttribute('lang');
+});
+
+describe('startApp install listener (task 6.18, PWA-6)', () => {
+  it('keeps the browser install prompt from the start, and stops with the app', async () => {
+    window.history.replaceState({}, '', '/riftbound/app/login');
+    stop = await startApp(host);
+    const early = new Event('beforeinstallprompt', { cancelable: true });
+    act(() => void window.dispatchEvent(early));
+    expect(early.defaultPrevented).toBe(true);
+
+    stop();
+    const late = new Event('beforeinstallprompt', { cancelable: true });
+    window.dispatchEvent(late);
+    expect(late.defaultPrevented).toBe(false);
+    resetInstallPrompt();
+  });
 });
 
 describe('startApp (task 4.36)', () => {

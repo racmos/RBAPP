@@ -254,6 +254,10 @@ class TestMigrationsJobShape:
 
 # CI-5 -------------------------------------------------------------------------
 
+SELF_DESTROY_BUILD = 'npx vite build --outDir "$RUNNER_TEMP/self-destroy-dist" --emptyOutDir'
+SELF_DESTROY_CHECK = 'node scripts/check-dist.mjs --self-destroy "$RUNNER_TEMP/self-destroy-dist"'
+
+
 class TestFrontendJob:
     """CI-5 after unit a (R9): `frontend/package.json` exists, so no step is guarded."""
 
@@ -288,8 +292,30 @@ class TestFrontendJob:
             (None, 'npx vitest run'),
             (None, 'npm run build'),
             (None, 'npm run check:dist'),
+            (None, SELF_DESTROY_BUILD),
+            (None, SELF_DESTROY_CHECK),
             ('actions/upload-artifact', None),
         ]
+
+    def test_the_manifest_check_runs_after_the_build_and_before_the_upload(self):
+        """CI-5 'Manifest check': check-dist verifies manifest, icons and worker of the real build."""
+        runs = [step.get('run') for step in self._steps()]
+        uses = [str(step.get('uses', '')).split('@')[0] for step in self._steps()]
+        check = runs.index('npm run check:dist')
+        assert runs.index('npm run build') < check < uses.index('actions/upload-artifact')
+
+    def test_the_self_destroying_build_goes_outside_the_uploaded_artifact(self):
+        """PWA-5 / task 6.14: the rollback worker is built and checked on every run, never shipped."""
+        steps = self._steps()
+        (build,) = [s for s in steps if s.get('run') == SELF_DESTROY_BUILD]
+        (check,) = [s for s in steps if s.get('run') == SELF_DESTROY_CHECK]
+        assert build['env'] == {'VITE_PWA_SELF_DESTROY': 'true'}
+        assert '--outDir "$RUNNER_TEMP/self-destroy-dist"' in build['run']
+        assert '--emptyOutDir' in build['run']
+        assert '--self-destroy "$RUNNER_TEMP/self-destroy-dist"' in check['run']
+        for step in (build, check):
+            assert 'frontend/dist' not in step['run']
+            assert 'if' not in step
 
     def test_node_version_comes_from_nvmrc_with_the_npm_cache_of_the_lockfile(self):
         setup = _steps_using(_ci()['jobs']['frontend'], 'actions/setup-node')

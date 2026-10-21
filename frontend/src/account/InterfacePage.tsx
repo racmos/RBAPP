@@ -49,7 +49,7 @@ const fromControl = <T extends string>(value: Auto<T>): T | null => (value === A
  */
 export function InterfacePage() {
   const { t } = useTranslation('prefs');
-  const { prefs, effective, set, flush, setLanguage } = usePrefs();
+  const { prefs, effective, set, flush, setLanguage, offline } = usePrefs();
   const wide = useMediaQuery(up('xl'));
   useDocumentTitle(t('interface.title'));
 
@@ -86,6 +86,7 @@ export function InterfacePage() {
                 options={density}
                 value={toControl(prefs.density)}
                 onChange={(value) => set('density', fromControl(value))}
+                disabled={offline}
               />
             )}
           </Setting>
@@ -97,6 +98,7 @@ export function InterfacePage() {
                 options={accent}
                 value={effective.accent}
                 onChange={(value) => set('accent', value)}
+                disabled={offline}
               />
             )}
           </Setting>
@@ -111,6 +113,7 @@ export function InterfacePage() {
                 unit="%"
                 onChange={(value) => set('bg_intensity', value, { debounce: true })}
                 onCommit={flush}
+                disabled={offline}
               />
               <p className={styles.hint}>{t('interface.background.hint')}</p>
             </div>
@@ -123,6 +126,7 @@ export function InterfacePage() {
                 options={language}
                 value={toControl(prefs.lang)}
                 onChange={(value) => setLanguage(fromControl(value))}
+                disabled={offline}
               />
             )}
           </Setting>
@@ -137,6 +141,7 @@ export function InterfacePage() {
                 options={view}
                 value={toControl(prefs.collection_view)}
                 onChange={(value) => set('collection_view', fromControl(value))}
+                disabled={offline}
               />
             )}
           </Setting>

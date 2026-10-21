@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { listen, resetInstallPrompt } from '@/pwa/installPrompt';
 import { API, adminSession, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
@@ -18,6 +19,8 @@ const openSheet = async (session: 'member' | 'admin' = 'member') => {
   const sheet = screen.getByRole('dialog', { name: 'Más opciones' });
   return { app, more, sheet };
 };
+
+afterEach(() => resetInstallPrompt());
 
 describe('MoreSheet (SHELL-4)', () => {
   it('lists Interface, the classic modules, language and logout, and no Admin', async () => {
@@ -87,9 +90,21 @@ describe('MoreSheet (SHELL-4)', () => {
     expect(app.where()).toBe('/login');
   });
 
-  it('leaves a slot for the install entry of the PWA unit', async () => {
-    // Nothing is rendered for it yet; the entry must not leave an empty section behind.
+  it('has no install entry when the browser offers no way to install (PWA-6)', async () => {
     const { sheet } = await openSheet();
     expect(within(sheet).queryByText(/instalar/i)).not.toBeInTheDocument();
+  });
+
+  it('offers "Instalar app" once the browser fires beforeinstallprompt, and runs the prompt', async () => {
+    const stopListening = listen();
+    const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt: vi.fn(() => Promise.resolve()),
+      userChoice: Promise.resolve({ outcome: 'accepted' as const }),
+    });
+    act(() => void window.dispatchEvent(event));
+    const { sheet } = await openSheet();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Instalar app' }));
+    expect(event.prompt).toHaveBeenCalledTimes(1);
+    stopListening();
   });
 });

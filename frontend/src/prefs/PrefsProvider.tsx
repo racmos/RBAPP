@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { hasSignedInHint, useCachedSession } from '@/auth';
+import { hasSignedInHint, useCachedSession, useOffline } from '@/auth';
 import { pushToast } from '@/components/ui/toastStore';
 import { clearStoredLang, resolveLang, storeLang, type Lang } from '@/i18n';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -22,6 +22,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
   const session = useCachedSession(); // passive: a cleared cache must not trigger a refetch
   const phone = useMediaQuery(PHONE_QUERY);
+  const offline = useOffline();
 
   const signedIn = session?.authenticated === true;
   const serverPrefs = signedIn ? session.prefs : null;
@@ -80,6 +81,14 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     applyPrefs(document.documentElement, { ...effective, lang });
   }, [effective, lang]);
 
+  // Read-only while offline (PWA-7): a change would be applied and then fail to save.
+  const set = useCallback<PrefsSync['set']>(
+    (key, value, options) => {
+      if (!offline) sync.set(key, value, options);
+    },
+    [offline, sync],
+  );
+
   const setLanguage = useCallback(
     (next: Lang | null) => {
       if (next) {
@@ -95,9 +104,9 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
           }),
         );
       }
-      sync.set('lang', next);
+      set('lang', next);
     },
-    [i18n, sync],
+    [i18n, set],
   );
 
   const value = useMemo<PrefsApi>(
@@ -106,11 +115,12 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       effective,
       phone,
       signedIn,
-      set: sync.set,
+      offline,
+      set,
       flush: sync.flush,
       setLanguage,
     }),
-    [prefs, effective, phone, signedIn, sync, setLanguage],
+    [prefs, effective, phone, signedIn, offline, set, sync, setLanguage],
   );
 
   return <PrefsContext value={value}>{children}</PrefsContext>;

@@ -1,6 +1,8 @@
 import { useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router';
+import { useOffline, useOfflineRecovery } from '@/auth';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import styles from './AppShell.module.css';
@@ -16,6 +18,8 @@ export function AppShell() {
   const { t } = useTranslation('common');
   const desktop = useMediaQuery(up('md'));
   const main = useRef<HTMLElement>(null);
+  const offline = useOffline();
+  useOfflineRecovery();
 
   const skip = (event: MouseEvent) => {
     event.preventDefault(); // keep the router out of a same-page jump
@@ -28,6 +32,7 @@ export function AppShell() {
         {t('skipToContent')}
       </a>
       <Topbar desktop={desktop} />
+      {offline && <OfflineBanner />}
       <main
         id="main"
         ref={main}

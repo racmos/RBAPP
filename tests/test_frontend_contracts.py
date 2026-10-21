@@ -100,3 +100,45 @@ class TestLegacyRoutes:
         from werkzeug.exceptions import NotFound
         with pytest.raises(NotFound):
             app.url_map.bind('localhost').match('/riftbound/no-such-page', method='GET')
+
+
+class TestDocs:
+    """PWA-5 'Documented': the rollback of the service worker is written down (task 6.21)."""
+
+    @staticmethod
+    def _docs():
+        return (ROOT / 'docs' / 'frontend.md').read_text(encoding='utf-8')
+
+    @staticmethod
+    def _section(text, heading):
+        match = re.search(rf'^## {re.escape(heading)}\n(.*?)(?=^## |\Z)', text, re.S | re.M)
+        assert match, f'docs/frontend.md has no "## {heading}" section'
+        return match.group(1)
+
+    def test_it_describes_the_self_destroying_rollback(self):
+        text = self._docs()
+        assert 'self-destroying' in text.lower()
+        rollback = self._section(text, 'Rolling back the PWA')
+        assert 'VITE_PWA_SELF_DESTROY=true' in rollback
+        assert 'revert' in rollback.lower()
+        assert 'wait' in rollback.lower()
+        assert 'plain revert' in rollback.lower()
+
+    def test_the_rollback_steps_come_in_order(self):
+        rollback = self._section(self._docs(), 'Rolling back the PWA')
+        build = rollback.index('VITE_PWA_SELF_DESTROY=true')
+        wait = rollback.lower().index('wait')
+        revert = rollback.lower().index('revert', wait)
+        assert build < wait < revert
+
+    def test_it_documents_the_service_worker_scope_and_the_icons(self):
+        text = self._docs()
+        assert '/riftbound/app/sw.js' in text
+        assert '/riftbound/app/' in self._section(text, 'Service worker and install')
+        assert 'npm run icons' in text
+        assert 'frontend/public' in text
+
+    def test_it_has_a_device_checklist(self):
+        checklist = self._section(self._docs(), 'PWA device checklist')
+        for word in ('Android', 'iPhone', 'Lighthouse', 'offline', 'update'):
+            assert word.lower() in checklist.lower(), word
