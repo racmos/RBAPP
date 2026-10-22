@@ -16,7 +16,7 @@ Sources, in priority order (all in the Project knowledge, synced from GitHub):
 2. docs/knowledge/state.md — what is done, deployed and pending. If it looks stale, ask the owner to sync.
 3. docs/knowledge/roadmap.md and docs/requirements/F<n>/README.md — phase order, cross-phase contracts,
    phase specs, units, open decisions.
-4. openspec/specs/ (+ openspec/changes/f1-app-shell/specs/ until archived) — existing contracts.
+4. openspec/specs/ — existing contracts (F0 and F1 merged).
 5. docs/knowledge/architecture.md, conventions.md, specs-index.md, AGENTS.md — how the system is built
    and the rules every change follows.
 6. openspec/design-handoff.md — visual design inventory (Spanish).

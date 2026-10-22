@@ -22,7 +22,7 @@ slow. Nothing of one account is shown to another account on the same device.
 - `AGENTS.md`, `docs/knowledge/conventions.md`, `docs/frontend.md` ("Service worker and install", "Rolling back the PWA")
 - `docs/requirements/F2/README.md` (F2-R22, R23, R24; D-F2-7, D-F2-8, D-F2-9) and the cross-phase contract
   "Offline read cache" in `docs/knowledge/roadmap.md`
-- `openspec/changes/f1-app-shell/specs/pwa/spec.md` (PWA-1 "no runtime caching" — this unit amends it; PWA-7 offline boot)
+- `openspec/specs/pwa/spec.md` (PWA-1 "no runtime caching" — this unit amends it; PWA-7 offline boot)
 - `frontend/pwa-options.ts` (+ `pwa-options.test.ts`), `frontend/scripts/check-dist.mjs` (+ `check-dist.test.ts`),
   `frontend/src/app/queryClient.ts`, `src/auth/signOut.ts`, `src/auth/session.ts`, `src/auth/offline.ts`,
   `src/catalog/queries.ts`, `src/components/ui/{EmptyState,OfflineBanner}.tsx`

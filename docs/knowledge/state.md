@@ -3,14 +3,14 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-21 (handoff from the SDD workflow to Claude Project + gentle-shell).
+Last update: 2026-10-22 (F1-close: F1 verified and archived; F1 specs merged into `openspec/specs/`).
 
 ## Phases
 
 | Phase | Status | Notes |
 |---|---|---|
-| F0 Foundation | **Done** (PRs #11-#16) | Archived in `openspec/changes/archive/2026-10-19-f0-foundation/`; contracts in `openspec/specs/` (14 capabilities). |
-| F1 App shell | **Units a-g done** (PRs #17-#24, #26); close pending | See "F1 detail". |
+| F0 Foundation | **Done** (PRs #11-#16) | Archived in `openspec/changes/archive/2026-10-19-f0-foundation/`; contracts in `openspec/specs/`. |
+| F1 App shell | **Done** (PRs #17-#24, #26, F1-close #<F1-close PR>) | Archived in `openspec/changes/archive/2026-10-22-f1-app-shell/` (verify: 67 requirements, 64 PASS, 1 PASS manual, 2 DEFERRED, 0 FAIL); contracts merged into `openspec/specs/` (21 capabilities, 136 requirements). See "F1 detail". |
 | F2 Catalog | Planned — next phase | `docs/requirements/F2/` (phase spec + unit drafts with CONFIRM items). |
 | F3-F12 | Planned | Phase specs in `docs/requirements/F<n>/README.md`. |
 
@@ -31,7 +31,7 @@ Last update: 2026-10-21 (handoff from the SDD workflow to Claude Project + gentl
 
 | Unit | PR | Content |
 |---|---|---|
-| planning | #17 | `openspec/changes/f1-app-shell/` (exploration, proposal, 67 requirements, design D1-D26, 250 tasks). |
+| planning | #17 | `openspec/changes/archive/2026-10-22-f1-app-shell/` (exploration, proposal, 67 requirements, design D1-D26, 250 tasks). |
 | a | #20 | Frontend toolchain, tokens, background, brand SVG, CI frontend job. |
 | b | #18 | `spa_bp` serving `frontend/dist` at `/riftbound/app/`. |
 | c | #19 | Migration `0006`, `GET`/`PATCH /me/prefs`, remember-me 30 days, API error codes. |
@@ -40,26 +40,23 @@ Last update: 2026-10-21 (handoff from the SDD workflow to Claude Project + gentl
 | e | #23 | App shell, navigation, "Más" sheet, Home hub, Interface preferences page, Jinja renamed "Rift Manager" + "Nueva app" link. |
 | f | #24 | PWA: manifest, icons, service worker, update toast, install item + iOS dialog, offline banner/boot, self-destroying rollback build. |
 | g | #26 | Hardening: `Content-Security-Policy-Report-Only` on the app document (`SPA_CSP=report-only\|off`), axe tests for every route and overlay, precache without duplicates (40 entries/33 unique → 33/33, enforced by `check:dist`), deterministic Toast test. Lighthouse pending (owner). |
-| close | — | Record manual results, verify against the F1 specs, archive into `openspec/specs/` → `docs/requirements/F1/F1-close.md`. |
+| close | #<F1-close PR> | Tasks checked or DEFERRED, `verify-report.md`, delta specs merged into `openspec/specs/`, change archived → `docs/requirements/F1/F1-close.md`. |
 
 ## Pending checks (owner)
 
-Results reported by the owner on 2026-10-21:
+Only the owner checks still open (DEFERRED in `openspec/changes/archive/2026-10-22-f1-app-shell/tasks.md`). Results already
+recorded (favicon, Android and desktop installs, remember-me, live PWA check, logo and background) are in
+that file and in its `verify-report.md`.
 
-| Check (F1 task) | Result |
+| Check (F1 task) | Status |
 |---|---|
-| Favicon, simplified mark (6.5) | Approved. |
-| Maskable icon / Android launcher icon (6.8, 6.27) | Android Chrome install OK (name, icon, standalone). |
-| Desktop install Chrome and Edge (6.29) | OK. |
-| Remember-me survives closing the installed app until the next day (6.33) | OK. |
-| iPhone Safari install (6.28) | **Pending — to test later.** |
-| macOS install (Safari/Chrome) | **Pending — to test later.** |
-| Lighthouse installability (6.26) | Pending (Chromium reports no installability errors). |
-| Update prompt on a real device (6.32) | Pending: observe at the next deploy of a new build. Verified locally in Chromium with two builds. |
-| Rollback rehearsal on dev (6.34) | Not run on dev (it would uninstall the worker on the owner's devices); verified locally in Chromium. |
-| Lighthouse baseline (F1-g S8, 7.4) | **Pending (owner)**: Lighthouse is not installed on the server; record performance, accessibility and best-practices for `/riftbound/app/login` and `/riftbound/app/` in `docs/frontend.md` → "Lighthouse baseline". |
-| CSP report-only console review (F1-g, 7.5) | **Pending (owner)** after the F1-g deploy: browse every screen with the console open and send any `[Report Only]` line to the planner. |
-| Background default 100, blur, darkening (1.50, 5.41) and logo trace (1.39) | Owner said the logo is fine and only complained about the zoom, which was fixed; to confirm formally in F1-close. |
+| FAUTH-11 cross-app session (4.41): sign in in the app, open `/riftbound/` (Jinja), still signed in; sign out there, back in the app it shows the login screen | **Pending (owner).** |
+| iPhone Safari install (6.28): "Más" → "Instalar app", follow the 3 steps; icon without black corners, name "Rift Manager", opens full screen | **Pending — to test later.** |
+| macOS install (6.28b): Safari ("Añadir al Dock") or Chrome; own window, correct icon | **Pending — to test later.** |
+| Lighthouse (6.26, 7.4): installability plus performance, accessibility and best-practices for `/riftbound/app/login` and `/riftbound/app/`; record in `docs/frontend.md` → "Lighthouse baseline" | **Pending (owner).** Chromium reports no installability errors (live, 2026-10-21). |
+| Update prompt on a real device (6.32): at the next deploy of a new frontend build, toast "Nueva versión disponible." with "Actualizar"; no reload by itself | **Pending.** Verified locally in Chromium with two builds. |
+| CSP report-only console review (7.5): browse every screen with the console open after the F1-g deploy; send any `[Report Only]` line to the planner | **Pending (owner).** |
+| Rollback rehearsal on dev (6.34) | Not run on dev on purpose (it would uninstall the worker on the owner's devices); verified locally in Chromium. |
 
 ## Follow-ups
 
@@ -97,5 +94,5 @@ Results reported by the owner on 2026-10-21:
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| F1-close | not started | — | — |
-| F1-g | done (PR pending merge) | `feat/f1g-hardening` / #26 | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |
+| F1-close | done | `chore/f1-close` / #<F1-close PR> | Verify report (67 requirements, 0 FAIL, no defects), 8 spec amendments, specs merged (62 ADDED + 5 MODIFIED), archive `2026-10-22-f1-app-shell`. Lanes on `c2a7fe7`: pytest 1694 passed / 41 skipped, vitest 1189. |
+| F1-g | done | `feat/f1g-hardening` / #26 | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |
