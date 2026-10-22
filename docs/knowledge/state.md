@@ -76,6 +76,10 @@ that file and in its `verify-report.md`.
 
 ## Known issues
 
+- `frontend/src/shell/states.test.tsx` ("shows the 404 view inside the shell, with a link home") is timing-flaky
+  in CI: `document.title` was still empty when asserted (CI run for PR #27; passes locally 6/6). The title is set
+  in an effect (`src/i18n/useDocumentTitle.ts`) and the test asserts it synchronously; fix with
+  `await waitFor(...)` in a small test-only unit (same pattern as the F1-g Toast fix).
 - `frontend/src/assets/brand/mark.svg` and `wordmark.svg` are not byte-reproducible from
   `scripts/brand-trace.mjs` (a full run produces a heavier trace); do not regenerate them blindly.
 - `dist/.vite/manifest.json` is publicly served (harmless; it lists chunk names only).
