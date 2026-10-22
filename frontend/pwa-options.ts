@@ -24,7 +24,9 @@ export function buildPwaOptions(env: PwaEnv): Partial<VitePWAOptions> {
     injectRegister: false,
     selfDestroying: env.VITE_PWA_SELF_DESTROY === 'true',
     devOptions: { enabled: false },
-    includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
+    // The workbox glob already precaches every icon and favicon in dist; listing them here as
+    // well (includeAssets, manifest icons) put each URL twice in the precache (F1 unit g).
+    includeManifestIcons: false,
     manifest: {
       name: 'Rift Manager',
       short_name: 'Rift Manager',
@@ -50,7 +52,8 @@ export function buildPwaOptions(env: PwaEnv): Partial<VitePWAOptions> {
       ],
     },
     workbox: {
-      globPatterns: ['**/*.{js,css,html,svg,png,ico,webp,woff2,webmanifest}'],
+      // No `webmanifest`: the plugin adds manifest.webmanifest to the precache itself.
+      globPatterns: ['**/*.{js,css,html,svg,png,ico,webp,woff2}'],
       globIgnores: [...UNUSED_FONT_SUBSETS.map((subset) => `**/*-${subset}-*.woff2`), '**/*.map'],
       navigateFallback: `${START_URL}index.html`,
       navigateFallbackAllowlist: [/^\/riftbound\/app\//],

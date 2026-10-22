@@ -286,8 +286,8 @@ this procedure cannot rot unnoticed. Rehearse it on dev at least once (task 6.34
 
 Run on the dev server over HTTPS (a service worker needs it; `localhost` is the only exception).
 
-- **Lighthouse (desktop Chrome):** open `/riftbound/app/`, DevTools, Lighthouse, category
-  "Progressive Web App" or the installability audit: it passes with no failed item.
+- **Installability (desktop Chrome):** DevTools, Application, Manifest shows no installability
+  error. Lighthouse 12+ has no "Progressive Web App" category; see "Lighthouse baseline".
 - **Android (Chrome):** the menu offers "Install app" (also the "Instalar app" item in "Más"). The
   launched window is called "Rift Manager" and shows the swirl icon on the dark teal background.
 - **iPhone (Safari):** "Más" then "Instalar app" shows the three steps; Share, Add to Home Screen.
@@ -303,7 +303,24 @@ Run on the dev server over HTTPS (a service worker needs it; `localhost` is the 
 - **Session:** sign in with "Recordarme", close the installed app completely and reopen it the next
   day: still signed in.
 
+## Lighthouse baseline
+
+Status: **pending (owner)**. Lighthouse is not installed on the server, so F1-g could not record it.
+Run Lighthouse (Chrome DevTools or the CLI, desktop and mobile) against the dev server on
+`/riftbound/app/login` and, signed out, `/riftbound/app/`, and write the performance,
+accessibility and best-practices scores here with the date. Lighthouse 12+ has no PWA category;
+installability is covered by the live PWA check.
+
+| Date | Page | Form factor | Performance | Accessibility | Best practices |
+| ---- | ---- | ----------- | ----------- | ------------- | -------------- |
+| —    | —    | —           | —           | —             | —              |
+
 ## Build output
+
+The service worker precaches every URL exactly once: the Workbox glob lists the files in `dist`
+and the plugin adds `manifest.webmanifest` (no `includeAssets`, `includeManifestIcons: false`).
+`check:dist` fails when a precache URL appears twice (F1 unit g: 40 entries/33 unique before,
+33/33 after).
 
 The production build writes `dist/.vite/manifest.json` (`build.manifest`). It lists the
 chunks and what imports what; `altcha` must appear only behind the dynamic import of
