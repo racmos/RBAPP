@@ -24,7 +24,7 @@ The frontend MUST define the handoff tokens of section 1.1 as CSS custom propert
 
 #### Scenario: Orange accent
 - GIVEN `<html data-accent="orange">` [vitest]
-- WHEN computed styles of a primary Button are read
+- WHEN the CSS source of the accent tokens and of a primary Button is read (jsdom has no cascade)
 - THEN its background resolves from `--accent` (orange), not cyan
 
 #### Scenario: No hard-coded interactive cyan
@@ -62,7 +62,7 @@ The frontend MUST define the handoff tokens of section 1.1 as CSS custom propert
 
 ### Requirement: DS-5 Background image, blur and slider [a]
 
-The app background MUST be the Summoner's Rift map (`new_rift.webp`) on a fixed layer behind content, with the handoff dark overlay gradients kept. The image MUST be **slightly blurred and never brightened** so text and UI stay readable. `bgVars(percent)` MUST be a pure function that clamps `percent` to 0..100 and rounds to an integer, and returns CSS variables `--bg-image-opacity` and `--bg-image-filter` such that, for every integer value 0..100: the filter contains a blur greater than 0 px (start value 2 to 4 px, tuned visually); `brightness` is at most 1; `saturate` is at most 1; `opacity` is within 0..1 and non-decreasing in `percent`; `0` yields opacity 0 (no image); `100` yields opacity 1 (image fully visible, still blurred and darkened). The layer MUST be scaled/inset so blurred edges are not visible. A mobile variant of about 1280 px MUST be offered through `image-set`; both variants MUST be precached. These rules replace the handoff 1.4 table. The default value is 100 unless the user decides otherwise in the PR screenshots.
+The app background MUST be the Summoner's Rift map (`new_rift.webp`) on a fixed layer behind content, with the handoff dark overlay gradients kept. The image MUST be **slightly blurred and never brightened** so text and UI stay readable. `bgVars(percent)` MUST be a pure function that clamps `percent` to 0..100 and rounds to an integer, and returns CSS variables `--bg-image-opacity` and `--bg-image-filter` such that, for every integer value 0..100: the filter contains a blur greater than 0 px (start value 2 to 4 px, tuned visually); `brightness` is at most 1; `saturate` is at most 1; `opacity` is within 0..1 and non-decreasing in `percent`; `0` yields opacity 0 (no image); `100` yields opacity 1 (image fully visible, still blurred and darkened). The layer MUST be scaled/inset so blurred edges are not visible. A mobile variant of about 1280 px MUST be selected by a width media query below 860 px (not `image-set`) and a portrait variant by `orientation: portrait`; all variants MUST be precached. These rules replace the handoff 1.4 table. The default value is 100 unless the user decides otherwise in the PR screenshots.
 
 #### Scenario: Slider bounds
 - GIVEN `bgVars(0)` and `bgVars(100)` [vitest]

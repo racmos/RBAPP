@@ -39,7 +39,7 @@ The topbar MUST be sticky (64 px; 56 px below `sm`). It MUST show the **wordmark
 
 ### Requirement: SHELL-3 Bottom navigation [e]
 
-Below `md` the shell MUST show a bottom navigation with at most 5 items: four primary SPA destinations and "Más". Labels MUST be at least 11 px. The active item MUST carry `aria-current="page"`. It MUST be hidden at `md` and above. Safe-area insets MUST be respected.
+Below `md` the shell MUST show a bottom navigation with at most 5 items: four primary destinations (SPA routes or legacy links) and "Más". Labels MUST be at least 11 px. The active item MUST carry `aria-current="page"`. It MUST be hidden at `md` and above. Safe-area insets MUST be respected.
 
 #### Scenario: Five items
 - GIVEN viewport 390 px [vitest]

@@ -124,8 +124,8 @@ A 401 from any API call other than login or logout MUST switch the app to anonym
 
 #### Scenario: Session expires mid-use
 - GIVEN a signed-in user and the next API call returns 401 [vitest]
-- WHEN the call is made from `/collection`
-- THEN the user is at `/login?next=%2Fcollection` and the caches are cleared
+- WHEN the call is made from `/account/interface`
+- THEN the user is at `/login?next=%2Friftbound%2Fapp%2Faccount%2Finterface` and the caches are cleared
 
 #### Scenario: Locked account
 - GIVEN login returns 429 with `Retry-After: 30` [vitest]

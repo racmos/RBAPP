@@ -4,11 +4,11 @@
 |---|---|
 | Phase / unit | F1 / close |
 | Branch | `chore/f1-close` (from up-to-date `main`) |
-| Depends on | PR #24 merged (done). F1-g merged first if the owner chose to do it (see Open questions). |
+| Depends on | PR #24 merged (done) and the F1-g PR merged (owner decision 2026-10-21: F1-g before F1-close). |
 | Size forecast | ~600-900 changed lines, almost all Markdown moved or merged under `openspec/` (no application code) |
 | Risk | `Risk: item 3 (rewrites openspec/specs, the contract later requirements are checked against)` |
 | TDD | Not applicable to the Markdown work. Run the full lanes once at the end: `venv/bin/pytest`; `cd frontend && npm run lint && npm run typecheck && npx vitest run && npm run build && npm run check:dist` |
-| Save as | `docs/requirements/F1/F1-close.md` (already in the repo) |
+| Save as | `docs/requirements/F1/F1-close.md` (replace the draft in the repo with this version, verbatim, in the first commit) |
 
 ## Objective
 
@@ -18,6 +18,9 @@ tests or manual results, and the F1 delta specs become part of `openspec/specs/`
 for F2 onwards). After this, `openspec/` is a read-only archive plus the merged contract.
 
 ## Read first
+
+- First check: `docs/knowledge/state.md` on `main` shows F1-g done with its PR number, and
+  `git log --oneline main` contains its merge. If F1-g is not merged, stop and report.
 
 - `AGENTS.md`, `docs/knowledge/conventions.md`, `docs/knowledge/state.md`
 - The F0 precedent: `git show --stat 8944e18` (commit "chore(openspec): archive f0-foundation; main specs
@@ -48,8 +51,8 @@ S1. Every unchecked task in `openspec/changes/f1-app-shell/tasks.md` ends in exa
 S2. Evidence to record (owner results of 2026-10-21 and facts already established):
   - 0.5, 0.6: checked — F1 units deployed after each merge; units branched from updated `main`.
   - 1.39 (logo trace) and 1.50 / 5.41 (background default 100, blur, darkening): checked — "owner: the
-    logo is fine; the only complaint was the zoom, fixed in unit a/e; default 100 kept" (adjust to the
-    exact wording of the owner's confirmation recorded in Open questions).
+    logo is fine; the only complaint was the zoom, fixed in unit a/e; default 100 kept with the current
+    blur and darkening" (owner confirmation of 2026-10-21, recorded verbatim; use this exact text).
   - 4.41: FAUTH-11 cross-app session — checked only if the owner confirms the manual check listed in
     "After merge"; otherwise `DEFERRED (owner)`.
   - 4.42, 5.43, 6.35: checked — PR checkpoints merged as PRs #22, #23 and #24.
@@ -67,8 +70,15 @@ S2. Evidence to record (owner results of 2026-10-21 and facts already establishe
   - 6.28: `DEFERRED (owner, iPhone Safari to test later)`; add a line for macOS: `DEFERRED (owner, Mac to test later)`.
   - 6.32: `DEFERRED (owner, observe the update prompt at the next deploy of a new build; verified locally in Chromium)`.
   - 6.34: `DEFERRED (not run on dev on purpose: it uninstalls the worker on the owner's devices; verified locally in Chromium)`.
-  - Unit 7 (7.1-7.7): checked with F1-g evidence if F1-g was merged; otherwise every task
-    `DEFERRED (F1-g not done; CSP enforcing is planned for F12)`.
+  - Unit 7, with the evidence of the merged F1-g PR (PR number, test names from its close report):
+    - 7.1, 7.2, 7.3, 7.6, 7.7: checked (cite `tests/test_spa_hosting.py::TestCsp`, the axe tests added or
+      reused, the docs sections, the F1-g PR number).
+    - 7.4 (Lighthouse): checked with the scores and date if F1-g recorded them in `docs/frontend.md`
+      → "Lighthouse baseline"; otherwise `DEFERRED (owner, Lighthouse)`.
+    - 7.5 (CSP violations): checked only if `docs/knowledge/state.md` records the owner's console review
+      after the F1-g deploy (with or without violations); otherwise `DEFERRED (owner, console review after
+      the F1-g deploy)`.
+    - If F1-g left any item unfinished, mark it `DEFERRED (<reason from the F1-g PR>)`; never check it.
 S3. `openspec/changes/f1-app-shell/verify-report.md` exists and contains: date, commit verified, test
     counts from the full lanes run in this unit, a table with one row per F1 requirement ID across all
     capabilities in `openspec/changes/f1-app-shell/specs/` (ID, title, evidence: test file::test name or
@@ -133,8 +143,12 @@ none
   4. Update prompt at the next deploy of a new frontend build: toast "Nueva versión disponible." with
      "Actualizar"; no reload by itself.
 
+## Decisions recorded
+
+- 2026-10-21, owner: F1-g is done before this unit.
+- 2026-10-21, owner: logo trace OK; background default 100 with the current blur and darkening OK
+  (text in S2).
+
 ## Open questions
 
-- CONFIRM: is F1-g done before this unit (recommended: yes, it is small and closes unit 7) or deferred?
-- CONFIRM: the owner's exact confirmation for 1.39 / 1.50 / 5.41 (logo trace OK, background default 100
-  with the current blur and darkening OK).
+none

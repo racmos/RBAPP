@@ -86,7 +86,7 @@ After `PATCH /me/prefs`, `GET /auth/session` MUST report the same prefs under `d
 
 ### Requirement: PREF-6 Client defaults and Auto resolution [e]
 
-The SPA MUST resolve effective values as: `density` Auto = `compact` when the viewport width is at most 860 px, else `regular`; `collection_view` Auto = `grid` when width is at most 860 px, else `table`; `accent` null = `orange`; `bg_intensity` null = 100 (the default is confirmed visually in the PR screenshots and MAY change); `lang` null = browser language, then `es`. Auto values MUST re-evaluate when the viewport crosses the threshold. Effective values MUST be applied as `data-density` (absent for `regular`) and `data-accent` on `<html>` plus the background variables of DS-5.
+The SPA MUST resolve effective values as: `density` Auto = `compact` when the viewport width is below 860 px, else `regular`; `collection_view` Auto = `grid` when width is below 860 px, else `table`; `accent` null = `orange`; `bg_intensity` null = 100 (the default is confirmed visually in the PR screenshots and MAY change); `lang` null = browser language, then `es`. Auto values MUST re-evaluate when the viewport crosses the threshold. Effective values MUST be applied as `data-density` (absent for `regular`) and `data-accent` on `<html>` plus the background variables of DS-5.
 
 #### Scenario: Auto density on a phone
 - GIVEN prefs all `null` and viewport 390 px wide [vitest]
