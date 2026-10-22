@@ -1,4 +1,5 @@
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
+import { axe } from 'vitest-axe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveAnnouncer } from '@/components/ui/LiveAnnouncer';
 import { clearToasts } from '@/components/ui/toastStore';
@@ -83,6 +84,14 @@ describe('update toast (PWA-4)', () => {
     expect(screen.getByText(/Nueva versión/, { selector: 'p' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Actualizar' })).toBeInTheDocument();
     expect(sw.updateServiceWorker).not.toHaveBeenCalled();
+  });
+
+  it('has no axe violations while the toast is showing (F1 unit g)', async () => {
+    await renderPage(true);
+    // The toast stack only: the harness form around it is test scaffolding, not app markup.
+    const stack = screen.getByRole('region', { name: 'Notificaciones' });
+    expect(within(stack).getByRole('button', { name: 'Actualizar' })).toBeInTheDocument();
+    expect(await axe(stack)).toHaveNoViolations();
   });
 
   it('says it in English too', async () => {

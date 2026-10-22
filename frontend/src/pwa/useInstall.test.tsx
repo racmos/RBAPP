@@ -1,5 +1,6 @@
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'vitest-axe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithI18n } from '@/test/i18n';
 import { setDisplayMode } from '@/test/viewport';
@@ -163,6 +164,14 @@ describe('Install item on iOS Safari (PWA-6)', () => {
     expect(within(dialog).getByText(/Compartir/)).toBeVisible();
     expect(within(dialog).getByText(/Añadir a pantalla de inicio/)).toBeVisible();
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('has no axe violations with the instructions open (F1 unit g)', async () => {
+    iphone();
+    await renderWithI18n(<InstallItem />);
+    await userEvent.click(screen.getByRole('button', { name: 'Instalar app' }));
+    expect(screen.getByRole('dialog', { name: /Instalar en iPhone o iPad/ })).toBeVisible();
+    expect(await axe(document.body)).toHaveNoViolations();
   });
 
   it('closes with Escape and returns focus to the item', async () => {
