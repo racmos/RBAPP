@@ -186,7 +186,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 `landing_bp`, `main_bp` (dashboard), `auth_bp`, `sets_bp`, `cards_bp`, `collection_bp`, `deck_bp`, `price_bp`, `profile_bp` and `api_v1` (JSON API).
 
 ### SPA hosting (`spa_bp`)
-`app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise, never the Jinja error templates). It is registered after the domain blueprints; `tests/test_spa_hosting.py` uses a temporary dist (`spa_dist` / `spa_app` fixtures), no Node needed. See `docs/frontend.md`.
+`app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise, never the Jinja error templates). The `index.html` responses carry `Content-Security-Policy-Report-Only` (`SPA_CSP=report-only`, the default, or `off`; any other value stops the app with `ConfigError`); no other response gets a CSP. It is registered after the domain blueprints; `tests/test_spa_hosting.py` uses a temporary dist (`spa_dist` / `spa_app` fixtures), no Node needed. See `docs/frontend.md`.
 
 ### Color Scheme (Dark Teal Theme)
 | Element | Color | Hex |
@@ -213,7 +213,7 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 - Session cookies are HttpOnly, SameSite=Lax and Secure in production.
 - Login: 5th consecutive failure locks the account 15 minutes, doubling up to 24 hours; a locked login answers 429 with `Retry-After`. Unlock with `flask users unlock <username>`. Login is limited to 10/minute and 50/hour per IP, register to 5/hour.
 - Registration uses an ALTCHA proof of work (`CAPTCHA_PROVIDER`); solved challenges are stored in `rbcaptcha_used` so they cannot be replayed.
-- Kill switches (rollback only): `WTF_CSRF_ENABLED`, `RATELIMIT_ENABLED`, `CAPTCHA_PROVIDER=none`.
+- Kill switches (rollback only): `WTF_CSRF_ENABLED`, `RATELIMIT_ENABLED`, `CAPTCHA_PROVIDER=none`, `SPA_CSP=off`.
 
 ## JSON vs HTML
 

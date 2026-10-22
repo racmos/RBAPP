@@ -25,6 +25,8 @@ CONFIG_ENV_NAMES = (
     'LOGIN_MAX_FAILURES', 'LOGIN_LOCK_BASE_MINUTES', 'LOGIN_LOCK_MAX_MINUTES',
     # F1 unit b
     'FRONTEND_DIST',
+    # F1 unit g
+    'SPA_CSP',
 )
 
 
