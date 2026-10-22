@@ -10,7 +10,7 @@ Last update: 2026-10-21 (handoff from the SDD workflow to Claude Project + gentl
 | Phase | Status | Notes |
 |---|---|---|
 | F0 Foundation | **Done** (PRs #11-#16) | Archived in `openspec/changes/archive/2026-10-19-f0-foundation/`; contracts in `openspec/specs/` (14 capabilities). |
-| F1 App shell | **Units a-g done** (PRs #17-#24, F1-g PR #<F1-g PR>); close pending | See "F1 detail". |
+| F1 App shell | **Units a-g done** (PRs #17-#24, #26); close pending | See "F1 detail". |
 | F2 Catalog | Planned — next phase | `docs/requirements/F2/` (phase spec + unit drafts with CONFIRM items). |
 | F3-F12 | Planned | Phase specs in `docs/requirements/F<n>/README.md`. |
 
@@ -39,7 +39,7 @@ Last update: 2026-10-21 (handoff from the SDD workflow to Claude Project + gentl
 | d | #22 | API client, router, login/register with ALTCHA, i18n ES/EN. |
 | e | #23 | App shell, navigation, "Más" sheet, Home hub, Interface preferences page, Jinja renamed "Rift Manager" + "Nueva app" link. |
 | f | #24 | PWA: manifest, icons, service worker, update toast, install item + iOS dialog, offline banner/boot, self-destroying rollback build. |
-| g | #<F1-g PR> | Hardening: `Content-Security-Policy-Report-Only` on the app document (`SPA_CSP=report-only\|off`), axe tests for every route and overlay, precache without duplicates (40 entries/33 unique → 33/33, enforced by `check:dist`), deterministic Toast test. Lighthouse pending (owner). |
+| g | #26 | Hardening: `Content-Security-Policy-Report-Only` on the app document (`SPA_CSP=report-only\|off`), axe tests for every route and overlay, precache without duplicates (40 entries/33 unique → 33/33, enforced by `check:dist`), deterministic Toast test. Lighthouse pending (owner). |
 | close | — | Record manual results, verify against the F1 specs, archive into `openspec/specs/` → `docs/requirements/F1/F1-close.md`. |
 
 ## Pending checks (owner)
@@ -98,4 +98,4 @@ Results reported by the owner on 2026-10-21:
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
 | F1-close | not started | — | — |
-| F1-g | done (PR pending merge) | `feat/f1g-hardening` / #<F1-g PR> | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |
+| F1-g | done (PR pending merge) | `feat/f1g-hardening` / #26 | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |
