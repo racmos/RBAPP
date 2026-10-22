@@ -1,5 +1,7 @@
 # Roadmap — Rediseño Riftbound Manager (PWA)
 
+Superseded on 2026-10-21 by `docs/knowledge/roadmap.md` (Claude Project + gentle-shell workflow); kept for history.
+
 > Documento maestro. Fuente: revisión del proyecto + handoff de diseño `Rift Manager.zip`
 > (`design_handoff_riftbound_manager/`). Decisiones acordadas con el usuario el 2026-10-18.
 > Cada fase se ejecuta como un cambio SDD en `openspec/changes/<fase>/`, con rama y PR propios.

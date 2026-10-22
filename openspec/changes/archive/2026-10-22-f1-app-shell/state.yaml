@@ -1,0 +1,15 @@
+change: f1-app-shell
+branch: feat/f1a-frontend-toolchain .. feat/f1g-hardening  # one branch + PR per unit (a..g); see archive-report.md
+artifact_store: openspec
+execution_mode: interactive
+roadmap: openspec/roadmap.md
+phases:
+  explore: done  # 2026-10-19, exploration.md; Q1-Q8 answered 2026-10-19 (all defaults accepted)
+  proposal: done  # 2026-10-19, proposal.md; app name "Rift Manager", brand assets in brand/
+  spec: done  # 2026-10-19, openspec/changes/f1-app-shell/specs/ (7 new + 3 modified capabilities)
+  design: done  # 2026-10-19, design.md; D1-D26, reconciliation R1-R12
+  tasks: done  # 2026-10-19, tasks.md; 7 units (a-g) + unit 0, 250 tasks, R1-R12 decided
+  apply: done  # units a (#20), b (#18), c (#19), d (#22), e (#23), f (#24), g (#26) merged to main, plus the fix PR #21; open owner checks are DEFERRED in tasks.md
+  verify: done  # 2026-10-22 at c2a7fe7: 67 requirements, 64 PASS, 1 PASS (manual), 2 DEFERRED (FAUTH-11, PWA-9), 0 FAIL, no defects; pytest 1694 passed / 41 skipped, vitest 1189; see verify-report.md
+  archive: done  # 2026-10-22: delta specs merged into openspec/specs/ (7 new capabilities, 3 modified; 62 ADDED + 5 MODIFIED requirements); see archive-report.md
+updated: 2026-10-22

@@ -34,7 +34,7 @@ The manifest MUST list icons 192x192 and 512x512 (purpose `any`) and a 512x512 `
 
 ### Requirement: PWA-3 Service worker scope and precache [f]
 
-The service worker MUST be served at `/riftbound/app/sw.js` with scope `/riftbound/app/`. It MUST precache only the app shell: hashed JS/CSS, `index.html`, latin fonts, both background image variants, the brand assets and icons. Navigation fallback MUST be `/riftbound/app/index.html`, allowed only for `^/riftbound/app/` and denying API, static and legacy paths. It MUST clean outdated caches. It MUST NOT register any runtime caching for `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages and MUST NOT intercept their requests. In development the SW MUST be disabled.
+The service worker MUST be served at `/riftbound/app/sw.js` with scope `/riftbound/app/`. It MUST precache only the app shell: hashed JS/CSS, `index.html`, latin fonts, the background image variants (1920 px, 1280 px and portrait), the brand assets and icons. Navigation fallback MUST be `/riftbound/app/index.html`, allowed only for `^/riftbound/app/` and denying API, static and legacy paths. It MUST clean outdated caches. It MUST NOT register any runtime caching for `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages and MUST NOT intercept their requests. In development the SW MUST be disabled.
 
 #### Scenario: Precache content [build]
 - GIVEN the generated `sw.js`
@@ -53,7 +53,7 @@ The service worker MUST be served at `/riftbound/app/sw.js` with scope `/riftbou
 
 ### Requirement: PWA-4 Prompt-based update [f]
 
-The SW registration MUST use prompt mode: a new SW waits and MUST NOT take control or reload the page by itself. The app MUST show a toast ("Nueva versión" with an "Actualizar" action) when an update is waiting. Activating the action MUST activate the new SW and reload. Dismissing MUST keep the current version running without losing in-progress form data. The app MUST check for updates hourly and when the window regains focus.
+The SW registration MUST use prompt mode: a new SW waits and MUST NOT take control or reload the page by itself. The app MUST show a toast ("Nueva versión" with an "Actualizar" action) when an update is waiting. Activating the action MUST activate the new SW and reload. Dismissing MUST keep the current version running without losing in-progress form data. The app MUST check for updates hourly and when the page becomes visible again.
 
 #### Scenario: Update available [vitest]
 - GIVEN the registration reports `needRefresh = true`

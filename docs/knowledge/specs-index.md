@@ -10,22 +10,20 @@ Given/When/Then scenarios. Unit tags `[a]`..`[g]` say which delivery unit built 
 person, `[PG-CI]` = runs in the PostgreSQL CI job, `[vitest]` = frontend test, `[build]` = asserted over the
 production build, `[GH-CI]` = only visible in GitHub Actions.
 
-Two groups:
-1. `openspec/specs/<capability>/spec.md`: 14 capabilities from F0, archived 2026-10-19, authoritative.
-   Archive of that change: `openspec/changes/archive/2026-10-19-f0-foundation/`.
-2. `openspec/changes/f1-app-shell/specs/<capability>/spec.md`: 10 F1 delta specs (ADDED or MODIFIED
-   requirements). Implemented by units a to f and merged to `main` (PRs 18 to 24; PR 21 is the background
-   fix, not a unit); unit g (optional CSP hardening, no new requirements) is pending. They are merged into
-   `openspec/specs/` only when F1 is archived, so until then BOTH locations must be read: where a delta
-   MODIFIES a requirement, the delta text wins over the F0 text.
+One location: `openspec/specs/<capability>/spec.md`, 21 capabilities and 136 requirements, authoritative.
+- 14 capabilities come from F0 (archived 2026-10-19, `openspec/changes/archive/2026-10-19-f0-foundation/`).
+- F1 (archived 2026-10-22, `openspec/changes/archive/2026-10-22-f1-app-shell/`) added 7 capabilities and
+  modified 3 (API-1, API-4, API-5, CI-5, SESS-1 replaced; API-9 and CI-9 added): 62 ADDED + 5 MODIFIED
+  requirements, merged in F1-close. Units a to g, PRs 17 to 26 (PR 21 is the background fix, not a unit).
+  The archive keeps the original delta specs, `verify-report.md` (requirement → test map) and `tasks.md`.
 
 Companion documents: `openspec/roadmap.md` (phases F0 to F12, Spanish), `openspec/design-handoff.md`
-(prototype inventory, Spanish), `openspec/changes/f1-app-shell/design.md` (decisions D1 to D26, reconciliations
+(prototype inventory, Spanish), `openspec/changes/archive/2026-10-22-f1-app-shell/design.md` (decisions D1 to D26, reconciliations
 R1 to R12), `proposal.md`, `exploration.md`, `tasks.md`.
 
 ---
 
-## A. F0 specs (authoritative): `openspec/specs/`
+## A. Capabilities from F0: `openspec/specs/`
 
 ### access-control (`access-control/spec.md`)
 Who may do what. Adds the `is_admin` and `is_blocked` flags (changed only by CLI), the admin guard on
@@ -43,7 +41,7 @@ admin CLI, an allow-list for Cardmarket download URLs, and the `admin_client` / 
 ### api-v1 (`api-v1/spec.md`)
 The JSON API foundation under `/riftbound/api/v1`: one envelope for success and error, health and config
 endpoints, the session/login/logout/register endpoints, and the rule for JSON versus HTML answers.
-F1 modifies API-1, API-4, API-5 and adds API-9 (see section B).
+F1 modified API-1, API-4, API-5 and added API-9 (merged; see the list).
 - API-1 Blueprint and envelope: prefix, no clash with `/api/*` landing routes, every error uses the envelope, no leaks in 500
 - API-2 GET /health: public, `SELECT 1`, 503 envelope when the DB is down
 - API-3 GET /meta/config: captcha provider and `required_for`, `registration_open`, `env`; no secrets
@@ -52,6 +50,8 @@ F1 modifies API-1, API-4, API-5 and adds API-9 (see section B).
 - API-6 POST /auth/logout: authenticated only, 200 `{}`; anonymous gets JSON 401
 - API-7 POST /auth/register: 201 without a session, 400/409/429 cases, captcha and validation rules
 - API-8 JSON vs HTML negotiation: path prefix, JSON body or Accept decides; no Accept header means HTML
+- API-1, API-4, API-5 (F1): errors may carry `code`/`params`; the session payload has the five-key `prefs`; login takes a strict-boolean `remember` (true issues the 30-day remember cookie)
+- API-9 (F1) Error codes for F1 endpoints: the `ErrorCode` / `DetailCode` set, where each is returned
 
 ### app-config (`app-config/spec.md`)
 Configuration comes only from environment variables and fails fast when unsafe. Covers `RB_ENV`, the
@@ -71,15 +71,16 @@ Where card images live on disk and how they are read and written safely.
 - IMG-3 Scraper writes where the UI reads: the Riot scraper uses the same folder rule
 
 ### ci-pipeline (`ci-pipeline/spec.md`)
-The GitHub Actions contract. F1 MODIFIES CI-5 (the frontend job is no longer a placeholder) and adds CI-9.
+The GitHub Actions contract. F1 replaced CI-5 (the frontend job is real) and added CI-9.
 - CI-1 No application secrets in CI: tests self-configure; no `DATABASE_URL` / `SECRET_KEY` in workflows
 - CI-2 Single pinned Python and tooling: Python 3.12, `.python-version`, pinned bandit
 - CI-3 Test job: install, `pytest` with coverage, on push to main and PRs
 - CI-4 PostgreSQL migrations job: PostgreSQL service, upgrade, check, downgrade base, upgrade, seeded-data upgrade
-- CI-5 Frontend placeholder job: (F0 text, hashFiles-guarded; superseded by the F1 delta)
+- CI-5 Frontend job (F1): `npm ci`, lint, typecheck, vitest, build with Node from `.nvmrc`, none skipped; uploads `frontend-dist`; manifest check (`check:dist`) and the self-destroy build
 - CI-6 Least-privilege permissions: `contents: read`, write only for the release job
 - CI-7 Repository hygiene: stray root `package.json` and `diagnose.py` removed; `.gitignore` covers node and build output
 - CI-8 Docs match reality: README and AGENTS state real versions, structure, commands
+- CI-9 (F1) Frontend repository hygiene: dist, node_modules, `.vite` ignored; lockfile committed; no source maps or `.env` in the artifact; Python lane needs no Node
 
 ### collection-quantity (`collection-quantity/spec.md`)
 `rbcol_quantity` as a real integer, and the collection write paths that depend on it.
@@ -139,8 +140,8 @@ else uses `avg7 -> avg7_foil -> low -> low_foil`; NULL and 0 are missing; no pri
 - PRC-2 One shared implementation: `app/services/pricing.py` used by the collection and deck views
 
 ### session-security (`session-security/spec.md`)
-Cookie flags, local-run safety and key rotation. F1 MODIFIES SESS-1 (remember cookie).
-- SESS-1 Session and remember cookie flags: HttpOnly, SameSite=Lax, Secure in production
+Cookie flags, local-run safety and key rotation. SESS-1 includes the F1 remember-cookie rules.
+- SESS-1 Session and remember cookie flags: HttpOnly, SameSite=Lax, Secure in production; the remember cookie is issued only when login sends `remember: true` (30 days, absolute); the Jinja form never remembers
 - SESS-2 Debug off by default; local bind: `run.py` binds loopback with debug off
 - SESS-3 Key rotation invalidates sessions: a cookie signed with another key is anonymous
 
@@ -152,17 +153,11 @@ The profile update endpoint behaves as a well-formed API.
 
 ---
 
-## B. F1 delta specs (implemented in units a to f): `openspec/changes/f1-app-shell/specs/`
+## B. Capabilities added by F1: `openspec/specs/`
 
-### api-v1 (MODIFIED API-1, API-4, API-5; ADDED API-9) - unit c
-Makes the error envelope extensible (`code`, `params`), puts `prefs` in the session payload and adds the
-`remember` flag to login. All additive: F0 fields, statuses and tests stay valid.
-- API-1 (modified) Blueprint and envelope: errors may carry `code` and `params`
-- API-4 (modified) GET /auth/session: signed-in payload includes the five-key `prefs`
-- API-5 (modified) POST /auth/login: optional strict-boolean `remember`; true issues the 30-day remember cookie
-- API-9 (added) Error codes for F1 endpoints: the `ErrorCode` / `DetailCode` set, where each is returned
+API-1/4/5, API-9, CI-5, CI-9 and SESS-1 (F1 changes to F0 capabilities) are listed in section A.
 
-### app-shell (ADDED) - unit e
+### app-shell - unit e
 The signed-in frame of the SPA: layout, topbar, bottom navigation, "Más" sheet, navigation registry, home hub,
 Interface page, standard states, axe coverage, and coexistence with the Jinja pages.
 - SHELL-1 Layout and landmarks: skip link, header, one `main`, width caps
@@ -176,13 +171,7 @@ Interface page, standard states, axe coverage, and coexistence with the Jinja pa
 - SHELL-9 Axe on the shell: no violations at phone and desktop widths, sheet open
 - SHELL-10 Jinja coexistence and rename: "Nueva app" link, product name "Rift Manager", landing unchanged until F11
 
-### ci-pipeline (MODIFIED CI-5; ADDED CI-9) - units a and f
-The frontend CI job is real (no skipped steps), uploads the build artifact and checks the manifest; frontend
-hygiene rules.
-- CI-5 (modified) Frontend job: `npm ci`, lint, typecheck, vitest, build with Node from `.nvmrc`, none skipped; uploads `frontend-dist`; from unit f a manifest check that fails the job on a mismatch (the real job also runs `check:dist` and the self-destroy build, see PWA-5)
-- CI-9 (added) Frontend repository hygiene: dist, node_modules, `.vite` ignored; lockfile committed; no source maps or `.env` in the artifact; Python lane needs no Node
-
-### design-system (ADDED) - unit a (DS-8 also e)
+### design-system - unit a (DS-8 also e)
 Tokens, theming, breakpoints, background, fonts, accessibility baseline, primitives, brand assets and the
 toolchain pins of the frontend.
 - DS-1 Tokens: handoff colour, radius, spacing, z-index tokens as layered CSS custom properties
@@ -196,7 +185,7 @@ toolchain pins of the frontend.
 - DS-9 Brand assets: originals in `assets-src/brand/`, traced SVGs shipped, accessible name "Rift Manager"
 - DS-10 Toolchain and pins: Vite 8, React 19, TypeScript 6.0.3, exact versions, `.npmrc`, Node floor
 
-### frontend-auth (ADDED) - unit d
+### frontend-auth - unit d
 Sign-in, registration and session handling in the SPA, sharing the session cookie with Jinja.
 - FAUTH-1 Session boot: `GET /auth/session` before any guarded route; CSRF token in memory only
 - FAUTH-2 Login flow: labelled fields, "Remember me" on by default, redirect through `safeNext`
@@ -210,19 +199,19 @@ Sign-in, registration and session handling in the SPA, sharing the session cooki
 - FAUTH-10 Auth screen accessibility: labels, autocomplete values, described errors, focus handling
 - FAUTH-11 Shared session with Jinja: one session, logout in either ends both
 
-### i18n (ADDED) - unit d (toggle UI unit e)
+### i18n - unit d (toggle UI unit e)
 Spanish and English catalogs and everything that depends on the active language.
 - I18N-1 Bundled catalogs with parity: namespaces `common`, `nav`, `auth`, `errors`, `prefs`; parity test
 - I18N-2 Language resolution: account preference, `rb_lang`, browser language, `es`
 - I18N-3 Document effects and formatting: `<html lang>`, title format, `es-ES` / `en-GB` Intl formatting
-- I18N-4 Server errors translated by code: code, then API message, then generic text (implemented as the key `errors:code.<code>`; the spec text says `errors.<code>`)
+- I18N-4 Server errors translated by code: `errors:code.<code>`, then API message, then generic text
 - I18N-5 No missing keys at runtime: typed resources, fallback to `es`, never the raw key
 
-### pwa (ADDED) - unit f
+### pwa - unit f
 Installable app, service worker, update prompt, rollback and offline shell.
 - PWA-1 Manifest identity and scope: name, `id`/`scope` `/riftbound/`, `start_url` `/riftbound/app/`, `#06222c`
 - PWA-2 Icons: 192, 512, maskable 512, apple touch 180, favicon; generated and committed
-- PWA-3 Service worker scope and precache: `/riftbound/app/sw.js`, app shell only, navigation fallback allow/deny lists (the build precaches three background images; the text says "both variants")
+- PWA-3 Service worker scope and precache: `/riftbound/app/sw.js`, app shell only, navigation fallback allow/deny lists; the three background variants (1920, 1280, portrait) are precached
 - PWA-4 Prompt-based update: new worker waits; "Nueva versión" toast; hourly and on-visible checks
 - PWA-5 Rollback by self-destroying SW: documented build mode; a plain revert is not a rollback
 - PWA-6 Install entry: `beforeinstallprompt` item; iOS instructions dialog
@@ -230,10 +219,7 @@ Installable app, service worker, update prompt, rollback and offline shell.
 - PWA-8 Session persistence in the installed app: "Remember me" keeps the user in for 30 days
 - PWA-9 Installability verification: Lighthouse and device checks recorded in the PR (manual items)
 
-### session-security (MODIFIED SESS-1) - unit c
-- SESS-1 (modified) Session and remember cookie flags: the remember cookie is really issued when login sends `remember: true` (30 days, absolute) and never otherwise; the Jinja form never remembers
-
-### spa-hosting (ADDED) - unit b
+### spa-hosting - unit b
 How Flask serves the built SPA at `/riftbound/app/`.
 - HOST-1 Mount point and trailing-slash redirect: `FRONTEND_DIST`, `/riftbound/app` redirects, routes are public
 - HOST-2 Cache rules: `assets/*` immutable; `index.html`, `sw.js`, `workbox-*.js`, manifest `no-cache` with ETag
@@ -243,7 +229,7 @@ How Flask serves the built SPA at `/riftbound/app/`.
 - HOST-6 No secrets in the shell document: static `index.html`, no cookies on SPA responses
 - HOST-7 Configuration and docs: `FRONTEND_DIST` documented; Nginx unchanged (two `proxy_pass` lines)
 
-### ui-preferences (ADDED) - units c (PREF-1..5) and e (PREF-6..8)
+### ui-preferences - units c (PREF-1..5) and e (PREF-6..8)
 Account-level interface preferences stored on the server (`NULL` = Auto) and applied by the SPA.
 - PREF-1 Storage in rbuserprefs: table, columns, CHECKs, migration `0006_user_prefs`
 - PREF-2 Allowed values: lang es|en; density compact|regular|comfy; accent cyan|orange; bg_intensity 0..100; collection_view table|grid
@@ -256,19 +242,12 @@ Account-level interface preferences stored on the server (`NULL` = Auto) and app
 
 ---
 
-## C. Reading notes: where the specs and the code differ or have gone stale
+## C. Reading notes
 
-- F0 `ci-pipeline` CI-5 still describes the hashFiles-guarded placeholder job; the real job is in the F1 delta
-  and `.github/workflows/ci.yml`.
-- F0 `api-v1` (API-1, API-4, API-5) and `session-security` (SESS-1) are superseded by their F1 deltas.
-- I18N-4 names the catalog key `errors.<code>`; the code uses `errors:code.<code>` (namespace `errors`, group
-  `code`). The catalogs and the contract test follow the code.
-- PWA-3 says the precache holds "both" background images; the build precaches three (1280, 1920, portrait).
 - `openspec/config.yaml` still carries F0-era context (93 baseline tests, "frontend not present yet").
-- `openspec/changes/f1-app-shell/state.yaml` still says `apply: pending` (last updated 2026-10-19) although units
-  a to f are merged; `tasks.md` names branches `feat/f1-a`..`feat/f1-g` while the real ones are
-  `feat/f1a-frontend-toolchain` ... `feat/f1f-pwa`.
+- Spec text amended at the F1 archive where the code was right (I18N-4, PWA-3, PWA-4, DS-2, DS-5, PREF-6,
+  SHELL-3, FAUTH-7): see `openspec/changes/archive/2026-10-22-f1-app-shell/verify-report.md`, "Spec amendments".
 - Several F0/F1 spec scenarios are tagged `[MANUAL]` (rollback rehearsal, device installs, Lighthouse); they
-  are not in any automated lane.
+  are not in any automated lane. The open ones are in `docs/knowledge/state.md` → "Pending checks".
 - Product decisions that are not specs yet (per-mode bans, deck formats v2, selling model, push alerts) live
   in `docs/knowledge/product.md` and will become phase specs under `docs/requirements/`.

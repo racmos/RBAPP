@@ -89,7 +89,7 @@ Small fixes (a bug, a typo, one understood change) skip the Project: tell gentle
 | `docs/requirements/F<n>/F<n>-<x>-<slug>.md` | Unit requirement handed to gentle-shell. |
 | `odd/tasks/<feature>.md` | gentle-shell's working document for a unit (created by it, committed on the branch). |
 | `openspec/specs/` | Formal contracts of F0 (and F1 once archived by F1-close). |
-| `openspec/changes/f1-app-shell/` | F1 SDD artifacts (until F1-close archives them). |
+| `openspec/changes/archive/2026-10-22-f1-app-shell/` | F1 SDD artifacts (archived by F1-close; read-only). |
 | `ops.local.md` (git-ignored, deployed checkout only) | Host-specific values for the runbook (never committed). |
 
 ## Setting up the Claude Project
@@ -98,8 +98,8 @@ Small fixes (a bug, a typo, one understood change) skip the Project: tell gentle
 2. Paste `docs/knowledge/project-instructions.md` (the fenced block) into the Project instructions.
 3. Knowledge: add the GitHub repository `racmos/RBAPP` and select:
    `AGENTS.md`, `README.md`, `docs/knowledge/`, `docs/requirements/`, `docs/frontend.md`,
-   `docs/migrations.md`, `openspec/specs/`, `openspec/changes/f1-app-shell/specs/`,
-   `openspec/changes/f1-app-shell/design.md`, `openspec/design-handoff.md`, `openspec/roadmap.md`.
+   `docs/migrations.md`, `openspec/specs/`,
+   `openspec/changes/archive/2026-10-22-f1-app-shell/design.md`, `openspec/design-handoff.md`, `openspec/roadmap.md`.
    Useful extras when room allows: `app/models/`, `app/api/error_codes.py`, `frontend/src/shell/navRegistry.ts`,
    `frontend/src/lib/breakpoints.ts`, `frontend/src/i18n/locales/es/`.
    Without the GitHub integration, upload the same files by hand and re-upload `state.md` after each merge.

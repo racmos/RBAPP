@@ -13,7 +13,7 @@ through `AGENTS.md`.
 | [`project-instructions.md`](project-instructions.md) | Text to paste into the Claude Project instructions. |
 | [`architecture.md`](architecture.md) | How the system is built today: backend, API, data model, legacy Jinja pages, frontend, PWA, hosting, CI, tests. |
 | [`conventions.md`](conventions.md) | Rules every change follows, known traps, definition of done. |
-| [`specs-index.md`](specs-index.md) | Index of the formal contracts in `openspec/specs/` (and the F1 deltas until archived). |
+| [`specs-index.md`](specs-index.md) | Index of the formal contracts in `openspec/specs/` (F0 and F1, merged). |
 | [`open-decisions.md`](open-decisions.md) | Every product decision still open, by phase, with a recommendation. |
 | [`ops-runbook.md`](ops-runbook.md) | Working copies, deploy, migrations with backup, rollback, service operations (generic; host values in the git-ignored `ops.local.md`). |
 

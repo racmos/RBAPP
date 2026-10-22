@@ -143,7 +143,7 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
   published on or before that day". F1 used a cutoff about two weeks before the installation day (cutoff
   2026-10-05, verified 2026-10-19/21 with `npm view <pkg> time --json`) and refused newer releases that
   peer ranges or churn made risky (the "too new, do not pin" list in
-  `openspec/changes/f1-app-shell/exploration.md`). The two-week gap is a practice, not a tool setting:
+  `openspec/changes/archive/2026-10-22-f1-app-shell/exploration.md`). The two-week gap is a practice, not a tool setting:
   `.npmrc` does not enforce it. Note npm reads the date as local midnight.
 - A new dependency also goes into the REQUIRED set of `src/test/pins.test.ts` (transitive ones that must
   land on a version go into `LOCK_ONLY`). Record the chosen versions and publish dates in the PR.

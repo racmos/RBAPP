@@ -1,8 +1,10 @@
 # ci-pipeline Specification
 
-Source: change f0-foundation (archived 2026-10-19)
+Source: change f0-foundation (archived 2026-10-19); updated by change f1-app-shell (archived 2026-10-22)
 
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. `[GH-CI]` = only observable in GitHub Actions; `[PG-CI]` = runs in the PostgreSQL CI job; `[MANUAL]` = review. Untagged scenarios are pytest-testable (workflow YAML parsed with PyYAML; file-system checks). Also holds the repo-hygiene and documentation requirements of unit e, which the proposal did not assign to a capability.
+>
+> F1 Tags: `[a]`..`[g]` = delivery unit of change f1-app-shell. `[GH-CI]` = only observable in GitHub Actions. Untagged scenarios are pytest-testable (workflow YAML parsed with PyYAML; file-system checks). CI-1 (no app secrets) and CI-6 (least privilege) keep applying to the new steps: the artifact upload needs no write permission.
 
 ## Requirements
 
@@ -49,21 +51,41 @@ The `migrations-pg` job (service `postgres:18`) is delivered with unit b, not e,
 - WHEN parsed
 - THEN a job with a `postgres` service exists and its steps include `flask db upgrade`, `flask db check` and `flask db downgrade`
 
-### Requirement: CI-5 Frontend placeholder job [e]
+### Requirement: CI-5 Frontend job [e]
 
-A frontend job MUST run only when `frontend/package.json` exists (guarded by `hashFiles`) and then run install (`npm ci`), lint, typecheck, `vitest run` and build with a pinned Node version (`.nvmrc`). While `frontend/` is absent the workflow MUST still succeed, with the job's Node steps skipped.
+(The heading is kept verbatim so the archive step can match and replace the F0 block; the job is no longer a placeholder after unit a, and the archive MAY rename it to "Frontend job".)
 
-GitHub does not allow `hashFiles` in a job-level `if`, so the guard is a step-level `if: ${{ hashFiles('frontend/package.json') != '' }}` on every Node step (R10). The `frontend` job therefore runs and ends green with its Node steps skipped; it is not reported as a skipped job.
+The `frontend` job MUST run `npm ci`, lint, typecheck, `vitest run` and build with the Node version from `.nvmrc`, and those steps MUST NOT be skipped (they are no longer guarded by `hashFiles('frontend/package.json')`, because `frontend/package.json` now exists). After a successful build the job MUST upload `frontend/dist` as a workflow artifact named `frontend-dist`. From unit f onward a manifest check step MUST verify that the built `manifest.webmanifest` exists and that its `name` is "Rift Manager", `id` is `/riftbound/`, `scope` is `/riftbound/` and `start_url` is `/riftbound/app/`, and the job MUST fail on mismatch. A failure in any step MUST fail the workflow. The test that previously asserted that `frontend/package.json` does NOT exist MUST be rewritten to assert the opposite and the new job shape; it MUST NOT be deleted without a replacement.
 
-#### Scenario: No frontend yet
-- GIVEN no `frontend/package.json`
+#### Scenario: Frontend steps run
+- GIVEN `frontend/package.json` exists
 - WHEN CI runs [GH-CI]
-- THEN the `frontend` job is green with every Node step skipped and the workflow is green
+- THEN the `frontend` job executes install, lint, typecheck, test and build (none skipped) and is green
 
-#### Scenario: Guard present
+#### Scenario: Job shape
 - GIVEN `ci.yml`
 - WHEN parsed
-- THEN the `if` of the frontend job's Node steps references `hashFiles('frontend/package.json')`
+- THEN the frontend job has steps for `npm ci`, lint, typecheck, `vitest run` and build, none of them with an `if` referencing `hashFiles('frontend/package.json')`, and Node comes from `.nvmrc`
+
+#### Scenario: Artifact uploaded
+- GIVEN a green frontend build
+- WHEN the job finishes [GH-CI]
+- THEN an artifact named `frontend-dist` containing `index.html` is available
+
+#### Scenario: Artifact step declared
+- GIVEN `ci.yml`
+- WHEN parsed
+- THEN the frontend job uses `actions/upload-artifact` with `name: frontend-dist` and `path: frontend/dist`, and the workflow still grants only `contents: read`
+
+#### Scenario: Manifest check
+- GIVEN a built `dist/manifest.webmanifest` with `name` "Riftbound Manager"
+- WHEN the manifest check step runs [GH-CI]
+- THEN the job fails; with the correct values it passes
+
+#### Scenario: Placeholder test rewritten
+- GIVEN `tests/test_ci_workflows.py`
+- WHEN pytest runs after unit a
+- THEN the former "does not need a frontend directory" assertion no longer exists, a test asserts that `frontend/package.json` exists and the job shape above, and the suite is green
 
 ### Requirement: CI-6 Least-privilege permissions [e]
 
@@ -96,3 +118,17 @@ Every workflow MUST declare `permissions:` explicitly: `contents: read` by defau
 - GIVEN `AGENTS.md`
 - WHEN searched
 - THEN it contains `3.1.0`, `2.0.36`, `2.10.5` and `8.3.4` and does not list `fastapi-pro`
+
+### Requirement: CI-9 Frontend repository hygiene [a]
+
+`frontend/dist/`, `node_modules/` and `.vite/` MUST remain ignored by git (CI-7) and `package-lock.json` MUST be committed. The `frontend-dist` artifact MUST NOT contain `.map` files with embedded secrets or `.env` files. The Python test lane MUST NOT require Node (HOST tests use a temporary dist).
+
+#### Scenario: Ignored and locked
+- GIVEN the repository
+- WHEN `git check-ignore frontend/dist` runs and the tree is listed
+- THEN `dist` is ignored and `frontend/package-lock.json` is tracked
+
+#### Scenario: No Node in pytest
+- GIVEN a runner without Node
+- WHEN `pytest` runs
+- THEN the SPA hosting tests pass using a temporary dist

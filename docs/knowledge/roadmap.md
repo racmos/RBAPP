@@ -9,7 +9,7 @@ lives in `state.md`; owner decisions in `product.md`; each phase's detail in
 | Phase | Goal | Depends on | Status |
 |---|---|---|---|
 | F0 Foundation | Secrets in env, admin role, CSRF, login protection, Alembic baseline, API v1 skeleton, CI. | — | Done |
-| F1 App shell | React PWA shell: toolchain, tokens, background, brand, auth screens, i18n, prefs, nav, PWA. | F0 | a-f done; g optional; close pending |
+| F1 App shell | React PWA shell: toolchain, tokens, background, brand, auth screens, i18n, prefs, nav, PWA. | F0 | Done (a-g, close; archived 2026-10-22) |
 | F2 Catalog | Cards API with filters/facets, catalog UI, card detail with real price history, my copies, related cards, **bans per mode**, offline catalog. | F1 | Next |
 | F3 Collection | Table + grid, add, bulk edit, server export, CSV import wizard, wishlist, purchase price, selling model with sub-lines. | F2 | Planned |
 | F4 Prices + Dashboard | Daily Cardmarket load, daily value snapshot, movers 7/30 d, watchlist + push alerts, KPIs + 12-month chart. | F3 | Planned |

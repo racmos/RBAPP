@@ -58,7 +58,7 @@ Changing language MUST apply without reload and MUST update `<html lang>` and `d
 
 ### Requirement: I18N-4 Server errors translated by code [d]
 
-For API errors the SPA MUST look up `errors.<code>` (falling back to `auth.*`/`validation` keys for field details) and interpolate `params` (for example `retry_after`). If the code is absent or has no catalog entry the SPA MUST fall back to the API `message`; if that is absent too, to a generic translated error. Raw English backend prose MUST NOT be shown when a catalog entry exists.
+For API errors the SPA MUST look up `errors:code.<code>` (field details use `errors:validation.<field>.<code>`, then `errors:validation.<code>`) and interpolate `params` (for example `retry_after`). If the code is absent or has no catalog entry the SPA MUST fall back to the API `message`; if that is absent too, to a generic translated error. Raw English backend prose MUST NOT be shown when a catalog entry exists.
 
 #### Scenario: Known code
 - GIVEN an error `{code:"username_taken"}` and language `es` [vitest]
