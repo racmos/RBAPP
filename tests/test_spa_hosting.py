@@ -13,6 +13,7 @@ Layout:
   - TestMissingBuild ......... HOST-5 (R11, D5)
   - TestNoSecretsInTheShell .. HOST-6
   - TestDocs ................. HOST-7
+  - TestCsp / TestCspSetting . F1 unit g S1-S3 (CSP report-only, SPA_CSP)
 """
 import re
 from pathlib import Path
@@ -395,3 +396,128 @@ class TestDocs:
         text = (ROOT / 'docs' / 'nginx_config').read_text()
         assert len(re.findall(r'proxy_pass\s+http://\w+;', text)) == 2
         assert '/riftbound/app/' in text                 # the optional notes exist
+
+
+# ---------------------------------------------------------------------------
+# F1 unit g: Content-Security-Policy-Report-Only on the app document (S1-S3)
+# ---------------------------------------------------------------------------
+
+CSP_REPORT_ONLY = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob: data:; "
+    "connect-src 'self'; frame-ancestors 'self'; base-uri 'self'"
+)
+CSP_HEADER = 'Content-Security-Policy-Report-Only'
+DOCUMENT_URLS = ['/riftbound/app/', '/riftbound/app/collection',
+                 '/riftbound/app/account/interface', '/riftbound/app/index.html']
+NON_DOCUMENT_URLS = ['/riftbound/app/assets/app-abc123.js', '/riftbound/app/sw.js',
+                     '/riftbound/app/manifest.webmanifest', '/riftbound/app/pwa-192x192.png',
+                     '/riftbound/app/assets/missing.js']
+
+
+class TestCsp:
+    @pytest.mark.parametrize('url', DOCUMENT_URLS)
+    def test_the_document_carries_the_report_only_policy(self, spa_app, client, url):
+        resp = client.get(url, headers={'Accept': BROWSER_ACCEPT})
+        assert resp.status_code == 200
+        assert resp.content_type.startswith('text/html')
+        assert resp.headers[CSP_HEADER] == CSP_REPORT_ONLY
+        assert resp.headers.getlist(CSP_HEADER) == [CSP_REPORT_ONLY]
+
+    def test_head_on_the_document_carries_it_too(self, spa_app, client):
+        assert client.head('/riftbound/app/').headers[CSP_HEADER] == CSP_REPORT_ONLY
+
+    def test_a_conditional_304_keeps_it(self, spa_app, client):
+        etag = client.get('/riftbound/app/').headers['ETag']
+        resp = client.get('/riftbound/app/', headers={'If-None-Match': etag})
+        assert resp.status_code == 304
+        assert resp.headers[CSP_HEADER] == CSP_REPORT_ONLY
+
+    @pytest.mark.parametrize('url', NON_DOCUMENT_URLS)
+    def test_other_files_and_the_404_do_not_carry_it(self, spa_app, client, url):
+        resp = client.get(url, headers={'Accept': BROWSER_ACCEPT})
+        assert CSP_HEADER not in resp.headers
+
+    def test_the_503_does_not_carry_it(self, app, client, tmp_path):
+        app.config['FRONTEND_DIST'] = str(tmp_path / 'absent')
+        resp = client.get('/riftbound/app/', headers={'Accept': BROWSER_ACCEPT})
+        assert resp.status_code == 503
+        assert CSP_HEADER not in resp.headers
+
+    def test_the_redirect_does_not_carry_it(self, spa_app, client):
+        resp = client.get('/riftbound/app')
+        assert resp.status_code == 308
+        assert CSP_HEADER not in resp.headers
+
+    @pytest.mark.parametrize('url', DOCUMENT_URLS + NON_DOCUMENT_URLS)
+    def test_no_response_carries_an_enforcing_policy(self, spa_app, client, url):
+        assert 'Content-Security-Policy' not in client.get(url).headers
+
+    def test_other_routes_do_not_get_it(self, client):
+        assert CSP_HEADER not in client.get('/riftbound/login').headers
+        assert CSP_HEADER not in client.get('/riftbound/api/v1/health').headers
+
+    @pytest.mark.parametrize('url', DOCUMENT_URLS + NON_DOCUMENT_URLS)
+    def test_off_removes_it_everywhere(self, spa_app, client, url):
+        spa_app.config['SPA_CSP'] = 'off'
+        resp = client.get(url)
+        assert CSP_HEADER not in resp.headers
+        assert 'Content-Security-Policy' not in resp.headers
+
+
+class TestCspSetting:
+    def test_default_is_report_only(self, clean_env):
+        import config
+        assert config.load_settings('production', {})['SPA_CSP'] == 'report-only'
+        assert config.load_settings('testing', {'SPA_CSP': '  '})['SPA_CSP'] == 'report-only'
+
+    @pytest.mark.parametrize('raw, expected', [('report-only', 'report-only'), ('off', 'off'),
+                                               (' OFF ', 'off'), ('Report-Only', 'report-only')])
+    def test_valid_values(self, raw, expected):
+        import config
+        assert config.load_settings('production', {'SPA_CSP': raw})['SPA_CSP'] == expected
+
+    @pytest.mark.parametrize('env', ['development', 'testing', 'production'])
+    @pytest.mark.parametrize('raw', ['enforce', 'true', 'yes', 'reportonly'])
+    def test_an_invalid_value_is_refused_like_a_bad_boolean_switch(self, env, raw):
+        import config
+        with pytest.raises(config.ConfigError) as bool_exc:
+            config.load_settings(env, {'RATELIMIT_ENABLED': 'maybe'})
+        with pytest.raises(config.ConfigError) as exc:
+            config.load_settings(env, {'SPA_CSP': raw})
+        assert 'SPA_CSP must be report-only or off' in str(exc.value)
+        assert raw not in str(exc.value)
+        assert type(exc.value) is type(bool_exc.value)
+
+    def test_the_app_refuses_to_start(self, clean_env):
+        from app import create_app
+        import config
+        clean_env.setenv('SPA_CSP', 'enforce')
+        with pytest.raises(config.ConfigError, match='SPA_CSP must be report-only or off'):
+            create_app(TESTING=True, SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
+                       SECRET_KEY='test-secret-key')
+
+    def test_the_environment_reaches_the_app(self, clean_env, spa_dist):
+        from app import create_app
+        clean_env.setenv('SPA_CSP', 'off')
+        clean_env.setenv('FRONTEND_DIST', str(spa_dist))
+        app = create_app(TESTING=True, SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
+                         SECRET_KEY='test-secret-key')
+        resp = app.test_client().get('/riftbound/app/')
+        assert resp.status_code == 200
+        assert CSP_HEADER not in resp.headers
+
+    def test_env_example_documents_it_next_to_the_kill_switches(self):
+        lines = (ROOT / '.env.example').read_text().splitlines()
+        index = next(i for i, line in enumerate(lines)
+                     if line.startswith('# SPA_CSP=report-only   # report-only | off'))
+        assert any('CAPTCHA_PROVIDER=' in line for line in lines[index - 3:index])
+
+    def test_frontend_doc_has_the_section(self):
+        text = (ROOT / 'docs' / 'frontend.md').read_text(encoding='utf-8')
+        assert '## Content Security Policy' in text
+        assert CSP_REPORT_ONLY in text
+        assert 'SPA_CSP=off' in text
+
+    def test_agents_mentions_the_setting(self):
+        assert 'SPA_CSP' in (ROOT / 'AGENTS.md').read_text(encoding='utf-8')

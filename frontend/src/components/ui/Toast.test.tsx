@@ -121,12 +121,14 @@ describe('ToastStack', () => {
 
   describe('auto-dismiss', () => {
     it('removes a toast after its duration', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true });
       await mount();
+      // Plain fake timers (no shouldAdvanceTime): only advanceTimersByTime moves the clock, so
+      // the 1 ms margins below never depend on how fast the machine runs.
+      vi.useFakeTimers();
       act(() => void pushToast({ kind: 'info', message: 'Pasajero', duration: 3000 }));
-      await act(() => vi.advanceTimersByTimeAsync(2999));
+      act(() => vi.advanceTimersByTime(2999));
       expect(inStack('Pasajero')).toBeInTheDocument();
-      await act(() => vi.advanceTimersByTimeAsync(2));
+      act(() => vi.advanceTimersByTime(1));
       expect(inStack('Pasajero')).not.toBeInTheDocument();
     });
 

@@ -10,7 +10,7 @@ Last update: 2026-10-21 (handoff from the SDD workflow to Claude Project + gentl
 | Phase | Status | Notes |
 |---|---|---|
 | F0 Foundation | **Done** (PRs #11-#16) | Archived in `openspec/changes/archive/2026-10-19-f0-foundation/`; contracts in `openspec/specs/` (14 capabilities). |
-| F1 App shell | **Units a-f done** (PRs #17-#24); g optional; close pending | See "F1 detail". |
+| F1 App shell | **Units a-g done** (PRs #17-#24, #26); close pending | See "F1 detail". |
 | F2 Catalog | Planned — next phase | `docs/requirements/F2/` (phase spec + unit drafts with CONFIRM items). |
 | F3-F12 | Planned | Phase specs in `docs/requirements/F<n>/README.md`. |
 
@@ -39,7 +39,7 @@ Last update: 2026-10-21 (handoff from the SDD workflow to Claude Project + gentl
 | d | #22 | API client, router, login/register with ALTCHA, i18n ES/EN. |
 | e | #23 | App shell, navigation, "Más" sheet, Home hub, Interface preferences page, Jinja renamed "Rift Manager" + "Nueva app" link. |
 | f | #24 | PWA: manifest, icons, service worker, update toast, install item + iOS dialog, offline banner/boot, self-destroying rollback build. |
-| g | — | Optional hardening: CSP report-only, axe sweep, Lighthouse, precache de-duplication → `docs/requirements/F1/F1-g-hardening.md`. |
+| g | #26 | Hardening: `Content-Security-Policy-Report-Only` on the app document (`SPA_CSP=report-only\|off`), axe tests for every route and overlay, precache without duplicates (40 entries/33 unique → 33/33, enforced by `check:dist`), deterministic Toast test. Lighthouse pending (owner). |
 | close | — | Record manual results, verify against the F1 specs, archive into `openspec/specs/` → `docs/requirements/F1/F1-close.md`. |
 
 ## Pending checks (owner)
@@ -57,6 +57,8 @@ Results reported by the owner on 2026-10-21:
 | Lighthouse installability (6.26) | Pending (Chromium reports no installability errors). |
 | Update prompt on a real device (6.32) | Pending: observe at the next deploy of a new build. Verified locally in Chromium with two builds. |
 | Rollback rehearsal on dev (6.34) | Not run on dev (it would uninstall the worker on the owner's devices); verified locally in Chromium. |
+| Lighthouse baseline (F1-g S8, 7.4) | **Pending (owner)**: Lighthouse is not installed on the server; record performance, accessibility and best-practices for `/riftbound/app/login` and `/riftbound/app/` in `docs/frontend.md` → "Lighthouse baseline". |
+| CSP report-only console review (F1-g, 7.5) | **Pending (owner)** after the F1-g deploy: browse every screen with the console open and send any `[Report Only]` line to the planner. |
 | Background default 100, blur, darkening (1.50, 5.41) and logo trace (1.39) | Owner said the logo is fine and only complained about the zoom, which was fixed; to confirm formally in F1-close. |
 
 ## Follow-ups
@@ -77,10 +79,6 @@ Results reported by the owner on 2026-10-21:
 
 ## Known issues
 
-- `frontend/src/components/ui/Toast.test.tsx` ("removes a toast after its duration") is timing-flaky
-  under load; it failed once.
-- The service worker precache lists 7 entries twice (the manifest plus pwa-192, pwa-512, maskable-512,
-  apple-touch-180, favicon.svg, favicon.ico: glob + `includeAssets`/plugin); harmless, cleaned in F1-g.
 - `frontend/src/assets/brand/mark.svg` and `wordmark.svg` are not byte-reproducible from
   `scripts/brand-trace.mjs` (a full run produces a heavier trace); do not regenerate them blindly.
 - `dist/.vite/manifest.json` is publicly served (harmless; it lists chunk names only).
@@ -100,4 +98,4 @@ Results reported by the owner on 2026-10-21:
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
 | F1-close | not started | — | — |
-| F1-g | not started (optional) | — | — |
+| F1-g | done (PR pending merge) | `feat/f1g-hardening` / #26 | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |

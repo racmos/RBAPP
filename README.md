@@ -36,6 +36,7 @@ Settings come from environment variables only (see [.env.example](.env.example),
 | `WTF_CSRF_ENABLED` | CSRF protection kill switch (default on) |
 | `RATELIMIT_ENABLED`, `RATELIMIT_STORAGE_URI` | Per-IP rate limits and their storage (default on, `memory://`) |
 | `CAPTCHA_PROVIDER` | `altcha` (default) or `none`; ALTCHA on the register form |
+| `SPA_CSP` | `report-only` (default) or `off`: the `Content-Security-Policy-Report-Only` header of the new app (see `docs/frontend.md`) |
 | `ALTCHA_HMAC_KEY`, `ALTCHA_EXPIRE_SECONDS`, `ALTCHA_MAX_NUMBER` | ALTCHA signing key, challenge lifetime and difficulty |
 | `LOGIN_MAX_FAILURES`, `LOGIN_LOCK_BASE_MINUTES`, `LOGIN_LOCK_MAX_MINUTES` | Account lockout (5 failures, 15 minutes, doubling up to 24 hours) |
 | `LANDING_CACHE_TTL` | Seconds the landing feeds are cached per worker (0 = off) |

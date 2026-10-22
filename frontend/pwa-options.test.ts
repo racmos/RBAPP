@@ -95,6 +95,12 @@ describe('workbox (PWA-3)', () => {
     }
   });
 
+  it('lists each precache source once: the glob for files, the plugin for the manifest', () => {
+    expect(options.includeAssets).toBeUndefined();
+    expect(options.includeManifestIcons).toBe(false);
+    expect(workbox.globPatterns?.[0]).not.toContain('webmanifest');
+  });
+
   it('leaves out the non-latin font subsets and source maps', () => {
     const ignores = workbox.globIgnores ?? [];
     // enough of a glob matcher for the patterns used here: `**/` any folders, `*` within a name

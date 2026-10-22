@@ -44,6 +44,35 @@ Errors under `/riftbound/app/` (404 for a missing file, 503 without a build) are
 clients that ask for it (`Accept: application/json` or `*/*`, which is what `fetch`
 sends) and a minimal inline HTML page otherwise. They never use the Jinja error pages.
 
+## Content Security Policy
+
+Every response that serves `index.html` (`/riftbound/app/`, `/riftbound/app/index.html` and
+every extension-less path that falls back to it) carries this header, byte for byte:
+
+```
+Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob: data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'
+```
+
+Nothing else gets a CSP: not `assets/*`, `sw.js`, `manifest.webmanifest`, the icons, the 404
+for a missing file or the 503 without a build, and no response carries an enforcing
+`Content-Security-Policy`. Jinja pages and the API are untouched.
+
+- **Why report-only.** The browser evaluates the policy and reports what it would block, but blocks
+  nothing. We learn what an enforcing policy would break (inline styles, `data:`/`blob:` images,
+  the ALTCHA worker) before F12 turns it on, without any risk for users.
+- **Reading violations.** Open the app with the browser console visible and use it. Each violation
+  is a console line that starts with `[Report Only]` and names the directive and the blocked URL.
+  There is no `report-uri` / `report-to` endpoint: collect the lines by hand.
+- **Turning it off.** `SPA_CSP=off` in the environment and restart: no CSP header at all.
+  `SPA_CSP` accepts `report-only` (the default when unset) and `off`; any other value stops the
+  app at start with `ConfigError` ("SPA_CSP must be report-only or off"), in every environment,
+  exactly like an invalid true/false switch.
+- **Moving to enforcing (planned for F12).** 1) Collect the `[Report Only]` lines from every screen
+  (sign-in, register with the captcha, shell, settings, install dialog). 2) Fix the code or adjust
+  the policy until the console is clean. 3) Switch the header name to
+  `Content-Security-Policy` (keep the report-only header for a new stricter draft if needed),
+  with a test that pins the new header, and keep `SPA_CSP=off` as the rollback.
+
 ## Deploy
 
 Pick one:
@@ -257,8 +286,8 @@ this procedure cannot rot unnoticed. Rehearse it on dev at least once (task 6.34
 
 Run on the dev server over HTTPS (a service worker needs it; `localhost` is the only exception).
 
-- **Lighthouse (desktop Chrome):** open `/riftbound/app/`, DevTools, Lighthouse, category
-  "Progressive Web App" or the installability audit: it passes with no failed item.
+- **Installability (desktop Chrome):** DevTools, Application, Manifest shows no installability
+  error. Lighthouse 12+ has no "Progressive Web App" category; see "Lighthouse baseline".
 - **Android (Chrome):** the menu offers "Install app" (also the "Instalar app" item in "Más"). The
   launched window is called "Rift Manager" and shows the swirl icon on the dark teal background.
 - **iPhone (Safari):** "Más" then "Instalar app" shows the three steps; Share, Add to Home Screen.
@@ -274,7 +303,24 @@ Run on the dev server over HTTPS (a service worker needs it; `localhost` is the 
 - **Session:** sign in with "Recordarme", close the installed app completely and reopen it the next
   day: still signed in.
 
+## Lighthouse baseline
+
+Status: **pending (owner)**. Lighthouse is not installed on the server, so F1-g could not record it.
+Run Lighthouse (Chrome DevTools or the CLI, desktop and mobile) against the dev server on
+`/riftbound/app/login` and, signed out, `/riftbound/app/`, and write the performance,
+accessibility and best-practices scores here with the date. Lighthouse 12+ has no PWA category;
+installability is covered by the live PWA check.
+
+| Date | Page | Form factor | Performance | Accessibility | Best practices |
+| ---- | ---- | ----------- | ----------- | ------------- | -------------- |
+| —    | —    | —           | —           | —             | —              |
+
 ## Build output
+
+The service worker precaches every URL exactly once: the Workbox glob lists the files in `dist`
+and the plugin adds `manifest.webmanifest` (no `includeAssets`, `includeManifestIcons: false`).
+`check:dist` fails when a precache URL appears twice (F1 unit g: 40 entries/33 unique before,
+33/33 after).
 
 The production build writes `dist/.vite/manifest.json` (`build.manifest`). It lists the
 chunks and what imports what; `altcha` must appear only behind the dynamic import of

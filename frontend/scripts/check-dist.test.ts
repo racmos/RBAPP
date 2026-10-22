@@ -347,6 +347,22 @@ describe('service worker (PWA-3)', () => {
     },
   );
 
+  it('a precache URL listed twice fails', () => {
+    const precache = [
+      'index.html',
+      'assets/index-abc.js',
+      'assets/new_rift-1920-abc.webp',
+      'assets/new_rift-1280-abc.webp',
+      'manifest.webmanifest',
+      'assets/index-abc.js',
+    ];
+    const result = run(dist({ 'sw.js': serviceWorker({ precache }) }));
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('assets/index-abc.js');
+    expect(result.stderr).toContain('listed 2 times');
+    expect(result.stderr).not.toContain('manifest.webmanifest');
+  });
+
   it('fails when a route is registered for the API (runtime caching)', () => {
     const routes = `s.registerRoute(/\\/riftbound\\/api\\/.*/,new s.NetworkFirst({cacheName:"api"}),"GET")`;
     const result = run(dist({ 'sw.js': serviceWorker({ routes }) }));

@@ -46,6 +46,14 @@ SPA_MIMETYPES = {
     '.svg': 'image/svg+xml',
 }
 
+# Report-only policy of the app document (F1 unit g). It blocks nothing: the
+# browser console lists what an enforcing policy would break (F12).
+CSP_HEADER = 'Content-Security-Policy-Report-Only'
+CSP_REPORT_ONLY = ("default-src 'self'; script-src 'self'; "
+                   "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+                   "font-src 'self'; worker-src 'self' blob: data:; connect-src 'self'; "
+                   "frame-ancestors 'self'; base-uri 'self'")
+
 CACHE_IMMUTABLE = 'public, max-age=31536000, immutable'
 CACHE_REVALIDATE = 'no-cache'
 
@@ -103,10 +111,18 @@ def _serve(path: str):
     if path:
         target = safe_join(str(dist), path)         # None when it escapes dist
         if target is not None and os.path.isfile(target):
-            return _send(dist, path)
+            return _send_document(dist) if path == 'index.html' else _send(dist, path)
         if _is_file_like(path):
             return _spa_error(404, 'File not found')
-    return _send(dist, 'index.html')
+    return _send_document(dist)
+
+
+def _send_document(dist: Path):
+    """index.html, the only response that gets the CSP (SPA_CSP=off drops it)."""
+    response = _send(dist, 'index.html')
+    if current_app.config.get('SPA_CSP', 'report-only') == 'report-only':
+        response.headers[CSP_HEADER] = CSP_REPORT_ONLY
+    return response
 
 
 @spa_bp.after_request

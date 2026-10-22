@@ -152,6 +152,11 @@ function checkServiceWorker() {
   for (const size of ['1920', '1280'])
     if (!has(new RegExp(`(^|/)new_rift-${size}[-.]`)))
       problems.push(`sw.js: the precache lacks the background image new_rift-${size}`);
+  // Every URL once: a duplicate means two sources (plugin options and the glob) list it.
+  const counts = new Map();
+  for (const url of precache) counts.set(url, (counts.get(url) ?? 0) + 1);
+  for (const [url, count] of counts)
+    if (count > 1) problems.push(`sw.js: precache URL ${url} is listed ${count} times`);
   for (const url of precache)
     if (/riftbound\/api/.test(url))
       problems.push(`sw.js: precache URL ${url} is under /riftbound/api`);

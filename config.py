@@ -41,6 +41,9 @@ CARDMARKET_ALLOWED_HOSTS = ('downloads.s3.cardmarket.com',)
 
 CAPTCHA_PROVIDERS = ('none', 'altcha')
 
+# Content-Security-Policy mode of the app document (F1 unit g). Overridden by SPA_CSP.
+SPA_CSP_MODES = ('report-only', 'off')
+
 # Where the Vite build lives (HOST-1). Overridden by FRONTEND_DIST.
 DEFAULT_FRONTEND_DIST = str(Path(__file__).resolve().parent / 'frontend' / 'dist')
 
@@ -92,6 +95,17 @@ def _bool_setting(environ: Mapping[str, str], name: str, default: bool) -> bool:
     raise ConfigError(f'{name} must be true or false')
 
 
+def _spa_csp_setting(environ: Mapping[str, str]) -> str:
+    """SPA_CSP: report-only (default) or off. Parsed on every load like the
+    true/false switches, so a bad value stops the app in every environment."""
+    text = (environ.get('SPA_CSP') or '').strip().lower()
+    if not text:
+        return SPA_CSP_MODES[0]
+    if text in SPA_CSP_MODES:
+        return text
+    raise ConfigError('SPA_CSP must be report-only or off')
+
+
 def _host_list(environ: Mapping[str, str], name: str, default: tuple) -> tuple:
     """A comma-separated list of host names, lower-cased; blank keeps `default`."""
     hosts = tuple(h.strip().lower() for h in (environ.get(name) or '').split(',') if h.strip())
@@ -126,6 +140,7 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
     settings['CARDMARKET_ALLOWED_HOSTS'] = _host_list(
         environ, 'CARDMARKET_ALLOWED_HOSTS', CARDMARKET_ALLOWED_HOSTS)
     settings['FRONTEND_DIST'] = (environ.get('FRONTEND_DIST') or '').strip() or DEFAULT_FRONTEND_DIST
+    settings['SPA_CSP'] = _spa_csp_setting(environ)
     settings.update(_session_settings(env, environ))
     settings.update(_protection_settings(env, environ))
     return settings
