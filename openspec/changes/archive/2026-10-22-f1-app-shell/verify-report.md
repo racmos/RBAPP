@@ -238,6 +238,6 @@ Requirement IDs DEFERRED: **FAUTH-11, PWA-9**. PASS with a deferred device check
 | `ui-preferences` | PREF-1 .. PREF-8 | none | 8 |
 | `app-shell` | SHELL-1 .. SHELL-10 | none | 10 |
 | `pwa` | PWA-1 .. PWA-9 | none | 9 |
-| **Total** | 61 | 6 | **67** |
+| **Total** | 62 | 5 | **67** |
 
 No REMOVED requirements. Citation check: every `path::name` reference in section 2 was extracted and each name part was found in its file with `grep -F` (0 missing).
