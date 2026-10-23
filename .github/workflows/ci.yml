@@ -36,10 +36,11 @@ jobs:
           path: coverage.xml
 
   # Real PostgreSQL (same major version as dev): the migrations must upgrade,
-  # check clean, downgrade to base and upgrade again, and the `postgres`-marked
-  # tests (baseline equals the dev snapshot, USING cast, FK repoint, backup of
-  # the legacy tables) must pass. The throw-away database name contains "test"
-  # because the tests refuse to touch any other database.
+  # check clean, downgrade to base and upgrade again. The `postgres`-marked
+  # tests were removed by M-a (2026-10-22); a unit that adds new ones re-adds a
+  # `pytest -m postgres` step here (with no marked test it would exit with 5).
+  # The throw-away database name contains "test" because the tests refuse to
+  # touch any other database.
   migrations-pg:
     runs-on: ubuntu-latest
     services:
@@ -79,9 +80,6 @@ jobs:
           flask db check
           flask db downgrade base
           flask db upgrade
-      - name: PostgreSQL tests
-        run: |
-          TEST_POSTGRES_URL='postgresql+psycopg://rb:rb@localhost:5432/riftbound_test' pytest -m postgres
 
   # The React app (F1). Every step runs: `frontend/package.json` exists (CI-5).
   # The dist is uploaded for the deploy step; it needs no write permission.
