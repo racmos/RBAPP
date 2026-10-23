@@ -1,5 +1,5 @@
 # F2: Catalog — phase spec
-Status: planned · Depends on: F1 (units a-f merged; F1-close recommended first) · Source: roadmap §5 (F2), design-handoff §2.1-2.4, §3.1, §3.4, §3.5, §3.13, §6 (2, 4, 5, 8, 9, 33), §7 (R2, R5, S3, S5, A5, A13), §9 (F2), §10 (8, 10, 12), `docs/knowledge/product.md`
+Status: planned · Depends on: F1 (units a-f merged; F1-close recommended first) · Order (`docs/knowledge/roadmap.md`): F2-a runs right after F4-a/F4-b and before M-d; F2-b..l run after F13 (Riot sync + catalog admin) · Source: roadmap §5 (F2), design-handoff §2.1-2.4, §3.1, §3.4, §3.5, §3.13, §6 (2, 4, 5, 8, 9, 33), §7 (R2, R5, S3, S5, A5, A13), §9 (F2), §10 (8, 10, 12), `docs/knowledge/product.md`
 
 ## Goal
 
@@ -16,22 +16,23 @@ service-worker read cache.
 | Area | What exists today |
 |---|---|
 | Models | `RbSet` (`rbset`: `rbset_id`, `rbset_name`, `rbset_ncard`, `rbset_outdat`), `RbCard` (`rbcards`, PK `rbcar_rbset_id`+`rbcar_id`; text columns `rbcar_domain` = space-separated labels such as `Fury Chaos`, `rbcar_type` = supertype + type such as `Champion Unit`, `Signature Spell`, `Token Unit`, `Basic Rune`, `Legend`; `rbcar_tags` = comma-separated; `rbcar_energy/power/might` smallint; `rbcar_rarity`; `rbcar_artist`; `rbcar_banned` 'S'/'N'; `image`, `image_url`; property `image_src`) — `app/models/card.py`, `set.py`. Card ids are text: `1`, `79a`, `227s` (showcase), `t03` (token). |
-| Prices | `rbcm_price` (daily rows per Cardmarket `idProduct`, date text `YYYYMMDD`, `rbprc_low/avg1/avg7/avg30/trend` and `_foil` variants, `rbprc_low_ex`), `rbcm_product_card_map` (product → card + foil `N`/`S`/NULL) — `app/models/cardmarket.py`. PK of `rbcm_price` is (`rbprc_date`, `rbprc_id_product`); no index starts with the product. |
+| Prices | Loaded every day by the F4-b job (06:30 Europe/Madrid, retry 08:00), which lands before F2. `rbcm_price` (daily rows per Cardmarket `idProduct`, date text `YYYYMMDD`, `rbprc_low/avg1/avg7/avg30/trend` and `_foil` variants, `rbprc_low_ex`), `rbcm_product_card_map` (product → card + foil `N`/`S`/NULL) — `app/models/cardmarket.py`. PK of `rbcm_price` is (`rbprc_date`, `rbprc_id_product`); no index starts with the product. |
 | Pricing service | `app/services/pricing.py`: `resolve_price` (chain PRC-1: premium rarity or foil → `avg7_foil → avg7 → low_foil → low`; otherwise `avg7 → avg7_foil → low → low_foil`; 0/NULL = missing), `canonical_product_id`, `latest_price_for_card`. Contract: `openspec/specs/price-resolution/spec.md`. |
 | Foil rules | Collection add refuses foil for Rare/Epic/Showcase (`app/routes/domains/collection.py`); the matcher gives Basic Runes one slot and never foil, common/uncommon two slots N/S (`app/services/cardmarket_matcher.py`). |
-| Images | `RbCard.image_src` → `/riftbound/static/images/cards/<prefix folder>/<image>` (IMG-1, `openspec/specs/card-images/spec.md`); PNG 352×492, about 205 KB each (the repo has 376 files, 77 MB). No thumbnails. Served by Flask static. |
+| Images | `RbCard.image_src` → `/riftbound/static/images/cards/<prefix folder>/<image>` (IMG-1, `openspec/specs/card-images/spec.md`); PNG 352×492, about 205 KB each (the repo has 376 files, 77 MB). No thumbnails. Served by Flask static. Unit M-d moves them out of git into a data directory outside the code tree before F2-b. |
 | Routes | Jinja catalog `GET /riftbound/card` (`cards.cards`, U; filters by name/set/id/domain/type/tags/rarity/ability/banned/energy/power/might; sorts with `regexp_replace`, which SQLite only has through a test shim registered in `app/__init__.py`; the id filter uses the PostgreSQL `~` operator), admin `POST /riftbound/card/add`, `/update/<set>/<card>`, `/upload_image`; Jinja sets page `GET /riftbound/set` (U) + admin add/update; `GET /riftbound/collection/api/cards` (U, picker search, flat JSON). No catalog endpoint in API v1. |
 | API v1 | `app/api/v1/{auth,me,meta}.py`: `GET /health`, `GET /meta/config`, auth, `GET/PATCH /me/prefs`. Envelope `ok()/fail()`, error codes `app/api/error_codes.py`. `app/schemas/validation.py` has an unused `validate_query` (no list params, no error codes). |
 | Bans | Only `rbcar_banned` (single flag). The Riot scraper rewrites every field of an existing card, so it resets `rbcar_banned` to `'N'` on every run (`app/services/riot_scraper.py`, step 5). The Jinja admin form edits the flag. |
 | CLI | `flask schema ...`, `flask users ...` (`app/cli/`). |
 | Frontend | Nav registry `frontend/src/shell/navRegistry.ts`: `cards` and `sets` are `legacy`. Primitives in `src/components/ui/` (Badge, Button, Checkbox, ConfirmDialog, EmptyState, ErrorState, Field, Icon, Input, Modal/Sheet (no size variants), OfflineBanner, PageHeader, Panel, SegmentedControl, Select, Skeleton, Slider, Switch, Toast). No DomainPips, RarityDot, CardImage, Pagination, DataTable, chips, charts. `src/lib/format.ts` (`formatMoney`, `formatDate`, `formatNumber`). Breakpoints `src/lib/breakpoints.ts`: `sm 680, md 860, lg 960, xl 1240, 2xl 1600`. |
 | PWA | `frontend/pwa-options.ts`: precache of the shell only, **no runtime caching**; `scripts/check-dist.mjs` fails the build if any `registerRoute` other than the navigation route exists or the precache lists an API URL. F1 spec PWA-1 says "MUST NOT register any runtime caching" — F2 supersedes that clause. TanStack Query uses the default `networkMode: 'online'` (queries pause while offline). |
-| Tests | `tests/test_authz_matrix.py` (every rule P/U/A), `tests/test_docs.py` (AGENTS.md must name every table and blueprint), `tests/test_migrations.py` (one class per revision), `tests/test_frontend_contracts.py` (error-code catalogs, `legacy-routes.json`). |
+| Tests | Since M-a only `tests/test_authz_matrix.py` (every rule P/U/A) and the startup smoke tests (`tests/test_smoke.py`, `frontend/src/app/smoke.test.tsx`) remain; a unit re-creates the guard of the area it touches in its smallest form (migration round-trip + drift test with `tests/migration_helpers.py`, ES/EN parity, error-code catalog test, legacy-routes check). |
 
 ## Scope
 
 In:
-- Per-mode ban table + migration + backfill + `flask bans` CLI + read API; bans exposed on cards.
+- Per-mode ban table + migration + initial data from the official ban list + `flask bans` CLI + read API;
+  bans exposed on cards.
 - `GET /meta/game` (enums, sets, price freshness, empty `rules` object for F5).
 - Card DTO (`CardSummary`, `CardDetail`), catalog list with filters, facets, sort, pagination; card detail;
   price history; my copies (read-only); printings; related; in my decks (read-only).
@@ -43,14 +44,29 @@ In:
 
 Out:
 - Editing collection lines from the card detail (F3: the detail links to the collection instead).
-- Wishlist / watchlist buttons (F3 / F4). Deck legality (F5). Ban admin UI (F10). Card/set editing (F10).
-- Full offline catalog snapshot in IndexedDB (D-F2-8). Translating card names/abilities (D-F2-12).
+- Wishlist / watchlist buttons (F3 / F4). Deck legality (F5). Ban admin UI (F10). Card/set editing and the
+  Riot sync (F13).
+- Full offline catalog snapshot in IndexedDB (D-F2-8). Translating card names/abilities (they are data).
 - Removing `rbcar_banned` (F11, with Jinja).
 
 ## Decisions already taken
 
 - Bans are per mode (`1v1`, `2v2`) and apply to the card **name** (all printings); the UI names the mode;
   the single `rbcar_banned` column is not enough (product.md "Game rules"; design-handoff §6-2).
+- **D-F2-2** (owner, 2026-10-22): bans per card name (all printings), two modes 1v1 and 2v2. The legacy
+  `rbcar_banned` flag is **not** used as a source (the scraper resets it); the initial data comes from the
+  official ban list the owner provides (cards and mode; owner input pending, needed for F2-a).
+- **D-F2-1** (owner, 2026-10-22): the implementer queries the dev PostgreSQL database read-only to get the
+  real values of `rbcar_domain`, `rbcar_type` and `rbcar_rarity` (the data there is real); the F2-b
+  constants follow the result.
+- **D-F2-12** (owner, 2026-10-22): the Spanish names of the enum values are taken by the implementer from
+  the official Spanish card gallery (`es-es`); the owner is asked only for a value that is not there. The
+  dev database holds the English values (the scraper reads `en-us`). Card names and abilities are data and
+  stay untranslated.
+- Order (owner, 2026-10-22): F2-a (bans) runs right after F4-a/F4-b; M-d (card images out of git) and F13
+  (Riot sync + catalog admin) come next; the rest of F2 follows F13.
+- Tests (owner, 2026-10-22, unit M-a): the old suites were removed; each F2 unit writes its own tests and
+  re-creates the removed guard of the area it touches (see "Current state" → Tests).
 - Rule values and enumerations live in the backend and the frontend reads them from the API (product.md).
 - Prices: Cardmarket only, EUR only; chain PRC-1 is the single implementation (product.md; price-resolution
   spec). Note: product.md summarises the chain as `avg7_foil → avg7 → low_foil → low`; the code and PRC-1
@@ -66,10 +82,10 @@ Out:
 ## Requirements
 
 ### Data
-- **F2-R1** MUST add table `rbcardbans` (one row per normalized card name and mode) with migration `0007_card_bans`; reversible. (F2-a)
-- **F2-R2** The migration MUST backfill names whose `rbcar_banned` is `S`/`Y` as banned in both modes (CONFIRM D-F2-2). (F2-a)
+- **F2-R1** MUST add table `rbcardbans` (one row per normalized card name and mode) with migration `00NN_card_bans` (next free revision; F4-a's `rbjobs` lands first); reversible. (F2-a)
+- **F2-R2** The migration MUST NOT read `rbcar_banned` (owner decision of 2026-10-22, see "Decisions already taken"); the table starts empty and the initial rows come from the official ban list the owner provides, loaded through `flask bans add` (F2-R14) or a one-off import that the F2-a requirement defines. (F2-a)
 - **F2-R3** Card name matching for bans and printings MUST use one normalization function (`name_key`). (F2-a)
-- **F2-R4** MUST add index `idx_rbcm_price_product_date` on `rbcm_price (rbprc_id_product, rbprc_date)` with migration `0008_price_product_date_idx`. (F2-b)
+- **F2-R4** MUST add index `idx_rbcm_price_product_date` on `rbcm_price (rbprc_id_product, rbprc_date)` with migration `00NN_price_product_date_idx` (next free revision). (F2-b)
 - **F2-R5** Game enumerations (modes, domains, types, supertypes, rarity order) MUST live in `app/schemas/game_domain.py` only. (F2-a creates it with the modes, F2-b completes it)
 
 ### API
@@ -117,10 +133,10 @@ Out:
 
 | Change | Detail | Migration | Backfill / downgrade | Risk |
 |---|---|---|---|---|
-| New table `riftbound.rbcardbans` | `rbban_id` int PK; `rbban_name_key` varchar(200) NOT NULL; `rbban_name` varchar(200) NOT NULL; `rbban_mode` varchar(3) NOT NULL CHECK `IN ('1v1','2v2')` (`rbcardbans_mode_chk`); `rbban_since` date NOT NULL; `rbban_reason` varchar(500) NULL; `rbban_created_at` timestamp NOT NULL default now; UNIQUE (`rbban_name_key`, `rbban_mode`) `rbcardbans_name_mode_key` | `0007_card_bans` | Backfill from `rbcar_banned` (D-F2-2) with a frozen copy of `name_key`; downgrade drops the table (bans added since are lost; `rbcar_banned` is untouched) | Low: new table only |
-| Index on `rbcm_price` | `idx_rbcm_price_product_date (rbprc_id_product, rbprc_date)` | `0008_price_product_date_idx` | Downgrade drops it | Low: build takes seconds; write lock during build (no load runs at deploy time) |
+| New table `riftbound.rbcardbans` | `rbban_id` int PK; `rbban_name_key` varchar(200) NOT NULL; `rbban_name` varchar(200) NOT NULL; `rbban_mode` varchar(3) NOT NULL CHECK `IN ('1v1','2v2')` (`rbcardbans_mode_chk`); `rbban_since` date NOT NULL; `rbban_reason` varchar(500) NULL; `rbban_created_at` timestamp NOT NULL default now; UNIQUE (`rbban_name_key`, `rbban_mode`) `rbcardbans_name_mode_key` | `00NN_card_bans` | No backfill: `rbcar_banned` is not a source; the initial rows come from the official ban list after the upgrade (F2-R2); downgrade drops the table (bans added since are lost; `rbcar_banned` is untouched) | Low: new table only |
+| Index on `rbcm_price` | `idx_rbcm_price_product_date (rbprc_id_product, rbprc_date)` | `00NN_price_product_date_idx` | Downgrade drops it | Low: build takes seconds; write lock during build (no load runs at deploy time) |
 | `rbcar_banned` | Kept, deprecated (code comment). The API ignores it. Removed in F11. | none | — | — |
-| Thumbnails (optional) | Files only: `app/static/images/card-thumbs/<folder>/<stem>.webp`, git-ignored | none | — | Low |
+| Thumbnails (optional) | Files only: `<folder>/<stem>.webp` in the card-image data directory that M-d sets up outside the code tree, never in git | none | — | Low |
 
 ## API
 
@@ -164,8 +180,8 @@ links to the classic page ("Versión clásica"). `sets` stays `legacy` (D-F2-11)
 
 | ID | Title | Depends on | Size | Risk | Summary |
 |---|---|---|---|---|---|
-| F2-a | Per-mode card bans | F1 merged | ~550 | items 1, 3 | `rbcardbans` + `0007` + backfill, `name_key`, `app/services/bans.py`, `flask bans`, `GET /bans`, Jinja catalog reads the ban table |
-| F2-b | Game meta, card DTO and price summary | F2-a | ~550 | items 1, 3 | `game_domain.py`, card normalization (`app/services/catalog.py`), `resolve_price_with_source`, batch price summaries with 7/30 d trend, `0008` index, `GET /meta/game`, `docs/api.md` |
+| F2-a | Per-mode card bans | F1 merged, F4-a/F4-b (order), official ban list (owner) | ~550 | items 1, 3 | `rbcardbans` + migration (no backfill) + initial data from the official ban list, `name_key`, `app/services/bans.py`, `flask bans`, `GET /bans`, Jinja catalog reads the ban table |
+| F2-b | Game meta, card DTO and price summary | F2-a, M-d, F13 (order) | ~550 | items 1, 3 | `game_domain.py` (values from the read-only dev DB query, Spanish names from `es-es`), card normalization (`app/services/catalog.py`), `resolve_price_with_source`, batch price summaries with 7/30 d trend, index migration, `GET /meta/game`, `docs/api.md` |
 | F2-c | Cards list API | F2-b | ~550 | item 3 | `validate_query` upgrade, `GET /cards` filters/facets/sort/pagination, owned, bans |
 | F2-d | Card detail and price history API | F2-b (F2-c first) | ~450 | item 3 | `GET /cards/{set}/{id}`, `GET /cards/{set}/{id}/prices` |
 | F2-e | Card UI atoms | F2-b (contract) | ~500 | none | `src/components/card/`: `CardImage` + `CardArtPlaceholder`, `DomainPips`, `RarityDot`, `BanBadge`, `PriceTag`; `CardSummary` TS type; `enums` namespace; ESLint boundary |
@@ -175,9 +191,9 @@ links to the classic page ("Versión clásica"). `sets` stays `legacy` (D-F2-11)
 | F2-i | Catalog desktop and wide | F2-g, F2-h | ~550 | none | Facet sidebar with counts ≥ 1240, table view with extra columns, page size, remembered view, preview panel ≥ 1600 (with `Sparkline`) |
 | F2-j | Offline catalog | F2-i | ~350 | items 5, 6 | Workbox runtime caching, `check:dist`, cache purge on logout/user switch, `offlineFirst` queries, offline states |
 | F2-k | Card combobox and global search | F2-c, F2-e, F2-h | ~450 | none | `CardCombobox` (ARIA 1.2, reused by F3/F5), topbar search ≥ 1240, "/" shortcut |
-| F2-l | Card thumbnails (optional) | F2-b | ~350 | item 5 | Pillow, `flask images thumbs`, scraper hook, `image_thumb_src` |
+| F2-l | Card thumbnails (optional) | F2-b | ~350 | item 5 | Pillow, `flask images thumbs` (writes to the M-d data directory), scraper hook, `image_thumb_src` |
 
-Order: a → b → c → d → e → f → g → h → i → j → k. The detail screen (f) lands before the catalog (h) so the
+Order: a runs early (after F4-a/F4-b, before M-d and F13); then, after F13: b → c → d → e → f → g → h → i → j → k. The detail screen (f) lands before the catalog (h) so the
 catalog's tiles never link to a missing route; until h flips the nav entry, the detail is reachable only by
 URL. l can land any time after b (best before j, so the offline image cache starts with thumbnails). e can
 start as soon as b is merged (it codes against the `CardSummary` contract in `docs/api.md` with fixtures).
@@ -186,8 +202,6 @@ start as soon as b is merged (it codes against the `CardSummary` contract in `do
 
 | ID | Question | Options | Recommendation | Blocks |
 |---|---|---|---|---|
-| D-F2-1 | Which values do `rbcar_domain`, `rbcar_type` and `rbcar_rarity` really hold in the dev database? | Owner runs: `SELECT rbcar_domain, count(*) FROM riftbound.rbcards GROUP BY 1 ORDER BY 1;` and the same for `rbcar_type`, `rbcar_rarity` (read-only) and pastes the result | Use the constants in F2-b (domains Fury, Calm, Mind, Body, Chaos, Order, Colorless; types Legend, Unit, Spell, Gear, Rune, Battlefield; supertypes Champion, Signature, Token, Basic; rarities Common < Uncommon < Rare < Epic < Showcase); unknown values pass through and still appear in facets | F2-b |
-| D-F2-2 | What to do with `rbcar_banned`? | (a) backfill `S`/`Y` as banned in both modes, Jinja catalog reads the ban table, admin form drops the field; (b) ignore the old flag | (a). The scraper already resets the flag on every run, so it is unreliable; the ban table becomes the only source | F2-a |
 | D-F2-3 | Is the catalog API public or for signed-in users? | P / U | U (as the Jinja catalog). `/meta/game` P (no user data; F5 public deck links need it) | F2-c, F2-d |
 | D-F2-4 | Base printing and tokens (design-handoff §10-8) | — | `is_base`: among the printings of a name, those with a purely numeric `card_id`; earliest set release (`rbset_outdat`, NULL last), then set id, then lowest number; if none is numeric, the first by the same order. Tokens (`supertype` Token) are shown and filterable; `exclude_supertype=Token` lets F3/F5 hide them | F2-b |
 | D-F2-5 | Which prices does the detail show (design-handoff §10-12)? | Low/Market/High (prototype) vs real columns | "Mercado" (resolved PRC-1 price, with its source), "Mín." (`low`), "Media 30 d" (`avg30`), "Mercado foil" when foilable; trend 7 d and 30 d of the market price. No "High" (Cardmarket has none) | F2-b, F2-f |
@@ -196,8 +210,7 @@ start as soon as b is merged (it codes against the `CardSummary` contract in `do
 | D-F2-8 | Offline depth | (a) cache what was viewed; (b) full catalog snapshot in IndexedDB with client-side filtering | (a) in F2; (b) only if the owner needs search offline (it duplicates the filter logic in TS) | F2-j |
 | D-F2-9 | Cache budgets (design-handoff §10-10) | — | API 300 entries / 14 days; thumbnails 2 500 / 60 days; full images 300 / 60 days; `purgeOnQuotaError` | F2-j |
 | D-F2-10 | Generate WebP thumbnails (adds Pillow)? | yes / no | Yes: a 48-tile page drops from ≈ 10 MB to < 1 MB and offline image caching becomes realistic | F2-l |
-| D-F2-11 | Sets nav entry | keep legacy / fold into the catalog | Keep `sets` legacy until F10 (it is mostly the admin editor); the catalog has the set facet | F2-h |
-| D-F2-12 | Spanish names of enum values; card text | — | Domains Furia, Calma, Mente, Cuerpo, Caos, Orden, Incoloro; types Leyenda, Unidad, Hechizo, Equipo, Runa, Campo de batalla; supertypes Campeón, Distintiva, Ficha, Básica; rarities Común, Infrecuente, Rara, Épica, Showcase — owner to correct with the official Spanish terms. Card names and abilities stay in English (data) | F2-e |
+| D-F2-11 | Sets nav entry | keep legacy / fold into the catalog | Keep `sets` legacy until the F13 catalog admin (it is mostly the admin editor); the catalog has the set facet | F2-h |
 | D-F2-13 | Catalog defaults | — | Grid view by default, last choice remembered per device (`rb_cards_view`); 48 per page (mobile fixed 48); sort `number` asc (set release order, then number) | F2-c, F2-h, F2-i |
 | D-F2-14 | Global search in the topbar | F2 / later | F2-k, visible ≥ 1240; "/" focuses it | F2-k |
 
@@ -214,8 +227,8 @@ start as soon as b is merged (it codes against the `CardSummary` contract in `do
   it. Do not "fix" it by reading the ban table into the column.
 - **Jinja coexistence**: the Jinja catalog stays U and working; its banned column switches to the ban table
   (F2-a). The collection add-picker (`/riftbound/collection/api/cards`) is untouched until F3.
-- **Price freshness**: no daily load yet (F4). `price_as_of` / `updated_on` let the UI show "Precios a
-  dd/mm"; trends are `null` when there is no row 7/30 days back.
+- **Price freshness**: the F4-b daily load runs before F2-b, so prices are fresh every day; `price_as_of` /
+  `updated_on` let the UI show "Precios a dd/mm"; trends are `null` when there is no row 7/30 days back.
 - **Image weight**: without F2-l the grid downloads 352×492 PNGs; tiles must lazy-load and set width/height.
 - **`in_decks`** reads the current deck JSON (`main` + `sideboard`, latest `seq` per name); F5 replaces the
   source when decks move to v2 (the field shape stays).

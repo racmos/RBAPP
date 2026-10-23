@@ -1,6 +1,6 @@
 # F9: Account — phase spec
 
-Status: planned · Depends on: F1 (shell, auth screens, prefs, API client); F4 scheduler only for F9-a purge and F9-k · Source: roadmap §5 (F9), §4, design-handoff §3.11, §3.12, §6-10..17, §7.2-V5..V7, §7.3-D4/D6, §7.6-L14, §9 F9, §10-2/3/4, product.md "Users, accounts and security" and "Scope by phase"
+Status: planned · Depends on: F1 (shell, auth screens, prefs, API client); F4 scheduler only for F9-a purge and F9-k · Order (`docs/knowledge/roadmap.md`): medium priority, before production; F9-f/F9-g (Google/Discord) are done just before production (F12); F10 user admin waits for F9 · Source: roadmap §5 (F9), §4, design-handoff §3.11, §3.12, §6-10..17, §7.2-V5..V7, §7.3-D4/D6, §7.6-L14, §9 F9, §10-2/3/4, product.md "Users, accounts and security" and "Scope by phase"
 
 ## Goal
 
@@ -57,6 +57,14 @@ verification, providers other than Discord/Google, currency/provider selector, p
 - The prototype's account data is client-only; everything becomes server state; API key server-generated,
   hashed, shown once (design-handoff §6-17).
 - `is_admin`/`is_blocked` are never changed by account endpoints (ACL-1/ACL-6).
+- Google/Discord login (owner, 2026-10-22): kept in F9 and done just before production; the owner creates
+  the OAuth apps following a step-by-step guide (`docs/oauth-setup.md`, F9-R22). The OAuth apps are an
+  owner input still pending, needed for F9-f.
+- Job runner (owner, 2026-10-22): F9's daily purges register job kinds on the F4-a runner; F9 builds no
+  runner of its own.
+- Tests (owner, 2026-10-22, unit M-a): each F9 unit writes its own tests and re-creates the removed guard of
+  the area it touches (migration round-trip + drift test, error-code catalog test, ES/EN parity, pin check
+  for new dependencies).
 
 ## Requirements
 
@@ -73,7 +81,7 @@ verification, providers other than Discord/Google, currency/provider selector, p
 - **F9-R5** `GET /me/sessions` lists active sessions (created, last seen, approximate IP = IPv4 /24 or IPv6
   /48 prefix, device label parsed from the User-Agent without a new dependency, auth method, remember,
   `current`). `DELETE /me/sessions/{id}` and `DELETE /me/sessions` (all except current).
-- **F9-R6** `flask sessions purge` deletes rows revoked or expired more than 30 days ago (daily timer, F4).
+- **F9-R6** `flask sessions purge` deletes rows revoked or expired more than 30 days ago (a job kind on the F4-a runner, enqueued daily).
 
 ### Re-authentication
 - **F9-R7** Sensitive actions (2FA setup/disable/regenerate, API key create, unlink a provider, password
@@ -162,10 +170,11 @@ verification, providers other than Discord/Google, currency/provider selector, p
 - **F9-R25** `POST /me/delete` (re-auth) sets `delete_after = now + 10 days` (server clock, design-handoff
   §7.6-L14), revokes other sessions, shows a global banner with "Cancelar"; `POST /me/delete/cancel`.
   Admins cannot schedule their own deletion (409 `admin_cannot_delete`).
-- **F9-R26** `flask users purge-deleted` (daily, F4 timer) deletes, in one transaction per user, every row
-  that references the user (collection and decks by username first — their FKs are RESTRICT — then sales,
-  events, results, saves, feeds, profile, prefs, sessions, 2FA, links, keys) and the avatar files, then the
-  user; logs counts only.
+- **F9-R26** `flask users purge-deleted` (a job kind on the F4-a runner, enqueued daily) deletes, in one
+  transaction per user, every row that references the user (collection and decks by username first — their
+  FKs are RESTRICT — then sales, profile, prefs, sessions, 2FA, links, keys and every other user table that
+  exists at the time) and the avatar files, then the user; logs counts only. Phases that land after F9
+  (F14 products, F15 rules, F8 events, results, saves, feeds) add their tables to the purge.
 
 ### UI, i18n, a11y, offline
 - **F9-R27** Account routes are URLs (`/account/:section`); mobile horizontal tabs, desktop sidebar
@@ -194,7 +203,8 @@ New environment variables (`.env.example`, `docs/`, validation): `TOTP_ENCRYPTIO
 `OAUTH_DISCORD_CLIENT_ID`, `OAUTH_DISCORD_CLIENT_SECRET`, `OAUTH_GOOGLE_CLIENT_ID`,
 `OAUTH_GOOGLE_CLIENT_SECRET`, `AVATAR_DIR`. New pinned dependencies (D-F9-10): Pillow (already present if
 F2-l card thumbnails shipped; otherwise added by F9-c), pyotp, segno (QR SVG), cryptography (Fernet),
-Authlib — each added in the unit that needs it, with `AGENTS.md` table and `tests/test_docs.py` kept in sync.
+Authlib — each added in the unit that needs it, with the `AGENTS.md` table updated and the pin check
+re-created (test policy of M-a).
 
 ## API
 
@@ -252,8 +262,8 @@ label above (unit requirements give the exact copy).
 | F9-c | Avatar | F9-b | ~400 | Risk: item 5 + item 2 (Pillow; untrusted image parsing) | Upload/delete/serve, `AVATAR_DIR`, error codes `image_invalid`, `file_too_large`. |
 | F9-d | TOTP enrolment | F9-a, F9-b | ~550 | Risk: item 2 + item 5 (secrets, new crypto deps) | `rbusermfa`, recovery codes, setup/enable/disable/regenerate, encryption key + config validation, QR SVG. |
 | F9-e | 2FA at sign-in | F9-d | ~550 | Risk: item 2 (every login path) | `{mfa_required}` step, `POST /auth/mfa`, lockout integration, Jinja login guard/redirect, SPA `/login/2fa` screen. |
-| F9-f | OAuth backend + owner guide | F9-a, F9-b, F9-e | ~600 | Risk: item 2 + item 5 (third-party auth; Authlib) | Start/callback, state + PKCE + nonce, link/unlink, sign-in, sign-up completion API, meta providers, `docs/oauth-setup.md`. |
-| F9-g | OAuth UI | F9-f | ~450 | Risk: none | Provider buttons on login/register, `/oauth/complete`, `oauth_error` mapping, connections card. |
+| F9-f | OAuth backend + owner guide (just before production) | F9-a, F9-b, F9-e, OAuth apps (owner, guided) | ~600 | Risk: item 2 + item 5 (third-party auth; Authlib) | Start/callback, state + PKCE + nonce, link/unlink, sign-in, sign-up completion API, meta providers, `docs/oauth-setup.md`. |
+| F9-g | OAuth UI (just before production) | F9-f | ~450 | Risk: none | Provider buttons on login/register, `/oauth/complete`, `oauth_error` mapping, connections card. |
 | F9-h | API key | F9-a | ~400 | Risk: item 2 (alternate authentication path) | `rbapikeys`, bearer `request_loader`, read-only + exclusions, rate limit, endpoints, docs. |
 | F9-i | Account shell + Profile UI | F9-b, F9-c | ~600 | Risk: none | `/account/:section` layout (tabs/sidebar), profile form, avatar upload, nav flip. |
 | F9-j | Security + API UI | F9-a, F9-d, F9-h, F9-i | ~600 | Risk: none | Password card, 2FA wizard, sessions list, re-auth dialog, API key card. |

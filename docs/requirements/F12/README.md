@@ -1,6 +1,6 @@
 # F12: Production — phase spec
 
-Status: planned · Depends on: F11 (feature complete, Jinja retired), F1-g (CSP report-only data), the timers of F4/F8/F9/F10 · Source: roadmap §2 ("Despliegue"), §5 (F12), §8, product.md ("There is no production yet", F12 scope), F0 follow-up 4.31 (state.md), `docs/frontend.md` and `docs/nginx_config` (items deferred to F12)
+Status: planned · Depends on: F11 without the new landing (feature complete, Jinja retired), F1-g (CSP report-only data), the job kinds and timers of F4/F9/F10/F13; M-c (host data out of tracked files) and M-d (card images out of git) · Order (`docs/knowledge/roadmap.md`): last of the medium-priority block, right after F9-f/F9-g (Google/Discord); F15, F5-k, F8 and the new landing (F11-a/F11-b) come after it · Source: roadmap §2 ("Despliegue"), §5 (F12), §8, product.md ("There is no production yet", F12 scope), F0 follow-up 4.31 (state.md), `docs/frontend.md` and `docs/nginx_config` (items deferred to F12)
 
 This is an operations phase. Requirements are grouped by concern; code and documentation work is cut into
 units for gentle-shell; steps that only the owner can do (accounts, DNS, servers, firewall, proxy, legal
@@ -23,8 +23,9 @@ licensing/privacy review. Optionally carry over the owner's data and the curated
   timeout (30 s), user `www-data`, `EnvironmentFile=/etc/riftbound/riftbound.env` (mode 640).
 - **Proxy template** `docs/nginx_config`: HTTP→HTTPS redirect, `limit_req_zone rb_auth` (20 r/min, burst 10)
   for POSTs to login/register/API auth, `X-Frame-Options`, `nosniff`, proxy headers required by ProxyFix
-  (1 hop) and the CSRF Referer check; HSTS and gzip only as comments. **It contains the real dev domain and
-  certificate paths**, which AGENTS.md forbids in tracked files (fix in F12-f).
+  (1 hop) and the CSRF Referer check; HSTS and gzip only as comments. It contained the real dev domain and
+  certificate paths, which AGENTS.md forbids in tracked files; unit M-c removes them (and every private IP
+  or dev domain in tracked files) long before F12, without rewriting history.
 - **Config** (`config.py`, `.env.example`): `RB_ENV` defaults to production; `SECRET_KEY` (≥ 32, deny-list),
   `DATABASE_URL` required; DEBUG refused in production; cookies Secure in production; `RATELIMIT_STORAGE_URI`
   default `memory://` (per worker — the global limit is Nginx); `RB_VERSION` reported by `GET /health`
@@ -39,7 +40,8 @@ licensing/privacy review. Optionally carry over the owner's data and the curated
   `release.yml` (manual tag + GitHub release, no artifacts).
 - **Logging**: Flask's default logger to stderr (journald); no request id, no structured format.
 - **Data on disk**: card images under `app/static/images/cards/` inside the checkout (about 377 files tracked
-  in git, more written by the Riot scraper); avatars under `AVATAR_DIR` (F9).
+  in git, more written by the Riot scraper). Unit M-d moves them to a data directory outside the code tree
+  and stops tracking them in git (copy first; no history rewrite) before F13. Avatars under `AVATAR_DIR` (F9).
 - **Open F0 follow-up 4.31**: live Nginx `limit_req` burst test and LOGIN-5 timing sample (state.md).
 
 ## Scope
@@ -64,6 +66,19 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
 - PWA identity: manifest id/scope `/riftbound/`, start URL `/riftbound/app/`, worker scope `/riftbound/app/`,
   update prompt, rollback by self-destroying build (product.md "PWA").
 - gentle-shell never changes the proxy, firewall or other hosts, never prints secrets (ops-runbook "Never").
+- **D-F12-8** (owner, 2026-10-22): card images live in a data directory outside the code tree and are no
+  longer tracked in git; done early by unit M-d (copy first: removing them from the index would delete them
+  from the deployed checkout on the next pull), not in F12.
+- Repo history (owner, 2026-10-22): private IPs and the dev domain are removed from files only (M-c); history
+  is not rewritten (no secret was committed that is still valid).
+- Google/Discord login (owner, 2026-10-22): F9-f/F9-g are done just before production; the owner creates the
+  OAuth apps following the step-by-step guide.
+- Order (owner, 2026-10-22): after production come the Rules app (F15), opening hands / mulligan (F5-k) and
+  events (F8) with the new landing (F11-a/F11-b); production runs with the current draft landing (D-F11-12).
+- Job runner (owner, 2026-10-22): every scheduled job is a kind on the F4-a runner; F12 adds heartbeats and
+  alerts, not new runners.
+- Tests (owner, 2026-10-22, unit M-a): each F12 unit writes its own tests and re-creates the removed guard of
+  the area it touches.
 
 ## Requirements
 
@@ -74,7 +89,8 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
 - **F12-R2** Firewall: only 80/443 public; SSH key-only from restricted sources; PostgreSQL listens on
   localhost only; Gunicorn binds `127.0.0.1` or a unix socket when Nginx is on the same host (USER).
 - **F12-R3** The app runs as a dedicated system user; the code tree is read-only for it; writable data
-  directories are explicit (avatars, card images, frontend dist if built there, backups) — D-F12-8.
+  directories are explicit (avatars, card images in M-d's data directory, frontend dist if built there,
+  backups).
 
 ### TLS and proxy
 - **F12-R4** Certificates by certbot with automatic renewal; TLS 1.2+; HTTP→HTTPS 301; HSTS
@@ -83,8 +99,9 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
   certificate paths built from it): gzip for text/JS/CSS/JSON/SVG/manifest, `client_max_body_size 3m`
   (avatars/images ≤ 2 MB), `proxy_read_timeout 60s`, `limit_req` zones for auth POSTs (existing), OAuth
   start/callback, `POST /auth/mfa`, API-key requests and the ICS feed; a log format that drops query
-  strings on `/riftbound/auth/oauth/` and masks the feed token path. `tests/test_nginx_config_doc.py` keeps
-  checking the required directives.
+  strings on `/riftbound/auth/oauth/` and masks the feed token path (once F8 adds the feed). F12-f
+  re-creates a test that checks the required directives (the old `tests/test_nginx_config_doc.py` was
+  removed by M-a).
 - **F12-R6** The ProxyFix hop count matches the real topology (1 when Nginx is local); the proxy keeps
   `Host`, `X-Forwarded-For`, `X-Forwarded-Proto` and never strips `Referer` (CSRF check, AGENTS.md).
 
@@ -130,8 +147,9 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
 ### Monitoring and alerting
 - **F12-R18** External uptime check of `GET /riftbound/api/v1/health` every 5 min (USER configures the
   service, D-F12-5).
-- **F12-R19** Every scheduled job (Cardmarket load, value snapshot, push/watchlist, event import and
-  reminders, sessions purge, account purge, jobs runner, backup, restore check) pings a heartbeat on success
+- **F12-R19** Every scheduled job (Cardmarket load and its 08:00 retry, Riot sync (F13), value snapshot,
+  push/watchlist, sessions purge, account purge, jobs runner, backup, restore check; event import and
+  reminders when F8 lands after production) pings a heartbeat on success
   and its systemd unit has `OnFailure=` → an alert unit that posts job name, host alias and time to the alert
   webhook (no secrets, no log excerpts with personal data).
 - **F12-R20** Daily checks with alerts: disk usage > 80 %, certificate expiry < 14 days, newest backup older
@@ -139,8 +157,8 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
 
 ### Security headers and CSP
 - **F12-R21** `SPA_CSP` accepts `enforce` (sends `Content-Security-Policy`) besides `report-only` and `off`;
-  production uses `enforce` after a clean report-only period on dev (F1-g follow-up); the landing entry and
-  the standalone error pages carry the same policy; the policy keeps `worker-src blob: data:` (ALTCHA) and
+  production uses `enforce` after a clean report-only period on dev (F1-g follow-up); the standalone error
+  pages carry the same policy, and the new landing entry ships with it when F11-b lands after production; the policy keeps `worker-src blob: data:` (ALTCHA) and
   allows nothing external.
 - **F12-R22** All HTML responses: `X-Content-Type-Options: nosniff`, `Referrer-Policy:
   strict-origin-when-cross-origin`, `Permissions-Policy` (camera, microphone, geolocation off), framing
@@ -171,7 +189,7 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
 ### Data and legal
 - **F12-R29** Data carried from dev (D-F12-6) only through tested export/import commands: curated Cardmarket
   data (`rbcm_product_card_map`, `rbcm_ignored`, `rbcm_expansions`, `rbproducts`), and optionally the owner's
-  collection, decks, sales and events. Catalog rebuilt by the Riot scraper job; prices by the Cardmarket job.
+  collection, decks and sales. Catalog rebuilt by the Riot sync job (F13); prices by the Cardmarket job.
 - **F12-R30** `docs/licensing.md`: fonts (OFL, licence files shipped with the build), third-party licences
   (from F11's generated list), Riot IP (card images, map background, names) under Riot's fan-content policy
   (free, no paywall, disclaimer from F11), Cardmarket price-guide terms, scraped sources and their terms,
@@ -186,7 +204,8 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
 - **F12-R32** Go-live checklist executed and recorded in `state.md`: all units merged; dev staging green;
   production smoke checks; 4.31 burst test; PWA device checklist (Android, iOS, desktop) on the final URL;
   push test; OAuth sign-in with both providers; 2FA sign-in; restore drill done once; Lighthouse on the
-  landing and the app; alerts tested by forcing one job failure.
+  app (the new landing is measured by F11-b after production); the landing decision D-F11-12 applied; alerts
+  tested by forcing one job failure.
 
 ## Data model changes
 
@@ -200,8 +219,8 @@ None planned. The production database is built by the existing revisions. Option
 | File | `gunicorn.conf.py` | Server settings (F12-R7). |
 | File | `docs/nginx_config` | Generic production proxy template (F12-R5). |
 | Files | `scripts/deploy.sh`, `scripts/backup.sh`, `scripts/restore-check.sh`, `scripts/check-host.sh` | Deploy, backup, restore drill, disk/cert/backup-age checks. |
-| Units | `riftbound.service`, `riftbound-backup.{service,timer}`, `riftbound-restore-check.{service,timer}`, `riftbound-alert@.service`, the job timers of F4/F8/F9/F10 | systemd templates in `docs/systemd/`. |
-| Env | `SPA_CSP=enforce`, `ALERT_WEBHOOK_URL`, `HEARTBEAT_URL_<JOB>`, `BACKUP_DIR`, `BACKUP_REMOTE`, `BACKUP_ENCRYPTION_RECIPIENT`, `RB_VERSION`, `CARD_IMAGES_DIR` (if D-F12-8) | Documented in `.env.example` / `docs/production.md`. |
+| Units | `riftbound.service`, `riftbound-backup.{service,timer}`, `riftbound-restore-check.{service,timer}`, `riftbound-alert@.service`, the job timers of F4/F9/F10/F13 (F8's after production) | systemd templates in `docs/systemd/`. |
+| Env | `SPA_CSP=enforce`, `ALERT_WEBHOOK_URL`, `HEARTBEAT_URL_<JOB>`, `BACKUP_DIR`, `BACKUP_REMOTE`, `BACKUP_ENCRYPTION_RECIPIENT`, `RB_VERSION`; the card-image directory variable comes from M-d | Documented in `.env.example` / `docs/production.md`. |
 | CLI | `flask data export` / `import` (F12-i, optional) | Carry curated/owner data from dev. |
 | Pages | `/riftbound/app/legal/privacy`, `/riftbound/app/legal/terms` (P) | F12-R31. |
 
@@ -228,12 +247,12 @@ None planned. The production database is built by the existing revisions. Option
 | ID | Title | Depends on | Size | Risk | Summary |
 |---|---|---|---|---|---|
 | F12-a | Server config + logging | F11 | ~450 | Risk: item 5 + item 2 (runtime config; log redaction) | `gunicorn.conf.py`, request-id + redacted logging, security headers, `validate_settings` production checks, `.env.example`, unit template. |
-| F12-b | CSP enforcing | F1-g, F11-b | ~300 | Risk: item 2 (a wrong policy breaks the app) | `SPA_CSP=enforce`, policy on landing and error pages, tests per entry, docs. |
+| F12-b | CSP enforcing | F1-g | ~300 | Risk: item 2 (a wrong policy breaks the app) | `SPA_CSP=enforce`, policy on the app and the error pages (the new landing adopts it in F11-b), tests per entry, docs. |
 | F12-c | Release artifacts + deploy script | F12-a | ~550 | Risk: item 5 (delivery pipeline) | `release.yml` artifact + checksum, `scripts/deploy.sh` (dry-run/apply/rollback, atomic swap, smoke checks), docs. |
 | F12-d | Backups + restore check | F12-a | ~450 | Risk: item 1 + item 6 (data safety; off-site copy only testable live) | Backup/restore scripts, systemd templates, retention, encryption hook, docs. |
 | F12-e | Monitoring + alerting | F12-d | ~400 | Risk: item 6 (alert delivery needs a live channel) | Heartbeats, `OnFailure` alert unit, `check-host.sh`, docs. |
-| F12-f | Production proxy template + runbook | F12-a | ~400 | Risk: item 5 (proxy config consumed by the owner) | Generic `nginx_config` (no domain), zones, gzip, log masking, HSTS; `docs/production.md` provisioning/secrets/go-live sections. |
-| F12-g | Data directories out of the code tree | F11, D-F12-8 | ~400 | Risk: item 1 + item 3 (moves files; image URLs used by the SW cache) | `CARD_IMAGES_DIR` (full images and F2-l thumbnails `app/static/images/card-thumbs/`), serving route or Nginx alias, scraper/upload/thumbnail writers use it, move script, stop tracking images in git (no history rewrite). |
+| F12-f | Production proxy template + runbook | F12-a | ~400 | Risk: item 5 (proxy config consumed by the owner) | Production `nginx_config` template with placeholders only (M-c already removed the dev domain), zones, gzip, log masking, HSTS; `docs/production.md` provisioning/secrets/go-live sections. |
+| F12-g | Moved to unit M-d | — | — | — | Card images out of git into a data directory outside the code tree is done early by M-d (owner, 2026-10-22); F12 only provisions that directory on the production host (F12-R3) and backs it up (F12-R16). |
 | F12-h | Licensing + privacy pages | F11-c | ~400 | Risk: item 6 (legal review is human) | `docs/licensing.md`, legal pages (ES/EN, owner texts), font licence files in the build. |
 | F12-i | Data export/import (optional) | F12-c, D-F12-6 | ~450 | Risk: item 1 (writes production data) | `flask data export` / `import` for curated Cardmarket tables and one user's data, idempotent, dry-run, tests on SQLite + PostgreSQL. |
 | F12-j | Go-live record | all above + USER steps | ~150 | Risk: item 6 (live checks) | Run and record the go-live checklist, 4.31, PWA/push/OAuth checks; update `state.md`, `roadmap.md`. |
@@ -249,7 +268,6 @@ None planned. The production database is built by the existing revisions. Option
 | D-F12-5 | Monitoring and alert channel | external uptime + heartbeat service / self-hosted; Discord webhook / phone push | Free external uptime + heartbeat service, alerts to a private Discord webhook | F12-e |
 | D-F12-6 | Data from dev | fresh / curated Cardmarket data + owner's data / full copy | Fresh catalog and prices; carry curated Cardmarket mappings and, if wanted, the owner's data; no other dev accounts | F12-i |
 | D-F12-7 | Privacy notice and terms | owner writes / planner drafts for approval | Planner drafts from the data inventory, owner approves; contact channel chosen by the owner | F12-h |
-| D-F12-8 | Card images location (and committed images) | in the code tree (today) / data directory | Data directory outside the code tree; stop tracking images in git | F12-g |
 | D-F12-9 | OAuth apps | separate production apps / add production redirect URIs to dev apps | Separate production apps (separate secrets) | F12-j |
 | D-F12-10 | VAPID keys | new for production / reuse dev | New (subscriptions are per origin anyway) | F12-j |
 | D-F12-11 | Where the frontend is built | CI release artifact / on the server | CI artifact (no Node on production) | F12-c |
@@ -262,14 +280,15 @@ None planned. The production database is built by the existing revisions. Option
 
 ## Risks and notes
 
-- **Long requests**: F10 moves Cardmarket/Riot work to the job runner; if not, a 60 s timeout will cut them.
+- **Long requests**: Cardmarket work (F4-b, F10-d) and the Riot sync (F13) run on the F4-a job runner; anything
+  left inside a request is cut by the 60 s timeout.
 - **Per-worker limits**: with `memory://`, app limits multiply by the worker count; the Nginx zones are the
   real global limit (keep them stricter than the app's).
 - **Secrets hygiene**: the dev git history contains old credentials that were rotated (F0); production uses
   new values only. Never reuse dev keys.
-- **Tracked files with host data**: the dev Nginx template (`docs/nginx_config`) and the archived F0 tasks
-  contain the dev domain; F12-f makes the template generic (the archive stays as history unless the owner
-  wants it scrubbed).
+- **Tracked files with host data**: M-c removes the dev domain and private IPs from tracked files (the dev
+  Nginx template and the archived F0 tasks included); history is not rewritten (owner, 2026-10-22). F12-f
+  turns the template into the production one, with placeholders only.
 - **PWA origin change**: dev installs keep pointing at dev; announce the new URL; consider the self-destroying
   build on dev once production is live if dev must stop being used by real users.
 - **Legal**: Riot IP use is allowed only for free fan content with the disclaimer; any monetisation is out.

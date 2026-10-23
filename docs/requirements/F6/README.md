@@ -1,5 +1,5 @@
 # F6: Stats — phase spec
-Status: planned · Depends on: F3 (collection read model, purchase price), F4 (value snapshots, `ValueChart`, `KpiCard`), F5 (`Donut`, `MiniCurve`) · Source: roadmap §5 (F6), design-handoff §2.4 (Donut, Bars), §3.10, §3.13, §6-6, §7.6 L1/L2/L6, §9 (F6), `docs/knowledge/product.md` "Scope by phase"
+Status: planned · Depends on: F3 (collection read model, purchase price), F4 (value snapshots, `ValueChart`, `KpiCard`), F5 (`Donut`, `MiniCurve`) · Order (`docs/knowledge/roadmap.md`): medium priority, before production · Source: roadmap §5 (F6), design-handoff §2.4 (Donut, Bars), §3.10, §3.13, §6-6, §7.6 L1/L2/L6, §9 (F6), `docs/knowledge/product.md` "Scope by phase"
 
 ## Goal
 
@@ -33,6 +33,9 @@ stats.
 - Charts need a text alternative and never rely on colour alone (design-handoff §7.4 A13).
 - Prices: PRC-1 market unit price × quantity, EUR.
 - New tables, if any, reference `rbusers.id`; migrations take the next free revision numbers (none expected).
+- Products (owner, 2026-10-22): sealed products (F14) have their own "products" total, never added to the
+  cards' collection value; every figure here covers cards only.
+- Tests (owner, 2026-10-22, unit M-a): each F6 unit writes its own tests (ES/EN parity for the new strings).
 
 ## Requirements
 

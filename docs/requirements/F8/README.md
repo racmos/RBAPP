@@ -1,6 +1,6 @@
 # F8: Events — phase spec
 
-Status: planned · Depends on: F4 (scheduler, Web Push, notification preferences), F5 (decks v2 ids for "deck played"); optional F9 (profile country for "near me") · Source: roadmap §5 (F8), design-handoff §3.1 (EventDTO), §3.8, §3.12, §5.6, §6-18/19/29, §7.2-V4, §7.3-D3, §7.6-L8, §9 F8, §10-5, product.md "Scope by phase"
+Status: planned · Depends on: F4 (scheduler, Web Push, notification preferences), F5 (decks v2 ids for "deck played"); optional F9 (profile country for "near me") · Order (`docs/knowledge/roadmap.md`): after production (F12), after F15 (Rules app) and F5-k; the new landing (F11-a/F11-b) is built with it · Source: roadmap §5 (F8), design-handoff §3.1 (EventDTO), §3.8, §3.12, §5.6, §6-18/19/29, §7.2-V4, §7.3-D3, §7.6-L8, §9 F8, §10-5, product.md "Scope by phase"
 
 ## Goal
 
@@ -33,14 +33,16 @@ In:
 - Events data (manual + scraped), saves ("my calendar"), results + deck played, per-deck stats.
 - Manual events CRUD with visibility `private` / `public`; owner-only edits; `hidden` flag for admin moderation
   (the admin UI is F10).
-- Scraper import job (`flask events import`) run by the F4 scheduler; one real source behind an adapter.
+- Scraper import job (`flask events import`) run by the F4 scheduler; first source: the upcoming-events
+  calendar of the official site, behind an adapter; past events only when a source exists.
 - ICS: one event, all saved events, subscribable feed with a revocable token; Google Calendar link.
 - Push reminders for saved events (job + preference), reusing F4.
 - Events UI: Upcoming, History, My calendar, add/edit dialog, result dialog, month view on desktop.
 
 Out:
 - Registration/payment for events, attendee lists, chat. Geolocation by distance (country/city only).
-- Admin moderation screens (F10). Showing events on the public landing (F11 decides).
+- Admin moderation screens (F10). The new public landing that shows events is F11-a/F11-b, built with the
+  events work right after F8.
 - Importing tournament standings/winners unless the chosen source provides them (D-F8-7).
 
 ## Decisions already taken
@@ -54,6 +56,14 @@ Out:
 - Edits need a connection; offline is read-only (product.md "Offline").
 - Push on iOS only with the PWA on the home screen, iOS 16.4+ (product.md "Platform notes").
 - Scheduled work = Flask CLI + systemd timer, no Celery/Redis (cross-phase contract, F4).
+- **D-F8-1** (owner, 2026-10-22): events come after production and after the Rules app (F15). F8 starts with
+  an upcoming-events calendar scraped from the official site; past events are added when a source exists.
+- Landing (owner, 2026-10-22): the current landing is a draft with placeholder content; it is rebuilt with
+  the events work (F11-a/F11-b move next to F8).
+- Job runner (owner, 2026-10-22): F8's import and reminder jobs register job kinds on the F4-a runner
+  (`rbjobs` + `flask jobs run-pending`); F8 builds no runner of its own.
+- Tests (owner, 2026-10-22, unit M-a): each F8 unit writes its own tests and re-creates the removed guard of
+  the area it touches (migration round-trip + drift test, error-code catalog test, ES/EN parity).
 
 ## Requirements
 
@@ -189,7 +199,7 @@ i18n namespace `events` (≈ 120 keys) + `enums.event_type.*`, `enums.event_visi
 | F8-a | Events model + read API | F2-b (`/meta/game`) | ~450 | Risk: item 1 (new tables, CHECKs) | Migration `rbevents` + `rbeventsaves`, visibility rules, `GET /events`, `GET /events/{id}`, enums in meta, authz rows. |
 | F8-b | Manual events + saves | F8-a | ~450 | Risk: item 2 (ownership and visibility checks) | `POST/PATCH/DELETE /events`, validation, per-user rate limit for public events, save/unsave, error code `event_read_only`. |
 | F8-c | ICS + feed | F8-b | ~400 | Risk: item 2 (token-authorised public URL) | `services/ics.py`, `/events/{id}.ics`, `/me/calendar.ics`, feed table + token rotate/revoke + public feed route. |
-| F8-d | Scraper import job | F8-a, F4 scheduler | ~450 | Risk: item 6 (live source format only testable with fixtures) | `EventSource` adapter for the chosen source (D-F8-1), `flask events import`, missing-run cancellation, systemd unit/timer doc in the runbook. |
+| F8-d | Scraper import job | F8-a, F4 scheduler | ~450 | Risk: item 6 (live source format only testable with fixtures) | `EventSource` adapter for the official site's upcoming-events calendar, `flask events import`, missing-run cancellation, systemd unit/timer doc in the runbook. |
 | F8-e | Results + stats API | F8-a, F5 decks | ~400 | Risk: item 3 (consumes F5 deck ids/ownership) | Migration `rbeventresults`, `PUT/DELETE /events/{id}/result`, `GET /events/stats`, `event_not_started`. |
 | F8-f | Events UI: upcoming + forms | F8-b, F8-c | ~600 | Risk: none | Route + tabs, filters (sheet/panel), `EventCard`, save, GCal/ICS buttons, add/edit/delete dialogs, nav flip `events` → `spa`. |
 | F8-g | Events UI: calendar, history, results | F8-e, F8-f | ~600 | Risk: none | My calendar (+ feed card), history list/table, result dialog, KPIs, month view, wide rail. |
@@ -199,7 +209,6 @@ i18n namespace `events` (≈ 120 keys) + `enums.event_type.*`, `enums.event_visi
 
 | ID | Question | Options | Recommendation | Blocks |
 |---|---|---|---|---|
-| D-F8-1 | Which source(s) does the scraper import, and is it allowed (terms, robots)? | store locator used today / another official calendar / none (manual only) | One source that exposes structured data with real dates; owner confirms it and its terms. Without one, ship F8 with manual events only and keep F8-d pending | F8-d |
 | D-F8-2 | Event types (design-handoff §10-5) | prototype 6 (`regional, national, skirmish, nexus, store, online`) / source categories | Prototype 6 with a mapping table from the source; unknown → `store` or `online` | F8-a |
 | D-F8-3 | Reminder offsets and default | 24 h + 2 h, on by default for saved events / opt-in | 24 h + 2 h, on when the user enabled push | F8-h |
 | D-F8-4 | "Deck played" target | F5 deck identity / a specific version | The id F5 exposes as stable deck id; snapshot the deck name (and version number if F5 keeps versions) | F8-e |
@@ -215,11 +224,14 @@ i18n namespace `events` (≈ 120 keys) + `enums.event_type.*`, `enums.event_visi
 ## Risks and notes
 
 - **Placeholders**: the landing scraper invents tournaments. F8 must not reuse those functions for import;
-  F11 decides whether the landing shows real `rbevents` instead (cross-phase).
+  the new landing (F11-a/F11-b, built with F8) decides how it shows real `rbevents` (cross-phase).
+- **Source terms**: F8-d checks the official site's terms and robots rules before the first live run; if they
+  forbid scraping, F8 ships with manual events only and F8-d stays pending.
 - **Time zones**: store UTC + IANA zone; `zoneinfo` needs the system tz database on the server (present on
   Linux; Windows dev would need `tzdata`). DST edge cases need tests (an event at 02:30 local on a DST day).
 - **Push dependency**: if F4 slips, F8-a..g ship without reminders; F8-h waits.
-- **Profile dependency**: F9 comes after F8; "near me" is a follow-up toggle (cross-phase).
+- **Profile dependency**: F9 now lands before production, so before F8; "near me" can use the profile
+  country from the start (D-F8-6).
 - **Moderation**: F8 adds `hidden`; F10 adds the admin endpoints/UI. Until F10, the owner hides an event
   with SQL only in an emergency — add a tiny CLI `flask events hide <id> [--reason]` in F8-b if the owner
   wants it before F10 (cheap).

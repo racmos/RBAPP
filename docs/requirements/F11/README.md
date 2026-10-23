@@ -1,13 +1,14 @@
 # F11: Close — phase spec
 
-Status: planned · Depends on: F2-F10 (every module migrated to the app and its nav entry flipped to `spa`); F1-g (axe sweep, CSP report-only) · Source: roadmap §5 (F11), design-handoff §3.12, §7 (gaps, esp. §7.4 a11y and §7.5 R10), §8, §9 F11, §10-13, product.md "Coexistence" and "Scope by phase", F1 design D19/D26
+Status: planned · Depends on: F2-F7, F9, F10 (every module migrated to the app and its nav entry flipped to `spa`; F8 has no Jinja page); F1-g (axe sweep, CSP report-only) · Order (`docs/knowledge/roadmap.md`): medium priority, before production, **without the new landing**; F11-a/F11-b run after production together with F8 (events) · Source: roadmap §5 (F11), design-handoff §3.12, §7 (gaps, esp. §7.4 a11y and §7.5 R10), §8, §9 F11, §10-13, product.md "Coexistence" and "Scope by phase", F1 design D19/D26
 
 ## Goal
 
-Finish the migration: the public landing `/` gets the new visual style and an "install the app" call to
-action, every Jinja page is retired (old URLs redirect to the app), the app passes an accessibility audit
-against the design-handoff checklist and a performance pass, documentation is final, and the Riot
-fan-content disclaimer is visible. After F11 the product is feature-complete for production (F12).
+Finish the migration: every Jinja page is retired (old URLs redirect to the app), the app passes an
+accessibility audit against the design-handoff checklist and a performance pass, documentation is final,
+and the Riot fan-content disclaimer is visible. After F11 the product is feature-complete for production
+(F12). The new public landing `/` (new visual style, "install the app" call to action, real content) is
+built after production with the events work (F11-a/F11-b next to F8; owner, 2026-10-22).
 
 ## Current state
 
@@ -24,8 +25,8 @@ fan-content disclaimer is visible. After F11 the product is feature-complete for
   `cards_bp`, `collection_bp`, `deck_bp`, `price_bp`, `profile_bp` with pages and legacy JSON endpoints
   (`{"success": …}` without the v1 envelope). Flask-Login `login_view = 'auth.login'` (Jinja form).
 - **Coexistence tooling**: nav registry entries with `status: 'legacy'` (`frontend/src/shell/navRegistry.ts`),
-  `frontend/src/shell/legacy-routes.json` checked by `tests/test_frontend_contracts.py::TestLegacyRoutes`;
-  `base.html` links to "Nueva app"; `tests/test_shell_coexistence.py`.
+  `frontend/src/shell/legacy-routes.json` (its old check against the Flask `url_map` was removed by M-a; a
+  unit that adds a legacy link re-creates it); `base.html` links to "Nueva app".
 - **Errors**: `app/errors.py` renders `errors/*.html` for HTML clients (they extend the Jinja layout).
 - **a11y / perf tooling**: Vitest + `vitest-axe` component tests (F1; F1-g sweeps every route); no browser
   E2E (F1 D26 deferred it to F11); Lighthouse not automated; `check:dist` validates the PWA build.
@@ -35,8 +36,8 @@ fan-content disclaimer is visible. After F11 the product is feature-complete for
 ## Scope
 
 In:
-- New landing at `/` (design tokens, brand, install CTA, real content only, disclaimer, SEO basics).
-- JSON feeds for the landing; removal of placeholder data.
+- After production, with F8: new landing at `/` (design tokens, brand, install CTA, real content only,
+  disclaimer, SEO basics); JSON feeds for the landing; removal of placeholder data (F11-a, F11-b).
 - Retirement of every Jinja page and legacy JSON endpoint, with a redirect map for old URLs.
 - Standalone HTML error pages; login redirects to the app.
 - Browser E2E + axe harness in CI; a11y audit against design-handoff §7.4 with fixes and a report.
@@ -56,10 +57,14 @@ Out:
   `backdrop-filter` and images (design-handoff §7.5-R10, §9 F11).
 - PWA scope `/riftbound/`, worker scope `/riftbound/app/`, start URL `/riftbound/app/` (product.md "PWA").
 - No design exists for the landing: build from tokens and review with the owner (design-handoff §3.12, §10-13).
+- Landing (owner, 2026-10-22): the current landing is a draft with placeholder content; it is rebuilt with
+  the events work after production, so F11-a/F11-b move next to F8. The rest of F11 stays before production.
+- Tests (owner, 2026-10-22, unit M-a): each F11 unit writes its own tests and re-creates the removed guard of
+  the area it touches.
 
 ## Requirements
 
-### Landing
+### Landing (after production, with F8)
 - **F11-R1** `GET /` serves the new landing (D-F11-1) with the app's fonts, tokens, background and brand;
   sections: hero (name, one-line pitch, buttons **Abrir la app** → `/riftbound/app/` and **Instalar la
   app** → `/riftbound/app/?install=1`), feature tiles (catálogo, colección, mazos, precios, eventos, ventas),
@@ -97,7 +102,8 @@ Out:
 - **F11-R11** Removed: Jinja templates and static assets only they used (`style.css`, `csrf.js`, vendored
   ALTCHA if nothing else loads it; the Python `altcha` pin stays for the server), `legacy-routes.json`, the
   `legacy` nav status and its tests; `tests/test_authz_matrix.py` lists only live rules; a redirect-map test
-  replaces `TestLegacyRoutes`. `AGENTS.md`/`README.md` lose the Jinja sections.
+  replaces the legacy-routes check. `AGENTS.md`/`README.md` lose the Jinja sections. The old landing
+  (`landing_bp`, its templates, partials and frames) stays until F11-b replaces it after production.
 - **F11-R12** The installed PWA keeps working: legacy URLs opened inside the installed window land in the app
   (manifest scope `/riftbound/` covers the redirects).
 
@@ -118,13 +124,13 @@ Out:
   intrinsic size, lazy loading and the F2 derivatives.
 - **F11-R18** Backend: query-count tests on the 10 busiest list endpoints; `EXPLAIN` review on PostgreSQL with
   any missing index added by a migration.
-- **F11-R19** Lighthouse (mobile) recorded in `docs/frontend.md` for landing, login, home, catalog,
-  collection, deck editor: Performance ≥ 85 (landing ≥ 90), Accessibility 100, Best Practices ≥ 95, SEO ≥ 90
-  on the landing (D-F11-5).
+- **F11-R19** Lighthouse (mobile) recorded in `docs/frontend.md` for login, home, catalog, collection, deck
+  editor (F11-i): Performance ≥ 85, Accessibility 100, Best Practices ≥ 95; the new landing is measured by
+  F11-b after production: Performance ≥ 90, SEO ≥ 90 (D-F11-5).
 
 ### About, disclaimer, docs
-- **F11-R20** Riot disclaimer (D-F11-6) on the landing footer, the login/register screens and
-  `/riftbound/app/about`. English text verbatim plus a Spanish translation:
+- **F11-R20** Riot disclaimer (D-F11-6) on the login/register screens and `/riftbound/app/about` (F11-c),
+  and on the new landing footer (F11-b, after production). English text verbatim plus a Spanish translation:
   "Rift Manager isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
   officially involved in producing or managing Riot Games properties. Riot Games, and all associated
   properties are trademarks or registered trademarks of Riot Games, Inc." The owner checks the current
@@ -139,7 +145,7 @@ Out:
 ## Data model changes
 
 None required. Optional `00xx_legacy_cleanup` (D-F11-9): drop columns proven unused (candidates:
-`rbcar_banned` after F2's ban table, legacy selling/playset columns if F3 replaced them, legacy deck fields
+`rbcar_banned` after F2's ban table, `rbcol_playset` (replaced in F3) and other legacy selling columns, legacy deck fields
 if F5 migrated them). Downgrade re-creates the columns empty, so it needs a backup and owner approval.
 Indexes from F11-R18 come as their own small revision. Risk: item 1.
 
@@ -172,10 +178,10 @@ States: live blocks with skeleton, hidden when empty or on error. i18n: namespac
 
 | ID | Title | Depends on | Size | Risk | Summary |
 |---|---|---|---|---|---|
-| F11-a | Public feeds API | F8-a | ~400 | Risk: item 3 (LAND-1 contract changes; landing consumers) | `/public/feeds/*`, placeholder removal, events feed from `rbevents`, spec LAND-1 updated. |
-| F11-b | New landing | F11-a | ~600 | Risk: item 5 (second Vite entry, check-dist, Flask serving `/`) | Landing entry, install CTA + `?install=1`, disclaimer, SEO, robots, removal of old landing and frames. |
-| F11-c | About + licences | F11-b | ~400 | Risk: item 5 (licence tooling at build time) | About page, generated licence list, disclaimer in auth screens, help section. |
-| F11-d | Retire Jinja: user modules | F2-F9 flipped | ~550 | Risk: item 2 + item 3 (login redirect; bookmarks/installed apps) | Redirect map, `login_view` to the app, standalone error pages, removal of user-module templates/routes, matrix + tests. |
+| F11-a | Public feeds API (after production, with F8) | F8-a | ~400 | Risk: item 3 (LAND-1 contract changes; landing consumers) | `/public/feeds/*`, placeholder removal, events feed from `rbevents`, spec LAND-1 updated. |
+| F11-b | New landing (after production, with F8) | F11-a | ~600 | Risk: item 5 (second Vite entry, check-dist, Flask serving `/`) | Landing entry, install CTA + `?install=1`, disclaimer, SEO, robots, removal of old landing and frames. |
+| F11-c | About + licences | F1 (shell) | ~400 | Risk: item 5 (licence tooling at build time) | About page, generated licence list, disclaimer in auth screens, help section. |
+| F11-d | Retire Jinja: user modules | F2-F7, F9 flipped | ~550 | Risk: item 2 + item 3 (login redirect; bookmarks/installed apps) | Redirect map, `login_view` to the app, standalone error pages, removal of user-module templates/routes, matrix + tests. |
 | F11-e | Retire Jinja: admin + leftovers | F10 done, F11-d | ~450 | Risk: item 3 (removing legacy endpoints) | Remove `price_bp`, `price.html`, base layout, static/vendor leftovers, `legacy` nav status, `legacy-routes.json`, docs. |
 | F11-f | Legacy schema cleanup (optional) | F11-e, D-F11-9 | ~250 | Risk: item 1 (drops columns) | One reversible revision dropping columns proven unused; backup-first deploy. |
 | F11-g | E2E + axe harness | F11-d | ~600 | Risk: item 5 (new CI job and dev dependencies) | Playwright + axe, seeded SQLite command, CI job, route matrix at 2 widths × 2 roles. |
@@ -198,6 +204,7 @@ States: live blocks with skeleton, hidden when empty or on error. i18n: namespac
 | D-F11-9 | Drop obsolete columns | now / never | Optional unit after F11-e, owner approves the list | F11-f |
 | D-F11-10 | Landing language | ES only / ES + EN by browser language with toggle | ES + EN (browser language, toggle stored locally) | F11-b |
 | D-F11-11 | Landing design (design-handoff §10-13) | from tokens / commissioned | From tokens; owner reviews screenshots | F11-b |
+| D-F11-12 | What does `/` show between go-live (F12) and the new landing (F11-b, after production)? | the current draft as is / the draft with its placeholder blocks hidden | Hide the blocks that show fabricated items (a small change in F11-d or F12) so production shows no invented content; the full rebuild stays with F8 | F12-j |
 
 ## Risks and notes
 
@@ -205,8 +212,11 @@ States: live blocks with skeleton, hidden when empty or on error. i18n: namespac
   (test enumerates the old rules from a frozen list).
 - **Install prompt scope**: the landing is outside the manifest/worker scope, so the CTA links into the app
   instead of calling the prompt on `/` (F11-R2).
-- **CSP**: the landing becomes a second HTML entry; F12's enforcing CSP must cover it (keep it free of inline
-  scripts).
-- **Order**: F11-d needs every user module flipped to `spa` (F2-F9); F11-e needs F10. If a module slips, its
-  Jinja page stays and F11-d skips it (listed as follow-up).
+- **CSP**: the new landing becomes a second HTML entry after production; it must ship under F12's enforcing
+  CSP (keep it free of inline scripts).
+- **Draft landing in production**: until F11-a/F11-b, `/` is the current draft with placeholder feeds
+  (D-F11-12).
+- **Order**: F11-d needs every user module flipped to `spa` (F2-F7, F9); F11-e needs F10 (F10-j, events
+  moderation, comes after production and has no Jinja page). If a module slips, its Jinja page stays and
+  F11-d skips it (listed as follow-up).
 - **Licensing**: the About page lists licences; the legal review of Riot IP and other assets is F12.
