@@ -35,21 +35,31 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 - Commit messages and PR descriptions end with the attribution lines the session supplies.
 - Push and PR creation happen only when the user says so (`docs/requirements/TEMPLATE.md`, "Delivery").
 - PR title: `<type>(<scope>): <summary> (F<n> unit <x>)`. PR body: summary, a map from each spec or
-  requirement to the test that proves it (`S3 -> tests/test_x.py::TestY::test_z`), manual checks left for
+  requirement to the test that proves it (`S3 -> <test file>::TestY::test_z`), manual checks left for
   the user, rollback.
 - Practice so far: a defect found after a unit merged is fixed in its own small PR (example:
   `fix/f1-bg-portrait`), not hidden in the next feature PR.
 
 ## 3. Test-driven development
 
+**Test policy (since 2026-10-22, unit M-a).** The pre-existing suites were removed. Only
+`tests/test_authz_matrix.py` (every URL rule classified P/U/A) and the startup smoke tests
+(`tests/test_smoke.py`, `frontend/src/app/smoke.test.tsx`) remain. Strict TDD still applies: every
+unit writes the tests for the behaviour it adds or changes. When a unit touches an area whose old
+guard was removed, it re-creates that guard in its smallest form: a migration → a round-trip and
+model/schema drift test for that revision (`tests/migration_helpers.py`); new UI strings → the ES/EN
+parity test; a new error code → the backend/frontend catalog test; a new legacy link → the
+legacy-routes check against the Flask `url_map`; a new pinned version → the pin check. The last
+commit with the old suites is `902047c6579e5ee670e1fb4b103a941159b85c00`; recover any file with `git show 902047c6579e5ee670e1fb4b103a941159b85c00:<path>`.
+
 - Write the failing test first and RUN it to see it fail for the right reason (RED) before writing the
-  code (GREEN). Record the RED evidence in the PR (for example "4 failed in `src/test/pins.test.ts`").
+  code (GREEN). Record the RED evidence in the PR (for example "4 failed in <test file>").
 - A step that cannot be RED (pure bootstrap such as the first toolchain files) is labelled as such in
   the PR; it is the exception.
 - Characterisation tests ("CHAR") come first when a change touches legacy behaviour: pin what the code
-  does today with a test that PASSES before the change, then change the code. Examples already in the repo:
-  `tests/test_shell_coexistence.py::TestLandingIsUntouched` and `TestPagesList`, the table-driven price tests
-  of `tests/test_pricing.py`. If an existing assertion must change, list it in the PR.
+  does today with a test that PASSES before the change, then change the code (the old examples were
+  removed by M-a; recover them from the baseline commit if useful). If an existing assertion must change,
+  list it in the PR.
 - A bug fix starts with a test that reproduces the bug.
 - Existing tests are never deleted or weakened to make a change pass.
 - Backend tests: pytest, SQLite in memory, nothing may reach the internet (the authz matrix test replaces
@@ -80,7 +90,7 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
   `{"success": true, ...}` shape; do not change an existing legacy response shape without a requirement.
 - Error `code`s are a contract: add the `ErrorCode` / `DetailCode` value, the `code.<value>` (or
   `validation.<value>`) entry in BOTH `frontend/src/i18n/locales/{es,en}/errors.json`, and keep
-  `tests/test_frontend_contracts.py` green. Enforced by that test.
+  the backend/frontend catalog test green (the unit that adds the code re-creates it, see section 3).
 - Codes are additive and lowercase snake_case; `params` are JSON scalars; no secrets, stack traces or
   internals in `message`, `code` or `params`.
 - 500 responses never include exception text. Log the exception, return the generic message. (Some old
@@ -109,7 +119,7 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 
 ### Database and migrations
 - Alembic is the only schema builder (`db.create_all()` is for tests only). Change the model and the
-  migration in the same commit; `tests/test_migrations.py` fails when they disagree (drift guard).
+  migration in the same commit; the unit adds a round-trip and drift test for its revision (section 3).
 - Workflow: `flask db migrate -m "..."`, READ and edit the generated file, `flask db upgrade`,
   `flask db check` (must say "No new upgrade operations detected."), `flask db downgrade -1`.
 - Every revision is reversible and runs on SQLite and PostgreSQL: ALTERs through
@@ -131,24 +141,24 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 
 ### Dependencies
 - Python packages are pinned with `==` in `requirements.txt`. If you change a backend pin, update the table in
-  `AGENTS.md` (enforced by `tests/test_docs.py::TestAgentsVersions`).
+  `AGENTS.md` (a unit that changes a pin re-creates the pin check, section 3).
 - Security scan: `bandit -r app/ -ll` must stay clean (CI runs it on pushes to `main` and daily).
 
 ## 5. Frontend
 
 ### Dependencies and toolchain
 - Node 24 (`.nvmrc`), npm. Dependencies are exact (no `^` or `~`); `frontend/.npmrc` sets `save-exact=true` and
-  `engine-strict=true`; `package-lock.json` is committed. Enforced by `src/test/pins.test.ts`.
+  `engine-strict=true`; `package-lock.json` is committed. A unit that changes a pin re-creates the pin check (section 3).
 - Install with `npm install --save-exact --before=<date>`, where the date is the cutoff for "newest release
   published on or before that day". F1 used a cutoff about two weeks before the installation day (cutoff
   2026-10-05, verified 2026-10-19/21 with `npm view <pkg> time --json`) and refused newer releases that
   peer ranges or churn made risky (the "too new, do not pin" list in
   `openspec/changes/archive/2026-10-22-f1-app-shell/exploration.md`). The two-week gap is a practice, not a tool setting:
   `.npmrc` does not enforce it. Note npm reads the date as local midnight.
-- A new dependency also goes into the REQUIRED set of `src/test/pins.test.ts` (transitive ones that must
-  land on a version go into `LOCK_ONLY`). Record the chosen versions and publish dates in the PR.
+- A new dependency also goes into the pin check the unit re-creates (transitive ones that must land on a
+  version included). Record the chosen versions and publish dates in the PR.
 - TypeScript stays at 6.0.3 (typescript-eslint peers); `altcha` in `package.json` must equal the Python pin
-  (enforced by `tests/test_frontend_contracts.py::TestAltchaPin`).
+  (the pin check covers it when re-created).
 - Prettier: single quotes, trailing commas, print width 100. Run `npm run lint` (ESLint + `prettier --check`).
 
 ### Code structure
@@ -174,8 +184,8 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
   them when a phase needs more; do not hand-roll a second button, field, modal, toast or empty state.
 - Module navigation comes from `src/shell/navRegistry.ts` (single list for topbar, bottom nav, "Más" sheet and
   hub); do not add a second list of modules. To port a module, flip its entry from `legacy` to `spa`, add the
-  route, add `nav.json` labels (both languages). `legacy-routes.json` is checked against the Flask `url_map` by
-  `tests/test_frontend_contracts.py::TestLegacyRoutes`; its key set must equal `LEGACY_ENDPOINTS` there.
+  route, add `nav.json` labels (both languages). the keys of `legacy-routes.json` must exist in the
+  Flask `url_map`; a unit that adds a legacy link adds the legacy-routes check (section 3).
 - Edits are disabled while offline: use `useOffline()` from `@/auth`. Offline in F1 is shell only; do not add
   runtime caching of `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages to the service worker without a
   requirement (PWA-3).
@@ -185,7 +195,7 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 - Every user-visible string goes through i18n, in BOTH `src/i18n/locales/es/*.json` and `.../en/*.json`.
   Spanish is the typed source (a missing key fails `npm run typecheck`).
 - English must have the same keys, the same `{{placeholders}}` and the plural forms the language needs
-  (`Intl.PluralRules`). Enforced by `src/i18n/parity.test.ts`.
+  (`Intl.PluralRules`). A unit that adds strings adds the ES/EN parity test (section 3).
 - A new namespace is added in `src/i18n/resources.ts` (import both files, `NAMESPACES`, both `resources`
   objects). Existing: `common`, `nav`, `auth`, `errors`, `prefs`.
 - `aria-label`s, `alt` text, toasts and `document.title` (via `useDocumentTitle`) are strings too.
@@ -193,24 +203,22 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 
 ### CSS, layout and accessibility
 - CSS cascade layers: `@layer reset, tokens, base, layout, components, utilities`. Every `*.module.css` wraps
-  ALL its rules in `@layer components { ... }` (unlayered CSS beats every layer). Enforced by
-  `src/styles/layer-scan.test.ts`.
+  ALL its rules in `@layer components { ... }` (unlayered CSS beats every layer). The unit adds a test
+  for it.
 - `@media` widths come only from `src/lib/breakpoints.ts` (`sm` 680, `md` 860, `lg` 960, `xl` 1240, `2xl`
-  1600, and each minus 0.02 for `max-width`). Enforced by `src/styles/media-scan.test.ts`. Mobile-first.
+  1600, and each minus 0.02 for `max-width`). The unit adds a test for it. Mobile-first.
 - Use design tokens (`var(--accent)`, `--panel`, `--gap`, `--row-h`, ...), not hard-coded colours; interactive
   tints derive from `--accent` with `color-mix`, never the literal cyan. Dark mode only.
 - On desktop (`md` and above) a layout must show more data (extra columns, side panels, a second column), not
   just stretch the phone layout (DS-4). The Interface page adds its live preview from `xl` (1240 px).
-- The background is never brightened, and body text keeps at least 4.5:1 contrast over it (worst-case tests in
-  `src/lib/background-contrast.test.ts`). Text/background token pairs are tested in `src/lib/contrast.test.ts`;
-  a new text/background pairing needs a row in that test.
+- The background is never brightened, and body text keeps at least 4.5:1 contrast over it (the unit adds a
+  worst-case test for it). A new text/background token pairing needs a contrast test.
 - WCAG 2.2 AA baseline: visible text at least 11 px, interactive targets at least 24x24 CSS px, global
   `:focus-visible` ring on the accent, no bare `outline: none`, `backdrop-filter` always with a solid
   background fallback, `prefers-reduced-motion` honoured, `100dvh` and safe-area insets for full-height
-  layouts. Enforced by `src/styles/a11y.test.ts`.
-- Every screen gets a `vitest-axe` test with no violations. Today: login, register, the Interface page, and
-  the shell at phone and desktop width with the "Más" sheet open (`src/shell/axe.test.tsx`); a new route adds
-  its own (the audit of remaining gaps is task 7.3 of the pending unit g). Overlays use the native
+  layouts. The unit adds a test for it.
+- Every screen gets a `vitest-axe` test with no violations. The old axe tests were removed by M-a; a unit
+  that adds or changes a screen adds its axe test. Overlays use the native
   `<dialog>` primitives.
 - Status text that appears dynamically is announced through `LiveAnnouncer` / `announce()` or a `role="status"`
   region; field errors are tied with `aria-describedby`; focus moves to the first invalid field after a failed
@@ -231,16 +239,16 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 
 ## 6. Documentation
 
-- Update `AGENTS.md` when the structure, commands, endpoints, tables or conventions change. `tests/test_docs.py`
-  checks that: stated backend versions equal `requirements.txt`; every path in the "Project Structure" tree
+- Update `AGENTS.md` when the structure, commands, endpoints, tables or conventions change. The old docs test (removed by M-a)
+  checked that: stated backend versions equal `requirements.txt`; every path in the "Project Structure" tree
   exists; every table and blueprint is named; key commands are present; no private IP address appears in
   `AGENTS.md` or `README.md`.
-- `README.md` must mention every variable of `.env.example` (`tests/test_docs.py::TestReadme`). A new setting goes
+- `README.md` must mention every variable of `.env.example` (the unit adds a test for it). A new setting goes
   in `config.py`, `.env.example` and the README together.
-- `docs/frontend.md` carries the frontend runbook; `tests/test_frontend_contracts.py::TestDocs` pins the
+- `docs/frontend.md` carries the frontend runbook; it keeps the
   rollback, service-worker and checklist sections. `docs/migrations.md` carries the migration runbook.
 - `docs/nginx_config` keeps exactly two `proxy_pass` lines and the headers CSRF and ProxyFix need
-  (`tests/test_nginx_config_doc.py`).
+  (the unit that edits it adds a test for it).
 - Each unit updates `docs/knowledge/state.md` in its own PR (what changed, PR number placeholder, new
   follow-ups, known issues). Deploy and rollback steps live in `docs/knowledge/ops-runbook.md`; owner decisions
   in `docs/knowledge/product.md` (a change to a decision is recorded there and in `state.md`).
@@ -254,7 +262,7 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 - No credential, DSN, IP address or host name in code or docs. Examples in documents use placeholders such as
   `postgresql+psycopg://user:password@host:5432/riftbound`.
 - CI never receives application secrets: no `DATABASE_URL`, `SECRET_KEY` or `FLASK_ENV` in any workflow, and
-  no `secrets.*` for them (`tests/test_ci_workflows.py`). The PostgreSQL job uses `RB_ENV=development` so the
+  no `secrets.*` for them (the unit that edits a workflow adds a test for it). The PostgreSQL job uses `RB_ENV=development` so the
   process generates a random key.
 - The kill switches (`WTF_CSRF_ENABLED`, `RATELIMIT_ENABLED`, `CAPTCHA_PROVIDER=none`) exist for rollback only;
   never turn them off to make a test or a feature pass. Tests that need a protection use `csrf_app`,
@@ -267,7 +275,7 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 
 ## 8. Line endings
 
-53 tracked files are CRLF and `.gitignore` has mixed endings; everything else is LF. There is no
+52 tracked files are CRLF and `.gitignore` has mixed endings; everything else is LF. There is no
 `.gitattributes` and no `core.autocrlf`, so the files are stored as they are.
 
 Preserve each file's line endings. Editing tools and scripts may silently convert them, which turns a
@@ -283,12 +291,12 @@ List them with `git ls-files --eol | grep -E 'i/(crlf|mixed)'`. The CRLF set tod
   `app/schemas/{__init__,validation}.py`;
 - templates: `base`, `cards`, `deck`, `deck_view`, `login`, `profile`, `register`, `sets`, `errors/*`,
   `landing/components/*`; static: `app/static/css/style.css`, `app/static/landing/js/camera-scroll.js`;
-- tests: `tests/__init__.py`, `tests/conftest.py`, `tests/test_routes.py`.
+- tests: `tests/__init__.py`, `tests/conftest.py`.
 
 LF (do not convert): all of `frontend/`, `app/api/`, `app/cli/`, `app/services/`, `app/utils/`,
 `app/schemas/{validators,prefs_domain}.py`, the newer models (`deck`, `cardmarket`, `captcha`, `prefs`),
 `app/routes/{landing,spa}.py`, `app/routes/domains/{collection,deck,price}.py`, `migrations/versions/`, the other
-`docs/*.md`, `openspec/`, `.github/`, and every test file except the three above.
+`docs/*.md`, `openspec/`, `.github/`, and every test file except the two above.
 
 ## 9. Known traps
 
@@ -316,8 +324,6 @@ Verified in the code or tests:
 - `VITE_PWA_SELF_DESTROY` is a build-time variable; a normal `npm run build` never produces the rollback worker.
 
 Recorded as known issues in `docs/knowledge/state.md`, not asserted by a test (re-check before relying on them):
-- The Vitest toast test "removes a toast after its duration" (`src/components/ui/Toast.test.tsx`, fake timers
-  with `shouldAdvanceTime`) can be timing-flaky under heavy machine load; re-run it before assuming a regression.
 - `frontend/src/assets/brand/mark.svg` and `wordmark.svg` are not byte-reproducible from `brand-trace.mjs`
   (the script output needs a human review and the committed files are the reviewed ones). Do not regenerate
   them as a side effect.

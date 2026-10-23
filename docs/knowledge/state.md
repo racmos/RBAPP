@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-22 (F1-close: F1 verified and archived; F1 specs merged into `openspec/specs/`).
+Last update: 2026-10-23 (M-a: test reset; only the authorization matrix and the smoke tests remain).
 
 ## Phases
 
@@ -17,8 +17,8 @@ Last update: 2026-10-22 (F1-close: F1 verified and archived; F1 specs merged int
 ## Plan change (2026-10-22)
 
 The owner changed the order and answered several open decisions: see `decisions-2026-10-22.md` (it wins
-over `product.md`, `roadmap.md` and `open-decisions.md` until M-b folds it in). Next unit: **M-a** (test
-reset). Order: M-a → M-b (plan docs) → M-c (hygiene) → F4-a/F4-b (jobs + daily prices) → F2-a (bans) →
+over `product.md`, `roadmap.md` and `open-decisions.md` until M-b folds it in). M-a (test reset) is done;
+next unit: **M-b** (plan docs). Order: M-a → M-b (plan docs) → M-c (hygiene) → F4-a/F4-b (jobs + daily prices) → F2-a (bans) →
 M-d (images out of git) → Riot sync + catalog admin → F2 → F3 + F4-c → Products → medium priority →
 production → Rules app → mulligan → events.
 
@@ -28,7 +28,8 @@ production → Rules app → mulligan → events.
   `/riftbound/app/`, JSON API at `/riftbound/api/v1`.
 - Database at Alembic head `0006_user_prefs`. The app connects with a dedicated non-superuser role that
   owns only the `riftbound` schema.
-- Tests on `main`: pytest 1640 passed / 41 skipped (PostgreSQL-only tests skip on SQLite); vitest 1181.
+- Tests after M-a: pytest 21 passed (authorization matrix + 2 smoke tests); vitest 1 (smoke test). The
+  old suites live in baseline `902047c6579e5ee670e1fb4b103a941159b85c00`.
 - Automated live PWA check (Playwright against the HTTPS dev URL, 2026-10-21): 19/19 — installable (no
   Chromium installability errors), manifest parsed, service worker scope `/riftbound/app/`, Jinja pages
   not controlled, precache has the shell, icons and backgrounds and nothing under `/riftbound/api` or
@@ -71,23 +72,19 @@ that file and in its `verify-report.md`.
 - F0 4.31: Nginx `limit_req` on the public proxy (template in `docs/nginx_config`) — owner action, or F12.
 - F0 5.20: owner review of `README.md` / `AGENTS.md`.
 - Riot fan-content disclaimer: F11. Licensing review (fonts, assets, Riot IP): before F12.
-- Hygiene: `openspec/changes/archive/2026-10-19-f0-foundation/` mentions private IPs; `docs/nginx_config`,
-  `tests/test_nginx_config_doc.py` and `tests/test_csrf.py` contain the dev domain. Replace with placeholders
-  (small docs/test unit); `tests/test_docs.py` only scans `AGENTS.md` and `README.md`.
+- Hygiene: `openspec/changes/archive/2026-10-19-f0-foundation/` mentions private IPs; `docs/nginx_config`
+  contains the dev domain. Replace with placeholders (unit M-c).
 - `docs/migrations.md` restarts `rbapp` while the repo unit file is `docs/riftbound.service`: align the naming.
 - Legacy endpoints leak exception text: `cards.upload_card_image` and several `price.py` endpoints return
   `str(e)` in a 500, and the generic `except` of `validate_json` returns it in a 400. About 20 legacy places
   use `datetime.utcnow()` instead of `app/utils/clock.utcnow()`. Fix when the module is ported (F2/F10) or
   in a small hardening unit.
+- Guards to re-create when their area is touched: see the test policy (AGENTS.md → Testing).
 - OPAPP and DB tools on the owner's side use the rotated database superuser password (owner action, done
   or pending on their side; nothing in this repo).
 
 ## Known issues
 
-- `frontend/src/shell/states.test.tsx` ("shows the 404 view inside the shell, with a link home") is timing-flaky
-  in CI: `document.title` was still empty when asserted (CI run for PR #27; passes locally 6/6). The title is set
-  in an effect (`src/i18n/useDocumentTitle.ts`) and the test asserts it synchronously; fix with
-  `await waitFor(...)` in a small test-only unit (same pattern as the F1-g Toast fix).
 - `frontend/src/assets/brand/mark.svg` and `wordmark.svg` are not byte-reproducible from
   `scripts/brand-trace.mjs` (a full run produces a heavier trace); do not regenerate them blindly.
 - `dist/.vite/manifest.json` is publicly served (harmless; it lists chunk names only).
@@ -106,6 +103,6 @@ that file and in its `verify-report.md`.
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| M-a | ready (next) | `chore/m-a-test-reset` / — | `docs/requirements/M/M-a-test-reset.md` |
+| M-a | done | `chore/m-a-test-reset` / #29 | Old suites removed; kept authz matrix + smoke tests; baseline `902047c6579e5ee670e1fb4b103a941159b85c00`. pytest 1694 passed / 41 skipped → 21 passed; vitest 1189 → 1. |
 | F1-close | done | `chore/f1-close` / #27 | Verify report (67 requirements, 0 FAIL, no defects), 8 spec amendments, specs merged (62 ADDED + 5 MODIFIED), archive `2026-10-22-f1-app-shell`. Lanes on `c2a7fe7`: pytest 1694 passed / 41 skipped, vitest 1189. |
 | F1-g | done | `feat/f1g-hardening` / #26 | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |

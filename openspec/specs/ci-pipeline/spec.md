@@ -28,7 +28,7 @@ CI and security workflows MUST use Python 3.12, a `.python-version` file MUST sa
 
 ### Requirement: CI-3 Test job [e]
 
-On push to `main` and on pull requests to `main`, CI MUST install `requirements.txt` and run `pytest` with coverage. Any failing test MUST fail the job. The 93 baseline tests plus new tests MUST pass.
+On push to `main` and on pull requests to `main`, CI MUST install `requirements.txt` and run `pytest` with coverage. Any failing test MUST fail the job. Every test in the suite MUST pass. (amended 2026-10-22, M-a)
 
 #### Scenario: Green run [GH-CI]
 - GIVEN a PR branch
@@ -37,14 +37,16 @@ On push to `main` and on pull requests to `main`, CI MUST install `requirements.
 
 ### Requirement: CI-4 PostgreSQL migrations job [e]
 
-A CI job MUST start a PostgreSQL service (major version at least 16, SHOULD match the dev major, 18) and: (1) `flask db upgrade head` on an empty DB; (2) `flask db check` clean; (3) `downgrade base` then `upgrade head`; (4) upgrade to the baseline, seed legacy rows (text quantities such as `'12'`, rows in `old1_rbusers`/`old_rbdecks`), then upgrade to head and verify the data. The job MUST fail on any step failure.
+A CI job MUST start a PostgreSQL service (major version at least 16, SHOULD match the dev major, 18) and: (1) `flask db upgrade head` on an empty DB; (2) `flask db check` clean; (3) `downgrade base` then `upgrade head`. The job MUST fail on any step failure.
+
+The baseline data migration was verified when F0 was archived (2026-10-19); the PostgreSQL-marked tests were removed by M-a. A future unit that needs PostgreSQL-only behaviour adds `postgres`-marked tests and re-adds the `pytest -m postgres` step. (amended 2026-10-22, M-a)
 
 The `migrations-pg` job (service `postgres:18`) is delivered with unit b, not e, so the `[PG-CI]` scenarios of units b to d run in CI from unit b onward (R9). The database URL is defined inline in the `run:` commands, not in an `env:` block, which keeps CI-1 true.
 
 #### Scenario: Migration steps [PG-CI]
 - GIVEN the PostgreSQL service
-- WHEN the job runs the four steps
-- THEN all pass, including the `USING` cast of `rbcol_quantity` and the legacy backup file creation
+- WHEN the job runs the three steps
+- THEN all pass (amended 2026-10-22, M-a)
 
 #### Scenario: Workflow shape
 - GIVEN `ci.yml`
@@ -55,7 +57,7 @@ The `migrations-pg` job (service `postgres:18`) is delivered with unit b, not e,
 
 (The heading is kept verbatim so the archive step can match and replace the F0 block; the job is no longer a placeholder after unit a, and the archive MAY rename it to "Frontend job".)
 
-The `frontend` job MUST run `npm ci`, lint, typecheck, `vitest run` and build with the Node version from `.nvmrc`, and those steps MUST NOT be skipped (they are no longer guarded by `hashFiles('frontend/package.json')`, because `frontend/package.json` now exists). After a successful build the job MUST upload `frontend/dist` as a workflow artifact named `frontend-dist`. From unit f onward a manifest check step MUST verify that the built `manifest.webmanifest` exists and that its `name` is "Rift Manager", `id` is `/riftbound/`, `scope` is `/riftbound/` and `start_url` is `/riftbound/app/`, and the job MUST fail on mismatch. A failure in any step MUST fail the workflow. The test that previously asserted that `frontend/package.json` does NOT exist MUST be rewritten to assert the opposite and the new job shape; it MUST NOT be deleted without a replacement.
+The `frontend` job MUST run `npm ci`, lint, typecheck, `vitest run` and build with the Node version from `.nvmrc`, and those steps MUST NOT be skipped (they are no longer guarded by `hashFiles('frontend/package.json')`, because `frontend/package.json` now exists). After a successful build the job MUST upload `frontend/dist` as a workflow artifact named `frontend-dist`. From unit f onward a manifest check step MUST verify that the built `manifest.webmanifest` exists and that its `name` is "Rift Manager", `id` is `/riftbound/`, `scope` is `/riftbound/` and `start_url` is `/riftbound/app/`, and the job MUST fail on mismatch. A failure in any step MUST fail the workflow. (amended 2026-10-22, M-a)
 
 #### Scenario: Frontend steps run
 - GIVEN `frontend/package.json` exists
