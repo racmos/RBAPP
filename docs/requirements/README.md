@@ -20,7 +20,7 @@ Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. 
 | F1-g | `F1/F1-g-hardening.md` | Done (#26). |
 | F1-close | `F1/F1-close.md` | Done (#27). |
 | M-a | `M/M-a-test-reset.md` | Done (#29). |
-| M-b | `M/M-b-plan-update.md` | Done (#<PR>). |
+| M-b | `M/M-b-plan-update.md` | Done (#30). |
 | F13 | `F13/README.md` | Phase spec only (Riot sync + catalog admin; added by M-b). |
 | F14 | `F14/README.md` | Phase spec only (Products; added by M-b). |
 | F15 | `F15/README.md` | Phase spec outline (Rules app; added by M-b; specified when the phase starts). |

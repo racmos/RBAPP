@@ -15,7 +15,7 @@ Rows follow the agreed order (first unit of each phase). A phase split across th
 | F0 Foundation | Secrets in env, admin role, CSRF, login protection, Alembic baseline, API v1 skeleton, CI. | — | Done |
 | F1 App shell | React PWA shell: toolchain, tokens, background, brand, auth screens, i18n, prefs, nav, PWA. | F0 | Done (a-g, close; archived 2026-10-22) |
 | M-a Test reset | Remove the old suites; keep the authorization matrix; add startup smoke tests. | F1 | Done (#29) |
-| M-b Plan update | Fold the owner decisions of 2026-10-22 into the plan documents; add the F13, F14, F15 phase specs. | M-a | Done (#<PR>) |
+| M-b Plan update | Fold the owner decisions of 2026-10-22 into the plan documents; add the F13, F14, F15 phase specs. | M-a | Done (#30) |
 | M-c Hygiene | Private IPs and the dev domain out of tracked files (no history rewrite); legacy endpoints stop returning exception text (clear message + error code to the user, full detail logged and visible to the admin); `datetime.utcnow()` → `app/utils/clock.utcnow()`. | M-b | Next |
 | F4 Prices + Dashboard | **F4-a + F4-b first** (job runner + timers, daily Cardmarket load at 06:30 Europe/Madrid with retry at 08:00, validation record, auto-match of clear cases). F4-c (daily value snapshots) with F3; the rest (movers, watchlist + push alerts, KPIs + 12-month chart) in the medium-priority group. | M-c (F4-a/b); F3-b (F4-c) | Planned |
 | F2 Catalog | **F2-a first** (bans per mode, by card name, initial data from the official ban list). The rest after F13: cards API with filters/facets, catalog UI, card detail with real price history, my copies, related cards, offline catalog. | F1; F2-a → F13 → rest | Planned |

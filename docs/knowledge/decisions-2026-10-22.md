@@ -2,7 +2,7 @@
 
 Recorded by the planner after the owner answered the open questions of the milestones review (Spanish
 working document "Rift Manager — Hitos y prioridades"). These decisions are binding. Folded into the plan
-documents by M-b (#<PR>); kept as the record of the owner's answers.
+documents by M-b (#30); kept as the record of the owner's answers.
 
 ## Agreed order
 
