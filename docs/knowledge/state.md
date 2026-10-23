@@ -14,6 +14,14 @@ Last update: 2026-10-22 (F1-close: F1 verified and archived; F1 specs merged int
 | F2 Catalog | Planned — next phase | `docs/requirements/F2/` (phase spec + unit drafts with CONFIRM items). |
 | F3-F12 | Planned | Phase specs in `docs/requirements/F<n>/README.md`. |
 
+## Plan change (2026-10-22)
+
+The owner changed the order and answered several open decisions: see `decisions-2026-10-22.md` (it wins
+over `product.md`, `roadmap.md` and `open-decisions.md` until M-b folds it in). Next unit: **M-a** (test
+reset). Order: M-a → M-b (plan docs) → M-c (hygiene) → F4-a/F4-b (jobs + daily prices) → F2-a (bans) →
+M-d (images out of git) → Riot sync + catalog admin → F2 → F3 + F4-c → Products → medium priority →
+production → Rules app → mulligan → events.
+
 ## Live on dev (2026-10-21)
 
 - `main` at `492279b` (merge of PR #24) deployed: Jinja app at `/riftbound/`, React PWA at
@@ -98,5 +106,6 @@ that file and in its `verify-report.md`.
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
+| M-a | ready (next) | `chore/m-a-test-reset` / — | `docs/requirements/M/M-a-test-reset.md` |
 | F1-close | done | `chore/f1-close` / #27 | Verify report (67 requirements, 0 FAIL, no defects), 8 spec amendments, specs merged (62 ADDED + 5 MODIFIED), archive `2026-10-22-f1-app-shell`. Lanes on `c2a7fe7`: pytest 1694 passed / 41 skipped, vitest 1189. |
 | F1-g | done | `feat/f1g-hardening` / #26 | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |
