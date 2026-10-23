@@ -1,6 +1,6 @@
 # F7: Sales — phase spec
 
-Status: planned · Depends on: F3 (purchase price, selling model, collection API), F4 (daily Cardmarket load, chart components, dashboard) · Source: roadmap §5 (F7), design-handoff §3.9, §3.13, §5.7, §6-20/21/34, §7.2-V1, §7.5-R3, §9 F7, §10-1/§10-11, product.md "Scope by phase"
+Status: planned · Depends on: F3 (purchase price, selling model, collection API), F4 (daily Cardmarket load, chart components, dashboard) · Order (`docs/knowledge/roadmap.md`): medium priority, before production · Source: roadmap §5 (F7), design-handoff §3.9, §3.13, §5.7, §6-20/21/34, §7.2-V1, §7.5-R3, §9 F7, §10-1/§10-11, product.md "Scope by phase"
 
 ## Goal
 
@@ -32,7 +32,8 @@ keeps working (same format as today) from the new app.
   Primitives available: `Modal`, `Sheet`, `ConfirmDialog`, `Toast`, `Field`, `Input`, `Select`, `Switch`,
   `SegmentedControl`, `Badge`, `EmptyState`, `ErrorState`, `Skeleton`, `OfflineBanner`, `PageHeader`.
   Charts (`Sparkline`, `PriceChart`) come from F2/F4; `StatCard`, `DataTable`, `Stepper` from F2/F3.
-- **Tests**: `tests/test_collection_*` cover the legacy selling/export paths; no sales tests.
+- **Tests**: since M-a only `tests/test_authz_matrix.py` and the startup smoke tests remain; the legacy
+  selling/export paths have no tests, so F7-d writes the characterization test it needs; no sales tests.
 
 ## Scope
 
@@ -61,6 +62,12 @@ Out:
 - Default sell price = market × 1.05 is an F3 rule (design-handoff §5.7); F7 only reads `sell_price`.
 - Desktop shows more data (two/three columns), never stretches (product.md; design-handoff §3.0, §3.13).
 - Offline is read-only; every edit needs a connection (product.md "Offline").
+- The Cardmarket sales export of F7 stays (owner, 2026-10-22); it is a different feature from the legacy
+  price CSV (`set;name;id;N`), which is dropped (F10 phase spec).
+- Playset (owner, 2026-10-22): F3 replaces the legacy `rbcol_playset` with a per-user playset size and a
+  "keep a playset" check per card (a warning only, never a block); the quantity for sale is `sell_qty`.
+- Tests (owner, 2026-10-22, unit M-a): each F7 unit writes its own tests and re-creates the removed guard of
+  the area it touches (migration round-trip + drift test, error-code catalog test, ES/EN parity).
 
 ## Consumed contracts (from F3/F4, must be confirmed when F7 starts)
 
@@ -68,7 +75,7 @@ Out:
 |---|---|---|
 | F3 | Each collection line (including sub-lines, which are separate `rbcol_id` rows) exposes: `id`, card key, `foil`, `qty`, `condition`, `language`, `purchase_price` (EUR **per unit**, nullable), `selling` (switch), `sell_qty` (copies to sell, 0..qty), `sell_price` (EUR per unit, nullable). | Adjust F7-c listings and the deduction rule in F7-a; record in D-F7-8. |
 | F3 | `PATCH /collection/{id}` updates `sell_price`, `selling`, `sell_qty` (used by the listing inline edits). | F7-e calls whatever F3 exposes. |
-| F3 | The legacy `rbcol_playset` → `sell_qty` mapping (product.md F3: "confirmed at the start of F3"). | Changes the export quantity rule (D-F7-8). |
+| F3 | `rbcol_playset` is replaced (owner, 2026-10-22); `sell_qty` is backfilled from it once and is the only quantity for sale (F3-R3). | Changes the export quantity rule (D-F7-8). |
 | F4 | `rbcm_price` loaded daily; `GET /dashboard` has a `recent_sales` slot; chart primitives exist. | F7-f ships its own minimal bar chart. |
 
 ## Requirements

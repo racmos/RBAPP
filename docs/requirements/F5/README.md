@@ -1,5 +1,5 @@
 # F5: Decks v2 — phase spec
-Status: planned · Depends on: F2 (bans per mode, `/meta/game`, card DTO, `CardCombobox`, charts), F3 (collection lines, wishlist) · Source: roadmap §3 (rules), §5 (F5), design-handoff §3.7 (list, workspace, modals), §3.12, §3.13, §5.1-5.5 (rules, parser, auto-runes, export, edit operations), §6 (1, 2, 22-25, 33), §7.2 V3, §7.3 D2/D5, §7.5 R9, §7.6 L9-L11/L15, §9 (F5), §10-8, `docs/knowledge/product.md` "Game rules", "Users, accounts and security"
+Status: planned · Depends on: F2 (bans per mode, `/meta/game`, card DTO, `CardCombobox`, charts), F3 (collection lines, wishlist) · Order (`docs/knowledge/roadmap.md`): medium priority, before production, without the hand simulator; F5-k (opening hands / mulligan) runs after production, after F15 (Rules app) · Source: roadmap §3 (rules), §5 (F5), design-handoff §3.7 (list, workspace, modals), §3.12, §3.13, §5.1-5.5 (rules, parser, auto-runes, export, edit operations), §6 (1, 2, 22-25, 33), §7.2 V3, §7.3 D2/D5, §7.5 R9, §7.6 L9-L11/L15, §9 (F5), §10-8, `docs/knowledge/product.md` "Game rules", "Users, accounts and security"
 
 ## Goal
 
@@ -8,8 +8,8 @@ with the game rules implemented once in Python and once in TypeScript against th
 existing deck migrated automatically, an editor that never lets the user exceed a hard limit and explains
 why, legality per game mode (1v1/2v2, bans by name), text import/export (own, riftdecks and Piltover
 Archive formats), deck vs collection (missing cards, cost, add to wishlist), version history with diff,
-private-by-default decks with a public read-only link, and an opening-hand simulator. Desktop shows list |
-editor | analysis panel.
+and private-by-default decks with a public read-only link. Desktop shows list | editor | analysis panel.
+The opening-hand simulator and mulligan are a separate section after production (unit F5-k).
 
 ## Current state
 
@@ -25,10 +25,11 @@ editor | analysis panel.
 
 In: rule values + engine (Python) + TS library + shared cases; v2 data model + migration of existing decks;
 decks API (CRUD, versions, diff, legality); import/export; deck vs collection; visibility + share link +
-public page; hand simulator; editor UI (mobile, desktop, wide); offline read of decks; nav flip.
+public page; editor UI (mobile, desktop, wide); offline read of decks; nav flip.
 
 Out: deck statistics across events (F8), deck comments/likes, public deck browsing/search (no public index
-of decks), tournament formats beyond 1v1/2v2.
+of decks), tournament formats beyond 1v1/2v2; the opening-hand simulator and mulligan (unit F5-k, split out,
+after production).
 
 ## Decisions already taken (product.md "Game rules", binding)
 
@@ -44,11 +45,18 @@ of decks), tournament formats beyond 1v1/2v2.
 - Private by default; owner can mark public or generate a read-only share link (product.md). Until F5 every
   signed-in user can see every deck (DECK-1 note) — F5 changes that.
 - New tables reference `rbusers.id`; migrations take the next free revision numbers.
+- **D-F5-6** (owner, 2026-10-22): mulligan / opening hands become a separate section after production
+  (F5-k split out of F5); it needs the official opening hand and mulligan rules from the owner (owner input
+  pending). F5 ships without the hand simulator.
+- Deck export samples (riftdecks, piltover) are an owner input still pending, needed at the start of F5
+  (F5-e; owner, 2026-10-22).
+- Tests (owner, 2026-10-22, unit M-a): each F5 unit writes its own tests and re-creates the removed guard of
+  the area it touches.
 
 ## Requirements
 
 ### Rules
-- **F5-R1** `app/schemas/game_domain.py` gains `DECK_RULES = {main_size: 39, total_with_champion: 40, runes: 12, battlefields: 3, sideboard: 10, copies_max: 3, workbench_max: 100, opening_hand: <D-F5-6>}`; `/meta/game` returns them under `rules.deck`. (F5-a)
+- **F5-R1** `app/schemas/game_domain.py` gains `DECK_RULES = {main_size: 39, total_with_champion: 40, runes: 12, battlefields: 3, sideboard: 10, copies_max: 3, workbench_max: 100}`; `/meta/game` returns them under `rules.deck`. The opening-hand and mulligan values are added by F5-k after production. (F5-a)
 - **F5-R2** `app/services/deck_rules.py`: pure functions `validate(deck, cards, bans, mode) -> {legal, issues[{code, params}]}`, `can_add(deck, card, zone) -> ok | {code, params}`, `auto_runes(deck, cards)`, `apply_legend(deck, legend)`, `apply_champion(deck, champion)`, `deck_domains`. Issue codes: `legend_missing`, `champion_missing`, `champion_tag`, `main_size`, `runes_count`, `rune_off_identity`, `battlefields_count`, `battlefields_duplicate`, `sideboard_size`, `copies_over`, `workbench_over`, `card_off_identity`, `token_in_deck`, `banned` (params `{name, mode}`). (F5-a)
 - **F5-R3** Shared cases in `tests/fixtures/deck_rules_cases.json` (input deck + catalog subset + mode → expected issues / operation result) covering design-handoff §5.1 (a)-(i), the §5.3 auto-runes examples (`[5,19] → [3,9]`, 1 colour → 12, 2 colours without cards → 6/6, `[1,100] → [1,11]`, `[7,3] → [8,4]`) and collation of names (`localeCompare` vs Python: D-F5-7). pytest and vitest both run every case. (F5-a, F5-b)
 - **F5-R4** `frontend/src/decks/rules/` implements the same functions in TS (used for instant feedback; the server stays authoritative). (F5-b)
@@ -68,9 +76,10 @@ of decks), tournament formats beyond 1v1/2v2.
 
 ### UI
 - **F5-R14** `/decks` (nav `decks` → `spa`): mobile = deck list (name, pips, mode, legality badges 1v1/2v2, main n/39, value) and the workspace as its own screen `/decks/:id` with collapsible sections in the §3.7.1 order; limits shown as disabled controls with the reason (tooltip + `aria-describedby`), undo toast for removals. (F5-h)
-- **F5-R15** Desktop ≥ 1240: list | editor (2 internal columns); wide ≥ 1600: list | editor | sticky analysis panel (energy/power curves, `Donut` by type and domain, value own vs to complete, legality per mode with explanations, missing cards, hand simulator, versions). (F5-i)
+- **F5-R15** Desktop ≥ 1240: list | editor (2 internal columns); wide ≥ 1600: list | editor | sticky analysis panel (energy/power curves, `Donut` by type and domain, value own vs to complete, legality per mode with explanations, missing cards, versions). (F5-i)
 - **F5-R16** Import/export modals with format tabs, paste/drag-and-drop, per-line preview; versions list and side-by-side diff (added/removed/changed per zone). (F5-j)
-- **F5-R17** Public page `/riftbound/app/d/:slug` outside the auth guard (read-only deck, legality, curves, export text, "Abrir en Rift Manager" for signed-in users); hand simulator: draw `opening_hand` cards from the 39-card main (seeded, "Nueva mano", mulligan per D-F5-6). (F5-k)
+- **F5-R17** Public page `/riftbound/app/d/:slug` outside the auth guard (read-only deck, legality, curves, export text, "Abrir en Rift Manager" for signed-in users). (F5-m)
+- **F5-R21** (after production, F5-k) Opening-hand simulator and mulligan from the official rules the owner provides: rule values in `DECK_RULES` and `/meta/game`, draw from the 39-card main (seeded, "Nueva mano"), mulligan per the official rule. Specified when the section starts. (F5-k)
 
 ### Offline / i18n / a11y / security
 - **F5-R18** Read cache `rb-api-decks` (NetworkFirst) for `GET /decks*`; editing disabled offline. (F5-l)
@@ -114,7 +123,7 @@ are **not** HTTP errors: they are `issues[{code, params}]` in the payload, trans
 
 Components to port/build (design-handoff §9 F5): `DeckCard`, `DeckWorkspace`, `CollapsibleSection`, `MiniCurve`,
 variant strip (printing chips), `CardRow` with `Stepper` and move actions, `ImportModal`/`ExportModal`,
-`DeckDiff`, `HandSimulator`, `Donut` (built here, reused by F6). States: loading, empty ("Aún no tienes
+`DeckDiff`, `Donut` (built here, reused by F6); `HandSimulator` comes with F5-k after production. States: loading, empty ("Aún no tienes
 mazos" + Nuevo/Importar), error, offline read-only, 404 for slugs.
 
 ## Units
@@ -131,8 +140,9 @@ mazos" + Nuevo/Importar), error, offline read-only, 404 for slugs.
 | F5-h | Decks UI mobile | F5-b, F5-d | ~650 | none | List, workspace screen, editing with limits and reasons, nav flip |
 | F5-i | Decks UI desktop/wide + analysis | F5-h | ~650 | none | Columns, analysis panel, `MiniCurve`, `Donut` |
 | F5-j | Import/export + versions UI | F5-e, F5-h | ~550 | none | Modals, preview, versions, diff |
-| F5-k | Public deck page + hand simulator | F5-g, F5-i | ~500 | item 2 | `/d/:slug` outside the guard, simulator |
+| F5-k | Opening hands + mulligan (split out, after production) | F5-i, F15 (order), official rules (owner) | ~500 | item 3 | Opening-hand and mulligan rule values, `HandSimulator` in the analysis panel and the public page (F5-R21) |
 | F5-l | Offline decks | F5-i | ~250 | items 5, 6 | `rb-api-decks` cache, purge, disabled edits |
+| F5-m | Public deck page | F5-g, F5-i | ~400 | item 2 | `/d/:slug` outside the guard (the public part of the former F5-k) |
 
 ## Open decisions
 
@@ -142,8 +152,7 @@ mazos" + Nuevo/Importar), error, offline read-only, 404 for slugs.
 | D-F5-2 | Jinja deck pages after the migration | read-only on new tables / keep writing old table / redirect to the app | Read-only on the new tables with a banner; `POST /deck/save` answers 410 | F5-c |
 | D-F5-3 | When is a new version created? | every save / explicit "Guardar versión" / daily | Autosave updates the current version (debounced 1 s); "Guardar como versión" (with an optional note) snapshots; import creates version 1 | F5-d |
 | D-F5-4 | What does a public link show? | — | Deck name, content, legality, value; owner's username only when visibility = public (a share link of a private deck is anonymous) | F5-g |
-| D-F5-5 | Import sample files | — | Owner sends 2-3 exported decks from riftdecks and Piltover Archive before F5-e | F5-e |
-| D-F5-6 | Opening hand rules | — | Owner confirms the official opening hand size and mulligan rule; stored in `DECK_RULES.opening_hand` / `mulligan` | F5-a, F5-k |
+| D-F5-5 | Import sample files | — | Owner input pending (2026-10-22), needed at the start of F5: 2-3 exported decks from riftdecks and Piltover Archive before F5-e | F5-e |
 | D-F5-7 | Name collation for sorting/export | Python `casefold` vs JS `localeCompare` | Both sides sort by `casefold()` / `toLocaleLowerCase('en')` + code-point order (no locale collation) so shared cases agree | F5-a, F5-b |
 | D-F5-8 | Shared cases location | `tests/fixtures/` / `frontend/` / `shared/` | `tests/fixtures/deck_rules_cases.json`, read by vitest through `fs` with a path relative to the repo | F5-a, F5-b |
 | D-F5-9 | Decks visible to other users after F5 | — | Only the owner (plus public/shared links); the DECK-1 "any signed-in user by id" behaviour ends (spec amendment recorded in F5-d) | F5-d |

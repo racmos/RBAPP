@@ -1,5 +1,5 @@
 # F4: Prices + Dashboard — phase spec
-Status: planned · Depends on: F2 (pricing service, `price_summaries`, charts), F3 (collection lines, purchase price, wishlist) · Source: roadmap §5 (F4), design-handoff §3.3, §3.12 (push), §3.13, §6 (5, 6), §7.5 R1, §9 (F4), `docs/knowledge/product.md` "Scope by phase", "Platform notes"
+Status: planned · Depends on: F2 (pricing service, `price_summaries`, charts), F3 (collection lines, purchase price, wishlist) for F4-c..i; F4-a/F4-b need neither · Order (`docs/knowledge/roadmap.md`): F4-a and F4-b run early, right after M-c; F4-c runs with F3; F4-d..i are medium priority, before production · Source: roadmap §5 (F4), design-handoff §3.3, §3.12 (push), §3.13, §6 (5, 6), §7.5 R1, §9 (F4), `docs/knowledge/product.md` "Scope by phase", "Platform notes"
 
 ## Goal
 
@@ -33,8 +33,19 @@ email notifications (no mail server).
 ## Decisions already taken
 
 - Scheduled work = Flask CLI commands + systemd timers, no Celery/Redis (cross-phase contract).
-- F4 owns `rbjobs` + `flask jobs run-pending` (timer every minute); F10 reuses it for admin-triggered long
-  operations (F10 phase spec, D-F10-4); the daily Cardmarket load and the snapshot use the same path.
+- Job runner (owner, 2026-10-22): built once in F4-a (`rbjobs` + `flask jobs run-pending`, timer every
+  minute); F10-d, F13 and every later phase only register job kinds; the daily Cardmarket load and the
+  snapshot use the same path.
+- **D-F4-1** (owner, 2026-10-22): the Cardmarket load runs every day at 06:30 Europe/Madrid, with a retry at
+  08:00 Europe/Madrid if it failed. The job validates the load (files, rows, new products) and records the
+  result.
+- **D-F4-2** (owner, 2026-10-22): auto-match runs after every load, for clear cases only. Doubtful cases go to
+  a review list; the planner analyses them to add matching criteria and automate as much as possible.
+- Order (owner, 2026-10-22): F4-a and F4-b are planned right after M-c (before F2-a); F4-c runs together with
+  F3; the rest of F4 is medium priority, before production.
+- Tests (owner, 2026-10-22, unit M-a): each F4 unit writes its own tests and re-creates the removed guard of
+  the area it touches (migration round-trip + drift test, error-code catalog test, pin check for new
+  dependencies).
 - Daily collection-value snapshot per user; history starts on the first snapshot (no backfill possible;
   "recopilando datos" empty state) (design-handoff §6-6).
 - Top risers/fallers 7/30 days; watchlist with push alerts; KPIs + 12-month chart (product.md F4).
@@ -50,10 +61,10 @@ email notifications (no mail server).
 ### Jobs
 - **F4-R1** Table `rbjobs` (shape agreed with F10): `rbjob_id` BIGINT PK; `rbjob_kind` VARCHAR(32) NOT NULL CHECK IN the registered kinds; `rbjob_params` JSON; `rbjob_status` VARCHAR(10) CHECK IN ('queued','running','success','error'); `rbjob_requested_by` INT NULL FK `rbusers.id` ON DELETE SET NULL; `rbjob_requested_at`, `rbjob_started_at`, `rbjob_finished_at`; `rbjob_result` JSON; `rbjob_message` VARCHAR(300). Partial unique index on `kind` WHERE status IN ('queued','running') (one active job per kind). (F4-a)
 - **F4-R2** `flask jobs enqueue <kind> [--param k=v]`, `flask jobs run-pending` (claims queued jobs one by one with a row lock/`UPDATE … WHERE status='queued'`, runs them, records result; a job running longer than its timeout is marked `error`), `flask jobs list [--limit]`. Job kinds register in `app/jobs/registry.py`. (F4-a)
-- **F4-R3** systemd units documented in `docs/knowledge/ops-runbook.md` → "Scheduled jobs": `riftbound-jobs.timer` (every minute → `flask jobs run-pending`) and `riftbound-daily.timer` (daily 06:30 Europe/Madrid → `flask jobs enqueue daily_prices`), with `journalctl` commands and how to run by hand. Templates in `docs/`. (F4-a)
+- **F4-R3** systemd units documented in `docs/knowledge/ops-runbook.md` → "Scheduled jobs": `riftbound-jobs.timer` (every minute → `flask jobs run-pending`) and `riftbound-daily.timer` (daily 06:30 Europe/Madrid → `flask jobs enqueue daily_prices`) and a retry timer at 08:00 Europe/Madrid that enqueues `daily_prices` only when today's run did not succeed, with `journalctl` commands and how to run by hand. Templates in `docs/`. (F4-a timers, F4-b retry rule)
 
 ### Prices
-- **F4-R4** Job `daily_prices`: runs `CardmarketLoader`; on success optionally `auto_match` (D-F4-2), then enqueues `value_snapshot` and `price_alerts`. Skips (status success, message "unchanged") when the files' hashes did not change. (F4-b)
+- **F4-R4** Job `daily_prices`: runs `CardmarketLoader`; validates the load (expected files downloaded, row counts, new products) and records the outcome in the job result and `rbcm_load_history`; a failed validation is an `error` run (so the 08:00 retry fires). On success it always runs `auto_match` for clear cases only and stores the doubtful cases in a review list (D-F4-10), then enqueues `value_snapshot` and `price_alerts` once those kinds are registered (F4-c, F4-g land later). Skips (status success, message "unchanged") when the files' hashes did not change. (F4-b)
 - **F4-R5** `GET /prices/movers?range=7d|30d&scope=all|mine&dir=up|down&limit=10` (U): cards ranked by `trend_*_pct` with a minimum market price (D-F4-3) to avoid noise; `scope=mine` limits to printings the user owns. (F4-d)
 - **F4-R6** `GET /meta/game` `price.updated_on` drives a topbar indicator "Precios a dd/mm" (≥ 1240) and a stale warning when older than 2 days. (F4-h)
 
@@ -65,7 +76,7 @@ email notifications (no mail server).
 - **F4-R9** `GET /dashboard` (U): `{kpis: {value, value_delta_30d_pct, cards_total, cards_unique, decks_count, wishlist_count, selling: {lines, value}}, value_history (12 months, from snapshots), movers: {up[], down[]} (7 d, mine, 5 each), set_completion[{set_id, name, owned_unique, total}], alerts[] (latest 5 notifications), recent_sales: null, next_events: null, price_updated_on}`. (F4-e)
 
 ### Push and notifications
-- **F4-R10** Env vars `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:` or `https:` contact, no real address in the repo); push disabled (feature flag false in `/meta/config`) when unset; `.env.example` and README document them (`tests/test_docs.py` checks). `flask push generate-keys` prints a new key pair once. (F4-f)
+- **F4-R10** Env vars `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:` or `https:` contact, no real address in the repo); push disabled (feature flag false in `/meta/config`) when unset; `.env.example` and README document them. `flask push generate-keys` prints a new key pair once. (F4-f)
 - **F4-R11** Table `rbpushsubs`: id, user id FK CASCADE, `endpoint` TEXT UNIQUE, `p256dh`, `auth`, `user_agent` VARCHAR(200), `created_at`, `last_success_at`, `failure_count`. `GET /push/config` (U: public key, enabled), `POST /push/subscriptions`, `DELETE /push/subscriptions` (by endpoint). Endpoint host must be https; one user ≤ 10 subscriptions. (F4-f)
 - **F4-R12** Table `rbnotifprefs` (user id, `category` CHECK IN registered categories, `enabled` bool; PK user+category; missing row = default per category). `GET/PATCH /me/notifications`. Categories: `price_alerts` (default on once push is enabled); F8 adds `event_reminders`. (F4-f)
 - **F4-R13** Table `rbnotiflog` (id, user id, category, `ref` VARCHAR(100), title, body, url, `sent_at`, `delivered` count; UNIQUE (user, category, ref)) — the dedupe key for every sender (F8 reuses with `ref = event:<id>:24h`). (F4-f)
@@ -131,9 +142,9 @@ New components: `ValueChart` (PriceChart generalized to a value series with cost
 
 | ID | Title | Depends on | Size | Risk | Summary |
 |---|---|---|---|---|---|
-| F4-a | Job runner + timers | F2 done | ~500 | items 1, 4, 5 | `rbjobs`, registry, `flask jobs …`, claim/timeout, runbook + unit templates |
-| F4-b | Daily Cardmarket load job | F4-a | ~300 | items 3, 6 | `daily_prices` job (loader + optional auto-match), chaining, unchanged skip |
-| F4-c | Value snapshots | F4-a, F3-b | ~350 | item 1 | `rbvaluesnaps`, `value_snapshot` job, idempotent upsert |
+| F4-a | Job runner + timers | M-c (order) | ~500 | items 1, 4, 5 | `rbjobs`, registry, `flask jobs …`, claim/timeout, runbook + unit templates (06:30 and 08:00 Europe/Madrid) |
+| F4-b | Daily Cardmarket load job | F4-a | ~300 | items 3, 6 | `daily_prices` job (loader + validation record + auto-match of clear cases + review list), 08:00 retry rule, chaining, unchanged skip |
+| F4-c | Value snapshots | F4-a, F3-b (runs with F3) | ~350 | item 1 | `rbvaluesnaps`, `value_snapshot` job, idempotent upsert |
 | F4-d | Movers + value-history API | F4-c | ~400 | item 3 | `/prices/movers`, `/collection/value-history` |
 | F4-e | Dashboard API | F4-d | ~350 | item 3 | `GET /dashboard` with the null slots for F7/F8 |
 | F4-f | Web Push infrastructure | F4-a | ~600 | items 2, 5 | VAPID env, `pywebpush`, subscriptions, prefs, log, `send_push`, SW `importScripts`, `check:dist` |
@@ -145,8 +156,6 @@ New components: `ValueChart` (PriceChart generalized to a value series with cost
 
 | ID | Question | Options | Recommendation | Blocks |
 |---|---|---|---|---|
-| D-F4-1 | Daily load time and timezone | — | 06:30 Europe/Madrid (Cardmarket refreshes its price guide overnight); retry once at 09:30 if the first run failed | F4-a, F4-b |
-| D-F4-2 | Run auto-match after every load? | yes / no / dry-run report | Yes for new products only, `review` items left for the admin (F10); report counts in the job result | F4-b |
 | D-F4-3 | Movers noise floor | — | Ignore cards whose market price is below 0.50 € on either date; ties by absolute change | F4-d |
 | D-F4-4 | Snapshot for users without a collection | skip / zero rows | Skip; first snapshot the day after the first line exists | F4-c |
 | D-F4-5 | Value used in snapshots | PRC-1 market per line | PRC-1 market (same as the collection screen) | F4-c |
@@ -154,13 +163,15 @@ New components: `ValueChart` (PriceChart generalized to a value series with cost
 | D-F4-7 | Default for `price_alerts` | on / off | On as soon as the user enables push on a device | F4-f |
 | D-F4-8 | Watchlist rule types | below / above / % change | All three; `change_pct` evaluated on the 7-day trend | F4-g |
 | D-F4-9 | Keep the Jinja dashboard reachable? | yes / redirect | Yes until F11 (classic link) | F4-h |
+| D-F4-10 | Where does the auto-match review list live? | job result JSON / new table | The `daily_prices` job result (`rbjob_result`: product id, candidate cards, reason), readable with `flask jobs list` and later in the F10 mapping screens; a table only if the list outgrows the job result | F4-b |
 
 ## Risks and notes
 
 - **Overlapping runs**: the partial unique index + atomic claim prevent two workers or two timers from
   running the same kind; `run-pending` must also be safe if systemd starts it while the previous run is alive.
 - **External dependency**: Cardmarket file URLs or format may change (item 6); the job reports an error,
-  keeps the previous prices and never leaves half-loaded data (existing loader transactions).
+  keeps the previous prices and never leaves half-loaded data (existing loader transactions). The 08:00 retry
+  runs once; a second failure stays visible in the job list and `rbcm_load_history`.
 - **Push on iOS** needs the installed PWA; the UI explains it instead of failing silently.
 - **Service worker change** (F4-f) ships through the update prompt; the self-destroying rollback keeps working
   (`importScripts` file must be precached or served `no-cache`).
