@@ -1,5 +1,8 @@
 # Roadmap
 
+> **2026-10-22:** the phase order and several decisions changed; see `decisions-2026-10-22.md`, which wins
+> over this file until unit M-b rewrites it.
+
 Master plan. Supersedes `openspec/roadmap.md` (Spanish, 2026-10-18), which stays for history. Status
 lives in `state.md`; owner decisions in `product.md`; each phase's detail in
 `docs/requirements/F<n>/README.md`.

@@ -7,13 +7,18 @@ Inputs for gentle-shell. The cycle is described in `docs/knowledge/workflow.md`.
   decisions `D-F<n>-#`. The planner writes unit requirements from it.
 - `F<n>/F<n>-<x>-<slug>.md` — unit requirement handed to gentle-shell. It must have "Open questions: none"
   before it is handed over; drafts with `CONFIRM D-…` items are confirmed with the owner first.
+- `M/M-<x>-<slug>.md` — maintenance units outside the phases (tests, hygiene, plan updates).
+
+Owner decisions of 2026-10-22 changed the order and several open decisions: see
+`docs/knowledge/decisions-2026-10-22.md`. The F2-F12 drafts are rewritten by the planner before hand-over.
 
 ## Ready or drafted
 
 | Unit | File | State |
 |---|---|---|
-| F1-g | `F1/F1-g-hardening.md` | Ready (optional unit; recommended before F1-close). |
-| F1-close | `F1/F1-close.md` | Ready after two CONFIRM items. |
+| F1-g | `F1/F1-g-hardening.md` | Done (#26). |
+| F1-close | `F1/F1-close.md` | Done (#27). |
+| M-a | `M/M-a-test-reset.md` | Ready — next unit. |
 | F2-* | `F2/F2-*.md` | Drafts with CONFIRM items (see `F2/README.md` → Open decisions). |
 
 Phases F3-F12 have a phase spec only; their unit requirements are written when the phase starts, after the
