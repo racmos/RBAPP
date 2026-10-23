@@ -7,6 +7,10 @@ and later folded into the phase spec (and into `product.md` when it is a product
 
 Format: **ID** — question: *recommendation*.
 
+**Answered on 2026-10-22** (see `decisions-2026-10-22.md`; unit M-b removes them from this list): D-F2-1,
+D-F2-2, D-F2-12, D-F3-1, D-F4-1, D-F4-2, D-F5-6 (moved after production), D-F8-1 (moved after production),
+D-F10-6.
+
 ## F1 (before F1-close)
 
 - **CONFIRM F1-g** — do F1-g before closing F1?: *yes (small, closes unit 7).*
