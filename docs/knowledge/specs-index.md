@@ -244,6 +244,8 @@ Account-level interface preferences stored on the server (`NULL` = Auto) and app
 
 ## C. Reading notes
 
+- Test file names cited in `openspec/specs/` and in the archive are historical evidence; the files were
+  removed by M-a (2026-10-22). The requirement text still binds.
 - `openspec/config.yaml` still carries F0-era context (93 baseline tests, "frontend not present yet").
 - Spec text amended at the F1 archive where the code was right (I18N-4, PWA-3, PWA-4, DS-2, DS-5, PREF-6,
   SHELL-3, FAUTH-7): see `openspec/changes/archive/2026-10-22-f1-app-shell/verify-report.md`, "Spec amendments".

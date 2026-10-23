@@ -250,9 +250,9 @@ must be application/json", no code); a Pydantic failure gives 400 `Validation Er
 
 To add a code: (1) add the value to `ErrorCode` (or `DetailCode`) and return it with
 `fail(..., code=ErrorCode.X)`; (2) add `code.<value>` (or `validation.<value>`) to BOTH
-`frontend/src/i18n/locales/es/errors.json` and `.../en/errors.json`; (3) run
-`pytest tests/test_frontend_contracts.py` and `npx vitest run src/i18n`. The contract test also fails
-if a catalog has a code the backend does not define. Codes never carry secrets or internals.
+`frontend/src/i18n/locales/es/errors.json` and `.../en/errors.json`; (3) add a test that both
+catalogs have the code (the old contract test, which also failed on a catalog code the backend does not
+define, was removed by M-a). Codes never carry secrets or internals.
 
 ## 4. Data model
 
@@ -322,8 +322,8 @@ Quirks to know before touching data:
 | `0006_user_prefs` | table `rbuserprefs` (1:1 with `rbusers`, five CHECKs) |
 
 Rules: readable revision ids; every ALTER through `op.batch_alter_table(..., schema='riftbound')`;
-PostgreSQL-only DDL behind a dialect guard; every revision reversible; `tests/test_migrations.py` runs
-upgrade/downgrade on SQLite and a drift guard (`compare_metadata` must be empty); `migrations-pg` in CI
+PostgreSQL-only DDL behind a dialect guard; every revision reversible; the unit that adds a revision adds
+an upgrade/downgrade test on SQLite and a drift guard (`compare_metadata` must be empty, `tests/migration_helpers.py`); `migrations-pg` in CI
 repeats it on PostgreSQL 18. Runbook: `docs/migrations.md`.
 
 ## 5. Services (`app/services/`, no Flask request objects)
@@ -462,9 +462,9 @@ the server is the authority) but no route uses it yet.
 
 react-i18next with bundled catalogs (no runtime fetch; they are precached). Namespaces: `common`, `nav`,
 `auth`, `errors`, `prefs` (`i18n/resources.ts`: add a namespace there, in `NAMESPACES` and in both
-`resources` objects). `es` is the typed source (`i18next.d.ts`): a missing key fails `tsc`. The parity
-test `src/i18n/parity.test.ts` fails on a key present in one language only, different `{{placeholders}}`,
-or a missing plural form. Language order: account preference, then `rb_lang`, then the first `es`/`en`
+`resources` objects). `es` is the typed source (`i18next.d.ts`): a missing key fails `tsc`. Both
+languages need the same keys, the same `{{placeholders}}` and every plural form (the unit that adds strings
+adds the parity test). Language order: account preference, then `rb_lang`, then the first `es`/`en`
 entry of `navigator.languages`, then `es`. `fallbackLng` is `es`; a missing key renders nothing in
 production and warns in dev. `useDocumentTitle(page)` sets `"<page> · Rift Manager"`. Numbers, money and
 dates use `lib/format.ts` (`es-ES` / `en-GB`, money EUR, dates in UTC), never the browser locale.
@@ -501,8 +501,8 @@ Five account values: `lang`, `density`, `accent`, `bg_intensity`, `collection_vi
   (admin only) and `admin` (admin only, points at the `price` page) are `legacy`; `events`, `sales`, `stats`
   are `planned`.
 - `legacy-routes.json` maps `dashboard`, `sets`, `cards`, `collection`, `decks`, `profile`, `price` to their
-  Jinja URLs. `tests/test_frontend_contracts.py::TestLegacyRoutes` checks that the key set equals its
-  `LEGACY_ENDPOINTS` and that each URL matches a GET rule of the Flask `url_map`.
+  Jinja URLs; each URL must match a GET rule of the Flask `url_map` (a unit that adds a legacy link adds
+  that check).
 - To port a module: flip its registry entry from `{status: 'legacy', legacy: 'cards'}` to
   `{status: 'spa', to: '/cards'}`, add the lazy route inside the `ShellError` group of `routes.tsx`, add the
   labels in `nav.json` (`items.<id>.label` and `.description`, both languages). Keep the Jinja page and its
@@ -607,8 +607,7 @@ Production-shaped runtime: systemd unit `docs/riftbound.service` (`EnvironmentFi
 least `RB_ENV`, `SECRET_KEY`, `DATABASE_URL`), Gunicorn `--workers 3 run:app` binding all interfaces on
 port 8000 (firewall it so only the Nginx host reaches it), Nginx template `docs/nginx_config` (one upstream,
 two `proxy_pass` lines for `/` and `/riftbound/`, `Host`, `X-Forwarded-For`, `X-Forwarded-Proto` headers,
-must not strip `Referer`, `limit_req` zone for the auth POSTs). `tests/test_nginx_config_doc.py` pins that
-content. Order for an upgrade: back up the database, install requirements, `flask db upgrade`,
+must not strip `Referer`, `limit_req` zone for the auth POSTs). Order for an upgrade: back up the database, install requirements, `flask db upgrade`,
 `flask db check`, build the frontend, restart. The dev server runs this stack; there is no production.
 
 ### 8.3 GitHub Actions (`.github/workflows/`)
@@ -626,8 +625,7 @@ content. Order for an upgrade: back up the database, install requirements, `flas
 - `release.yml` (manual `workflow_dispatch`): input `vX.Y.Z` validated by regex, pushes the tag, creates a
   GitHub release; the only job with `contents: write`.
 - No application secret ever enters CI (`DATABASE_URL`, `SECRET_KEY` are not defined in workflows; the
-  PostgreSQL job uses `RB_ENV=development` for a per-process key). `tests/test_ci_workflows.py` enforces
-  this and the job/step order.
+  PostgreSQL job uses `RB_ENV=development` for a per-process key).
 
 ## 9. Testing
 

@@ -222,14 +222,15 @@ and must **never be committed, pasted or shared**.
    PostgreSQL-only DDL behind `op.get_bind().dialect.name == 'postgresql'`.
 4. Write the downgrade. A revision that deletes or converts data must validate it
    first and abort with a message listing the offending rows (see `0003`).
-5. `pytest tests/test_migrations.py` runs the upgrade/downgrade round trip and the
+5. The unit adds a test for its revision: the upgrade/downgrade round trip and the
    drift guard (`compare_metadata` of the models against the migrated schema must
-   be empty). `flask db check` does the same against a real database.
+   be empty; helpers in `tests/migration_helpers.py`). `flask db check` does the same against a real database.
 
 ## Tests and CI
 
-- `pytest tests/test_migrations.py`: SQLite, always runs.
-- `pytest -m postgres`: needs a PostgreSQL database whose name contains `test`:
+- Migration tests on SQLite always run (the old ones were removed by M-a; each unit
+  that adds a revision adds its own).
+- `pytest -m postgres` (no marked test today): needs a PostgreSQL database whose name contains `test`:
   ```bash
   createdb riftbound_test
   TEST_POSTGRES_URL=postgresql+psycopg://user:password@localhost:5432/riftbound_test \
@@ -239,4 +240,5 @@ and must **never be committed, pasted or shared**.
   refuse any database whose name lacks `test`. Never point them at dev data.
 - GitHub Actions job `migrations-pg` (`.github/workflows/ci.yml`) starts a
   `postgres:18` service and runs: `flask db upgrade`, `flask db check`,
-  `flask db downgrade base`, `flask db upgrade`, then `pytest -m postgres`.
+  `flask db downgrade base`, `flask db upgrade`. The `pytest -m postgres` step was
+  removed by M-a and comes back with the first new `postgres`-marked test.

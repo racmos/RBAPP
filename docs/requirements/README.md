@@ -18,7 +18,7 @@ Owner decisions of 2026-10-22 changed the order and several open decisions: see
 |---|---|---|
 | F1-g | `F1/F1-g-hardening.md` | Done (#26). |
 | F1-close | `F1/F1-close.md` | Done (#27). |
-| M-a | `M/M-a-test-reset.md` | Ready — next unit. |
+| M-a | `M/M-a-test-reset.md` | Done (#TBD). |
 | F2-* | `F2/F2-*.md` | Drafts with CONFIRM items (see `F2/README.md` → Open decisions). |
 
 Phases F3-F12 have a phase spec only; their unit requirements are written when the phase starts, after the

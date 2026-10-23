@@ -40,7 +40,7 @@ Work arrives as a unit requirement in `docs/requirements/F<n>/F<n>-<x>-<slug>.md
 | Server | Gunicorn 23.0.0 behind Nginx |
 | Frontend | React 19.3.0 + TypeScript 6.0.3 + Vite 8.3.2 in `frontend/` (Node 24, exact pins in `frontend/package.json`); tests with Vitest 5.0.3 |
 
-The exact pins live in `requirements.txt`; if you change one, update this table (`tests/test_docs.py` fails when they differ).
+The exact pins live in `requirements.txt`; if you change one, update this table (a unit that touches the pins re-creates the pin check, see Testing).
 
 ## Project Structure
 
@@ -186,7 +186,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 `landing_bp`, `main_bp` (dashboard), `auth_bp`, `sets_bp`, `cards_bp`, `collection_bp`, `deck_bp`, `price_bp`, `profile_bp` and `api_v1` (JSON API).
 
 ### SPA hosting (`spa_bp`)
-`app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise, never the Jinja error templates). The `index.html` responses carry `Content-Security-Policy-Report-Only` (`SPA_CSP=report-only`, the default, or `off`; any other value stops the app with `ConfigError`); no other response gets a CSP. It is registered after the domain blueprints; `tests/test_spa_hosting.py` uses a temporary dist (`spa_dist` / `spa_app` fixtures), no Node needed. See `docs/frontend.md`.
+`app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise, never the Jinja error templates). The `index.html` responses carry `Content-Security-Policy-Report-Only` (`SPA_CSP=report-only`, the default, or `off`; any other value stops the app with `ConfigError`); no other response gets a CSP. It is registered after the domain blueprints; Tests get a temporary dist from the `spa_dist` / `spa_app` fixtures, no Node needed. See `docs/frontend.md`.
 
 ### Color Scheme (Dark Teal Theme)
 | Element | Color | Hex |
@@ -273,9 +273,19 @@ flask db upgrade                             # apply
 flask db check                               # must report no drift
 flask db downgrade -1                        # every revision must be reversible
 ```
-Revisions live in `migrations/versions/`. Change the model and the revision together; `tests/test_migrations.py` fails when they disagree. Back up before upgrading a real database; see `docs/migrations.md`.
+Revisions live in `migrations/versions/`. Change the model and the revision together; the unit adds a round-trip and drift test for its revision (see Testing). Back up before upgrading a real database; see `docs/migrations.md`.
 
 ### Testing
+**Test policy (since 2026-10-22, unit M-a).** The pre-existing suites were removed. Only
+`tests/test_authz_matrix.py` (every URL rule classified P/U/A) and the startup smoke tests
+(`tests/test_smoke.py`, `frontend/src/app/smoke.test.tsx`) remain. Strict TDD still applies: every
+unit writes the tests for the behaviour it adds or changes. When a unit touches an area whose old
+guard was removed, it re-creates that guard in its smallest form: a migration → a round-trip and
+model/schema drift test for that revision (`tests/migration_helpers.py`); new UI strings → the ES/EN
+parity test; a new error code → the backend/frontend catalog test; a new legacy link → the
+legacy-routes check against the Flask `url_map`; a new pinned version → the pin check. The last
+commit with the old suites is `902047c6579e5ee670e1fb4b103a941159b85c00`; recover any file with `git show 902047c6579e5ee670e1fb4b103a941159b85c00:<path>`.
+
 Strict TDD: write the failing test first, then the code.
 ```bash
 pip install -r requirements.txt
@@ -286,7 +296,7 @@ TEST_POSTGRES_URL=postgresql+psycopg://user:password@localhost:5432/riftbound_te
 - `tests/conftest.py` sets `RB_ENV=testing`; the default `app` has CSRF, rate limits and captcha **off**.
 - Fixtures: `make_user`, `login_as`, `authenticated_client`, `admin_client`, `other_user_client`, `csrf_app`, `limited_app`, `altcha_app`, `frozen_clock`, `migration_app`, `pg_url`.
 - Request `admin_client` / `authenticated_client` **before** `csrf_app` (they log in through the form).
-- The PostgreSQL tests need a database whose name contains `test`; CI runs them against PostgreSQL 18.
+- PostgreSQL-marked tests (none today) need a database whose name contains `test`; a unit that adds them re-adds the `pytest -m postgres` CI step (PostgreSQL 18).
 - Nothing in the tests may reach the internet.
 
 ### Security
@@ -378,8 +388,8 @@ The React app lives in `frontend/` (Node 24, see `.nvmrc`). Work there with `npm
 
 Conventions: dependencies are pinned without `^` or `~` (`frontend/.npmrc`); CSS is layered (`@layer reset, tokens, base, layout, components, utilities`) and every `*.module.css` wraps its rules in `@layer components`; `@media` widths come only from `src/lib/breakpoints.ts`; the background never brightens the map and body text keeps at least 4.5:1 contrast over it (`src/lib/background.ts`).
 
-App shell and preferences (unit e): signed-in pages render inside `frontend/src/shell/AppShell.tsx`; `shell/navRegistry.ts` is the single list behind the topbar, the bottom navigation, the "Más" sheet and the home hub (each entry is `spa`, `legacy` or `planned`; legacy entries are plain links to the Jinja pages listed in `shell/legacy-routes.json`, which `tests/test_frontend_contracts.py::TestLegacyRoutes` checks against the Flask `url_map`). Interface preferences live in `frontend/src/prefs/` (`rb_prefs_v1` mirror applied before the first render, Auto resolved below 860 px, optimistic PATCH with revert) and are edited at `/riftbound/app/account/interface`. The Jinja layout (`app/templates/base.html`) links to the new app ("Nueva app"). See `docs/frontend.md`.
+App shell and preferences (unit e): signed-in pages render inside `frontend/src/shell/AppShell.tsx`; `shell/navRegistry.ts` is the single list behind the topbar, the bottom navigation, the "Más" sheet and the home hub (each entry is `spa`, `legacy` or `planned`; legacy entries are plain links to the Jinja pages listed in `shell/legacy-routes.json`, whose keys must exist in the Flask `url_map`; a unit that adds a legacy link adds a test for it). Interface preferences live in `frontend/src/prefs/` (`rb_prefs_v1` mirror applied before the first render, Auto resolved below 860 px, optimistic PATCH with revert) and are edited at `/riftbound/app/account/interface`. The Jinja layout (`app/templates/base.html`) links to the new app ("Nueva app"). See `docs/frontend.md`.
 
 PWA (unit f): the app installs as "Rift Manager" (`pwa-options.ts`, vite-plugin-pwa `generateSW`, prompt mode). The worker is `/riftbound/app/sw.js` with scope `/riftbound/app/`; it precaches the app shell only and never touches `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages. `frontend/src/pwa/` holds the "Nueva versión" update toast (`useUpdatePrompt`), the install item (`installPrompt.ts` is started in `app/bootstrap.tsx`; iOS Safari gets `IosInstallDialog`) and the offline behaviour lives in `auth/offline.ts` plus `components/ui/OfflineBanner.tsx` (the shell opens offline when a signed-in hint exists; settings and logout are read-only offline). A plain revert is not a rollback of the PWA: build with `VITE_PWA_SELF_DESTROY=true` first (see `docs/frontend.md`, "Rolling back the PWA"). Icons are committed; `npm run icons` regenerates them and `npm run check:dist` verifies them.
 
-Authentication and API access (unit d): `frontend/src/api/client.ts` is the only code that calls `fetch`. It unwraps `{success, data}`, throws `ApiError` (`kind` http, network, timeout or parse; `code` normalised from `body.code` or derived from the F0 body), keeps the CSRF token in memory only (`api/csrf.ts`, never in web storage), sends `X-CSRFToken` on POST, PATCH, PUT and DELETE, retries once after `csrf_invalid`, and calls the registered unauthorized handler on a 401 from any path except `/auth/login` and `/auth/logout`. The session is the TanStack Query entry `['session']` (`auth/session.ts`); route loaders `requireAuth`, `requireAnon` and `requireAdmin` (`auth/guards.ts`) run before anything renders. `next` is always an absolute `/riftbound/...` path and `auth/safeNext.ts` decides between a router navigation and a full page load. `altcha` is imported only by `auth/AltchaWidget.tsx` (lazy register route) and must keep the version pinned in `requirements.txt`. Text lives in `src/i18n/locales/{es,en}/*.json` (`es` is the typed source; `src/i18n/parity.test.ts` fails on a missing key, different `{{placeholders}}` or a missing plural form). A backend error code needs `code.<value>` in both `errors.json` files; `tests/test_frontend_contracts.py` checks it. See `docs/frontend.md`.
+Authentication and API access (unit d): `frontend/src/api/client.ts` is the only code that calls `fetch`. It unwraps `{success, data}`, throws `ApiError` (`kind` http, network, timeout or parse; `code` normalised from `body.code` or derived from the F0 body), keeps the CSRF token in memory only (`api/csrf.ts`, never in web storage), sends `X-CSRFToken` on POST, PATCH, PUT and DELETE, retries once after `csrf_invalid`, and calls the registered unauthorized handler on a 401 from any path except `/auth/login` and `/auth/logout`. The session is the TanStack Query entry `['session']` (`auth/session.ts`); route loaders `requireAuth`, `requireAnon` and `requireAdmin` (`auth/guards.ts`) run before anything renders. `next` is always an absolute `/riftbound/...` path and `auth/safeNext.ts` decides between a router navigation and a full page load. `altcha` is imported only by `auth/AltchaWidget.tsx` (lazy register route) and must keep the version pinned in `requirements.txt`. Text lives in `src/i18n/locales/{es,en}/*.json` (`es` is the typed source; both languages need the same keys, the same `{{placeholders}}` and the plural forms; a unit that adds strings adds the parity test). A backend error code needs `code.<value>` in both `errors.json` files; the unit that adds a code adds a test for it. See `docs/frontend.md`.

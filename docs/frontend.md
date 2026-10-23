@@ -149,9 +149,9 @@ applies to both.
 
 Text lives in `frontend/src/i18n/locales/{es,en}/{common,nav,auth,errors,prefs}.json`
 and is bundled (no translation requests at run time). Spanish is the typed source: a
-missing key fails `npm run typecheck`. `src/i18n/parity.test.ts` fails when a key exists
-in one language only, when the `{{placeholders}}` of a key differ, or when a plural
-group lacks a form the language needs. The language is the account preference, then
+missing key fails `npm run typecheck`. Both languages need the same keys, the same
+`{{placeholders}}` and every plural form the language needs; the unit that adds strings
+adds the parity test. The language is the account preference, then
 `rb_lang` in `localStorage`, then the first supported entry of `navigator.languages`,
 then Spanish.
 
@@ -167,8 +167,7 @@ Server errors are translated by `code` (`translateError` in `src/i18n/translateE
    `DetailCode`) and return it from the endpoint (`fail(..., code=ErrorCode.X)`).
 2. Add `code.<value>` to `frontend/src/i18n/locales/es/errors.json` and
    `.../en/errors.json` (for a field-level code, `validation.<value>`).
-3. Run `pytest tests/test_frontend_contracts.py` (it fails until both catalogs have the
-   entry) and `npx vitest run src/i18n` in `frontend/`.
+3. Add a test that both catalogs have the entry (the unit adds a test for it).
 
 An older server may answer without codes: `deriveCode` in `src/api/errors.ts` maps the
 F0 bodies (401 login, 409 duplicates, 429) so the screens still work.
@@ -192,8 +191,8 @@ Jinja page, key in `legacy-routes.json`) or `planned` (never rendered). `placeme
 where it appears (`top`, `bottom`, `hub`, `more`); `adminOnly` hides it from non-admins (UX
 only, the server still enforces). **To port a module, flip its entry**: change
 `status: 'legacy', legacy: 'cards'` to `status: 'spa', to: '/cards'`, add the route in
-`src/app/routes.tsx` and keep the label in `nav.json`. `legacy-routes.json` is checked by
-`tests/test_frontend_contracts.py::TestLegacyRoutes` against the Flask `url_map`.
+`src/app/routes.tsx` and keep the label in `nav.json`. Every URL of `legacy-routes.json` must
+exist in the Flask `url_map`; the unit that adds a legacy link adds a test for it.
 
 **Preferences.** The account stores five values (`lang`, `density`, `accent`,
 `bg_intensity`, `collection_view`; `null` is Auto). `src/prefs/`:
