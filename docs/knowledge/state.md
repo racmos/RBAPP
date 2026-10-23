@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-23 (M-a: test reset; only the authorization matrix and the smoke tests remain).
+Last update: 2026-10-24 (M-b: plan documents follow the decisions of 2026-10-22; phase specs F13-F15 added).
 
 ## Phases
 
@@ -11,16 +11,22 @@ Last update: 2026-10-23 (M-a: test reset; only the authorization matrix and the 
 |---|---|---|
 | F0 Foundation | **Done** (PRs #11-#16) | Archived in `openspec/changes/archive/2026-10-19-f0-foundation/`; contracts in `openspec/specs/`. |
 | F1 App shell | **Done** (PRs #17-#24, #26, F1-close #27) | Archived in `openspec/changes/archive/2026-10-22-f1-app-shell/` (verify: 67 requirements, 64 PASS, 1 PASS manual, 2 DEFERRED, 0 FAIL); contracts merged into `openspec/specs/` (21 capabilities, 136 requirements). See "F1 detail". |
-| F2 Catalog | Planned — next phase | `docs/requirements/F2/` (phase spec + unit drafts with CONFIRM items). |
-| F3-F12 | Planned | Phase specs in `docs/requirements/F<n>/README.md`. |
+| M-a Test reset | **Done** (#29) | `docs/requirements/M/M-a-test-reset.md`. |
+| M-b Plan update | **Done** (#<PR>) | `docs/requirements/M/M-b-plan-update.md`. |
+| M-c Hygiene | Planned — **next unit** | Private IPs/dev domain out of tracked files, no exception text from legacy endpoints, `clock.utcnow()`. Unit requirement still to write. |
+| F4 Prices + Dashboard | Planned | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
+| F2 Catalog | Planned | F2-a (bans) after F4-a/F4-b; the rest after F13. `docs/requirements/F2/` (phase spec + unit drafts that need the planner's rewrite). |
+| M-d Images out of git | Planned | After F2-a. Unit requirement still to write. |
+| F13 Riot sync + catalog admin | Planned | `docs/requirements/F13/README.md`. |
+| F3 Collection | Planned | With F4-c. `docs/requirements/F3/README.md`. |
+| F14 Products | Planned | `docs/requirements/F14/README.md`. |
+| F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
+| F15 Rules app | Planned (after production) | `docs/requirements/F15/README.md` (outline). |
+| F5-k Mulligan, F8 Events | Planned (after production, after F15) | F5-k in `docs/requirements/F5/README.md`; F8 with the new landing (F11-a/b). |
 
 ## Plan change (2026-10-22)
 
-The owner changed the order and answered several open decisions: see `decisions-2026-10-22.md` (it wins
-over `product.md`, `roadmap.md` and `open-decisions.md` until M-b folds it in). M-a (test reset) is done;
-next unit: **M-b** (plan docs). Order: M-a → M-b (plan docs) → M-c (hygiene) → F4-a/F4-b (jobs + daily prices) → F2-a (bans) →
-M-d (images out of git) → Riot sync + catalog admin → F2 → F3 + F4-c → Products → medium priority →
-production → Rules app → mulligan → events.
+Order and phases: `roadmap.md` (folded in by M-b; record of the answers in `decisions-2026-10-22.md`).
 
 ## Live on dev (2026-10-21)
 
@@ -77,8 +83,7 @@ that file and in its `verify-report.md`.
 - `docs/migrations.md` restarts `rbapp` while the repo unit file is `docs/riftbound.service`: align the naming.
 - Legacy endpoints leak exception text: `cards.upload_card_image` and several `price.py` endpoints return
   `str(e)` in a 500, and the generic `except` of `validate_json` returns it in a 400. About 20 legacy places
-  use `datetime.utcnow()` instead of `app/utils/clock.utcnow()`. Fix when the module is ported (F2/F10) or
-  in a small hardening unit.
+  use `datetime.utcnow()` instead of `app/utils/clock.utcnow()`. Unit M-c fixes both.
 - Guards to re-create when their area is touched: see the test policy (AGENTS.md → Testing).
 - OPAPP and DB tools on the owner's side use the rotated database superuser password (owner action, done
   or pending on their side; nothing in this repo).
@@ -91,18 +96,19 @@ that file and in its `verify-report.md`.
 - The Riot scraper rewrites every field on update, so it resets `rbcar_banned` to `N` on each run (F2-a
   moves bans to their own table).
 - The Jinja catalog SQL uses PostgreSQL-only constructs (`~`, `regexp_replace`, shimmed in SQLite tests).
-- 376 card images under `app/static/images/cards/` are tracked in git despite the ignore rule (F12-g moves
-  images out of the code tree).
+- 376 card images under `app/static/images/cards/` are tracked in git despite the ignore rule (unit M-d
+  moves them out of git into a data directory).
 - The landing feeds (`app/services/scraper.py`) serve placeholder news/tournaments; there is no real event
-  source yet (F8 D-F8-1).
-- `rbcollection` CHECK allows `rbcol_selling = 'S'` but the app writes only Y/N (F3 normalises it).
+  source yet (F8 starts with the official upcoming-events calendar; the landing is rebuilt with F8).
+- `rbcollection` CHECK allows `rbcol_selling = 'S'` but the app writes only Y/N (F3 evaluates and removes it).
 - The repo's systemd/Gunicorn docs use the default 30 s timeout while Cardmarket load and Riot extraction run
-  inside the request (the dev server overrides it; F4/F10 move them to jobs).
+  inside the request (the dev server overrides it; F4 and F13 move them to jobs).
 
 ## Units (from F1-close on)
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
+| M-b | done | `docs/m-b-plan-update` / #<PR> | Decisions of 2026-10-22 folded into `product.md`, `roadmap.md`, `open-decisions.md`, phase specs F2-F12 and this file; new phase specs F13 (Riot sync + catalog admin), F14 (Products), F15 (Rules app). Documentation only. Next unit: **M-c**. |
 | M-a | done | `chore/m-a-test-reset` / #29 | Old suites removed; kept authz matrix + smoke tests; baseline `902047c6579e5ee670e1fb4b103a941159b85c00`. pytest 1694 passed / 41 skipped → 21 passed; vitest 1189 → 1. |
 | F1-close | done | `chore/f1-close` / #27 | Verify report (67 requirements, 0 FAIL, no defects), 8 spec amendments, specs merged (62 ADDED + 5 MODIFIED), archive `2026-10-22-f1-app-shell`. Lanes on `c2a7fe7`: pytest 1694 passed / 41 skipped, vitest 1189. |
 | F1-g | done | `feat/f1g-hardening` / #26 | CSP report-only + `SPA_CSP`, axe sweep, precache dedupe, Toast deflake. pytest 1640 → 1694; Lighthouse pending (owner). |

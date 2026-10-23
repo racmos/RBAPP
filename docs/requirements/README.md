@@ -9,8 +9,9 @@ Inputs for gentle-shell. The cycle is described in `docs/knowledge/workflow.md`.
   before it is handed over; drafts with `CONFIRM D-…` items are confirmed with the owner first.
 - `M/M-<x>-<slug>.md` — maintenance units outside the phases (tests, hygiene, plan updates).
 
-Owner decisions of 2026-10-22 changed the order and several open decisions: see
-`docs/knowledge/decisions-2026-10-22.md`. The F2-F12 drafts are rewritten by the planner before hand-over.
+Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. The owner decisions of
+2026-10-22 are folded into the phase specs (M-b); the record of the answers is
+`docs/knowledge/decisions-2026-10-22.md`.
 
 ## Ready or drafted
 
@@ -19,10 +20,16 @@ Owner decisions of 2026-10-22 changed the order and several open decisions: see
 | F1-g | `F1/F1-g-hardening.md` | Done (#26). |
 | F1-close | `F1/F1-close.md` | Done (#27). |
 | M-a | `M/M-a-test-reset.md` | Done (#29). |
-| F2-* | `F2/F2-*.md` | Drafts with CONFIRM items (see `F2/README.md` → Open decisions). |
+| M-b | `M/M-b-plan-update.md` | Done (#<PR>). |
+| F13 | `F13/README.md` | Phase spec only (Riot sync + catalog admin; added by M-b). |
+| F14 | `F14/README.md` | Phase spec only (Products; added by M-b). |
+| F15 | `F15/README.md` | Phase spec outline (Rules app; added by M-b; specified when the phase starts). |
+| F2-* | `F2/F2-*.md` | Drafts written before 2026-10-22; they still need the planner's rewrite before hand-over (see `F2/README.md` → Decisions already taken and Open decisions). |
 
-Phases F3-F12 have a phase spec only; their unit requirements are written when the phase starts, after the
-owner answers its open decisions.
+Phases F3-F15 have a phase spec only (`F<n>/README.md`; F13 Riot sync + catalog admin, F14 Products, F15
+Rules app were added by M-b); their unit requirements are written when the phase starts, after the owner
+answers its open decisions. Maintenance units M-c (hygiene) and M-d (card images out of git) have no
+requirement yet.
 
 ## How to hand one over
 

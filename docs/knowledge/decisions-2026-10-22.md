@@ -1,9 +1,8 @@
 # Owner decisions of 2026-10-21/22 and the agreed plan
 
 Recorded by the planner after the owner answered the open questions of the milestones review (Spanish
-working document "Rift Manager — Hitos y prioridades"). These decisions are binding. Until unit M-b folds
-them into `product.md`, `roadmap.md`, `open-decisions.md` and the phase specs, **this file wins over those
-documents where they disagree**.
+working document "Rift Manager — Hitos y prioridades"). These decisions are binding. Folded into the plan
+documents by M-b (#<PR>); kept as the record of the owner's answers.
 
 ## Agreed order
 
