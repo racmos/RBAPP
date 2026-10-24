@@ -1,4 +1,5 @@
-"""F4-a S5/S6: systemd templates under docs/systemd/ and the runbook section.
+"""F4-a S5/S6, F4-b S7: systemd templates under docs/systemd/ and the runbook
+section.
 
 The templates hold placeholders only: the same user, working directory and
 environment file as docs/riftbound.service, and no host values."""
@@ -9,7 +10,6 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 SYSTEMD = REPO / 'docs' / 'systemd'
-F4B_NOTE = '# Install with F4-b (the daily_prices kind does not exist before it)'
 IPV4 = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
 
 
@@ -67,16 +67,26 @@ def test_daily_units():
     assert timer['Unit'] == 'riftbound-daily.service'
 
 
-def test_retry_units_leave_the_command_to_f4b():
-    assert 'ExecStart' not in _directives(SYSTEMD / 'riftbound-daily-retry.service')
+def test_retry_units_enqueue_unless_succeeded_today():
+    service = _directives(SYSTEMD / 'riftbound-daily-retry.service')
+    assert service['ExecStart'] == (
+        f'{VENV_FLASK} jobs enqueue daily_prices --unless-succeeded-today')
     timer = _directives(SYSTEMD / 'riftbound-daily-retry.timer')
     assert timer['OnCalendar'] == '*-*-* 08:00:00 Europe/Madrid'
     assert timer['Unit'] == 'riftbound-daily-retry.service'
 
 
+@pytest.mark.parametrize('name', ['riftbound-daily.service', 'riftbound-daily-retry.service'])
+def test_daily_services_match_the_jobs_service(name):
+    jobs_unit = _directives(SYSTEMD / 'riftbound-jobs.service')
+    unit = _directives(SYSTEMD / name)
+    for key in ('User', 'Group', 'WorkingDirectory', 'Environment', 'EnvironmentFile'):
+        assert unit[key] == jobs_unit[key], key
+
+
 @pytest.mark.parametrize('name', [u for u in UNITS if 'daily' in u])
-def test_daily_and_retry_units_wait_for_f4b(name):
-    assert F4B_NOTE in (SYSTEMD / name).read_text(encoding='utf-8')
+def test_daily_and_retry_units_no_longer_wait_for_f4b(name):
+    assert 'Install with F4-b' not in (SYSTEMD / name).read_text(encoding='utf-8')
 
 
 @pytest.mark.parametrize('name', UNITS)
@@ -86,9 +96,29 @@ def test_no_host_values(name):
     assert 'http' not in text
 
 
-def test_runbook_scheduled_jobs_section():
+def _scheduled_jobs_section():
     runbook = (REPO / 'docs' / 'knowledge' / 'ops-runbook.md').read_text(encoding='utf-8')
-    section = runbook.split('## Scheduled jobs', 1)[1].split('\n## ', 1)[0]
+    return runbook.split('## Scheduled jobs', 1)[1].split('\n## ', 1)[0]
+
+
+def test_runbook_daily_prices_section():
+    section = _scheduled_jobs_section()
+    for needle in ('riftbound-daily.service', 'riftbound-daily-retry.service',
+                   'systemctl enable --now riftbound-daily.timer riftbound-daily-retry.timer',
+                   'flask jobs enqueue daily_prices',
+                   'flask jobs enqueue daily_prices --unless-succeeded-today',
+                   'flask jobs list', 'flask shell', 'rbjob_result', 'review_total',
+                   'no_candidates', 'ambiguous', 'conflict', 'ignored_pair',
+                   'systemctl disable --now riftbound-daily.timer riftbound-daily-retry.timer',
+                   "DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'daily_prices'",
+                   'flask db downgrade 0007_jobs'):
+        assert needle in section, needle
+    assert 'flask jobs show' not in section
+    assert 'do not install them before F4-b' not in section
+
+
+def test_runbook_scheduled_jobs_section():
+    section = _scheduled_jobs_section()
     for needle in ('docs/systemd/', 'systemctl daemon-reload',
                    'systemctl enable --now riftbound-jobs.timer',
                    'flask jobs enqueue heartbeat', 'flask jobs list',

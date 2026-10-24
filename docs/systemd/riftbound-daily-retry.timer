@@ -1,4 +1,3 @@
-# Install with F4-b (the daily_prices kind does not exist before it)
 # Retry window of the daily Cardmarket load at 08:00 Madrid time (D-F4-1).
 [Unit]
 Description=Retry the Riftbound daily Cardmarket load at 08:00 Europe/Madrid
