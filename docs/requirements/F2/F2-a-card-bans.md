@@ -4,11 +4,11 @@
 |---|---|
 | Phase / unit | F2 / a |
 | Branch | `feat/f2a-card-bans` (from up-to-date `main`) |
-| Depends on | F1 units a-f merged (done). F1-close recommended first, not required |
+| Depends on | F4-a/F4-b merged (#32, #33) — done (order agreed 2026-10-22) |
 | Size forecast | ~550 authored lines (tests and docs included) |
-| Risk | `Risk: items 1 and 3 (new table + data backfill migration 0007; the ban service and GET /bans are consumed by F2-b/c/d, F5 legality and F10 admin)` |
+| Risk | `Risk: items 1 and 3 (new table + seed data migration 0009; the ban service and GET /bans are consumed by F2-b/c/d, F5 legality and F10 admin)` |
 | TDD | ON (strict). Runners: `venv/bin/pytest` (backend), `cd frontend && npx vitest run` (frontend, untouched here) |
-| Save as | `docs/requirements/F2/F2-a-card-bans.md` (commit this document verbatim in the first commit if it is not in the repo yet) |
+| Save as | `docs/requirements/F2/F2-a-card-bans.md` (rewritten 2026-10-24 by gentle-shell on the owner's instruction; see Log) |
 
 ## Objective
 
@@ -23,18 +23,18 @@ truth, so the catalog (F2), deck legality (F5) and the admin UI (F10) all read t
 - `docs/knowledge/conventions.md`, `docs/knowledge/product.md` → "Game rules" (bans per mode, by name)
 - `docs/requirements/F2/README.md` (phase spec: F2-R1, R2, R3, R5, R10, R14, R27; D-F2-2, D-F2-3)
 - `app/models/card.py`, `app/models/prefs.py` + `app/schemas/prefs_domain.py` (pattern: domain tuples shared
-  by schema and CHECK, `sql_in`), `migrations/versions/0006_user_prefs.py` (migration style), `tests/test_migrations.py::TestUserPrefs0006`
-- `app/cli/users.py`, `app/cli/__init__.py` (CLI pattern), `tests/test_admin_cli.py`
+  by schema and CHECK, `sql_in`), `migrations/versions/0008_jobs_daily_prices.py` (latest revision, style), `tests/migration_helpers.py`, `tests/test_daily_prices_migration.py` (round-trip + drift test pattern)
+- `app/cli/users.py`, `app/cli/jobs.py`, `app/cli/__init__.py` (CLI pattern), `tests/test_jobs_cli.py` (CLI test pattern)
 - `app/api/v1/me.py`, `app/api/v1/__init__.py`, `app/api/responses.py`, `app/api/error_codes.py`
 - `app/routes/domains/cards.py` (`search_banned` filter), `app/templates/cards.html` (Banned column, badge,
   add/edit modals), `app/services/riot_scraper.py` (step 5 rewrites `rbcar_banned`)
-- `tests/test_authz_matrix.py`, `tests/test_docs.py::TestAgentsStructure::test_every_table_is_named`
+- `tests/test_authz_matrix.py`; AGENTS.md → Testing (test policy: each unit writes its own tests and re-creates the guards it touches)
 
 ## Scope
 
 In:
 - `app/schemas/game_domain.py` with `GAME_MODES`.
-- Model `RbCardBan` (`app/models/ban.py`), migration `0007_card_bans` with backfill.
+- Model `RbCardBan` (`app/models/ban.py`), migration `0009_card_bans` with the official seed data.
 - `app/services/bans.py` (normalization, reads, add/remove).
 - `flask bans list|add|remove` (`app/cli/bans.py`).
 - `GET /riftbound/api/v1/bans` (`app/api/v1/bans.py`).
@@ -74,17 +74,27 @@ S3. Table `riftbound.rbcardbans` (model `RbCardBan`, `app/models/ban.py`, import
     `rbcardbans_name_mode_key`. Table comment: `Bans by card name and game mode (F2).` Every column has a
     short English `comment`.
 
-S4. Migration `migrations/versions/0007_card_bans.py`, `revision = '0007_card_bans'`,
-    `down_revision = '0006_user_prefs'`.
-  - Upgrade creates the table exactly as S3 (so `flask db check` reports no drift) and then backfills: for
-    every distinct `rbcar_name` of `riftbound.rbcards` whose `upper(trim(rbcar_banned))` is `S` or `Y`,
-    insert one row per mode (`1v1`, `2v2`) with `rbban_name_key` = the key, `rbban_name` = that name,
-    `rbban_since` = the migration date (UTC), `rbban_reason` = `Migrated from rbcar_banned`. Names with the
-    same key are inserted once per mode (first by `rbcar_name` order).
-  - The backfill uses a **frozen copy** of `name_key` inside the migration file (migrations must not import
-    app code); a test asserts the frozen copy and the service function agree on the S2 examples.
-  - Downgrade drops the table. `rbcar_banned` is never modified by upgrade or downgrade.
-  - The docstring states: no data loss on upgrade; downgrade loses the bans added after the upgrade.
+S4. Migration `migrations/versions/0009_card_bans.py`, `revision = '0009_card_bans'`,
+    `down_revision = '0008_jobs_daily_prices'`.
+  - Upgrade creates the table exactly as S3 (so `flask db check` reports no drift) and then inserts the
+    official ban list (owner, 2026-10-24: "la lista de ban actuales son: https://riftbound.gg/rules/banned-cards/"),
+    read on 2026-10-24, with catalog spellings (the site writes `Draven - Vanquisher`, the catalog
+    `Draven, Vanquisher`; the site's legend `Master Yi - Wuju Bladesman - Starter` is the catalog legend
+    `Wuju Bladesman`). `rbcar_banned` is **not** read (D-F2-2: the scraper resets it).
+    - Both modes (`1v1` = the site's "Standard Constructed"; the site's 2v2 list is the Standard list plus
+      its own): `Aspirant's Climb`, `Obelisk of Power`, `Reaver's Row`, `The Arena's Greatest`,
+      `The Dreaming Tree`, `Scrapheap`, `Called Shot`, `Fight or Flight`, `Stacked Deck`,
+      `Draven, Vanquisher`, `Ekko, Recurrent`, `Stealthy Pursuer` (12 names × 2 modes = 24 rows).
+    - `2v2` only: `Wuju Bladesman` (1 row). Total 25 rows.
+    - `rbban_since`: `2026-09-18` for `Ekko, Recurrent` and `Stacked Deck` (the site: "The latest wave, Ekko,
+      Recurrent and Stacked Deck, took effect 2026-09-18"); `2026-10-24` (date the list was read) for the
+      others, whose start date the site does not give.
+    - `rbban_reason`: `Official ban list (riftbound.gg, read 2026-10-24)`.
+    - `rbban_name_key` is computed with a **frozen copy** of `name_key` inside the migration file
+      (migrations must not import app code); a test asserts the frozen copy and the service function agree
+      on the S2 examples and on the 13 seeded names.
+  - Downgrade drops the table. `rbcar_banned` is never read nor modified.
+  - The docstring states: no data loss on upgrade; downgrade loses every ban, including those added after.
 
 S5. Reads in `app/services/bans.py` (no Flask request objects):
   - `ban_map() -> dict[str, dict[str, BanEntry]]`: all bans keyed by `name_key`, then mode. `BanEntry` is a
@@ -153,7 +163,7 @@ S10. Docs: `AGENTS.md` (CRLF preserved) lists `rbcardbans` in "Database Naming",
 
 ## API / data contract
 
-Migration `0007_card_bans` (up: create + backfill; down: drop). Model and endpoint:
+Migration `0009_card_bans` (up: create + seed; down: drop). Model and endpoint:
 
 ```http
 GET /riftbound/api/v1/bans?mode=1v1
@@ -183,16 +193,16 @@ None in the React app. Jinja catalog changes only as S9.
 
 ## Acceptance criteria
 
-- [ ] AC1 `tests/test_card_bans.py`: `name_key` examples (S2); `ban_map`, `card_bans`, `ban_info`, `list_bans` order (S5); `add_ban`/`remove_ban` statuses, catalog spelling, `UnknownCardName`, `force`, reason limits, default `since` with `frozen_clock` (S6).
-- [ ] AC2 `tests/test_migrations.py::TestCardBans0007`: chains after `0006_user_prefs`; columns, types, nullability, names of PK/UNIQUE/CHECK; CHECK rejects `3v3`; UNIQUE rejects a duplicate (key, mode); backfill of `S` and `y ` names into both modes (and a name with two printings once per mode); `rbcar_banned` unchanged; downgrade drops the table; models equal the schema at head (S3, S4).
-- [ ] AC3 `tests/test_bans_cli.py`: every exact output line and exit code of S7, including `--mode all`, idempotency and the unknown-name error leaving the table empty.
-- [ ] AC4 `tests/test_api_bans.py`: 200 shape and order, `mode` filter, invalid `mode` 400 body, anonymous 401, printings including a promo printing and `[]` for a forced name (S8).
+- [ ] AC1 Service tests (new file, e.g. `tests/test_card_bans.py`): `name_key` examples (S2); `ban_map`, `card_bans`, `ban_info`, `list_bans` order (S5); `add_ban`/`remove_ban` statuses, catalog spelling, `UnknownCardName`, `force`, reason limits, default `since` with `frozen_clock` (S6).
+- [ ] AC2 Migration tests (e.g. `tests/test_card_bans_migration.py`, helpers in `tests/migration_helpers.py`): chains after `0008_jobs_daily_prices`; round trip 0008↔0009 and empty drift; names of PK/UNIQUE/CHECK; CHECK rejects `3v3`; UNIQUE rejects a duplicate (key, mode); exactly the 25 seeded rows (names, modes, since, reason); a card with `rbcar_banned = 'S'` is **not** turned into a ban; frozen `name_key` equals the service one.
+- [ ] AC3 CLI tests (e.g. `tests/test_bans_cli.py`): every exact output line and exit code of S7, including `--mode all`, idempotency and the unknown-name error leaving the table unchanged.
+- [ ] AC4 API tests (e.g. `tests/test_api_bans.py`): 200 shape and order, `mode` filter, invalid `mode` 400 body, anonymous 401, printings including a second printing and `[]` for a forced name (S8).
 - [ ] AC5 `tests/test_authz_matrix.py` classifies `api_v1.list_bans` as U and passes.
-- [ ] AC6 `tests/test_routes.py` (or a new `tests/test_cards_jinja_bans.py`): Banned cell/badge text and `search_banned=S|N` from the ban table; the add/edit modals have no `rbcar_banned` control (S9).
-- [ ] AC7 `flask db upgrade` on a copy of the dev schema then `flask db check` → no drift; `flask db downgrade -1` then upgrade again → clean (record in the PR).
+- [ ] AC6 Jinja tests (new file, e.g. `tests/test_cards_jinja_bans.py`): Banned cell/badge text and `search_banned=S|N` from the ban table; the add/edit modals have no `rbcar_banned` control (S9).
+- [ ] AC7 Migration round trip on PostgreSQL: CI `migrations-pg`; on the dev database after merge (gentle-shell deploy, backup first).
 - [ ] AC8 Full lanes green: `venv/bin/pytest`; `cd frontend && npm run lint && npm run typecheck && npx vitest run && npm run build && npm run check:dist`
-- [ ] AC9 `docs/knowledge/state.md` updated (F2-a done, PR placeholder, follow-ups: none expected)
-- [ ] AC10 `AGENTS.md` and `docs/knowledge/ops-runbook.md` updated as S10; `tests/test_docs.py` green.
+- [ ] AC9 `docs/knowledge/state.md` updated (F2-a done, PR placeholder `#<PR>`, next unit M-d)
+- [ ] AC10 `AGENTS.md` and `docs/knowledge/ops-runbook.md` updated as S10.
 
 ## Delivery
 
@@ -205,10 +215,10 @@ None in the React app. Jinja catalog changes only as S9.
 
 ## After merge (user asks gentle-shell, or does it)
 
-- Deploy to dev with `docs/knowledge/ops-runbook.md` — **backup first** (migration `0007`), then
+- Deploy to dev with `docs/knowledge/ops-runbook.md` — **backup first** (migration `0009`), then
   `flask db upgrade`, `flask db check`, restart.
 - Live checks:
-  - `venv/bin/flask bans list` → `No bans.` or the migrated names (if any card had `rbcar_banned = 'S'`).
+  - `venv/bin/flask bans list` → the 25 seeded rows (12 names in 1v1 and 2v2, `Wuju Bladesman` in 2v2).
   - Signed-in `GET <URL>/riftbound/api/v1/bans` → 200 `{"success": true, "data": {"items": [...]}}`;
     anonymous → 401 JSON.
 - Manual checks for the user: ban a real card with `flask bans add "<name>" --mode 1v1 --reason test`, open
@@ -217,6 +227,15 @@ None in the React app. Jinja catalog changes only as S9.
 
 ## Open questions
 
-- CONFIRM D-F2-2: backfill `rbcar_banned` `S`/`Y` as banned in **both** modes with reason
-  `Migrated from rbcar_banned`, and switch the Jinja catalog to the ban table (S4, S9).
-- CONFIRM D-F2-3: `GET /bans` is for signed-in users (U).
+none
+
+## Log
+
+- L1 (owner, 2026-10-24): "la lista de ban actuales son: https://riftbound.gg/rules/banned-cards/ y la lista de cartas erratas actuales son: https://riftbound.gg/rules/errata/"
+- L2 (owner, 2026-10-22, D-F2-2): bans per card name (all printings), two modes 1v1 and 2v2; the legacy
+  `rbcar_banned` flag is not a source; initial data from the official ban list. Replaces the former
+  "CONFIRM D-F2-2" (backfill from `rbcar_banned`), which is dropped.
+- L3 (gentle-shell): D-F2-3 taken with its recommendation: `GET /bans` is for signed-in users (U).
+- L4 (gentle-shell): the 13 site names were matched read-only against the dev catalog on 2026-10-24
+  (all found; `Wuju Bladesman` is OGS/19). Ban start dates the site does not give use the date the list was read.
+- L5 (gentle-shell): errata is out of this unit (see `docs/knowledge/state.md` → Follow-ups).
