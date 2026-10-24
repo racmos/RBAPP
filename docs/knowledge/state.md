@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-24 (M-b: plan documents follow the decisions of 2026-10-22; phase specs F13-F15 added).
+Last update: 2026-10-24 (M-c: hygiene; next unit F4-a, which still needs its unit requirement).
 
 ## Phases
 
@@ -13,8 +13,8 @@ Last update: 2026-10-24 (M-b: plan documents follow the decisions of 2026-10-22;
 | F1 App shell | **Done** (PRs #17-#24, #26, F1-close #27) | Archived in `openspec/changes/archive/2026-10-22-f1-app-shell/` (verify: 67 requirements, 64 PASS, 1 PASS manual, 2 DEFERRED, 0 FAIL); contracts merged into `openspec/specs/` (21 capabilities, 136 requirements). See "F1 detail". |
 | M-a Test reset | **Done** (#29) | `docs/requirements/M/M-a-test-reset.md`. |
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
-| M-c Hygiene | Planned — **next unit** | Private IPs/dev domain out of tracked files, no exception text from legacy endpoints, `clock.utcnow()`. Unit requirement still to write. |
-| F4 Prices + Dashboard | Planned | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
+| M-c Hygiene | **Done** (#<PR>) | `docs/requirements/M/M-c-hygiene.md`. |
+| F4 Prices + Dashboard | Planned — **next: F4-a** | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
 | F2 Catalog | Planned | F2-a (bans) after F4-a/F4-b; the rest after F13. `docs/requirements/F2/` (phase spec + unit drafts that need the planner's rewrite). |
 | M-d Images out of git | Planned | After F2-a. Unit requirement still to write. |
 | F13 Riot sync + catalog admin | Planned | `docs/requirements/F13/README.md`. |
@@ -78,12 +78,7 @@ that file and in its `verify-report.md`.
 - F0 4.31: Nginx `limit_req` on the public proxy (template in `docs/nginx_config`) — owner action, or F12.
 - F0 5.20: owner review of `README.md` / `AGENTS.md`.
 - Riot fan-content disclaimer: F11. Licensing review (fonts, assets, Riot IP): before F12.
-- Hygiene: `openspec/changes/archive/2026-10-19-f0-foundation/` mentions private IPs; `docs/nginx_config`
-  contains the dev domain. Replace with placeholders (unit M-c).
 - `docs/migrations.md` restarts `rbapp` while the repo unit file is `docs/riftbound.service`: align the naming.
-- Legacy endpoints leak exception text: `cards.upload_card_image` and several `price.py` endpoints return
-  `str(e)` in a 500, and the generic `except` of `validate_json` returns it in a 400. About 20 legacy places
-  use `datetime.utcnow()` instead of `app/utils/clock.utcnow()`. Unit M-c fixes both.
 - Guards to re-create when their area is touched: see the test policy (AGENTS.md → Testing).
 - OPAPP and DB tools on the owner's side use the rotated database superuser password (owner action, done
   or pending on their side; nothing in this repo).
@@ -108,6 +103,7 @@ that file and in its `verify-report.md`.
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
+| M-c | done | `chore/m-c-hygiene` / #<PR> | Private IPs/dev domain replaced by placeholders (no history rewrite); legacy 500s and the generic `@validate_json` 400 return a clear message + `internal_error`/`bad_request`, detail only for admins, traceback logged; no `datetime.utcnow` under `app/` (guard test). |
 | M-b | done | `docs/m-b-plan-update` / #30 | Decisions of 2026-10-22 folded into `product.md`, `roadmap.md`, `open-decisions.md`, phase specs F2-F12 and this file; new phase specs F13 (Riot sync + catalog admin), F14 (Products), F15 (Rules app). Documentation only. Next unit: **M-c**. |
 | M-a | done | `chore/m-a-test-reset` / #29 | Old suites removed; kept authz matrix + smoke tests; baseline `902047c6579e5ee670e1fb4b103a941159b85c00`. pytest 1694 passed / 41 skipped → 21 passed; vitest 1189 → 1. |
 | F1-close | done | `chore/f1-close` / #27 | Verify report (67 requirements, 0 FAIL, no defects), 8 spec amendments, specs merged (62 ADDED + 5 MODIFIED), archive `2026-10-22-f1-app-shell`. Lanes on `c2a7fe7`: pytest 1694 passed / 41 skipped, vitest 1189. |
