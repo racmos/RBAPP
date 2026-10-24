@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from app.utils import clock
 
 
 class RbcmProduct(db.Model):
@@ -86,7 +86,7 @@ class RbcmLoadHistory(db.Model):
     rblh_rows = db.Column(db.Integer)
     rblh_status = db.Column(db.Text, default='success')          # success | error | skipped
     rblh_message = db.Column(db.Text)
-    rblh_loaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    rblh_loaded_at = db.Column(db.DateTime, default=lambda: clock.utcnow())
 
 
 class RbcmProductCardMap(db.Model):

@@ -19,7 +19,7 @@ from app.schemas.validators import (
 )
 from app.schemas.validation import validate_json
 from app.services.pricing import resolve_price
-from datetime import datetime
+from app.utils import clock
 
 collection_bp = Blueprint('collection', __name__, url_prefix='/riftbound/collection')
 
@@ -294,7 +294,7 @@ def add_collection():
         # Incremento atómico en SQL (QTY-3): sin leer-modificar-escribir, dos
         # peticiones simultáneas no pierden ninguna suma.
         existing.rbcol_quantity = RbCollection.rbcol_quantity + data.rbcol_quantity
-        existing.rbcol_chadat = datetime.utcnow()
+        existing.rbcol_chadat = clock.utcnow()
         db.session.commit()
         return jsonify({'success': True, 'rbcol_id': existing.rbcol_id, 'merged': True})
 
@@ -307,7 +307,7 @@ def add_collection():
         rbcol_sell_price=data.rbcol_sell_price,
         rbcol_condition=data.rbcol_condition,
         rbcol_language=data.rbcol_language,
-        rbcol_chadat=datetime.utcnow(),
+        rbcol_chadat=clock.utcnow(),
         rbcol_user=current_user.username,
     )
     db.session.add(new_row)
@@ -328,7 +328,7 @@ def update_collection_quantity():
         return jsonify({'success': True, 'deleted': True})
 
     col.rbcol_quantity = data.quantity
-    col.rbcol_chadat = datetime.utcnow()
+    col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -351,7 +351,7 @@ def update_selling():
     data = request.validated_data
     col = _get_owned_row(data.rbcol_id)
     col.rbcol_selling = data.rbcol_selling
-    col.rbcol_chadat = datetime.utcnow()
+    col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -373,7 +373,7 @@ def update_playset():
     else:
         col.rbcol_selling = 'N'
 
-    col.rbcol_chadat = datetime.utcnow()
+    col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -385,7 +385,7 @@ def update_sell_price():
     data = request.validated_data
     col = _get_owned_row(data.rbcol_id)
     col.rbcol_sell_price = data.rbcol_sell_price
-    col.rbcol_chadat = datetime.utcnow()
+    col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -397,7 +397,7 @@ def update_condition():
     data = request.validated_data
     col = _get_owned_row(data.rbcol_id)
     col.rbcol_condition = data.rbcol_condition
-    col.rbcol_chadat = datetime.utcnow()
+    col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -409,7 +409,7 @@ def update_language():
     data = request.validated_data
     col = _get_owned_row(data.rbcol_id)
     col.rbcol_language = data.rbcol_language
-    col.rbcol_chadat = datetime.utcnow()
+    col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
 
@@ -503,7 +503,7 @@ def bulk_apply():
         RbCollection.rbcol_user == current_user.username,
     ).all()
 
-    now = datetime.utcnow()
+    now = clock.utcnow()
 
     # --- Aplicar campos simples ---
     for col in rows:
@@ -667,14 +667,14 @@ def import_collection_csv():
 
         if existing:
             existing.rbcol_quantity = row.rbcol_quantity
-            existing.rbcol_chadat = datetime.utcnow()
+            existing.rbcol_chadat = clock.utcnow()
         else:
             db.session.add(RbCollection(
                 rbcol_rbset_id=row.rbset_id,
                 rbcol_rbcar_id=row.rbcar_id,
                 rbcol_foil=row.rbcol_foil,
                 rbcol_quantity=row.rbcol_quantity,
-                rbcol_chadat=datetime.utcnow(),
+                rbcol_chadat=clock.utcnow(),
                 rbcol_user=current_user.username,
             ))
         imported += 1
@@ -732,7 +732,7 @@ def export_csv():
         writer.writerow([name, language, str(qty_sell), f'{sell_price:.2f}'])
         rows_written += 1
 
-    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    timestamp = clock.utcnow().strftime('%Y%m%d%H%M%S')
     filename = f'{timestamp}_{_sanitize_filename_part(data.rbset_id)}_{_sanitize_filename_part(data.rarity)}.csv'
 
     # Prepend BOM para que Excel detecte UTF-8 correctamente

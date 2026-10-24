@@ -8,7 +8,6 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime
 from typing import Iterable, Optional
 from urllib.parse import urlsplit
 
@@ -18,6 +17,7 @@ from app.models.cardmarket import (
     RbcmProduct, RbcmPrice, RbcmCategory, RbcmExpansion,
     RbcmLoadHistory, RbcmProductCardMap, RbProducts
 )
+from app.utils import clock
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class CardmarketLoader:
     def __init__(self):
         self.steps = []
         self.errors = []
-        self.today = datetime.utcnow().strftime('%Y%m%d')
+        self.today = clock.utcnow().strftime('%Y%m%d')
         self.unmatched_count = 0
 
     def run(self, urls: Optional[dict] = None) -> dict:
@@ -392,7 +392,7 @@ class CardmarketLoader:
             rblh_rows=rows,
             rblh_status=status,
             rblh_message=message,
-            rblh_loaded_at=datetime.utcnow(),
+            rblh_loaded_at=clock.utcnow(),
         ))
         db.session.flush()
 

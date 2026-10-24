@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from app.utils import clock
 
 
 class RbCollection(db.Model):
@@ -42,4 +42,4 @@ class RbCollection(db.Model):
     rbcol_sell_price = db.Column(db.Numeric, nullable=True, comment='Precio de venta unitario sobre el sobrante (quantity - playset)')
     rbcol_condition = db.Column(db.String(8), nullable=True, comment='Estado de conservación (MT, NM, EX, GD, LP, PL, PO)')
     rbcol_language = db.Column(db.String(40), nullable=True, comment='Idioma de la carta (English, Chinese, Spanish, ...)')
-    rbcol_chadat = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, comment='Fecha del último cambio')
+    rbcol_chadat = db.Column(db.DateTime, nullable=False, default=lambda: clock.utcnow(), comment='Fecha del último cambio')
