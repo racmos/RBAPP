@@ -57,9 +57,11 @@ riftbound/
 │   │   └── v1/              # Blueprint api_v1 at /riftbound/api/v1
 │   │       ├── __init__.py
 │   │       ├── auth.py      # session, captcha, login, logout, register
+│   │       ├── bans.py      # GET /bans (card bans per game mode)
 │   │       ├── me.py        # GET/PATCH /me/prefs (interface preferences)
 │   │       └── meta.py      # health, meta/config
 │   ├── cli/                 # Flask CLI groups
+│   │   ├── bans.py          # flask bans list|add|remove (card bans per game mode)
 │   │   ├── jobs.py          # flask jobs enqueue|run-pending|list
 │   │   ├── schema.py        # flask schema snapshot
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
@@ -68,6 +70,7 @@ riftbound/
 │   │   ├── daily_prices.py  # daily_prices: Cardmarket load, validation, clear auto-match, review list (1800 s)
 │   │   └── heartbeat.py     # heartbeat: diagnostic kind (60 s)
 │   ├── models/              # SQLAlchemy models (Rb prefix)
+│   │   ├── ban.py           # RbCardBan (rbcardbans): bans by card name and game mode
 │   │   ├── user.py          # User (rbusers)
 │   │   ├── set.py           # RbSet (rbset)
 │   │   ├── card.py          # RbCard (rbcards)
@@ -92,6 +95,7 @@ riftbound/
 │   │       └── profile.py   # Profile updates
 │   ├── services/            # Business logic, no Flask request objects
 │   │   ├── auth.py          # authenticate (lockout), register_user, unlock_user
+│   │   ├── bans.py          # name_key, ban_map, card_bans, ban_info, list_bans, add_ban, remove_ban
 │   │   ├── captcha.py       # none / altcha providers, replay store
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
@@ -103,6 +107,7 @@ riftbound/
 │   │   ├── riot_scraper.py
 │   │   └── scraper.py       # Landing feeds with a TTL cache
 │   ├── schemas/             # Pydantic
+│   │   ├── game_domain.py   # Game enumerations (GAME_MODES), the single source for schemas and CHECKs
 │   │   ├── prefs_domain.py  # Value domains of the interface preferences (schema + model CHECKs)
 │   │   ├── validators.py    # Request schemas
 │   │   └── validation.py    # @validate_json decorator
@@ -178,7 +183,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 
@@ -212,6 +217,7 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 - Admin routes use `@admin_required` (`app/security.py`); the whole `price_bp` is guarded by `before_request(require_admin)`. Anonymous callers are sent to login, plain users get 403.
 - `is_admin` and `is_blocked` are changed only by the CLI (`flask users promote|demote|block|unblock <username>`), never by request input. A blocked user is rejected exactly like a wrong password.
+- Card bans (`rbcardbans`) are changed only by the CLI (`flask bans add|remove`) until the F10 admin UI; signed-in users read them with `GET /bans`.
 - Never trust ids from the client: deck and collection queries are scoped to the logged-in user.
 
 ## CSRF, Sessions and Login Protection
@@ -230,11 +236,12 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 ## API v1
 
-Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`.
+Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`.
 
 - `GET /auth/session` returns `{authenticated, csrf_token}` for anonymous callers and `{authenticated, user, prefs, csrf_token}` when signed in. `prefs` always has the five keys `lang`, `density`, `accent`, `bg_intensity`, `collection_view`; `null` means Auto (a user without a row gets five `null`s and no row is created).
 - `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
 - `GET`/`PATCH /me/prefs` (`app/api/v1/me.py`): a key that is absent stays unchanged, `null` resets it to Auto, an invalid value is a 400 and nothing is stored (all-or-nothing), unknown keys are ignored. Domains live in `app/schemas/prefs_domain.py` (shared by the schema and the model CHECKs). Logic is in `app/services/prefs.py`.
+- `GET /bans` (`app/api/v1/bans.py`, U) returns `{items: [{name, mode, since, reason, printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2` (any other value is a 400 `validation_error`). A ban covers every printing of a card name (`name_key` in `app/services/bans.py`); modes come from `app/schemas/game_domain.py`. Bans are managed with `flask bans list [--mode M]`, `flask bans add NAME --mode 1v1|2v2|all [--since YYYY-MM-DD] [--reason TEXT] [--force]` and `flask bans remove NAME --mode 1v1|2v2|all`. The legacy `rbcar_banned` column is not a source (F11 drops it).
 
 ```json
 {"success": true, "data": {}, "meta": {}}

@@ -8,6 +8,7 @@ from app import db
 from app.errors import unexpected_failure
 from app.security import admin_required
 from app.models import RbSet, RbCard
+from app.services.bans import ban_map, card_bans, name_key
 from app.services.card_images import card_image_path
 from app.schemas.validators import CardCreate, CardUpdate
 from app.schemas.validation import validate_json
@@ -37,6 +38,7 @@ def cards():
     search_banned = request.args.get('search_banned', '')
     
     query = RbCard.query
+    bans = ban_map()
     
     if search_name:
         query = query.filter(RbCard.rbcar_name.ilike(f'%{search_name}%'))
@@ -71,7 +73,12 @@ def cards():
         query = query.filter(RbCard.rbcar_ability.ilike(f'%{search_ability}%'))
     
     if search_banned:
-        query = query.filter(RbCard.rbcar_banned == search_banned)
+        # Bans live in rbcardbans by name (D-F2-2): pick the raw names here.
+        # S = banned in some mode, N = in none; any other value matches nothing.
+        wanted = {'S': True, 'N': False}.get(search_banned)
+        names = [name for (name,) in db.session.query(RbCard.rbcar_name).distinct()
+                 if (name_key(name) in bans) is wanted]
+        query = query.filter(RbCard.rbcar_name.in_(names))
     
     energy_min = request.args.get('energy_min', type=int)
     energy_max = request.args.get('energy_max', type=int)
@@ -107,6 +114,8 @@ def cards():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     
     sets = RbSet.query.order_by(RbSet.rbset_id).all()
+    banned_modes = [[mode for mode, on in card_bans(card.rbcar_name, bans).items() if on]
+                    for card in pagination.items]
     
     cards_dict = []
     for card in pagination.items:
@@ -137,6 +146,7 @@ def cards():
     return render_template('cards.html', 
                          cards=pagination.items,
                          cards_json=cards_dict,
+                         banned_modes=banned_modes,
                          pagination=pagination,
                          sets=sets,
                          per_page=per_page,

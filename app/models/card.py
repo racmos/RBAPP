@@ -52,6 +52,7 @@ class RbCard(db.Model):
     rbcar_ability = db.Column(db.Text, comment='Habilidad en el cuadro de la carta')
     rbcar_rarity = db.Column(db.Text, comment='Rareza: Común, infrecuente,...')
     rbcar_artist = db.Column(db.Text, comment='Autor del dibujo de la carta')
+    # Deprecated (F2): bans live in rbcardbans; removed in F11.
     rbcar_banned = db.Column(db.Text, default='N', comment='Si ha sido baneada para jugarse en competitivo, S o N')
     image_url = db.Column(db.Text, comment='Enlace a la imagen')
     image = db.Column(db.Text, comment='Nombre del archivo de la imagen')

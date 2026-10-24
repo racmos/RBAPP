@@ -84,6 +84,18 @@ def list_bans(mode: str | None = None) -> list[BanEntry]:
     return [_entry(ban) for ban in found]
 
 
+def printings_by_key() -> dict[str, list[tuple[str, str]]]:
+    """Every catalog card as `(set_id, card_id)`, grouped by the `name_key` of its
+    name and ordered by set id, then card id (one query)."""
+    printings: dict[str, list[tuple[str, str]]] = {}
+    rows = db.session.execute(
+        sa.select(RbCard.rbcar_rbset_id, RbCard.rbcar_id, RbCard.rbcar_name)
+        .order_by(RbCard.rbcar_rbset_id, RbCard.rbcar_id))
+    for set_id, card_id, name in rows:
+        printings.setdefault(name_key(name), []).append((set_id, card_id))
+    return printings
+
+
 def _catalog_name(key: str) -> str | None:
     """The catalog spelling of the first card (by set id, card id) whose name has `key`."""
     rows = db.session.execute(
