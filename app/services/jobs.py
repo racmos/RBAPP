@@ -7,7 +7,7 @@ runners never get the same job, and the systemd unit wraps the runner in
 `flock -n`. Every timestamp comes from `clock.utcnow()`.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
@@ -55,6 +55,18 @@ def enqueue(kind: str, params: dict | None = None, requested_by: int | None = No
             raise
         raise JobAlreadyActive(active_id) from None
     return job
+
+
+def last_success_today(kind: str) -> RbJob | None:
+    """The latest job of `kind` that finished with `success` on the current
+    UTC date (`clock.utcnow()`), or None. Used by the 08:00 retry."""
+    start = datetime.combine(clock.utcnow().date(), time.min)
+    return db.session.execute(
+        sa.select(RbJob).where(RbJob.rbjob_kind == kind, RbJob.rbjob_status == 'success',
+                               RbJob.rbjob_finished_at >= start,
+                               RbJob.rbjob_finished_at < start + timedelta(days=1))
+        .order_by(RbJob.rbjob_finished_at.desc(), RbJob.rbjob_id.desc()).limit(1)
+    ).scalar()
 
 
 def _queued_ids() -> list[int]:
@@ -107,9 +119,12 @@ def expire_stale(now: datetime) -> list[int]:
 
 
 def _error_message(exc: BaseException) -> str:
-    """`<ExceptionClass>: <first line of the text>`, cut to the column size."""
+    """`<ExceptionClass>: <first line of the text>`, cut to the column size;
+    a `JobFailed` keeps only its first line."""
     text = str(exc)
     first_line = text.splitlines()[0] if text else ''
+    if isinstance(exc, registry.JobFailed):
+        return first_line[:MESSAGE_MAX_LENGTH]
     message = f'{type(exc).__name__}: {first_line}' if first_line else type(exc).__name__
     return message[:MESSAGE_MAX_LENGTH]
 

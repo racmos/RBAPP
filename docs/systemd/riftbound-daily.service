@@ -1,6 +1,6 @@
-# Install with F4-b (the daily_prices kind does not exist before it)
-# Queues the daily Cardmarket load; riftbound-jobs.timer runs it. Same
-# placeholders as docs/riftbound.service.
+# Queues the daily Cardmarket load (daily_prices, F4-b); riftbound-jobs.timer
+# runs it. Same placeholders as docs/riftbound.service and riftbound-jobs.service.
+# Install and rollback: docs/knowledge/ops-runbook.md -> "Scheduled jobs".
 [Unit]
 Description=Queue the Riftbound daily Cardmarket load
 After=network.target

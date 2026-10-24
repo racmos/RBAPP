@@ -1,7 +1,8 @@
-# Install with F4-b (the daily_prices kind does not exist before it)
-# Retry of the daily Cardmarket load: queues daily_prices again only when
-# today's run did not succeed (D-F4-1). F4-b defines the command and adds
-# the ExecStart line. Same placeholders as docs/riftbound.service.
+# Retry of the daily Cardmarket load: queues daily_prices again only when no
+# daily_prices job succeeded today (UTC) (D-F4-1); otherwise it prints
+# "Skipped: ..." and exits 0. Same placeholders as docs/riftbound.service and
+# riftbound-jobs.service.
+# Install and rollback: docs/knowledge/ops-runbook.md -> "Scheduled jobs".
 [Unit]
 Description=Retry the Riftbound daily Cardmarket load if it failed
 After=network.target
@@ -14,3 +15,4 @@ WorkingDirectory=/var/www/riftbound
 Environment="PATH=/var/www/riftbound/venv/bin"
 Environment="FLASK_APP=wsgi.py"
 EnvironmentFile=/etc/riftbound/riftbound.env
+ExecStart=/var/www/riftbound/venv/bin/flask jobs enqueue daily_prices --unless-succeeded-today

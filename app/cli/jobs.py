@@ -1,5 +1,7 @@
 """`flask jobs ...`: queue, run and list background jobs (F4-a S4).
 
+`enqueue --unless-succeeded-today` is the 08:00 retry of `daily_prices`
+(docs/systemd/riftbound-daily-retry.service).
 `run-pending` is what the systemd timer starts every minute
 (docs/systemd/riftbound-jobs.service). It exits 0 even when a job failed: the
 failure is recorded on the job, and the timer must not loop on it.
@@ -36,9 +38,14 @@ def _when(value) -> str:
 @click.argument('kind')
 @click.option('--param', 'params', multiple=True, metavar='KEY=VALUE',
               help='Job parameter (repeatable); values are strings.')
-def enqueue(kind, params):
+@click.option('--unless-succeeded-today', is_flag=True,
+              help='Do nothing (exit 0) when a KIND job already succeeded today (UTC).')
+def enqueue(kind, params, unless_succeeded_today):
     """Queue a job of KIND."""
     parsed = _parse_params(params)
+    if unless_succeeded_today and (done := jobs.last_success_today(kind)) is not None:
+        click.echo(f"Skipped: a '{kind}' job already succeeded today (job {done.rbjob_id}).")
+        return
     try:
         job = jobs.enqueue(kind, parsed)
     except jobs.UnknownJobKind:

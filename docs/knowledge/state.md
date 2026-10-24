@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-24 (F4-a: job runner + timers, PR #32; next unit F4-b, daily Cardmarket load job).
+Last update: 2026-10-24 (F4-b: daily Cardmarket load job, PR #33; next unit F2-a, bans).
 
 ## Phases
 
@@ -14,8 +14,8 @@ Last update: 2026-10-24 (F4-a: job runner + timers, PR #32; next unit F4-b, dail
 | M-a Test reset | **Done** (#29) | `docs/requirements/M/M-a-test-reset.md`. |
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
 | M-c Hygiene | **Done** (#31) | `docs/requirements/M/M-c-hygiene.md`. |
-| F4 Prices + Dashboard | In progress — F4-a in review (#32), **next: F4-b** | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
-| F2 Catalog | Planned | F2-a (bans) after F4-a/F4-b; the rest after F13. `docs/requirements/F2/` (phase spec + unit drafts that need the planner's rewrite). |
+| F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b in review (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
+| F2 Catalog | Planned — **next: F2-a** | F2-a (bans) after F4-a/F4-b; the rest after F13. `docs/requirements/F2/` (phase spec + unit drafts that need the planner's rewrite). |
 | M-d Images out of git | Planned | After F2-a. Unit requirement still to write. |
 | F13 Riot sync + catalog admin | Planned | `docs/requirements/F13/README.md`. |
 | F3 Collection | Planned | With F4-c. `docs/requirements/F3/README.md`. |
@@ -71,7 +71,8 @@ that file and in its `verify-report.md`.
 | Lighthouse (6.26, 7.4): installability plus performance, accessibility and best-practices for `/riftbound/app/login` and `/riftbound/app/`; record in `docs/frontend.md` → "Lighthouse baseline" | **Pending (owner).** Chromium reports no installability errors (live, 2026-10-21). |
 | Update prompt on a real device (6.32): at the next deploy of a new frontend build, toast "Nueva versión disponible." with "Actualizar"; no reload by itself | **Pending.** Verified locally in Chromium with two builds. |
 | CSP report-only console review (7.5): browse every screen with the console open after the F1-g deploy; send any `[Report Only]` line to the planner | **Pending (owner).** |
-| F4-a on the server (after merge): backup, `flask db upgrade` + `flask db check`, restart, install and enable `riftbound-jobs.timer`, then `flask jobs enqueue heartbeat` and `flask jobs list` a minute later (`ops-runbook.md` → "Scheduled jobs") | **Pending (owner).** |
+| F4-a on the server (after merge): backup, `flask db upgrade` + `flask db check`, restart, install and enable `riftbound-jobs.timer`, then `flask jobs enqueue heartbeat` and `flask jobs list` a minute later (`ops-runbook.md` → "Scheduled jobs") | **Done** (deployed before F4-b). |
+| F4-b on the server (after merge): backup, `flask db upgrade` (`0008_jobs_daily_prices`) + `flask db check`, restart, install and enable `riftbound-daily.timer` and `riftbound-daily-retry.timer`, run `flask jobs enqueue daily_prices` once and read the result a few minutes later (`ops-runbook.md` → "Scheduled jobs" → "Daily Cardmarket load") | **Pending (owner).** |
 | Rollback rehearsal on dev (6.34) | Not run on dev on purpose (it would uninstall the worker on the owner's devices); verified locally in Chromium. |
 
 ## Follow-ups
@@ -99,12 +100,17 @@ that file and in its `verify-report.md`.
 - `rbcollection` CHECK allows `rbcol_selling = 'S'` but the app writes only Y/N (F3 evaluates and removes it).
 - The repo's systemd/Gunicorn docs use the default 30 s timeout while Cardmarket load and Riot extraction run
   inside the request (the dev server overrides it; F4 and F13 move them to jobs).
+- `cardmarket_matcher.auto_match` (also its dry run, used every day by `daily_prices`) reads every
+  `rbcm_price` row of every date into memory; watch the job duration against its 1800 s timeout as the
+  price history grows.
+- `daily_prices` lists singles without an `idMetacard` as `no_candidates` (the matcher skips them).
 
 ## Units (from F1-close on)
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| F4-a | in review | `feat/f4a-job-runner` / #32 | Table `rbjobs` (migration `0007_jobs`, one queued/running job per kind by partial unique index), registry `app/jobs/` with the `heartbeat` kind, runner service `app/services/jobs.py` (conditional-UPDATE claim, kind timeouts), `flask jobs enqueue\|run-pending\|list`, systemd templates in `docs/systemd/` (jobs timer every minute; daily 06:30 and retry 08:00 Europe/Madrid wait for F4-b), runbook "Scheduled jobs". PostgreSQL round trip left to CI `migrations-pg`. pytest 74 → 160. Next unit: **F4-b**. |
+| F4-b | in review | `feat/f4b-daily-prices` / #33 | Job kind `daily_prices` (`app/jobs/daily_prices.py`, 1800 s; migration `0008_jobs_daily_prices` extends `ck_rbjobs_kind`, its downgrade refuses while such jobs exist): `CardmarketLoader().run()` with the default URLs, validation record from `rbcm_load_history`/`rbcm_price`/`rbcm_products`, clear-case linking from `auto_match(dry_run=True)` (one product + one free candidate card, confidence 0.7), review list in `rbjob_result` (≤ 200 + `review_total`), all in `app/services/daily_prices.py`; loader and matcher unchanged. `JobFailed` stores a handler message without the class name. `flask jobs enqueue <kind> --unless-succeeded-today` (UTC date) for the 08:00 retry; daily and retry systemd templates complete; runbook "Daily Cardmarket load". pytest 160 → 211. Next unit: **F2-a**. |
+| F4-a | done | `feat/f4a-job-runner` / #32 | Table `rbjobs` (migration `0007_jobs`, one queued/running job per kind by partial unique index), registry `app/jobs/` with the `heartbeat` kind, runner service `app/services/jobs.py` (conditional-UPDATE claim, kind timeouts), `flask jobs enqueue\|run-pending\|list`, systemd templates in `docs/systemd/` (jobs timer every minute; daily 06:30 and retry 08:00 Europe/Madrid wait for F4-b), runbook "Scheduled jobs". PostgreSQL round trip left to CI `migrations-pg`. pytest 74 → 160. Next unit: **F4-b**. |
 | M-c | done | `chore/m-c-hygiene` / #31 | Private IPs/dev domain replaced by placeholders (no history rewrite); legacy 500s and the generic `@validate_json` 400 return a clear message + `internal_error`/`bad_request`, detail only for admins, traceback logged; no `datetime.utcnow` under `app/` (guard test). |
 | M-b | done | `docs/m-b-plan-update` / #30 | Decisions of 2026-10-22 folded into `product.md`, `roadmap.md`, `open-decisions.md`, phase specs F2-F12 and this file; new phase specs F13 (Riot sync + catalog admin), F14 (Products), F15 (Rules app). Documentation only. Next unit: **M-c**. |
 | M-a | done | `chore/m-a-test-reset` / #29 | Old suites removed; kept authz matrix + smoke tests; baseline `902047c6579e5ee670e1fb4b103a941159b85c00`. pytest 1694 passed / 41 skipped → 21 passed; vitest 1189 → 1. |

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "createdAt": "2030-01-01T02:00:00+0100",
+  "products": [
+    {"idProduct": 1001, "name": "Exact Card", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 501, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1002, "name": "Clear Hero (Showcase)", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 502, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1003, "name": "Twin Blade V.1", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 503, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1004, "name": "Twin Blade V.2", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 503, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1005, "name": "Nobody Known", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 505, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1006, "name": "Ignored Thing (Promo)", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 506, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1007, "name": "Taken Spot (Showcase)", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 507, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1008, "name": "Mirror Image (Showcase)", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 508, "dateAdded": "2025-07-01 10:00:00"},
+    {"idProduct": 1009, "name": "Mirror Image (Promo)", "idCategory": 1655, "categoryName": "Riftbound Single", "idExpansion": 6286, "idMetacard": 509, "dateAdded": "2025-07-01 10:00:00"}
+  ]
+}

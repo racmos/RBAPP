@@ -143,7 +143,7 @@ New components: `ValueChart` (PriceChart generalized to a value series with cost
 | ID | Title | Depends on | Size | Risk | Summary |
 |---|---|---|---|---|---|
 | F4-a | Job runner + timers | M-c (order) | ~500 | items 1, 4, 5 | `rbjobs`, registry, `flask jobs …`, claim/timeout, runbook + unit templates (06:30 and 08:00 Europe/Madrid) |
-| F4-b | Daily Cardmarket load job | F4-a | ~300 | items 3, 6 | `daily_prices` job (loader + validation record + auto-match of clear cases + review list), 08:00 retry rule, chaining, unchanged skip |
+| F4-b | Daily Cardmarket load job | F4-a | ~300 | items 3, 6 | `daily_prices` job (loader + validation record + auto-match of clear cases + review list), 08:00 retry rule, chaining, unchanged skip. Done (#33) |
 | F4-c | Value snapshots | F4-a, F3-b (runs with F3) | ~350 | item 1 | `rbvaluesnaps`, `value_snapshot` job, idempotent upsert |
 | F4-d | Movers + value-history API | F4-c | ~400 | item 3 | `/prices/movers`, `/collection/value-history` |
 | F4-e | Dashboard API | F4-d | ~350 | item 3 | `GET /dashboard` with the null slots for F7/F8 |

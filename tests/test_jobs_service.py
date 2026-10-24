@@ -7,7 +7,7 @@ import sqlalchemy as sa
 
 from app import db
 from app.jobs import registry
-from app.jobs.registry import JobKind
+from app.jobs.registry import JobFailed, JobKind
 from app.models import RbJob
 from app.services import jobs
 from app.utils import clock
@@ -261,6 +261,22 @@ def test_error_message_is_the_class_and_the_first_line(app, extra_kinds, error, 
     jobs.run_pending()
     [stored] = _all()
     assert (stored.rbjob_status, stored.rbjob_message) == ('error', message)
+
+
+@pytest.mark.parametrize('text, message', [
+    ('Validation failed: no price rows\nsecond line', 'Validation failed: no price rows'),
+    ('b' * 400, 'b' * 300),
+])
+def test_job_failed_is_recorded_without_the_class_name(app, extra_kinds, text, message):
+    def fail(params):
+        raise JobFailed(text)
+
+    extra_kinds('fail', fail)
+    jobs.enqueue('fail')
+    jobs.run_pending()
+    [stored] = _all()
+    assert (stored.rbjob_status, stored.rbjob_message, stored.rbjob_result) == (
+        'error', message, None)
 
 
 def test_a_job_of_an_unregistered_kind_is_an_error(app, extra_kinds, frozen_clock):

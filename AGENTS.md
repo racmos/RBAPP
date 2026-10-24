@@ -64,7 +64,8 @@ riftbound/
 │   │   ├── schema.py        # flask schema snapshot
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
 │   ├── jobs/                # Background job kinds; the package is the single import point (create_app)
-│   │   ├── registry.py      # JobKind(name, handler, timeout_seconds), register / get / names
+│   │   ├── registry.py      # JobKind(name, handler, timeout_seconds), register / get / names, JobFailed
+│   │   ├── daily_prices.py  # daily_prices: Cardmarket load, validation, clear auto-match, review list (1800 s)
 │   │   └── heartbeat.py     # heartbeat: diagnostic kind (60 s)
 │   ├── models/              # SQLAlchemy models (Rb prefix)
 │   │   ├── user.py          # User (rbusers)
@@ -92,7 +93,8 @@ riftbound/
 │   ├── services/            # Business logic, no Flask request objects
 │   │   ├── auth.py          # authenticate (lockout), register_user, unlock_user
 │   │   ├── captcha.py       # none / altcha providers, replay store
-│   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs (job runner)
+│   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
+│   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
 │   │   ├── pricing.py       # resolve_price, latest_price_for_card
 │   │   ├── card_images.py   # Safe image paths
@@ -342,9 +344,10 @@ gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
 ```
 Firewall port 8000 so only the Nginx host reaches it. ProxyFix trusts exactly one proxy hop (`PROXY_FIX_X_*=1`); the proxy must send `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`, and must not strip `Referer` (the CSRF check needs it over HTTPS).
 
-Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n` (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
+Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n`; kinds: `heartbeat` (diagnostic) and `daily_prices` (daily Cardmarket load at 06:30 Europe/Madrid, retried at 08:00 with `--unless-succeeded-today` when it did not succeed) (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
 ```bash
 flask jobs enqueue <kind> [--param key=value]...   # one queued or running job per kind
+flask jobs enqueue <kind> --unless-succeeded-today  # skip (exit 0) when a <kind> job succeeded today (UTC)
 flask jobs run-pending                             # expire stale jobs, run the queued ones (exit 0)
 flask jobs list [--limit N]                        # newest first, default 20
 ```
@@ -380,7 +383,7 @@ HTTP errors are handled in `app/errors.py`: 400, 401, 403, 404, 405, 429, 500 an
 3. Read `request.validated_data`
 
 ### Adding a Job Kind
-1. A module in `app/jobs/` with `handler(params: dict) -> dict` that calls `register(JobKind(name, handler, timeout_seconds))`; import it in `app/jobs/__init__.py`
+1. A module in `app/jobs/` with `handler(params: dict) -> dict` that calls `register(JobKind(name, handler, timeout_seconds))`; import it in `app/jobs/__init__.py`; raise `JobFailed(message)` for an expected failure (the message is stored without the class name)
 2. A migration that extends the `ck_rbjobs_kind` CHECK, and `JOB_KINDS` in `app/models/job.py`
 3. Tests through `app.services.jobs` (`run_pending()`) and the runbook entry in `docs/knowledge/ops-runbook.md` → "Scheduled jobs"
 
