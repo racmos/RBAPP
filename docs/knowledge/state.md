@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-24 (F2-a: per-mode card bans, PR #<PR>; next unit M-d, images out of git).
+Last update: 2026-10-24 (F2-a: per-mode card bans, PR #34; next unit M-d, images out of git).
 
 ## Phases
 
@@ -15,7 +15,7 @@ Last update: 2026-10-24 (F2-a: per-mode card bans, PR #<PR>; next unit M-d, imag
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
 | M-c Hygiene | **Done** (#31) | `docs/requirements/M/M-c-hygiene.md`. |
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
-| F2 Catalog | In progress — F2-a in review (#<PR>); the rest after F13 | F2-a (bans) after F4-a/F4-b; the rest after F13. `docs/requirements/F2/` (phase spec + unit drafts that need the planner's rewrite). |
+| F2 Catalog | In progress — F2-a in review (#34); the rest after F13 | F2-a (bans) after F4-a/F4-b; the rest after F13. `docs/requirements/F2/` (phase spec + unit drafts that need the planner's rewrite). |
 | M-d Images out of git | Planned — **next** | After F2-a. Unit requirement still to write. |
 | F13 Riot sync + catalog admin | Planned | `docs/requirements/F13/README.md`. |
 | F3 Collection | Planned | With F4-c. `docs/requirements/F3/README.md`. |
@@ -111,7 +111,7 @@ that file and in its `verify-report.md`.
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| F2-a | in review | `feat/f2a-card-bans` / #<PR> | Table `rbcardbans` (migration `0009_card_bans`: one row per `name_key` and mode, CHECK built from `GAME_MODES` in the new `app/schemas/game_domain.py`; seeded with the official ban list read 2026-10-24, 25 rows: 12 names in 1v1 and 2v2, `Wuju Bladesman` in 2v2; `rbcar_banned` not read; downgrade drops the table and every ban). Service `app/services/bans.py` (`name_key`, `ban_map`, `card_bans`, `ban_info`, `list_bans`, `add_ban`, `remove_ban`), `flask bans list\|add\|remove` (name checked against the catalog unless `--force`), `GET /bans` (U) with printings per name. Jinja catalog: Banned column, badge (`BANNED 1v1, 2v2`) and `search_banned` read the ban table; the add/edit modals lose the banned field (the column keeps its value). PostgreSQL round trip left to CI `migrations-pg`. pytest 211 → 324. Next unit: **M-d**. |
+| F2-a | in review | `feat/f2a-card-bans` / #34 | Table `rbcardbans` (migration `0009_card_bans`: one row per `name_key` and mode, CHECK built from `GAME_MODES` in the new `app/schemas/game_domain.py`; seeded with the official ban list read 2026-10-24, 25 rows: 12 names in 1v1 and 2v2, `Wuju Bladesman` in 2v2; `rbcar_banned` not read; downgrade drops the table and every ban). Service `app/services/bans.py` (`name_key`, `ban_map`, `card_bans`, `ban_info`, `list_bans`, `add_ban`, `remove_ban`), `flask bans list\|add\|remove` (name checked against the catalog unless `--force`), `GET /bans` (U) with printings per name. Jinja catalog: Banned column, badge (`BANNED 1v1, 2v2`) and `search_banned` read the ban table; the add/edit modals lose the banned field (the column keeps its value). PostgreSQL round trip left to CI `migrations-pg`. pytest 211 → 324. Next unit: **M-d**. |
 | F4-b | done | `feat/f4b-daily-prices` / #33 | Job kind `daily_prices` (`app/jobs/daily_prices.py`, 1800 s; migration `0008_jobs_daily_prices` extends `ck_rbjobs_kind`, its downgrade refuses while such jobs exist): `CardmarketLoader().run()` with the default URLs, validation record from `rbcm_load_history`/`rbcm_price`/`rbcm_products`, clear-case linking from `auto_match(dry_run=True)` (one product + one free candidate card, confidence 0.7), review list in `rbjob_result` (≤ 200 + `review_total`), all in `app/services/daily_prices.py`; loader and matcher unchanged. `JobFailed` stores a handler message without the class name. `flask jobs enqueue <kind> --unless-succeeded-today` (UTC date) for the 08:00 retry; daily and retry systemd templates complete; runbook "Daily Cardmarket load". pytest 160 → 211. Next unit: **F2-a**. |
 | F4-a | done | `feat/f4a-job-runner` / #32 | Table `rbjobs` (migration `0007_jobs`, one queued/running job per kind by partial unique index), registry `app/jobs/` with the `heartbeat` kind, runner service `app/services/jobs.py` (conditional-UPDATE claim, kind timeouts), `flask jobs enqueue\|run-pending\|list`, systemd templates in `docs/systemd/` (jobs timer every minute; daily 06:30 and retry 08:00 Europe/Madrid wait for F4-b), runbook "Scheduled jobs". PostgreSQL round trip left to CI `migrations-pg`. pytest 74 → 160. Next unit: **F4-b**. |
 | M-c | done | `chore/m-c-hygiene` / #31 | Private IPs/dev domain replaced by placeholders (no history rewrite); legacy 500s and the generic `@validate_json` 400 return a clear message + `internal_error`/`bad_request`, detail only for admins, traceback logged; no `datetime.utcnow` under `app/` (guard test). |
