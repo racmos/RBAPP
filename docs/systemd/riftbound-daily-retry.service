@@ -1,0 +1,16 @@
+# Install with F4-b (the daily_prices kind does not exist before it)
+# Retry of the daily Cardmarket load: queues daily_prices again only when
+# today's run did not succeed (D-F4-1). F4-b defines the command and adds
+# the ExecStart line. Same placeholders as docs/riftbound.service.
+[Unit]
+Description=Retry the Riftbound daily Cardmarket load if it failed
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/riftbound
+Environment="PATH=/var/www/riftbound/venv/bin"
+Environment="FLASK_APP=wsgi.py"
+EnvironmentFile=/etc/riftbound/riftbound.env

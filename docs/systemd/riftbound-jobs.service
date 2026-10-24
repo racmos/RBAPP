@@ -1,0 +1,21 @@
+# Job runner (F4-a): runs every queued job, started each minute by
+# riftbound-jobs.timer. Template: user, paths and environment file are the
+# same placeholders as docs/riftbound.service; adapt them to the server.
+# Install and rollback: docs/knowledge/ops-runbook.md -> "Scheduled jobs".
+[Unit]
+Description=Riftbound job runner (flask jobs run-pending)
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/riftbound
+Environment="PATH=/var/www/riftbound/venv/bin"
+Environment="FLASK_APP=wsgi.py"
+EnvironmentFile=/etc/riftbound/riftbound.env
+# /run/riftbound is created for the lock; flock -n exits at once while a
+# previous run still holds it, so two runners never overlap.
+RuntimeDirectory=riftbound
+RuntimeDirectoryPreserve=yes
+ExecStart=/usr/bin/flock -n /run/riftbound/jobs.lock /var/www/riftbound/venv/bin/flask jobs run-pending

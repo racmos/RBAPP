@@ -1,0 +1,16 @@
+# Install with F4-b (the daily_prices kind does not exist before it)
+# Queues the daily Cardmarket load; riftbound-jobs.timer runs it. Same
+# placeholders as docs/riftbound.service.
+[Unit]
+Description=Queue the Riftbound daily Cardmarket load
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/riftbound
+Environment="PATH=/var/www/riftbound/venv/bin"
+Environment="FLASK_APP=wsgi.py"
+EnvironmentFile=/etc/riftbound/riftbound.env
+ExecStart=/var/www/riftbound/venv/bin/flask jobs enqueue daily_prices

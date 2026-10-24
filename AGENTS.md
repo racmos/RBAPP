@@ -60,8 +60,12 @@ riftbound/
 │   │       ├── me.py        # GET/PATCH /me/prefs (interface preferences)
 │   │       └── meta.py      # health, meta/config
 │   ├── cli/                 # Flask CLI groups
+│   │   ├── jobs.py          # flask jobs enqueue|run-pending|list
 │   │   ├── schema.py        # flask schema snapshot
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
+│   ├── jobs/                # Background job kinds; the package is the single import point (create_app)
+│   │   ├── registry.py      # JobKind(name, handler, timeout_seconds), register / get / names
+│   │   └── heartbeat.py     # heartbeat: diagnostic kind (60 s)
 │   ├── models/              # SQLAlchemy models (Rb prefix)
 │   │   ├── user.py          # User (rbusers)
 │   │   ├── set.py           # RbSet (rbset)
@@ -71,6 +75,7 @@ riftbound/
 │   │   ├── market.py        # RbCardMarket (rbcardmarket)
 │   │   ├── cardmarket.py    # Rbcm* models (rbcm_* tables, Cardmarket loader) and RbProducts (rbproducts)
 │   │   ├── captcha.py       # RbCaptchaUsed (rbcaptcha_used)
+│   │   ├── job.py           # RbJob (rbjobs): job queue and results, one active job per kind
 │   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto
 │   ├── routes/
 │   │   ├── auth.py          # Login / register / logout (Jinja forms)
@@ -87,6 +92,7 @@ riftbound/
 │   ├── services/            # Business logic, no Flask request objects
 │   │   ├── auth.py          # authenticate (lockout), register_user, unlock_user
 │   │   ├── captcha.py       # none / altcha providers, replay store
+│   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
 │   │   ├── pricing.py       # resolve_price, latest_price_for_card
 │   │   ├── card_images.py   # Safe image paths
@@ -141,6 +147,7 @@ riftbound/
 │   ├── requirements/        # Phase specs (F<n>/README.md) and unit requirements for gentle-shell
 │   ├── migrations.md        # Migration runbook
 │   ├── nginx_config         # Nginx template
+│   ├── systemd/             # systemd templates: job runner timer (F4-a), daily load timers (F4-b)
 │   └── riftbound.service    # systemd unit
 ├── openspec/                # Spec-driven development artifacts (SDD)
 ├── .github/
@@ -169,7 +176,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 
@@ -335,6 +342,13 @@ gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
 ```
 Firewall port 8000 so only the Nginx host reaches it. ProxyFix trusts exactly one proxy hop (`PROXY_FIX_X_*=1`); the proxy must send `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`, and must not strip `Referer` (the CSRF check needs it over HTTPS).
 
+Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n` (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
+```bash
+flask jobs enqueue <kind> [--param key=value]...   # one queued or running job per kind
+flask jobs run-pending                             # expire stale jobs, run the queued ones (exit 0)
+flask jobs list [--limit N]                        # newest first, default 20
+```
+
 ## Error Handling
 
 HTTP errors are handled in `app/errors.py`: 400, 401, 403, 404, 405, 429, 500 and CSRF failures. Browsers get an HTML page, JSON clients get:
@@ -364,6 +378,11 @@ HTTP errors are handled in `app/errors.py`: 400, 401, 403, 404, 405, 429, 500 an
 1. Define the schema in `app/schemas/validators.py`
 2. Use `@validate_json(SchemaClass)`
 3. Read `request.validated_data`
+
+### Adding a Job Kind
+1. A module in `app/jobs/` with `handler(params: dict) -> dict` that calls `register(JobKind(name, handler, timeout_seconds))`; import it in `app/jobs/__init__.py`
+2. A migration that extends the `ck_rbjobs_kind` CHECK, and `JOB_KINDS` in `app/models/job.py`
+3. Tests through `app.services.jobs` (`run_pending()`) and the runbook entry in `docs/knowledge/ops-runbook.md` → "Scheduled jobs"
 
 ## Troubleshooting
 

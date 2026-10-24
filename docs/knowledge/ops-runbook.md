@@ -66,6 +66,51 @@ There is no production yet (phase F12). Everything here is the development serve
 Jobs are Flask CLI commands run by systemd timers on the dev server. Each phase that adds a job documents
 here: the command, the unit/timer names, the schedule, the logs and how to run it by hand.
 
+### Job runner (F4-a)
+
+Background work is a row in `riftbound.rbjobs`. Something queues it (`flask jobs enqueue <kind>`, a timer,
+later an admin endpoint); `riftbound-jobs.timer` starts `flask jobs run-pending` every minute, which marks
+jobs running past their timeout as `error`, then claims each queued job, runs it and records `success` or
+`error` with the result or the message. Only one job per kind can be queued or running. The runner exits 0
+even when a job failed (the failure is on the job). Overlapping runs are safe: the unit wraps the runner
+in `flock -n /run/riftbound/jobs.lock` and each job is claimed with a conditional `UPDATE`. Kinds today:
+`heartbeat` (diagnostic, 60 s timeout).
+
+Templates: `docs/systemd/` (`riftbound-jobs.service` + `.timer`). They use the same user, working
+directory and environment file as `docs/riftbound.service`; adapt them to the values in `ops.local.md`.
+
+Upgrade order (first deploy of F4-a):
+
+1. Backup (command in `ops.local.md`).
+2. `venv/bin/flask db upgrade`, then `venv/bin/flask db check` (no drift).
+3. Restart the service.
+4. Install and enable the timer:
+
+   ```bash
+   sudo cp docs/systemd/riftbound-jobs.service docs/systemd/riftbound-jobs.timer /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now riftbound-jobs.timer
+   systemctl list-timers riftbound-jobs.timer
+   ```
+
+5. Check: `venv/bin/flask jobs enqueue heartbeat` (`Queued job <id> (heartbeat).`), and a minute later
+   `venv/bin/flask jobs list`: the job shows `success`.
+
+Operations:
+
+- Logs: `journalctl -u riftbound-jobs.service -n 200 --no-pager` (one line per job, then
+  `Ran <n> job(s).`; `No pending jobs.` on idle minutes).
+- Run by hand (as the service user, from the deployed checkout): `venv/bin/flask jobs run-pending`. Or
+  start the unit once: `sudo systemctl start riftbound-jobs.service`.
+- History: `venv/bin/flask jobs list [--limit N]` (newest first, default 20).
+- Queue a job: `venv/bin/flask jobs enqueue <kind> [--param key=value]...`.
+- Disable (rollback): `sudo systemctl disable --now riftbound-jobs.timer`. Queued jobs stay queued until
+  the timer is enabled again. Removing the table is `flask db downgrade 0006_user_prefs` (drops the job
+  history; owner's go-ahead only).
+
+The daily timers (`riftbound-daily.timer` at 06:30 and `riftbound-daily-retry.timer` at 08:00, both
+Europe/Madrid) are templates only: do not install them before F4-b registers the `daily_prices` kind.
+
 ## Never
 
 - Commit or print `.env`, the database URL, passwords or keys. Write IPs, hostnames or domains in a

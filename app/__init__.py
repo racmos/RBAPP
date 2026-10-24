@@ -128,6 +128,8 @@ def create_app(**overrides):
     migrate.init_app(app, db, directory=MIGRATIONS_DIR, **MIGRATE_OPTIONS)
     from app.cli import register_cli
     register_cli(app)
+    # Job kinds (`flask jobs ...`): importing the package registers them.
+    from app import jobs  # noqa: F401
     login.init_app(app)
     csrf.init_app(app)
     _init_limiter(app)
