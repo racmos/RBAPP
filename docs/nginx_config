@@ -45,7 +45,7 @@ limit_req_status 429;
 
 server {
     listen 80;
-    server_name racmosdev.online www.racmosdev.online;
+    server_name example.com www.example.com;
 
     location / {
         return 301 https://$host$request_uri;
@@ -54,11 +54,11 @@ server {
 
 server {
     listen 443 ssl;
-    server_name racmosdev.online www.racmosdev.online;
+    server_name example.com www.example.com;
 
     # Existing SSL certificates
-    ssl_certificate /etc/letsencrypt/live/racmosdev.online/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/racmosdev.online/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
 
     # Basic hardening
     add_header X-Frame-Options SAMEORIGIN;

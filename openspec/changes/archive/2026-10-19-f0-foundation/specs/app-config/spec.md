@@ -10,7 +10,7 @@ Tracked source files MUST NOT contain a default `SECRET_KEY`, a database passwor
 
 #### Scenario: Legacy literals are gone
 - GIVEN the working tree
-- WHEN `config.py`, `run.py`, `wsgi.py`, `app/**/*.py` and `.env.example` are scanned for `you-will-never-guess`, `<old-db-password>`, `192.168.1.33`
+- WHEN `config.py`, `run.py`, `wsgi.py`, `app/**/*.py` and `.env.example` are scanned for `you-will-never-guess`, `<old-db-password>`, `<dev-db-host>`
 - THEN there are zero matches
 
 #### Scenario: Values come from the environment
