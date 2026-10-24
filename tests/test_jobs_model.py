@@ -48,6 +48,12 @@ def test_ids_autoincrement(app):
     assert second.rbjob_id == first.rbjob_id + 1
 
 
+@pytest.mark.parametrize('kind', ['heartbeat', 'daily_prices'])
+def test_registered_kinds_are_accepted(app, kind):
+    _add(rbjob_kind=kind)
+    assert _count() == 1
+
+
 def test_unknown_kind_is_rejected(app):
     _rejected(rbjob_kind='nope')
 

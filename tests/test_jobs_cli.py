@@ -59,14 +59,14 @@ def test_enqueue_params_are_strings(cli):
 
 def test_enqueue_unknown_kind(cli):
     _assert(cli('jobs', 'enqueue', 'nope'), 2,
-            stderr="Error: unknown job kind 'nope'. Known kinds: heartbeat.\n")
+            stderr="Error: unknown job kind 'nope'. Known kinds: daily_prices, heartbeat.\n")
     assert _rows() == []
 
 
 def test_enqueue_lists_every_known_kind(cli, extra_kinds):
     extra_kinds('alpha', lambda params: {})
     _assert(cli('jobs', 'enqueue', 'nope'), 2,
-            stderr="Error: unknown job kind 'nope'. Known kinds: alpha, heartbeat.\n")
+            stderr="Error: unknown job kind 'nope'. Known kinds: alpha, daily_prices, heartbeat.\n")
     assert _rows() == []
 
 

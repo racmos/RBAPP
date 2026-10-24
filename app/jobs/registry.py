@@ -2,6 +2,8 @@
 
 A kind is a name, a handler and a timeout. The handler is
 `handler(params: dict) -> dict`; the returned dict is stored in `rbjob_result`.
+A handler raises `JobFailed(message)` for an expected failure: the runner
+records the message as it is, without the exception class.
 A kind must also be allowed by the `ck_rbjobs_kind` CHECK (`app.models.job`),
 so a unit that registers one extends that CHECK with its own migration.
 """
@@ -16,6 +18,10 @@ class JobKind:
     name: str
     handler: Handler
     timeout_seconds: int
+
+
+class JobFailed(Exception):
+    """An expected failure of a handler; its first line is the job message."""
 
 
 _KINDS: dict[str, JobKind] = {}

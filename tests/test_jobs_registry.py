@@ -30,7 +30,7 @@ def test_register_get_and_sorted_names(isolated_registry):
     registry.register(alpha)
     assert registry.get('zeta') is zeta
     assert registry.get('alpha').timeout_seconds == 10
-    assert registry.names() == ['alpha', 'heartbeat', 'zeta']
+    assert registry.names() == ['alpha', 'daily_prices', 'heartbeat', 'zeta']
 
 
 def test_a_name_registered_twice_raises_and_keeps_the_first(isolated_registry):
@@ -57,6 +57,13 @@ def test_heartbeat_kind(app, frozen_clock):
     assert kind.handler({}) == {'ok': True, 'at': '2030-01-01T12:00:00+00:00'}
 
 
+def test_daily_prices_kind(app):
+    kind = registry.get('daily_prices')
+    assert kind.name == 'daily_prices'
+    assert kind.timeout_seconds == 1800
+    assert 'daily_prices' in JOB_KINDS
+
+
 def test_kinds_are_registered_on_app_creation():
     code = (
         "import sys\n"
@@ -71,4 +78,4 @@ def test_kinds_are_registered_on_app_creation():
     done = subprocess.run([sys.executable, '-c', code], cwd=REPO, env=env,
                           capture_output=True, text=True, timeout=60)
     assert done.returncode == 0, done.stderr
-    assert done.stdout.strip() == "['heartbeat']"
+    assert done.stdout.strip() == "['daily_prices', 'heartbeat']"

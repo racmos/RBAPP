@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "createdAt": "2030-01-01T02:00:00+0100",
+  "priceGuides": [
+    {"idProduct": 1001, "idCategory": 1655, "avg": 1.0, "low": 0.5, "trend": 1.1, "avg1": 1.0, "avg7": 1.0, "avg30": 1.0},
+    {"idProduct": 1002, "idCategory": 1655, "avg": 8.0, "low": 6.0, "trend": 8.5, "avg1": 8.0, "avg7": 8.0, "avg30": 8.0},
+    {"idProduct": 1003, "idCategory": 1655, "avg": 0.2, "low": 0.1, "trend": 0.2, "avg1": 0.2, "avg7": 0.2, "avg30": 0.2},
+    {"idProduct": 1004, "idCategory": 1655, "avg": 2.0, "low": 1.5, "trend": 2.0, "avg1": 2.0, "avg7": 2.0, "avg30": 2.0},
+    {"idProduct": 1005, "idCategory": 1655, "avg": 0.3, "low": 0.2, "trend": 0.3, "avg1": 0.3, "avg7": 0.3, "avg30": 0.3},
+    {"idProduct": 1006, "idCategory": 1655, "avg": 3.0, "low": 2.0, "trend": 3.0, "avg1": 3.0, "avg7": 3.0, "avg30": 3.0},
+    {"idProduct": 1007, "idCategory": 1655, "avg": 9.0, "low": 7.0, "trend": 9.0, "avg1": 9.0, "avg7": 9.0, "avg30": 9.0},
+    {"idProduct": 1008, "idCategory": 1655, "avg": 4.0, "low": 3.0, "trend": 4.0, "avg1": 4.0, "avg7": 4.0, "avg30": 4.0},
+    {"idProduct": 1009, "idCategory": 1655, "avg": 5.0, "low": 4.0, "trend": 5.0, "avg1": 5.0, "avg7": 5.0, "avg30": 5.0},
+    {"idProduct": 2001, "idCategory": 1656, "avg": 99.0, "low": 90.0, "trend": 99.0, "avg1": 99.0, "avg7": 99.0, "avg30": 99.0}
+  ]
+}

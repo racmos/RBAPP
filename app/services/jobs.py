@@ -107,9 +107,12 @@ def expire_stale(now: datetime) -> list[int]:
 
 
 def _error_message(exc: BaseException) -> str:
-    """`<ExceptionClass>: <first line of the text>`, cut to the column size."""
+    """`<ExceptionClass>: <first line of the text>`, cut to the column size;
+    a `JobFailed` keeps only its first line."""
     text = str(exc)
     first_line = text.splitlines()[0] if text else ''
+    if isinstance(exc, registry.JobFailed):
+        return first_line[:MESSAGE_MAX_LENGTH]
     message = f'{type(exc).__name__}: {first_line}' if first_line else type(exc).__name__
     return message[:MESSAGE_MAX_LENGTH]
 
