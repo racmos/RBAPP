@@ -155,3 +155,10 @@ def run_pending() -> list[RbJob]:
         _run(job)
         ran.append(job)
     return ran
+
+
+def list_jobs(limit: int = 20) -> list[RbJob]:
+    """The latest `limit` jobs, newest first."""
+    return db.session.execute(
+        sa.select(RbJob).order_by(RbJob.rbjob_requested_at.desc(), RbJob.rbjob_id.desc())
+        .limit(limit)).scalars().all()
