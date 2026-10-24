@@ -8,7 +8,9 @@
     "captcha_failed": "The security check failed. Please try again.",
     "csrf_invalid": "The form session has expired. Please try again.",
     "unauthenticated": "Your session has expired. Please sign in again.",
-    "validation_error": "Check the form data."
+    "validation_error": "Check the form data.",
+    "bad_request": "The request could not be read.",
+    "internal_error": "An unexpected error occurred. Please try again later."
   },
   "status": {
     "400": "The request is not valid.",

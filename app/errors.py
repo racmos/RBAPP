@@ -65,6 +65,24 @@ def json_error(error, message, status, details=None, *, code=None, params=None):
     return make_response(jsonify(body), status)
 
 
+def unexpected_failure(exc, message, status=500, *, error='Internal Server Error',
+                       code=ErrorCode.INTERNAL_ERROR, **extra):
+    """The JSON body of a legacy endpoint for a failure nobody expected (M-c).
+
+    `message` is the clear text the user sees; the exception text never goes
+    there. The full traceback is always logged, and a signed-in admin also gets
+    `detail` ("<ExceptionClass>: <text>"). `extra` keeps the keys the legacy page
+    reads (`sets`, `steps`, `stats`, `errors`) with their usual types.
+    """
+    from flask import current_app
+    from flask_login import current_user
+    current_app.logger.exception('%s (%s)', message, request.endpoint, exc_info=exc)
+    body = {'success': False, 'error': error, 'message': message, **extra, 'code': str(code)}
+    if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
+        body['detail'] = f'{type(exc).__name__}: {exc}'
+    return make_response(jsonify(body), status)
+
+
 def http_error_response(error):
     """One response for any HTTPException: JSON envelope or the error page."""
     code = error.code or 500

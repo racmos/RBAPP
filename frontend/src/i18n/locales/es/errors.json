@@ -8,7 +8,9 @@
     "captcha_failed": "La verificación de seguridad ha fallado. Inténtalo de nuevo.",
     "csrf_invalid": "La sesión del formulario ha caducado. Inténtalo de nuevo.",
     "unauthenticated": "Tu sesión ha caducado. Inicia sesión de nuevo.",
-    "validation_error": "Revisa los datos del formulario."
+    "validation_error": "Revisa los datos del formulario.",
+    "bad_request": "La solicitud no se ha podido leer.",
+    "internal_error": "Ha ocurrido un error inesperado. Inténtalo más tarde."
   },
   "status": {
     "400": "La solicitud no es válida.",

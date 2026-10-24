@@ -6,6 +6,7 @@ from flask import request, jsonify
 from pydantic import BaseModel, ValidationError
 
 from app.api.error_codes import DetailCode, ErrorCode
+from app.errors import unexpected_failure
 
 # Pydantic error types -> the stable `details[].code` set (API-9, design 5.3).
 _TOO_SHORT = {'string_too_short', 'too_short'}
@@ -85,11 +86,8 @@ def validate_json(schema: type[BaseModel]):
                     'code': ErrorCode.VALIDATION_ERROR.value,
                 }), 400
             except Exception as e:
-                return jsonify({
-                    'success': False,
-                    'error': 'Bad Request',
-                    'message': str(e)
-                }), 400
+                return unexpected_failure(e, 'Invalid request body', 400, error='Bad Request',
+                                          code=ErrorCode.BAD_REQUEST)
             
             return f(*args, **kwargs)
         return wrapper
