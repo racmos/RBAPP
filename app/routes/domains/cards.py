@@ -184,10 +184,10 @@ def upload_card_image():
         if '.' not in filename or filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             return jsonify({'success': False, 'message': 'Invalid file type. Allowed: jpg, jpeg, png, webp'}), 400
         
-        # Same folder rule the page reads with (IMG-1), rooted at the app's static
-        # folder (never the working directory), and never outside images/cards/.
+        # Same folder rule the page reads with (IMG-1), rooted at CARD_IMAGES_DIR
+        # (never the working directory), and never outside it.
         try:
-            file_path = card_image_path(current_app.static_folder, filename, set_id)
+            file_path = card_image_path(current_app.config['CARD_IMAGES_DIR'], filename, set_id)
         except ValueError as e:
             return jsonify({'success': False, 'message': f'Invalid image destination: {e}'}), 400
         os.makedirs(os.path.dirname(file_path), exist_ok=True)

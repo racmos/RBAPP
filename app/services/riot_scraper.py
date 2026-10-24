@@ -2,7 +2,7 @@
 Riot Card Gallery scraper.
 Fetches card data + images from https://riftbound.leagueoflegends.com/en-us/card-gallery/
 Inserts into rbcards table and saves each image under
-<static>/images/cards/<folder>/, where <folder> is the one `RbCard.image_src`
+<CARD_IMAGES_DIR>/<folder>/, where <folder> is the one `RbCard.image_src`
 reads from: the filename prefix ('ogn_257.png' -> ogn/, also for the OGNX promo
 set), else the lower-cased set id (see `card_image_folder`).
 """
@@ -373,14 +373,12 @@ def extract_riot_cards(filter_sets: list[str] | None = None) -> dict:
     # Step 4: Download images
     steps.append({'step': '4. Download images', 'status': 'RUNNING', 'message': 'Downloading card images...'})
     try:
-        static_dir = current_app.static_folder or os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static'
-        )
+        images_root = current_app.config['CARD_IMAGES_DIR']
 
         for card_data in parsed_cards:
-            # Same folder rule the UI reads with; refuses anything outside images/cards/.
+            # Same folder rule the UI reads with; refuses anything outside the root.
             try:
-                dest = card_image_path(static_dir, card_data['image'], card_data['rbcar_rbset_id'])
+                dest = card_image_path(images_root, card_data['image'], card_data['rbcar_rbset_id'])
             except ValueError as e:
                 logger.warning(f"Image skipped for {card_data['rbcar_rbset_id']}-{card_data['rbcar_id']}: {e}")
                 stats['images_failed'] += 1
