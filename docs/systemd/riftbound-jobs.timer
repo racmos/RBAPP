@@ -1,0 +1,11 @@
+# Starts the job runner at second 00 of every minute (F4-a).
+[Unit]
+Description=Run the Riftbound job runner every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+Persistent=false
+Unit=riftbound-jobs.service
+
+[Install]
+WantedBy=timers.target

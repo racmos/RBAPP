@@ -1,0 +1,12 @@
+# Install with F4-b (the daily_prices kind does not exist before it)
+# Daily Cardmarket load at 06:30 Madrid time (D-F4-1).
+[Unit]
+Description=Queue the Riftbound daily Cardmarket load at 06:30 Europe/Madrid
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 Europe/Madrid
+Persistent=false
+Unit=riftbound-daily.service
+
+[Install]
+WantedBy=timers.target
