@@ -24,7 +24,8 @@ Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. 
 | M-c | `M/M-c-hygiene.md` | Done (#31). |
 | F4-a | `F4/F4-a-job-runner.md` | Done (#32). |
 | F4-b | `F4/F4-b-daily-prices.md` | Done (#33). |
-| F2-a | `F2/F2-a-card-bans.md` | Implemented, in review (#34). |
+| F2-a | `F2/F2-a-card-bans.md` | Done (#34). |
+| M-d | `M/M-d-card-images.md` | Implemented, in review. |
 | F13 | `F13/README.md` | Phase spec only (Riot sync + catalog admin; added by M-b). |
 | F14 | `F14/README.md` | Phase spec only (Products; added by M-b). |
 | F15 | `F15/README.md` | Phase spec outline (Rules app; added by M-b; specified when the phase starts). |
@@ -33,7 +34,6 @@ Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. 
 Phases F3-F15 have a phase spec only (`F<n>/README.md`; F13 Riot sync + catalog admin, F14 Products, F15
 Rules app were added by M-b); their unit requirements are written when the phase starts, after the owner
 answers its open decisions. F4 is the exception so far: F4-a and F4-b have their unit requirements (above).
-Maintenance unit M-d (card images out of git) has no requirement yet.
 
 ## How to hand one over
 

@@ -170,6 +170,41 @@ needs the `daily_prices` rows gone first, otherwise it stops with a clear messag
 `DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'daily_prices';` then
 `venv/bin/flask db downgrade 0007_jobs`.
 
+## Card images (from M-d)
+
+Card images are not in git. They live in a data directory outside the code tree, set with
+`CARD_IMAGES_DIR=<data dir>` in `.env` (absolute path; the host value is in `ops.local.md`). The app
+serves it at the same URLs as before, `/riftbound/static/images/cards/<folder>/<file>`, and the admin
+upload and the Riot scraper write there. Unset, the app falls back to `app/static/images/cards/` in the
+checkout. The Nginx template proxies every `/riftbound/` URL to Flask, so the proxy needs no change; if
+it ever serves `/riftbound/static/` from disk, that location must point at `<data dir>` for the cards.
+
+- Backup: the data directory is the only copy of the scraped and uploaded images. Copy it with the
+  database backup (`tar -C <data dir> -czf <backup folder>/card-images-<date>.tar.gz .`, private folder);
+  F12 schedules it.
+- Check: `curl -s -o /dev/null -w '%{http_code}\n' <URL>/riftbound/static/images/cards/ogn/ogn_1.png` → 200.
+
+### First deploy of M-d (order matters)
+
+The merge of M-d removes the tracked images from the checkout on the next `git pull`, so copy first:
+
+1. Copy every image (tracked and untracked) to the data directory and compare:
+   `mkdir -p <data dir> && cp -a app/static/images/cards/. <data dir>/`, then
+   `find app/static/images/cards -type f | wc -l` vs `find <data dir> -type f | wc -l` and
+   `du -sb app/static/images/cards <data dir>` (same count; same size, give or take the folder entries).
+2. Add `CARD_IMAGES_DIR=<data dir>` to `.env`, restart, and check an image URL answers 200. Prove it comes
+   from the data directory: rename that one file in `app/static/images/cards/` (for example append
+   `.bak`), the URL still answers 200; rename it back.
+3. `git pull --ff-only` (removes the tracked images from the checkout; the ignored ones stay), restart,
+   check the same URLs again, plus one image the Riot scraper added (untracked before M-d).
+4. Leave the untracked leftovers in `app/static/images/cards/` until the owner confirms; then delete them
+   (keep `.gitkeep`).
+
+Rollback: images first, code second. While the leftovers of step 4 exist, removing `CARD_IMAGES_DIR` from
+`.env` and restarting serves them again. After they are gone, copy back first
+(`cp -a <data dir>/. app/static/images/cards/`), then unset the variable or revert the PR (the revert
+re-adds the tracked images; ignored copies at the same paths are overwritten with identical files).
+
 ## Never
 
 - Commit or print `.env`, the database URL, passwords or keys. Write IPs, hostnames or domains in a
