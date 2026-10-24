@@ -5,6 +5,7 @@ import re
 from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required
 from app import db
+from app.errors import unexpected_failure
 from app.security import admin_required
 from app.models import RbSet, RbCard
 from app.services.card_images import card_image_path
@@ -184,7 +185,7 @@ def upload_card_image():
         
         return jsonify({'success': True, 'filename': filename})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return unexpected_failure(e, 'The image could not be uploaded')
 
 
 @cards_bp.route('/add', methods=['POST'])

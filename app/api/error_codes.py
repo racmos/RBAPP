@@ -5,7 +5,7 @@ An error body may carry `code` (one of these, lowercase snake_case) and
 `success`, `error`, `message`, `details`. Clients translate by code and fall back
 to `message`. Adding a code means adding it here, to both frontend catalogs
 (`frontend/src/i18n/locales/{es,en}/errors.json`, key `code.<value>`) and to the
-contract test that checks them (`tests/test_frontend_contracts.py`, unit d).
+catalog test that checks them (`tests/test_error_catalogs.py`).
 
 Codes and params never carry secrets, stack traces or internals.
 """
@@ -23,6 +23,8 @@ class ErrorCode(StrEnum):
     CSRF_INVALID = 'csrf_invalid'                 # any unsafe request without a valid token, 400
     UNAUTHENTICATED = 'unauthenticated'           # JSON access without a session, 401
     VALIDATION_ERROR = 'validation_error'         # request body failed validation, 400
+    BAD_REQUEST = 'bad_request'                   # unreadable request body (@validate_json), 400
+    INTERNAL_ERROR = 'internal_error'             # unexpected failure of a legacy endpoint, 500
 
 
 class DetailCode(StrEnum):

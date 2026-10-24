@@ -9,7 +9,7 @@
 
 | # | Finding | Severity |
 |---|---------|----------|
-| B1 | `config.py:14` falls back to `SECRET_KEY='you-will-never-guess'` and `config.py:17-18,21-22` embeds `postgres:<old-db-password>@192.168.1.33`. **The GitHub repo is PUBLIC** and the values are in history since `b310f07`. `docs/riftbound.service` sets no env vars and nothing calls `load_dotenv` (python-dotenv is unused), so prod very likely runs on the public default key: anyone can forge a Flask-Login session cookie for user id 1. | CRITICAL (act before F0 lands) |
+| B1 | `config.py:14` falls back to `SECRET_KEY='you-will-never-guess'` and `config.py:17-18,21-22` embeds `postgres:<old-db-password>@<dev-db-host>`. **The GitHub repo is PUBLIC** and the values are in history since `b310f07`. `docs/riftbound.service` sets no env vars and nothing calls `load_dotenv` (python-dotenv is unused), so prod very likely runs on the public default key: anyone can forge a Flask-Login session cookie for user id 1. | CRITICAL (act before F0 lands) |
 | B2 | **26 tracked files are owned by root with mode 644** and are NOT writable by `racmos` (verified with `test -w`): `app/routes/domains/{collection,deck,price}.py`, `app/schemas/validators.py`, `app/models/{__init__,collection,cardmarket}.py`, `app/services/cardmarket_matcher.py`, `app/templates/{collection,deck,deck_view,price}.html`, `tests/test_{cardmarket_ignored,cardmarket_matcher,collection_foil,collection_merge}.py`, `.gitignore`, `.atl/skill-registry.md`, `migrations/install_db.sql`, `migrations/database/04..08_*.sql`, `docs/diagnostic_*.sql`; `.git/index` is root-owned too. `sdd-apply` will fail with EACCES on most files F0 must edit (writable: `config.py`, `app/__init__.py`, `errors.py`, `auth.py`, `models/user.py`, `sets.py`, `cards.py`, `profile.py`, `base.html`, `cards.html`, `sets.html`, `tests/conftest.py`, `tests/test_routes.py`). Fix: `sudo chown -R racmos:racmos /home/racmos/RBAPP` (user action; directories are already racmos-owned so `cp x x.tmp && mv x.tmp x` is a stop-gap). | BLOCKER for apply |
 | B3 | Any logged-in user can today: create/edit sets and cards, run Cardmarket loads with **caller-supplied URLs (SSRF)**, trigger Riot scraping, and **write files outside the repo via `upload_image` path traversal** (`cards.py:152,168`, reproduced with the test client). | HIGH |
 | B4 | Prod schema is unknown. Three divergent DDL sources exist (`docs/database_setup.sql`, `migrations/database/01..08`, `migrations/install_db.sql`) and they disagree with each other and with the models (section 3). A baseline must start from `pg_dump -s -n riftbound` of prod. | Needs user input |
@@ -40,11 +40,11 @@ Recommendation in one line: one SDD change `f0-foundation` (single proposal/spec
 ### Recommendation: A
 - `create_app(config_class=None, **test_config)`: choose class from `RB_ENV`; after `config.update(test_config)` run `_validate_config(app)`: if not (`TESTING` or `DEBUG`) require `SECRET_KEY` (>= 32 chars, not the legacy default or `change-me` patterns) and `DATABASE_URL`; raise `RuntimeError` with an explicit message (visible in `journalctl`).
 - Dev: `load_dotenv()` only when `RB_ENV` is unset/`development` (python-dotenv already installed). Prod: systemd `EnvironmentFile=/etc/riftbound/riftbound.env` (`chmod 640 root:www-data`) documented in `docs/`; no dotenv in prod.
-- Cookie flags (config, env-overridable): `SESSION_COOKIE_SAMESITE='Lax'` (must be Lax, not Strict: F9 OAuth callbacks are cross-site top-level GETs), `SESSION_COOKIE_SECURE=True` in production (nginx_config already terminates TLS with Let's Encrypt for racmosdev.es), `SESSION_COOKIE_HTTPONLY=True`, optional `SESSION_COOKIE_PATH='/riftbound'`; same for `REMEMBER_COOKIE_*`. Changing the key invalidates all sessions (acceptable, desirable).
+- Cookie flags (config, env-overridable): `SESSION_COOKIE_SAMESITE='Lax'` (must be Lax, not Strict: F9 OAuth callbacks are cross-site top-level GETs), `SESSION_COOKIE_SECURE=True` in production (nginx_config already terminates TLS with Let's Encrypt for <dev-domain>), `SESSION_COOKIE_HTTPONLY=True`, optional `SESSION_COOKIE_PATH='/riftbound'`; same for `REMEMBER_COOKIE_*`. Changing the key invalidates all sessions (acceptable, desirable).
 - `ProxyFix` count configurable (`PROXY_FIX_X_FOR`, default 1). Gunicorn binds `0.0.0.0:8000` and ProxyFix trusts `X-Forwarded-For`: anyone who can reach :8000 directly can spoof the client IP (defeats IP rate limits). Ops note: firewall :8000 to the Nginx host only.
 - `run.py`: `debug` from env, host `127.0.0.1`, drop `db.create_all()` once Alembic lands.
 - CI: remove `DATABASE_URL`/`SECRET_KEY`/`FLASK_ENV` env from `ci.yml`.
-- **Runbook (out-of-code, user action)**: rotate the Postgres password for `postgres@192.168.1.33` (it is public), generate a new `SECRET_KEY` (`python -c "import secrets; print(secrets.token_urlsafe(48))"`), set both via EnvironmentFile. History rewrite not recommended once rotated.
+- **Runbook (out-of-code, user action)**: rotate the Postgres password for `postgres@<dev-db-host>` (it is public), generate a new `SECRET_KEY` (`python -c "import secrets; print(secrets.token_urlsafe(48))"`), set both via EnvironmentFile. History rewrite not recommended once rotated.
 
 Risks: prod start-up fails if env missing (intended; document in the PR); forgetting to set `RB_ENV`/vars on deploy. Testability: unit tests for `_validate_config` (RED: no key + not testing -> `RuntimeError`; legacy default -> `RuntimeError`; `TESTING=True` -> ok).
 
@@ -244,7 +244,7 @@ Risks: changing `request_wants_json` can alter how existing Jinja JS sees errors
 ## 7. Rate limiting, CAPTCHA, account lockout
 
 ### Host facts
-This dev host: no `redis-server`/`redis-cli` (`which` empty; `systemctl is-active redis` = inactive). Prod host (192.168.1.31) unknown. Prod runs Gunicorn with **3 workers** (`riftbound.service`; AGENTS says 4), so in-process counters are per worker.
+This dev host: no `redis-server`/`redis-cli` (`which` empty; `systemctl is-active redis` = inactive). Prod host (<prod-host>) unknown. Prod runs Gunicorn with **3 workers** (`riftbound.service`; AGENTS says 4), so in-process counters are per worker.
 
 ### Rate-limit storage
 | Option | Pros | Cons |
@@ -353,7 +353,7 @@ Dependency: a -> b -> c -> d -> e (CI portion of e is independent and can be pul
 6. API success envelope: `{success,data,meta}` (recommended) vs flat.
 7. Is `price/generate` admin-only (roadmap) or user-level? Should non-admins keep read-only Sets/Cards pages (assumed yes)?
 8. Deck `have/missing` on shared decks: use the viewer's collection (recommended) vs owner's (current).
-9. Confirm HTTPS is live for racmosdev.es today (nginx_config says so) so `Secure` cookies are safe to enforce.
+9. Confirm HTTPS is live for <dev-domain> today (nginx_config says so) so `Secure` cookies are safe to enforce.
 10. Delivery: 5 units (recommended) vs 3; one SDD change with batches vs separate changes.
 11. CI Python: 3.12 only vs matrix 3.12/3.13.
 
@@ -372,7 +372,7 @@ Yes, with the caveat that items 1-3 of section 12 are prerequisites for apply (n
 
 ## 15. Addendum (orchestrator, 2026-10-18) — user answers + dev DB snapshot
 
-**There is no production environment.** This host + DB (192.168.1.33) is DEV only; the user is the sole user.
+**There is no production environment.** This host + DB (<dev-db-host>) is DEV only; the user is the sole user.
 Production rollout becomes a later roadmap phase (F12). Consequences: no emergency hotfix; secrets rotation
 is advisable (public repo) but not urgent; "prod schema" below means the dev DB.
 

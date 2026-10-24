@@ -11,7 +11,7 @@ from app.models import RbDeck, RbSet, RbCard, RbCollection
 from app.schemas.validators import DeckSave
 from app.schemas.validation import validate_json
 from app.services.pricing import latest_price_for_card
-from datetime import datetime
+from app.utils import clock
 
 
 deck_bp = Blueprint('deck', __name__, url_prefix='/riftbound/deck')
@@ -450,7 +450,7 @@ def save_deck():
         rbdck_user=current_user.username,
         rbdck_name=data.rbdck_name,
         rbdck_seq=next_seq,
-        rbdck_snapshot=datetime.utcnow(),
+        rbdck_snapshot=clock.utcnow(),
         rbdck_description=data.rbdck_description,
         rbdck_mode=data.rbdck_mode or '1v1',
         rbdck_format=data.rbdck_format or 'Standard',

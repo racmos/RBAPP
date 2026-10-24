@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from app.utils import clock
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 
@@ -17,7 +17,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: clock.utcnow())
     # Roles / access (ACL-1, D10). Only the CLI (`flask users promote|block`)
     # changes them; no request input ever does.
     is_admin = db.Column(db.Boolean, nullable=False, default=False,

@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from app.utils import clock
 
 class RbCardMarket(db.Model):
     __tablename__ = 'rbcardmarket'
@@ -11,7 +11,7 @@ class RbCardMarket(db.Model):
         {"schema": "riftbound", "comment": 'Tabla de precios de Cardmarket'},
     )
     
-    rbcmk_snapshot = db.Column(db.DateTime, primary_key=True, default=datetime.utcnow, comment='Fecha de la foto de los precios extraídos')
+    rbcmk_snapshot = db.Column(db.DateTime, primary_key=True, default=lambda: clock.utcnow(), comment='Fecha de la foto de los precios extraídos')
     rbcmk_rbset_id = db.Column(db.Text, primary_key=True, comment='ID de la expansión')
     rbcmk_rbcar_id = db.Column(db.Text, primary_key=True, comment='ID de la carta')
     rbcmk_foil = db.Column(db.Text, primary_key=True, default='N', comment='Si es foil, S o N')

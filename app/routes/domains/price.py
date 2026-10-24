@@ -6,6 +6,7 @@ from flask_login import login_required
 from pydantic import ValidationError
 from sqlalchemy import func
 from app import db
+from app.errors import unexpected_failure
 from app.models import RbSet, RbCard
 from app.models.cardmarket import (
     RbcmExpansion, RbcmProduct, RbcmPrice, RbcmProductCardMap, RbProducts,
@@ -65,7 +66,7 @@ def refresh_riot_sets():
         result = _refresh()
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e), 'sets': []}), 500
+        return unexpected_failure(e, 'The Riot sets could not be loaded', sets=[])
 
 
 @price_bp.route('/extract-riot-cards', methods=['POST'])
@@ -80,12 +81,8 @@ def extract_riot_cards():
         result = _extract(filter_sets=filter_sets if filter_sets else None)
         return jsonify(result)
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'steps': [],
-            'stats': {},
-            'errors': [str(e)]
-        }), 500
+        message = 'The Riot cards could not be extracted'
+        return unexpected_failure(e, message, steps=[], stats={}, errors=[message])
 
 
 @price_bp.route('/cardmarket-load', methods=['POST'])
@@ -121,11 +118,8 @@ def cardmarket_load():
         result = loader.run(urls=urls)
         return jsonify(result)
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'steps': [],
-            'errors': [str(e)]
-        }), 500
+        message = 'The Cardmarket data could not be loaded'
+        return unexpected_failure(e, message, steps=[], errors=[message])
 
 
 @price_bp.route('/cardmarket-unmatched')
@@ -709,7 +703,7 @@ def cardmarket_auto_match():
         return jsonify(result)
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return unexpected_failure(e, 'The auto-match could not be run')
 
 
 @price_bp.route('/cardmarket-upsert-product', methods=['POST'])

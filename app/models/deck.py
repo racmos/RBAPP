@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from app.utils import clock
 from sqlalchemy.dialects.postgresql import JSONB
 
 
@@ -27,7 +27,7 @@ class RbDeck(db.Model):
     rbdck_seq = db.Column(db.Integer, default=1)
     
     # Snapshot con fecha/hora completa
-    rbdck_snapshot = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    rbdck_snapshot = db.Column(db.DateTime, nullable=False, default=lambda: clock.utcnow())
     
     # Metadatos del deck
     rbdck_description = db.Column(db.Text)
