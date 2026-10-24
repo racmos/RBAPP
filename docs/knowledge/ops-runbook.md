@@ -58,6 +58,12 @@ There is no production yet (phase F12). Everything here is the development serve
 - Status and logs: `systemctl status <service>`, `journalctl -u <service> -n 200 --no-pager`.
 - Users: `venv/bin/flask users list|promote|demote|block|unblock|unlock|set-password <username>`.
 - Schema snapshot (structure only): `venv/bin/flask schema snapshot`.
+- Card bans per game mode (F2-a; the only way to change them until the F10 admin UI; a ban covers every
+  printing of the name):
+  - `venv/bin/flask bans list [--mode 1v1|2v2]`
+  - `venv/bin/flask bans add "<card name>" --mode 1v1|2v2|all [--since YYYY-MM-DD] [--reason "<text>"] [--force]`
+    (the name must exist in the catalog unless `--force`; running it again changes nothing)
+  - `venv/bin/flask bans remove "<card name>" --mode 1v1|2v2|all`
 - Nginx (public reverse proxy, TLS) runs on another host and is changed only by the owner. The template is
   `docs/nginx_config`.
 

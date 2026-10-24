@@ -210,7 +210,7 @@
                 <td>{{ card.rbcar_energy or '-' }}</td>
                 <td>{{ card.rbcar_power or '-' }}</td>
                 <td>{{ card.rbcar_might or '-' }}</td>
-                <td>{{ card.rbcar_banned }}</td>
+                <td>{{ banned_modes[loop.index0]|join(', ') or '—' }}</td>
                 {% if current_user.is_admin %}
                 <td><button onclick="openEditModal({{ loop.index0 }})" class="btn btn-secondary btn-sm">Edit</button>
                 </td>
@@ -240,9 +240,10 @@
                 <h3>{{ card.rbcar_name }}</h3>
                 <p class="card-id">{{ card.rbcar_rbset_id }}-{{ card.rbcar_id }}</p>
                 <div class="card-actions-row">
+                    {% set modes = banned_modes[loop.index0] %}
                     <span
-                        class="banned-badge {% if card.rbcar_banned == 'S' %}banned-yes{% else %}banned-no{% endif %}">
-                        {% if card.rbcar_banned == 'S' %}BANNED{% else %}ALLOWED{% endif %}
+                        class="banned-badge {% if modes %}banned-yes{% else %}banned-no{% endif %}">
+                        {% if modes %}BANNED {{ modes|join(', ') }}{% else %}ALLOWED{% endif %}
                     </span>
                     {% if current_user.is_admin %}
                     <button onclick="openEditModal({{ loop.index0 }})" class="btn btn-secondary btn-sm">Edit</button>
@@ -345,15 +346,6 @@
             <div class="form-group">
                 <label>Artist</label>
                 <input type="text" id="add_rbcar_artist">
-            </div>
-
-            <!-- Banned -->
-            <div class="form-group">
-                <label>Banned?</label>
-                <select id="add_rbcar_banned" class="select-visible">
-                    <option value="N">No</option>
-                    <option value="S">Yes</option>
-                </select>
             </div>
 
             <!-- ⭐ AÑADIR AQUÍ: IMAGE URL -->
@@ -468,12 +460,6 @@
                     onchange="handleEditImageUpload(this)">
                 <div id="edit_image_preview" style="margin-top: 0.5rem;"></div>
                 <small id="edit_upload_status"></small>
-            </div>
-            <div class="form-group"><label>Banned?</label>
-                <select id="edit_rbcar_banned" class="select-visible">
-                    <option value="N">No</option>
-                    <option value="S">Yes</option>
-                </select>
             </div>
             <div class="modal-footer">
                 <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Cancel</button>
@@ -1013,7 +999,6 @@
         document.getElementById('edit_rbcar_ability').value = card.rbcar_ability || '';
         document.getElementById('edit_rbcar_rarity').value = card.rbcar_rarity || '';
         document.getElementById('edit_rbcar_artist').value = card.rbcar_artist || '';
-        document.getElementById('edit_rbcar_banned').value = card.rbcar_banned || 'N';
         document.getElementById('edit_image_url').value = card.image_url || '';
         document.getElementById('edit_image').value = card.image || '';
         document.getElementById('edit_upload_status').textContent = '';
@@ -1093,7 +1078,6 @@
             rbcar_might: document.getElementById('add_rbcar_might').value || null,
             rbcar_rarity: document.getElementById('add_rbcar_rarity').value || null,
             rbcar_artist: document.getElementById('add_rbcar_artist').value || null,
-            rbcar_banned: 'N',
             image: imageFilename || null
         };
 
@@ -1128,7 +1112,6 @@
             rbcar_ability: document.getElementById('edit_rbcar_ability').value || null,
             rbcar_rarity: document.getElementById('edit_rbcar_rarity').value || null,
             rbcar_artist: document.getElementById('edit_rbcar_artist').value || null,
-            rbcar_banned: document.getElementById('edit_rbcar_banned').value,
             image_url: document.getElementById('edit_image_url').value || null,
             image: document.getElementById('edit_image').value || null
         };

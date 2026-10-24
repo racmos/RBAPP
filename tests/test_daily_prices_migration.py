@@ -18,8 +18,8 @@ def _rejected(kind, status='queued'):
     assert rows(COUNT) == before
 
 
-def test_head_accepts_daily_prices(migration_app):
-    upgrade()
+def test_0008_accepts_daily_prices(migration_app):
+    upgrade('0008_jobs_daily_prices')
     assert rows('SELECT version_num FROM riftbound.alembic_version') == [
         ('0008_jobs_daily_prices',)]
     run(INSERT, kind='daily_prices', status='queued')
@@ -53,7 +53,7 @@ def test_constraints_and_indexes_survive_the_upgrade(migration_app):
 
 
 def test_downgrade_refuses_while_daily_prices_jobs_exist(migration_app):
-    upgrade()
+    upgrade('0008_jobs_daily_prices')
     run(INSERT, kind='daily_prices', status='success')
     with pytest.raises(RuntimeError) as caught:
         downgrade('0007_jobs')

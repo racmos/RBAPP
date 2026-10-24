@@ -49,6 +49,7 @@ MATRIX = {
     'api_v1.auth_logout': 'U',
     'api_v1.get_me_prefs': 'U',             # unit c of f1-app-shell
     'api_v1.patch_me_prefs': 'U',
+    'api_v1.list_bans': 'U',                # F2 unit a (D-F2-3)
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',

@@ -7,6 +7,7 @@ from .deck import RbDeck
 from .captcha import RbCaptchaUsed
 from .prefs import RbUserPrefs
 from .job import RbJob
+from .ban import RbCardBan
 from .cardmarket import (
     RbcmProduct, RbcmPrice, RbcmCategory, RbcmExpansion,
     RbcmLoadHistory, RbcmProductCardMap, RbProducts, RbcmIgnored
