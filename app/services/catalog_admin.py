@@ -22,11 +22,18 @@ def _nat(value: str):
                  for part in re.split(r'(\\d+)', value or ''))
 
 
-def set_item(rs: RbSet, card_count: int = 0) -> dict:
-    """The S2 set payload."""
+def set_item(rs: RbSet, card_count: int = 0, today=None) -> dict:
+    """The S2 set payload, with the sync window and next run (F13-d S6)."""
+    from app.services import riot_sync
+    from app.utils import clock
+    now_local = riot_sync.now_madrid(clock.utcnow())
+    today = today or now_local.date()
+    window = riot_sync.window_for(rs.rbset_outdat, today)
+    nxt = riot_sync.next_run(rs.rbset_outdat, now_local)
     return {'id': rs.rbset_id, 'name': rs.rbset_name,
             'release_date': rs.rbset_outdat.isoformat() if rs.rbset_outdat else None,
-            'card_count': card_count, 'declared_count': rs.rbset_ncard}
+            'card_count': card_count, 'declared_count': rs.rbset_ncard,
+            'window': window, 'next_run_at': nxt.isoformat() if nxt else None}
 
 
 def list_sets() -> list[dict]:

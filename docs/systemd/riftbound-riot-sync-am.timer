@@ -1,0 +1,11 @@
+# Morning Riot sync timer (F13-d): 08:00 Europe/Madrid (D-F13-1, D-F13-20, F13-R19).
+[Unit]
+Description=Queue the Riot sync morning run at 08:00 Europe/Madrid
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 Europe/Madrid
+Persistent=false
+Unit=riftbound-riot-sync-am.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+# Afternoon Riot sync timer (F13-d): 14:00 Europe/Madrid (D-F13-20, F13-R19).
+[Unit]
+Description=Queue the Riot sync afternoon run at 14:00 Europe/Madrid
+
+[Timer]
+OnCalendar=*-*-* 14:00:00 Europe/Madrid
+Persistent=false
+Unit=riftbound-riot-sync-pm.service
+
+[Install]
+WantedBy=timers.target

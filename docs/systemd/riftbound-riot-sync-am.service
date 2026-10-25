@@ -1,0 +1,19 @@
+# Morning Riot sync (F13-d): queues riot_sync for the 08:00 run (D-F13-20).
+# Same placeholders as docs/riftbound.service and riftbound-jobs.service.
+# Install and rollback: docs/knowledge/ops-runbook.md -> "Scheduled jobs".
+[Unit]
+Description=Queue the Riot sync morning run
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/riftbound
+Environment="PATH=/var/www/riftbound/venv/bin"
+Environment="FLASK_APP=wsgi.py"
+EnvironmentFile=/etc/riftbound/riftbound.env
+# Exit 1 (a sync already queued or running) is the normal "skip": it must not
+# fail the unit.
+SuccessExitStatus=1
+ExecStart=/var/www/riftbound/venv/bin/flask jobs enqueue riot_sync --param trigger=schedule --param slot=am

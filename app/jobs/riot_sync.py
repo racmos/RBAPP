@@ -5,7 +5,9 @@ the F13-d timers queue `trigger=schedule` with `--param slot=am|pm` (the slot
 is accepted and ignored here). Any failure is a `JobFailed`, so the job ends
 `error` and nothing half-written stays (one transaction per set).
 """
+from app import db
 from app.jobs.registry import JobFailed, JobKind, register
+from app.models.set import RbSet
 from app.services import riot_sync
 from app.utils import clock
 
@@ -21,12 +23,24 @@ def run(params: dict) -> dict:
     sets = params.get('sets')
     if unknown or trigger not in VALID_TRIGGERS or (slot is not None and slot not in VALID_SLOTS):
         raise JobFailed('riot_sync: invalid params')
+    job_id = _running_job_id()
+    if trigger == 'schedule':
+        if slot is None:
+            raise JobFailed('riot_sync: invalid params')
+        rows = db.session.query(RbSet.rbset_id, RbSet.rbset_outdat).all()
+        today = riot_sync.today_madrid(clock.utcnow())
+        due = riot_sync.due_sets([(row[0], row[1]) for row in rows], slot, today)
+        if not due:
+            return {'trigger': 'schedule', 'slot': slot, 'today': today.isoformat(),
+                    'message': 'nothing due', 'sets': []}
+        return riot_sync.sync([set_id for set_id, _ in due], 'schedule',
+                              clock.utcnow(), job_id=job_id)
     set_codes = None
     if sets is not None:
         set_codes = [code for code in (part.strip() for part in sets.split(',')) if code]
         if not set_codes:
             raise JobFailed('riot_sync: invalid params')
-    return riot_sync.sync(set_codes, trigger, clock.utcnow(), job_id=_running_job_id())
+    return riot_sync.sync(set_codes, trigger, clock.utcnow(), job_id=job_id)
 
 
 def _running_job_id() -> int | None:
