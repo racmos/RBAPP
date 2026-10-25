@@ -15,4 +15,4 @@ api_admin.before_request(require_admin)
 api_admin.register_error_handler(Exception, _any_error)
 
 # Import for the side effect of registering the routes on `api_admin`.
-from app.api.admin import overview  # noqa: E402,F401
+from app.api.admin import cards, overview, sets  # noqa: E402,F401

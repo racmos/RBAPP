@@ -97,6 +97,9 @@ def validate_json(schema: type[BaseModel]):
 def validate_query(schema: type[BaseModel]):
     """
     Decorator to validate query parameters against a Pydantic schema.
+    Repeatable params (`?set=A&set=B`) arrive as lists; single values stay
+    scalar and the schema normalises them. The 400 body is the same envelope
+    as `validate_json` (error, message, details with `code`/`params`, `code`).
     
     Usage:
         @validate_query(CardQueryParams)
@@ -108,33 +111,19 @@ def validate_query(schema: type[BaseModel]):
         @wraps(f)
         def wrapper(*args, **kwargs):
             try:
-                # Convert query params to dict
-                data = {k: v for k, v in request.args.items()}
-                
-                # Convert integer params
-                for key in ['page', 'per_page', 'energy_min', 'energy_max', 
-                           'power_min', 'power_max', 'might_min', 'might_max']:
-                    if key in data and data[key]:
-                        try:
-                            data[key] = int(data[key])
-                        except ValueError:
-                            pass
-                
+                data = {}
+                for key in request.args.keys():
+                    values = request.args.getlist(key)
+                    data[key] = values[0] if len(values) == 1 else values
                 validated = schema(**data)
                 request.validated_query = validated
             except ValidationError as e:
-                errors = e.errors()
                 return jsonify({
                     'success': False,
                     'error': 'Validation Error',
                     'message': 'Invalid query parameters',
-                    'details': [
-                        {
-                            'field': '.'.join(str(loc) for loc in err['loc']),
-                            'message': err['msg']
-                        }
-                        for err in errors
-                    ]
+                    'details': [_detail(err) for err in e.errors()],
+                    'code': ErrorCode.VALIDATION_ERROR.value,
                 }), 400
             
             return f(*args, **kwargs)
