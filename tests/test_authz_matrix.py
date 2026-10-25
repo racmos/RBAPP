@@ -64,6 +64,7 @@ MATRIX = {
     'cards.update_card': 'A',
     'cards.upload_card_image': 'A',
     'price.*': 'A',                         # all 23 routes, including future ones
+    'api_admin.*': 'A',                     # /riftbound/api/v1/admin/* (F13-a)
 }
 
 LOGIN_PATH = '/riftbound/login'

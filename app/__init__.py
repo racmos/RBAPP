@@ -182,6 +182,9 @@ def create_app(**overrides):
     from app.api.v1 import api_v1
     app.register_blueprint(api_v1)
 
+    from app.api.admin import api_admin
+    app.register_blueprint(api_admin)
+
     from app.models import User
     @login.user_loader
     def load_user(id):
