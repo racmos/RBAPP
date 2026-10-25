@@ -172,38 +172,42 @@ needs the `daily_prices` rows gone first, otherwise it stops with a clear messag
 
 ## Card images (from M-d)
 
-Card images are not in git. They live in a data directory outside the code tree, set with
-`CARD_IMAGES_DIR=<data dir>` in `.env` (absolute path; the host value is in `ops.local.md`). The app
-serves it at the same URLs as before, `/riftbound/static/images/cards/<folder>/<file>`, and the admin
-upload and the Riot scraper write there. Unset, the app falls back to `app/static/images/cards/` in the
-checkout. The Nginx template proxies every `/riftbound/` URL to Flask, so the proxy needs no change; if
-it ever serves `/riftbound/static/` from disk, that location must point at `<data dir>` for the cards.
+Card images are not in git and not in the code tree. They live in the data directory set by
+`CARD_IMAGES_DIR=<data dir>` in `.env` (absolute path, outside the checkout, owned by the service user; the
+host value is in `ops.local.md`). Unset, the app uses `<project>/data/card-images` (git-ignored; dev and
+tests only). Flask serves the directory at `/riftbound/media/cards/<folder>/<file>` (public, cached a
+week); the admin upload and the Riot scraper write there. The old `/riftbound/static/images/cards/...`
+URLs no longer serve the images. The Nginx template proxies every `/riftbound/` URL to Flask, so the
+proxy needs no change.
 
 - Backup: the data directory is the only copy of the scraped and uploaded images. Copy it with the
   database backup (`tar -C <data dir> -czf <backup folder>/card-images-<date>.tar.gz .`, private folder);
   F12 schedules it.
-- Check: `curl -s -o /dev/null -w '%{http_code}\n' <URL>/riftbound/static/images/cards/ogn/ogn_1.png` → 200.
+- Copy images from elsewhere: `venv/bin/flask images import-legacy [--source PATH]` copies every
+  `<folder>/<file>` of `PATH` (default `app/static/images/cards`) into the data directory. It never
+  overwrites a file and never deletes the source, so it can run any number of times; it prints
+  `Copied <n>, skipped <m> existing, ignored <k>.`
 
-### First deploy of M-d (order matters)
+### Deploy of M-d (before or together with the deploy that pulls the M-d commit)
 
-The merge of M-d removes the tracked images from the checkout on the next `git pull`, so copy first:
+The M-d commit removes the tracked images from git, so the next `git pull` deletes them from the
+checkout. Copy first.
 
-1. Copy every image (tracked and untracked) to the data directory and compare:
-   `mkdir -p <data dir> && cp -a app/static/images/cards/. <data dir>/`, then
-   `find app/static/images/cards -type f | wc -l` vs `find <data dir> -type f | wc -l` and
-   `du -sb app/static/images/cards <data dir>` (same count; same size, give or take the folder entries).
-2. Add `CARD_IMAGES_DIR=<data dir>` to `.env`, restart, and check an image URL answers 200. Prove it comes
-   from the data directory: rename that one file in `app/static/images/cards/` (for example append
-   `.bak`), the URL still answers 200; rename it back.
-3. `git pull --ff-only` (removes the tracked images from the checkout; the ignored ones stay), restart,
-   check the same URLs again, plus one image the Riot scraper added (untracked before M-d).
-4. Leave the untracked leftovers in `app/static/images/cards/` until the owner confirms; then delete them
-   (keep `.gitkeep`).
+1. **Before pulling**: create the data directory (outside the checkout), owned by the service user, and
+   copy the images: `cp -a <checkout>/app/static/images/cards/. <data dir>/`. If the pull already
+   happened, the files are gone from the checkout: restore them from the previous commit with
+   `git -C <checkout> archive <old sha> app/static/images/cards | tar -x -C /tmp/cards-restore` and run
+   `venv/bin/flask images import-legacy --source /tmp/cards-restore/app/static/images/cards`.
+2. Set `CARD_IMAGES_DIR=<data dir>` in `.env`, deploy, restart, then run `venv/bin/flask images
+   import-legacy` (copies 0 if step 1 was done; it also picks up the untracked images the Riot scraper
+   left in the checkout).
+3. Live check: open a Jinja catalog page; its images load from `/riftbound/media/cards/…`;
+   `curl -sI <URL>/riftbound/media/cards/ogn/ogn_1.png` → 200 with `Cache-Control: public, max-age=604800`.
 
-Rollback: images first, code second. While the leftovers of step 4 exist, removing `CARD_IMAGES_DIR` from
-`.env` and restarting serves them again. After they are gone, copy back first
-(`cp -a <data dir>/. app/static/images/cards/`), then unset the variable or revert the PR (the revert
-re-adds the tracked images; ignored copies at the same paths are overwritten with identical files).
+Rollback: revert the PR and redeploy; the revert puts the tracked images back in the checkout and the
+pages read `/riftbound/static/images/cards/...` again. Images added after the deploy exist only in the data
+directory: copy them back first (`cp -a <data dir>/. <checkout>/app/static/images/cards/`). Leave the data
+directory in place.
 
 ## Never
 

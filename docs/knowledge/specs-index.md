@@ -66,8 +66,8 @@ secret-key rules, when `.env` is read, engine options per database, `.env.exampl
 
 ### card-images (`card-images/spec.md`)
 Where card images live on disk and how they are read and written safely.
-- IMG-1 Folder derives from the filename prefix: `image_src` is `/riftbound/static/images/cards/<folder>/<image>`
-- IMG-2 Upload cannot escape its folder: admin upload confined under `images/cards/`, letters and digits only
+- IMG-1 Folder derives from the filename prefix: `image_src` is `/riftbound/media/cards/<folder>/<image>` (M-d)
+- IMG-2 Upload cannot escape its folder: admin upload confined under `CARD_IMAGES_DIR` (M-d), letters and digits only
 - IMG-3 Scraper writes where the UI reads: the Riot scraper uses the same folder rule
 
 ### ci-pipeline (`ci-pipeline/spec.md`)

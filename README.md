@@ -43,7 +43,7 @@ Settings come from environment variables only (see [.env.example](.env.example),
 | `CARDMARKET_ALLOWED_HOSTS` | Hosts the Cardmarket loader may download from |
 | `RB_LEGACY_BACKUP_DIR` | Where migration 0002 saves the legacy tables (contains personal data, never commit) |
 | `FRONTEND_DIST` | Directory with the built new app, served at `/riftbound/app/` (default `<project>/frontend/dist`; see [New app hosting](#new-app-hosting)) |
-| `CARD_IMAGES_DIR` | Absolute path of the card images root (`ogn/`, `ogs/`, ...), served at `/riftbound/static/images/cards/` and written by the admin upload and the Riot scraper (default `<project>/app/static/images/cards`; a relative path stops the app). The images are not in git: keep them in a data directory outside the code tree |
+| `CARD_IMAGES_DIR` | Absolute path of the card images data directory (`ogn/`, `ogs/`, ...), served at `/riftbound/media/cards/` and written by the admin upload and the Riot scraper (default `<project>/data/card-images`, git-ignored; a relative path stops the app). The images are not in git; `flask images import-legacy` copies the old `app/static/images/cards/` tree in |
 
 ## Running
 
