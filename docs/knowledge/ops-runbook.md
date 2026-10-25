@@ -193,7 +193,28 @@ The legacy Jinja button "Extraer cartas Riot" now only queues the job
 `{"success": false, "message": "Ya hay una sincronización en curso."}` when one is active);
 "refresh Riot sets" stays read only.
 
-Rollback: no timers yet (F13-d); downgrading the migrations (owner's go-ahead only) drops the change
+The `am` job runs every day at 08:00 Europe/Madrid (pre-release, post-release and, on the 1st of
+the month, `monthly` sets); the `pm` job runs at 14:00 (pre-release only). A scheduled run with no
+due set ends `success` with `{"message": "nothing due", "sets": []}` and fetches nothing.
+
+Install (after the F13-c deploy: backup, `venv/bin/flask db upgrade` to `0012_jobs_riot_sync`,
+`venv/bin/flask db check`, restart):
+
+```bash
+sudo cp docs/systemd/riftbound-riot-sync-am.service docs/systemd/riftbound-riot-sync-am.timer \
+        docs/systemd/riftbound-riot-sync-pm.service docs/systemd/riftbound-riot-sync-pm.timer \
+        /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now riftbound-riot-sync-am.timer riftbound-riot-sync-pm.timer
+systemctl list-timers 'riftbound-riot-sync*' --no-pager
+```
+
+An exit 1 from a timer unit (`SuccessExitStatus=1`) means a sync was already queued or running:
+the run is skipped, nothing failed.
+
+Rollback: disable both timers (`sudo systemctl disable --now riftbound-riot-sync-am.timer
+riftbound-riot-sync-pm.timer`); downgrading the migrations (owner's go-ahead only) drops the change
+table and its history. downgrading the migrations (owner's go-ahead only) drops the change
 table and its history. The 0012 downgrade refuses while `riot_sync` jobs exist, so delete them first
 (`DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'riot_sync';`), then
 `venv/bin/flask db downgrade 0011_card_changes` (runs the 0012 and 0011 downgrades).

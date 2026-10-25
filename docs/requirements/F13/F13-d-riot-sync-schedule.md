@@ -67,3 +67,9 @@ the host like the other timers); `systemctl list-timers | grep riot` shows both.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no product deviations. `GET /admin/sets` items gain `window` and
+  `next_run_at` exactly as S6 says; the F13-b sets tests were extended (frozen clock) instead of
+  replaced. The four systemd templates reuse the daily units' placeholders verbatim.
