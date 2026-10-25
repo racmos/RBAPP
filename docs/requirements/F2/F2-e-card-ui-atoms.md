@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / e |
-| Branch | `feat/f2e-card-ui-atoms` (from up-to-date `main`) |
+| Branch | `feat/f2e-card-ui-atoms` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-b merged (contract `CardSummary` in `docs/api.md`). No backend call is made in this unit |
 | Size forecast | ~500 authored lines (tests and docs included) |
 | Risk | `Risk: none` |
@@ -202,5 +202,5 @@ text; contrast of every text ≥ 4.5:1 and every glyph ≥ 3:1 on its background
 
 ## Open questions
 
-- CONFIRM D-F2-12: Spanish names of the enum values in the `enums.json` table (in particular `Distintiva`
-  for Signature, `Ficha` for Token, `Showcase` kept in English); card names and abilities stay untranslated.
+none — the CONFIRM items of the draft (D-F2-12) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

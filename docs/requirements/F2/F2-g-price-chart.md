@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / g |
-| Branch | `feat/f2g-price-chart` (from up-to-date `main`) |
+| Branch | `feat/f2g-price-chart` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-f merged (detail screen with the `price-chart` slot); F2-d API |
 | Size forecast | ~500 authored lines (tests and docs included) |
 | Risk | `Risk: none` |
@@ -137,4 +137,5 @@ Strings — `cards.json` (add under `chart`):
 
 ## Open questions
 
-- CONFIRM D-F2-6: periods 30 d / 90 d (default) / 1 año / Todo.
+none — the CONFIRM items of the draft (D-F2-6) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

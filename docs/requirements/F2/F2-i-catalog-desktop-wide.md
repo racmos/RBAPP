@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / i |
-| Branch | `feat/f2i-catalog-desktop-wide` (from up-to-date `main`) |
+| Branch | `feat/f2i-catalog-desktop-wide` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-g (Sparkline, `useCardPrices`) and F2-h (catalog page) merged |
 | Size forecast | ~550 authored lines (tests and docs included) |
 | Risk | `Risk: none` |
@@ -144,4 +144,5 @@ Strings — `cards.json`:
 
 ## Open questions
 
-- CONFIRM D-F2-13: page sizes 48/96/192 on desktop; table view from 860 px; preview panel only in grid/list views.
+none — the CONFIRM items of the draft (D-F2-13) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

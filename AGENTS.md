@@ -2,6 +2,8 @@
 
 ## Workflow (read first)
 
+This file is the single source of instructions for every AI agent on this repository (Claude Code, gentle-shell, Codex, Gemini, Copilot and others). `CLAUDE.md` only imports it; never put rules in an agent-specific file.
+
 Work arrives as a unit requirement in `docs/requirements/F<n>/F<n>-<x>-<slug>.md` (format: `docs/requirements/TEMPLATE.md`), written by the planner (a Claude Project) from the phase spec `docs/requirements/F<n>/README.md`. The full cycle, roles and rules are in `docs/knowledge/workflow.md`.
 
 - Before changing anything read `docs/knowledge/state.md` (status), `docs/knowledge/conventions.md` (rules) and the requirement's "Read first" list. `docs/knowledge/product.md` holds the owner's binding decisions.

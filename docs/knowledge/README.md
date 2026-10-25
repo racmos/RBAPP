@@ -14,6 +14,7 @@ through `AGENTS.md`.
 | [`architecture.md`](architecture.md) | How the system is built today: backend, API, data model, legacy Jinja pages, frontend, PWA, hosting, CI, tests. |
 | [`conventions.md`](conventions.md) | Rules every change follows, known traps, definition of done. |
 | [`specs-index.md`](specs-index.md) | Index of the formal contracts in `openspec/specs/` (F0 and F1, merged). |
+| [`decisions-2026-10-25.md`](decisions-2026-10-25.md) | Planner decisions delegated by the owner for batch 1 (functional sketch): every open decision of M-d, F2, F3, F4-c, F13, F14 closed, and what is deferred to batch 2. Wins over the phase specs' open-decision tables. |
 | [`decisions-2026-10-22.md`](decisions-2026-10-22.md) | Record of the owner's answers of 2026-10-22 and the agreed order. Folded into `product.md`, `roadmap.md`, `open-decisions.md` and the phase specs by M-b (#30). |
 | [`open-decisions.md`](open-decisions.md) | Every product decision still open, by phase, with a recommendation. |
 | [`ops-runbook.md`](ops-runbook.md) | Working copies, deploy, migrations with backup, rollback, service operations (generic; host values in the git-ignored `ops.local.md`). |
