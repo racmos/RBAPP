@@ -1,6 +1,6 @@
 /** Catalog checks (I18N-1): used by the Vitest parity test, never shipped to the browser. */
 type Catalog = { [key: string]: string | Catalog };
-type Catalogs = Record<string, Record<string, Catalog>>;
+export type Catalogs = Record<string, Record<string, Catalog>>;
 
 export type ParityIssue = {
   kind: 'missing-key' | 'placeholder-mismatch' | 'missing-plural';

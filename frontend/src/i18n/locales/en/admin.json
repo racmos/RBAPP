@@ -1,0 +1,18 @@
+{
+  "title": "Administration",
+  "nav": {
+    "label": "Administration sections",
+    "overview": "Overview"
+  },
+  "mobileHint": "Easier on a computer.",
+  "overview": {
+    "title": "Overview",
+    "subtitle": "Catalog and sync status.",
+    "kpi": {
+      "sets": "Sets",
+      "setsWithoutDate": "Sets without release date",
+      "cards": "Cards",
+      "cardsWithoutImage": "Cards without image"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+import { useTranslation } from 'react-i18next';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { Select } from '@/components/ui/Select';
+import { down, up } from '@/lib/breakpoints';
+import { useMediaQuery } from '@/lib/useMediaQuery';
+import { ADMIN_NAV } from './adminNav';
+import styles from './AdminLayout.module.css';
+
+/** Frame of the admin area (F13-a S6): side navigation on desktop, a select below it. */
+export function AdminLayout() {
+  const { t } = useTranslation('admin');
+  const desktop = useMediaQuery(up('xl'));
+  const phone = useMediaQuery(down('md'));
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  return (
+    <div className={styles.layout}>
+      {desktop ? (
+        <nav aria-label={t('nav.label')} className={styles.nav}>
+          {ADMIN_NAV.map((entry) => (
+            <NavLink key={entry.id} to={entry.to} end className={styles.link}>
+              {t(entry.labelKey)}
+            </NavLink>
+          ))}
+        </nav>
+      ) : (
+        <Select
+          aria-label={t('nav.label')}
+          className={styles.select}
+          value={location.pathname.replace(/^\/riftbound\/app/, '') || '/'}
+          onChange={(event) => {
+            void navigate(event.target.value);
+          }}
+        >
+          {ADMIN_NAV.map((entry) => (
+            <option key={entry.id} value={entry.to}>
+              {t(entry.labelKey)}
+            </option>
+          ))}
+        </Select>
+      )}
+      <div>
+        {phone && <p className={styles.hint}>{t('mobileHint')}</p>}
+        <Outlet />
+      </div>
+    </div>
+  );
+}

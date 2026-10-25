@@ -1,0 +1,18 @@
+{
+  "title": "Administración",
+  "nav": {
+    "label": "Secciones de administración",
+    "overview": "Resumen"
+  },
+  "mobileHint": "Más cómodo en un ordenador.",
+  "overview": {
+    "title": "Resumen",
+    "subtitle": "Estado del catálogo y de la sincronización.",
+    "kpi": {
+      "sets": "Sets",
+      "setsWithoutDate": "Sets sin fecha de salida",
+      "cards": "Cartas",
+      "cardsWithoutImage": "Cartas sin imagen"
+    }
+  }
+}

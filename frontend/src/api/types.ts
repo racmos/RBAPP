@@ -37,6 +37,15 @@ export type RegisterBody = { username: string; email: string; password: string; 
 export type ErrorParams = Record<string, string | number | boolean>;
 
 /** One item of `details[]` in a validation error. */
+/** `GET /admin/overview` (F13-a). */
+export type AdminCatalog = {
+  sets: number;
+  sets_without_release_date: number;
+  cards: number;
+  cards_without_image: number;
+};
+
+/** One item of `details[]` in a validation error. */
 export type ErrorDetail = {
   field: string;
   message: string;

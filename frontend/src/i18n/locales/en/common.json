@@ -33,6 +33,7 @@
     }
   },
   "offline": {
-    "banner": "You are offline. You can keep browsing, but changes will not be saved."
+    "banner": "You are offline. You can keep browsing, but changes will not be saved.",
+    "editDisabled": "You need a connection to make changes."
   }
 }
