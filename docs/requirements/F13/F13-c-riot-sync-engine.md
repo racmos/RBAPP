@@ -119,3 +119,16 @@ only for sets in `monthly`.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): `sync` takes an optional `job_id` keyword (default `None`) so the
+  handler can stamp the job on the rows it proposes; the positional contract
+  `(set_codes, trigger, now)` is unchanged.
+- L2 (implementer): an unknown code in `set_codes` fails the whole job
+  (`riot_sync: unknown set(s): …`) instead of being skipped; the retry then shows the cause.
+- L3 (implementer): `window_for` takes plain dates; the Madrid conversion lives in
+  `today_madrid` (D-F13-19 window calculator stays pure and DST is tested at the boundary).
+- L4 (implementer): the old `extract_riot_cards` write path is removed (S1); the M-d scraper
+  image tests now drive the new engine and `test_error_responses.py` lost its extract entry
+  (the route answers 200/409, never 500).
