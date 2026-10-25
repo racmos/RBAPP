@@ -26,7 +26,7 @@ class RbAdminAudit(db.Model):
             name='rbadminaudit_actor_fk', ondelete='SET NULL'),
         db.Index('idx_rbadminaudit_created', 'rbaud_created_at'),
         db.Index('idx_rbadminaudit_target', 'rbaud_target_type', 'rbaud_target_id'),
-        {"schema": "riftbound"},
+        {"schema": "riftbound", "comment": 'Audit trail of admin actions (F13)'},
     )
 
     rbaud_id = db.Column(db.BigInteger().with_variant(db.Integer, 'sqlite'),
