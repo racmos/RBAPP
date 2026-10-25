@@ -10,7 +10,10 @@
     "unauthenticated": "Your session has expired. Please sign in again.",
     "validation_error": "Check the form data.",
     "bad_request": "The request could not be read.",
-    "internal_error": "An unexpected error occurred. Please try again later."
+    "internal_error": "An unexpected error occurred. Please try again later.",
+    "already_exists": "An item with that identifier already exists.",
+    "set_in_use": "The set has cards; its code cannot be changed and it cannot be deleted.",
+    "card_in_use": "The card is used in collections or decks; it cannot be deleted."
   },
   "status": {
     "400": "The request is not valid.",

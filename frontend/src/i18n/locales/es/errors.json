@@ -10,7 +10,10 @@
     "unauthenticated": "Tu sesión ha caducado. Inicia sesión de nuevo.",
     "validation_error": "Revisa los datos del formulario.",
     "bad_request": "La solicitud no se ha podido leer.",
-    "internal_error": "Ha ocurrido un error inesperado. Inténtalo más tarde."
+    "internal_error": "Ha ocurrido un error inesperado. Inténtalo más tarde.",
+    "already_exists": "Ya existe un elemento con ese identificador.",
+    "set_in_use": "El set tiene cartas; no se puede cambiar su código ni borrarlo.",
+    "card_in_use": "La carta está en colecciones o mazos; no se puede borrar."
   },
   "status": {
     "400": "La solicitud no es válida.",

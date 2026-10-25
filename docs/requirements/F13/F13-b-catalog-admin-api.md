@@ -119,3 +119,11 @@ Deploy (no migration). Live (admin session, with CSRF header): `GET /riftbound/a
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no product deviations. Query counting uses an explicit
+  subquery (`select(count()).select_from(filtered)`) because `Model.query.with_entities(func.count())`
+  undercounts on this stack; the list still runs 2 bounded queries (count + fetch). Deck use is
+  counted by scanning each deck's `rbdck_cards` main/sideboard `{set, id}` entries in Python (one
+  extra query for the JSON blobs).

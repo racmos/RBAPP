@@ -25,6 +25,9 @@ class ErrorCode(StrEnum):
     VALIDATION_ERROR = 'validation_error'         # request body failed validation, 400
     BAD_REQUEST = 'bad_request'                   # unreadable request body (@validate_json), 400
     INTERNAL_ERROR = 'internal_error'             # unexpected failure of a legacy endpoint, 500
+    ALREADY_EXISTS = 'already_exists'             # duplicate id/key on an admin write, 409
+    SET_IN_USE = 'set_in_use'                     # set has cards: no id change, no delete, 409
+    CARD_IN_USE = 'card_in_use'                   # card in collections/decks: no delete, 409
 
 
 class DetailCode(StrEnum):
