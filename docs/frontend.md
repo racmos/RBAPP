@@ -224,6 +224,12 @@ English.
 **Development.** `/riftbound/app/_kitchen` shows every primitive; the route exists only in
 `npm run dev` (the production table has no `/_kitchen`).
 
+**How to add an admin page.** Add its entry to `src/admin/adminNav.ts` (`{id, to, labelKey}`),
+create the page next to `AdminLayout.tsx`, add the child route under `/admin` in
+`src/app/routes.tsx` (inside the shell, guarded by `requireAdmin`), and put its strings in the
+`admin` namespace. The nav (`NavLink` at ≥ 1240 px, `Select` below) and the mobile hint come
+from `AdminLayout`; the page only renders its `PageHeader` and content.
+
 ## Service worker and install
 
 The app is an installable PWA named **Rift Manager**. Nothing about it needs a server change:

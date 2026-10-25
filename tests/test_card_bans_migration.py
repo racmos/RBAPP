@@ -55,8 +55,8 @@ def test_docstring_states_the_data_loss_rules():
     assert 'downgrade loses every ban, including those added after' in doc
 
 
-def test_head_is_0009_with_the_table(migration_app):
-    upgrade()
+def test_0009_has_the_table(migration_app):
+    upgrade('0009_card_bans')
     assert rows('SELECT version_num FROM riftbound.alembic_version') == [('0009_card_bans',)]
     assert 'rbcardbans' in tables()
 

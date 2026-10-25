@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { redirect, type RouteObject } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { requireAnon, requireAuth } from '@/auth/guards';
+import { requireAdmin, requireAnon, requireAuth } from '@/auth/guards';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { AppShell } from '@/shell/AppShell';
 import { HomeHub } from '@/shell/HomeHub';
@@ -77,6 +77,21 @@ export function createAppRoutes(
                   lazy: async () => ({
                     Component: (await import('@/account/InterfacePage')).InterfacePage,
                   }),
+                },
+                {
+                  path: '/admin',
+                  loader: requireAdmin(queryClient),
+                  lazy: async () => ({
+                    Component: (await import('@/admin/AdminLayout')).AdminLayout,
+                  }),
+                  children: [
+                    {
+                      index: true,
+                      lazy: async () => ({
+                        Component: (await import('@/admin/OverviewPage')).OverviewPage,
+                      }),
+                    },
+                  ],
                 },
                 // Development only; Vite replaces the flag at build time and drops the branch.
                 ...(import.meta.env.DEV ? [kitchenRoute] : []),

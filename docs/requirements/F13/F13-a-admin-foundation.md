@@ -131,3 +131,10 @@ as a normal user the "Administración" entry is not shown and the URL shows "Pá
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no product deviations. Test-only: the admin Vitest suites raise the
+  `findBy`/test timeouts (10 s/30 s) because the loaded page needs the session and the overview
+  requests in sequence; the `findBy*` queries read the live DOM (the HydrateFallback `<main>` is
+  replaced on load, so a `within()` captured before it resolves goes stale).

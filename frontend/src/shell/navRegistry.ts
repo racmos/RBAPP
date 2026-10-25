@@ -106,8 +106,8 @@ export const NAV: readonly NavEntry[] = [
   {
     id: 'admin',
     icon: 'shield',
-    status: 'legacy',
-    legacy: 'price',
+    status: 'spa',
+    to: '/admin',
     placements: ['more'],
     adminOnly: true,
   },
