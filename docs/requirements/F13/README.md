@@ -21,7 +21,7 @@ lays the admin foundation (guarded admin API, audit log, admin layout) that F10 
 | Admin entry points | Jinja admin page `GET /riftbound/price` (`price_bp`, `before_request(require_admin)`) with the buttons `POST /refresh-riot-sets` and `POST /extract-riot-cards`; both run inside the HTTP request (Gunicorn default 30 s timeout). Their 500 handlers return exception text until M-c fixes it. |
 | Jobs | None today. F4-a creates `rbjobs`, the kind registry `app/jobs/registry.py`, `flask jobs enqueue|run-pending|list` and the systemd timer templates; later phases only register kinds (decisions file, "Job runner"). |
 | Admin API / UI | None. Frontend has the `requireAdmin` loader (`frontend/src/auth/guards.ts`); nav entries `price` and `admin` are `legacy` → `/riftbound/price`, `adminOnly: true`. No audit trail of admin writes. |
-| Images | Written under `app/static/images/cards/<folder>/` today; M-d moves them to a data directory outside the code tree before this phase. |
+| Images | Written under `CARD_IMAGES_DIR/<folder>/` (data directory outside git since M-d). |
 
 ## Scope
 

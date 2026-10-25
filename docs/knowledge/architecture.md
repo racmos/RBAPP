@@ -159,7 +159,8 @@ the legacy pattern.
 - **Outbound URLs.** Cardmarket loader overrides must be https on `CARDMARKET_ALLOWED_HOSTS`, port 443
   or none, no userinfo (`validate_override_url`).
 - **Images.** Reads use `RbCard.image_src`; every write goes through `app/services/card_images.card_image_path`
-  (folder letters and digits only, path must stay under `<static>/images/cards/`).
+  (folder letters and digits only, path must stay under the `CARD_IMAGES_DIR` root, default `<static>/images/cards/`). Since M-d the files live
+  outside git and `card_images.serve` serves them at the same `/riftbound/static/images/cards/...` URLs.
 - **Secrets.** Only through environment variables; `SECRET_KEY` weak or default is refused outside
   development; errors name variables, never values.
 

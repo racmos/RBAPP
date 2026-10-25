@@ -27,7 +27,7 @@ Source: change f0-foundation (archived 2026-10-19)
 
 ### Requirement: IMG-2 Upload cannot escape its folder [c]
 
-`POST /riftbound/card/upload_image` (admin only) MUST write only under `<static_folder>/images/cards/<folder>/`, independent of the process working directory. `<folder>` is the filename-prefix folder (IMG-1), falling back to `set_id.lower()` when the filename has no `_`. Both `set_id` (lowercased) and the derived folder MUST match `^[a-z0-9]+$`; otherwise the request MUST fail with 400 `{success:false,message}` and write nothing. The existing filename sanitization, extension allow-list (jpg, jpeg, png, webp) and 2 MB limit MUST be kept.
+`POST /riftbound/card/upload_image` (admin only) MUST write only under `<CARD_IMAGES_DIR>/<folder>/` (default `<static_folder>/images/cards/`; amended 2026-10-25, M-d: the images root is the `CARD_IMAGES_DIR` setting and the files are served from it at the same URLs), independent of the process working directory. `<folder>` is the filename-prefix folder (IMG-1), falling back to `set_id.lower()` when the filename has no `_`. Both `set_id` (lowercased) and the derived folder MUST match `^[a-z0-9]+$`; otherwise the request MUST fail with 400 `{success:false,message}` and write nothing. The existing filename sanitization, extension allow-list (jpg, jpeg, png, webp) and 2 MB limit MUST be kept.
 
 #### Scenario: Traversal rejected
 - GIVEN an admin and a tmp static folder

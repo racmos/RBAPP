@@ -27,6 +27,8 @@ CONFIG_ENV_NAMES = (
     'FRONTEND_DIST',
     # F1 unit g
     'SPA_CSP',
+    # M-d
+    'CARD_IMAGES_DIR',
 )
 
 
