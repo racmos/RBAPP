@@ -76,10 +76,12 @@ riftbound/
 │   │       ├── sets.py      # GET/POST /admin/sets, PATCH/DELETE /admin/sets/<id>
 │   │       └── cards.py     # GET/POST /admin/cards, PATCH/DELETE + image per card│   ├── jobs/                # Background job kinds; the package is the single import point (create_app)
 │   │   ├── registry.py      # JobKind(name, handler, timeout_seconds), register / get / names, JobFailed
+│   │   ├── riot_sync.py     # riot_sync: gallery diff, auto-apply vs approval (1800 s)
 │   │   ├── daily_prices.py  # daily_prices: Cardmarket load, validation, clear auto-match, review list (1800 s)
 │   │   └── heartbeat.py     # heartbeat: diagnostic kind (60 s)
 │   ├── models/              # SQLAlchemy models (Rb prefix)
 │   │   ├── ban.py           # RbCardBan (rbcardbans): bans by card name and game mode
+│   │   ├── card_change.py   # RbCardChange (rbcardchanges): proposed card changes
 │   │   ├── user.py          # User (rbusers)
 │   │   ├── set.py           # RbSet (rbset)
 │   │   ├── card.py          # RbCard (rbcards)
@@ -109,6 +111,7 @@ riftbound/
 │   │   ├── audit.py         # record() adds an audit row in the caller's transaction
 │   │   ├── bans.py          # name_key, ban_map, card_bans, ban_info, list_bans, add_ban, remove_ban
 │   │   ├── captcha.py       # none / altcha providers, replay store
+│   │   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
@@ -116,7 +119,8 @@ riftbound/
 │   │   ├── card_images.py   # images_root, card_image_path, card_image_url, import_legacy (CARD_IMAGES_DIR)
 │   │   ├── cardmarket_loader.py
 │   │   ├── cardmarket_matcher.py
-│   │   ├── riot_scraper.py
+│   │   ├── riot_scraper.py    # gallery fetch + parse only; writes go through riot_sync.py
+│   │   ├── riot_sync.py     # fetch_gallery, window_for, sync (per-set savepoints)
 │   │   └── scraper.py       # Landing feeds with a TTL cache
 │   ├── schemas/             # Pydantic
 │   │   ├── game_domain.py   # Game enumerations (GAME_MODES), the single source for schemas and CHECKs
@@ -196,7 +200,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 
@@ -368,7 +372,7 @@ gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
 ```
 Firewall port 8000 so only the Nginx host reaches it. ProxyFix trusts exactly one proxy hop (`PROXY_FIX_X_*=1`); the proxy must send `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`, and must not strip `Referer` (the CSRF check needs it over HTTPS).
 
-Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n`; kinds: `heartbeat` (diagnostic) and `daily_prices` (daily Cardmarket load at 06:30 Europe/Madrid, retried at 08:00 with `--unless-succeeded-today` when it did not succeed) (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
+Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n`; kinds: `heartbeat` (diagnostic), `daily_prices` (daily Cardmarket load at 06:30 Europe/Madrid, retried at 08:00 with `--unless-succeeded-today` when it did not succeed) and `riot_sync` (gallery sync, queued by hand or by the F13-d timers) (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
 ```bash
 flask jobs enqueue <kind> [--param key=value]...   # one queued or running job per kind
 flask jobs enqueue <kind> --unless-succeeded-today  # skip (exit 0) when a <kind> job succeeded today (UTC)

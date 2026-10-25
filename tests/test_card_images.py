@@ -167,13 +167,21 @@ class TestUpload:
 
 
 # ---------------------------------------------------------------------------
-# S5: the Riot scraper, step 4
+# S5: the Riot sync engine, image download (was the scraper's step 4)
 # ---------------------------------------------------------------------------
 
 RIOT_CARD = {
     'id': 'ogn-7-298',
     'name': 'Scraped Card',
     'cardImage': {'url': 'https://cdn.example.invalid/ogn-7.png'},
+}
+
+RIOT_PARSED = {
+    'rbcar_rbset_id': 'OGN', 'rbcar_id': '7', 'rbcar_name': 'Scraped Card',
+    'rbcar_domain': '', 'rbcar_type': '', 'rbcar_tags': '', 'rbcar_energy': None,
+    'rbcar_power': None, 'rbcar_might': None, 'rbcar_ability': '',
+    'rbcar_rarity': '', 'rbcar_artist': '',
+    'image_url': 'https://cdn.example.invalid/ogn-7.png', 'image': 'ogn_7.png',
 }
 
 
@@ -193,18 +201,26 @@ class _FakeSession:
         return _FakeResponse()
 
 
+def _run_sync(monkeypatch, session):
+    """One sync over the single RIOT_CARD gallery through the new engine."""
+    from datetime import datetime
+
+    from app.services import riot_sync
+    monkeypatch.setattr(riot_sync, 'fetch_gallery',
+                        lambda: {'cards': [dict(RIOT_PARSED)], 'set_codes': ['OGN'],
+                                'unparsed': 0})
+    monkeypatch.setattr(riot_sync, '_get_session', lambda: session)
+    return riot_sync.sync(None, 'manual', datetime(2030, 1, 1))
+
+
 class TestScraperStep4:
     def test_the_download_lands_in_the_root_and_is_served(self, card_images_dir, client,
                                                          monkeypatch, no_network):
         session = _FakeSession()
-        monkeypatch.setattr(riot_scraper, '_get_session', lambda: session)
-        monkeypatch.setattr(riot_scraper, '_fetch_gallery_json', lambda s: [RIOT_CARD])
+        result = _run_sync(monkeypatch, session)
 
-        result = riot_scraper.extract_riot_cards()
-
-        step4 = next(s for s in result['steps'] if s['step'] == '4. Download images')
-        assert step4['status'] == 'SUCCESS'
-        assert result['stats']['images_downloaded'] == 1
+        ogn = next(s for s in result['sets'] if s['set_id'] == 'OGN')
+        assert ogn['images'] == {'downloaded': 1, 'existing': 0, 'failed': 0}
         assert session.urls == [RIOT_CARD['cardImage']['url']]
         assert (card_images_dir / 'ogn' / 'ogn_7.png').read_bytes() == PNG
         card = RbCard.query.filter_by(rbcar_rbset_id='OGN', rbcar_id='7').one()
@@ -216,13 +232,10 @@ class TestScraperStep4:
         (card_images_dir / 'ogn').mkdir(parents=True)
         (card_images_dir / 'ogn' / 'ogn_7.png').write_bytes(b'already here')
         session = _FakeSession()
-        monkeypatch.setattr(riot_scraper, '_get_session', lambda: session)
-        monkeypatch.setattr(riot_scraper, '_fetch_gallery_json', lambda s: [RIOT_CARD])
+        result = _run_sync(monkeypatch, session)
 
-        result = riot_scraper.extract_riot_cards()
-
-        assert result['stats']['images_existed'] == 1
-        assert result['stats']['images_downloaded'] == 0
+        ogn = next(s for s in result['sets'] if s['set_id'] == 'OGN')
+        assert ogn['images'] == {'downloaded': 0, 'existing': 1, 'failed': 0}
         assert session.urls == []
         assert (card_images_dir / 'ogn' / 'ogn_7.png').read_bytes() == b'already here'
 

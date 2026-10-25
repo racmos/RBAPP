@@ -9,6 +9,7 @@ from .prefs import RbUserPrefs
 from .job import RbJob
 from .ban import RbCardBan
 from .audit import RbAdminAudit
+from .card_change import RbCardChange
 from .cardmarket import (
     RbcmProduct, RbcmPrice, RbcmCategory, RbcmExpansion,
     RbcmLoadHistory, RbcmProductCardMap, RbProducts, RbcmIgnored

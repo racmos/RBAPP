@@ -615,47 +615,17 @@
             });
 
             const result = await response.json();
-            const tbody = document.getElementById('riotStatusBody');
-
-            // Populate steps table
-            if (result.steps) {
-                result.steps.forEach(step => {
-                    const row = tbody.insertRow();
-                    const statusClass = step.status.toLowerCase();
-                    row.innerHTML = `
-                        <td>${step.step}</td>
-                        <td><span class="status-badge status-${statusClass}">${step.status}</span></td>
-                        <td>${step.message}</td>
-                    `;
-                });
-            }
-
-            // Show stats
-            if (result.stats) {
-                const s = result.stats;
-                document.getElementById('riotStatsSection').style.display = 'block';
-                document.getElementById('riotStatsContent').innerHTML = `
-                    Cartas extra\u00eddas: <strong>${s.total_scraped || 0}</strong><br>
-                    Filtradas: ${s.filtered || 0}<br>
-                    Insertadas: <strong>${s.inserted || 0}</strong><br>
-                    Actualizadas: ${s.updated || 0}<br>
-                    Sin cambios: ${s.skipped || 0}<br>
-                    Im\u00e1genes nuevas: <strong>${s.images_downloaded || 0}</strong><br>
-                    Im\u00e1genes existentes: ${s.images_existed || 0}<br>
-                    Im\u00e1genes fallidas: ${s.images_failed || 0}
-                `;
-            }
-
+            // The extraction now runs as a job (D-F13-5, D-F13-11): show its message.
             if (result.success) {
                 document.getElementById('riotStatusMessage').innerHTML = `
                     <div class="alert alert-success">
-                        <strong>\u00a1Extracci\u00f3n completada!</strong>
+                        <strong>${result.message}</strong>
                     </div>
                 `;
             } else {
                 document.getElementById('riotStatusMessage').innerHTML = `
                     <div class="alert alert-error">
-                        <strong>Error en extracci\u00f3n</strong>
+                        <strong>${result.message || 'Error en extracci\u00f3n'}</strong>
                     </div>
                 `;
             }

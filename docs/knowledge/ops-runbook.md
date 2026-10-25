@@ -170,6 +170,34 @@ needs the `daily_prices` rows gone first, otherwise it stops with a clear messag
 `DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'daily_prices';` then
 `venv/bin/flask db downgrade 0007_jobs`.
 
+### Riot sync (F13-c)
+
+The `riot_sync` job (timeout 1800 s) keeps the catalog in line with the official gallery: it always
+inserts new cards, auto-applies differences around a release (21 days before until 13 days after) and
+records anything else in `rbcardchanges` for the admin. Manual runs queue
+`venv/bin/flask jobs enqueue riot_sync [--param trigger=schedule] [--param sets=OGN,OGS]` (no `sets` =
+every gallery set); the F13-d timers queue the schedule. Unknown set codes fail the job
+(`riot_sync: unknown set(s): …`).
+
+Run by hand (as the service user, from the deployed checkout): the command above, then a minute later
+`venv/bin/flask jobs list`. Read the result with the one-liner below (it prints the latest `riot_sync`
+job): `validation`-style summary per set (`window`, `inserted`, `applied`, `proposed`, `unchanged`,
+`missing_from_gallery`, `images`, `error`).
+
+```bash
+venv/bin/flask shell <<< "import json; from app.models import RbJob; j = RbJob.query.filter_by(rbjob_kind='riot_sync').order_by(RbJob.rbjob_id.desc()).first(); print(j.rbjob_id, j.rbjob_status, j.rbjob_message); print(json.dumps(j.rbjob_result, indent=2, ensure_ascii=False))"
+```
+
+The legacy Jinja button "Extraer cartas Riot" now only queues the job
+(`POST /riftbound/price/extract-riot-cards` → `{"success": true, "job_id": n, …}`; 409
+`{"success": false, "message": "Ya hay una sincronización en curso."}` when one is active);
+"refresh Riot sets" stays read only.
+
+Rollback: no timers yet (F13-d); downgrading the migrations (owner's go-ahead only) drops the change
+table and its history. The 0012 downgrade refuses while `riot_sync` jobs exist, so delete them first
+(`DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'riot_sync';`), then
+`venv/bin/flask db downgrade 0011_card_changes` (runs the 0012 and 0011 downgrades).
+
 ## Card images (from M-d)
 
 Card images are not in git and not in the code tree. They live in the data directory set by

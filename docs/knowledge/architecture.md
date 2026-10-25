@@ -351,8 +351,10 @@ repeats it on PostgreSQL 18. Runbook: `docs/migrations.md`.
 - `cardmarket_matcher.py`: `auto_match(dry_run, max_groups)` pairs unmapped products to cards by metacard,
   normalised name and price/rarity ranking (Basic Rune: one slot without foil; common/uncommon: normal and
   foil slots; rare/epic: separate card entries), writing `rbcm_product_card_map`.
-- `riot_scraper.py`: `refresh_riot_sets()` and `extract_riot_cards(filter_sets)` read the official card
-  gallery (`__NEXT_DATA__` JSON), upsert `rbset`/`rbcards` and download images into `<CARD_IMAGES_DIR>/<folder>/`.
+- `riot_scraper.py`: `refresh_riot_sets()` and the fetch/parse helpers read the official card
+  gallery (`__NEXT_DATA__` JSON). Since F13-c only `app/services/riot_sync.py` writes from it: `sync`
+  inserts new cards, auto-applies differences in active windows and proposes the rest to
+  `rbcardchanges` (one transaction per set); the legacy `extract_riot_cards` write path is gone.
 - `scraper.py`: landing feeds (`fetch_noticias`, `fetch_discord`, `fetch_torneos_online`,
   `fetch_torneos_fisicos`, `fetch_videos`, `fetch_decks`) with placeholder fallbacks and a per-feed,
   per-worker TTL cache (`LANDING_CACHE_TTL`, default 300 s; failures are not cached; `clear_cache()`).

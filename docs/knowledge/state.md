@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-25 (F13-b in review (#39), batch 1 unit 3; F13-a in review (#38)).
+Last update: 2026-10-26 (F13-c in review (#40), batch 1 unit 4; F13-b in review (#39)).
 
 ## Phases
 
@@ -17,7 +17,7 @@ Last update: 2026-10-25 (F13-b in review (#39), batch 1 unit 3; F13-a in review 
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
 | F2 Catalog | In progress — F2-a done (#34); b…i and k in batch 1 (units 9-17), after F13 | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
-| F13 Riot sync + catalog admin | In progress — F13-b in review (#39), batch 1 unit 3 | `docs/requirements/F13/F13-{a..g}-*.md`. |
+| F13 Riot sync + catalog admin | In progress — F13-c in review (#40), batch 1 unit 4 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
 | F14 Products | Planned — batch 1, units 27-32 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
@@ -93,8 +93,7 @@ that file and in its `verify-report.md`.
 - `frontend/src/assets/brand/mark.svg` and `wordmark.svg` are not byte-reproducible from
   `scripts/brand-trace.mjs` (a full run produces a heavier trace); do not regenerate them blindly.
 - `dist/.vite/manifest.json` is publicly served (harmless; it lists chunk names only).
-- The Riot scraper rewrites every field on update, so it resets `rbcar_banned` to `N` on each run. Since
-  F2-a nothing reads that column (bans live in `rbcardbans`); F11 drops it.
+The legacy scraper write path is gone (F13-c): the sync inserts new cards with `rbcar_banned = 'N'` and never rewrites it; bans still live in `rbcardbans`; F11 drops the column.
 - The Jinja catalog SQL uses PostgreSQL-only constructs (`~`, `regexp_replace`, shimmed in SQLite tests).
 - The landing feeds (`app/services/scraper.py`) serve placeholder news/tournaments; there is no real event
   source yet (F8 starts with the official upcoming-events calendar; the landing is rebuilt with F8).
@@ -110,6 +109,7 @@ that file and in its `verify-report.md`.
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
+| F13-c | in review (#40) | `feat/f13c-riot-sync-engine` / #40 | Sync engine `app/services/riot_sync.py`: fetch/parse split, window calculator (Madrid date), per-set savepoints, auto-apply in active windows else `rbcardchanges` proposals (migration `0011_card_changes`), `riot_sync` job kind (migration `0012_jobs_riot_sync`), legacy Jinja button queues the job. The old scraper write path is removed. pytest 522 → 570. Next unit: **F13-d**. |
 | F13-b | in review (#39) | `feat/f13b-catalog-admin-api` / #39 | Admin sets/cards API (S2-S10): list/create/patch/delete with validation, in-use guards, image upload by magic bytes, every write audited in the same transaction; new codes `already_exists`/`set_in_use`/`card_in_use`; `docs/api.md` created. No migration. |
 | F13-a | in review (#38) | `feat/f13a-admin-foundation` / #38 | Blueprint `api_admin` (`before_request(require_admin)`), `GET /admin/overview` (four catalog COUNTs), table `rbadminaudit` (migration `0010_admin_audit`, `record()` without commit), React admin area (`AdminLayout` + `OverviewPage`, nav `admin` → spa), `admin` i18n namespace + `common:offline.editDisabled`, re-created ES/EN parity test. pytest 436 → 469; vitest 1 → 12. Next unit: **F13-b**. |
 | M-d | in review (#37) | `chore/m-d-card-images` / #37 | Setting `CARD_IMAGES_DIR` (absolute, default `<project>/data/card-images`, git-ignored `/data/`; a relative value is `ConfigError('CARD_IMAGES_DIR must be an absolute path')`; created on first write). `app/services/card_images.py` is the only module that knows the root: `images_root()`, `card_image_path(image, set_id=None)` (same refusals: separators, NUL, unsafe folder, symlink escape), `card_image_url()`; `RbCard.image_src` → `/riftbound/media/cards/<folder>/<image>`. Blueprint `media` (`app/routes/media.py`, `media.card_image`, P): letters-and-digits folder, plain file name, 404 otherwise, `Cache-Control: public, max-age=604800`, no `Set-Cookie`; the old `/riftbound/static/images/cards/…` URLs stop serving the images (D-Md-2). Admin upload and Riot scraper step 4 write through `card_image_path`. `deck.html` legend placeholder is an inline SVG. `flask images import-legacy [--source PATH]` copies, never overwrites (D-Md-3). The 376 tracked images are untracked (`.gitkeep` kept). Runbook "Card images". pytest 324 → 430. Next unit: **F13-a**. |

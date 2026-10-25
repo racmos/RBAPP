@@ -30,10 +30,6 @@ def _refresh(client):
     return client.post('/riftbound/price/refresh-riot-sets', json={})
 
 
-def _extract(client):
-    return client.post('/riftbound/price/extract-riot-cards', json={'sets': []})
-
-
 def _cardmarket_load(client):
     return client.post('/riftbound/price/cardmarket-load', json={})
 
@@ -48,10 +44,6 @@ SITES = {
                           'The image could not be uploaded', {}),
     'refresh_riot_sets': (_refresh, 'app.services.riot_scraper.refresh_riot_sets',
                           'The Riot sets could not be loaded', {'sets': []}),
-    'extract_riot_cards': (_extract, 'app.services.riot_scraper.extract_riot_cards',
-                           'The Riot cards could not be extracted',
-                           {'steps': [], 'stats': {},
-                            'errors': ['The Riot cards could not be extracted']}),
     'cardmarket_load': (_cardmarket_load, 'app.services.cardmarket_loader.CardmarketLoader.run',
                         'The Cardmarket data could not be loaded',
                         {'steps': [], 'errors': ['The Cardmarket data could not be loaded']}),
@@ -106,7 +98,7 @@ class TestUnexpectedFailureOfALegacyEndpoint:
 class TestTheLegacyPagesStillWork:
     """PRESERVE: a working service still answers exactly what it returned."""
 
-    @pytest.mark.parametrize('site', ['refresh_riot_sets', 'extract_riot_cards',
+    @pytest.mark.parametrize('site', ['refresh_riot_sets',
                                       'cardmarket_auto_match'])
     def test_the_service_result_is_passed_through(self, admin_client, site):
         call, target, _message, _legacy = SITES[site]
