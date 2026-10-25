@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / h |
-| Branch | `feat/f2h-catalog-page` (from up-to-date `main`) |
+| Branch | `feat/f2h-catalog-page` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-c (list API) and F2-f (detail screen, `src/catalog/`) merged |
 | Size forecast | ~650 authored lines (tests and docs included) |
 | Risk | `Risk: none` |
@@ -118,7 +118,7 @@ S9. Results:
     translated type line, `DomainPips`, `RarityDot`, `PriceTag` (7 d), owned count, compact ban badge.
   - View choice stored in `localStorage` key `rb_cards_view` (`grid` | `list`; F2-i adds `table`), default grid.
 
-S10. `Pagination` (`src/components/ui/Pagination.tsx`): `nav` with `aria-label` `common:pagination.label`,
+S10. `Pagination` (`src/components/ui/Pagination.tsx`, created by F13-f with this exact contract: reuse it): `nav` with `aria-label` `common:pagination.label`,
      buttons `common:pagination.prev` / `next` (disabled at the ends; the "previous" arrow points left) and the
      text `common:pagination.page`; props `page`, `pages`, `onChange`. After a change the catalog scrolls to
      the results heading and focuses it.
@@ -209,5 +209,5 @@ Strings — `cards.json` (add under `catalog`) and `common.json` (add `paginatio
 
 ## Open questions
 
-- CONFIRM D-F2-11: the `sets` nav entry stays legacy until F10.
-- CONFIRM D-F2-13: grid by default, last view remembered per device, 48 per page below 1240 px, sort by number.
+none — the CONFIRM items of the draft (D-F2-11, D-F2-13) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

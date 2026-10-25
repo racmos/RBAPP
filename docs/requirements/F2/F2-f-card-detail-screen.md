@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / f |
-| Branch | `feat/f2f-card-detail-screen` (from up-to-date `main`) |
+| Branch | `feat/f2f-card-detail-screen` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-d (detail API) and F2-e (atoms) merged |
 | Size forecast | ~650 authored lines (tests and docs included) |
 | Risk | `Risk: none` |
@@ -217,4 +217,5 @@ names; links to Jinja pages are plain anchors.
 
 ## Open questions
 
-- CONFIRM D-F2-5: prices block shows Mercado (with source), Mín., Media 30 d and Mercado foil; no "High".
+none — the CONFIRM items of the draft (D-F2-5) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

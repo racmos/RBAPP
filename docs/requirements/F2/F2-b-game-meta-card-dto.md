@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / b |
-| Branch | `feat/f2b-game-meta-card-dto` (from up-to-date `main`) |
+| Branch | `feat/f2b-game-meta-card-dto` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-a merged (`app/schemas/game_domain.py`, `app/services/bans.py`) |
 | Size forecast | ~550 authored lines (tests and docs included) |
 | Risk | `Risk: items 1 and 3 (index migration 0008 on rbcm_price; CardSummary and GET /meta/game are contracts consumed by F2-c..j, F3-F6)` |
@@ -39,7 +39,7 @@ In:
 - `app/services/pricing.py`: `resolve_price_with_source`, batch `price_summaries` with trends.
 - Migration `0008_price_product_date_idx` + model index.
 - `GET /riftbound/api/v1/meta/game` (P).
-- `docs/api.md` (new): API v1 reference with `GameMeta` and `CardSummary`.
+- `docs/api.md` (created by F13-b): add `GameMeta` and `CardSummary`.
 
 Out (do not do, even if tempting):
 - Any list or detail endpoint (F2-c, F2-d). Frontend types (F2-e). Thumbnails (`image_thumb_src` is always
@@ -48,7 +48,10 @@ Out (do not do, even if tempting):
 
 ## Specs
 
-S1. `app/schemas/game_domain.py` adds (keeping `GAME_MODES`):
+S1. First (D-F2-1), run on the dev database, read only, and paste the output in the PR:
+    `SELECT rbcar_domain, count(*) FROM riftbound.rbcards GROUP BY 1 ORDER BY 1;` and the same for `rbcar_type`
+    and `rbcar_rarity`. Adapt the tuples below to the real values (known values keep this order; extra real
+    values are appended). Then `app/schemas/game_domain.py` adds (keeping `GAME_MODES`):
     `DOMAINS = ('Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless')`,
     `CARD_TYPES = ('Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield')`,
     `SUPERTYPES = ('Champion', 'Signature', 'Token', 'Basic')`,
@@ -131,7 +134,7 @@ S9. `GET /riftbound/api/v1/meta/game` (P), view function `meta_game` in `app/api
   - `rules` = `{}` (F5 adds `rules.deck`). Clients must ignore unknown keys (stated in `docs/api.md`).
   - Header `Cache-Control: no-cache`. Works anonymous and signed in; no user data.
 
-S10. `docs/api.md` (new, LF): "API v1 reference" with the envelope, the error body, one section per
+S10. `docs/api.md` (exists since F13-b; extend it, LF): "API v1 reference" with the envelope, the error body, one section per
      endpoint (for now `GET /meta/game` and `GET /bans`, plus a pointer to `AGENTS.md` for auth/prefs) and a
      "Data shapes" section with `GameMeta` and `CardSummary` exactly as below, marked "additive changes
      only". `AGENTS.md` (CRLF) lists `GET /meta/game`, `app/services/catalog.py`, `app/schemas/game_domain.py`
@@ -197,13 +200,13 @@ none
 - [ ] AC1 `tests/test_catalog_service.py`: every S2 example, `natural_key` order, `rarity_rank`, `is_foilable`, base printings (S3, S4), `card_summary` key order and values (S7).
 - [ ] AC2 `tests/test_pricing.py`: new `resolve_price_with_source` table (each chain link and `(None, None)`); all existing PRC-1/PRC-2 tests unchanged and green (S5).
 - [ ] AC3 `tests/test_price_summaries.py`: S6 example, foil slot only when foilable, premium rarity uses the foil-first chain, unmapped → `None`, trend `None` cases, `as_of`, constant statement count for 1 and 50 cards (S6).
-- [ ] AC4 `tests/test_migrations.py::TestPriceIndex0008`: chains after `0007_card_bans`; index exists with the two columns in order; downgrade removes it; models equal the schema at head (S8).
+- [ ] AC4 `tests/test_price_index_migration.py`: chains after the current head (BATCH-1 G3); index exists with the two columns in order; downgrade removes it; models equal the schema at head (S8).
 - [ ] AC5 `tests/test_api_meta_game.py`: shape and order, unknown data values appended, set order with a NULL release date, `card_count`, `updated_on` null and set, `Cache-Control: no-cache`, anonymous 200 (S9).
 - [ ] AC6 `tests/test_authz_matrix.py` classifies `api_v1.meta_game` as P and passes.
 - [ ] AC7 Performance note in the PR: `price_summaries` for all dev cards timed in `flask shell` (target < 150 ms).
 - [ ] AC8 Full lanes green: `venv/bin/pytest`; `cd frontend && npm run lint && npm run typecheck && npx vitest run && npm run build && npm run check:dist`
 - [ ] AC9 `docs/knowledge/state.md` updated (what changed, PR number placeholder, new follow-ups)
-- [ ] AC10 `docs/api.md` created and `AGENTS.md` updated (S10); `tests/test_docs.py` green.
+- [ ] AC10 `docs/api.md` extended (F13-b created it) and `AGENTS.md` updated (S10).
 
 ## Delivery
 
@@ -225,7 +228,5 @@ none
 
 ## Open questions
 
-- CONFIRM D-F2-1: the enumeration constants of S1 (owner pastes the three `SELECT … GROUP BY` results from
-  the phase spec; a value outside the constants is either added to S1 or accepted as pass-through).
-- CONFIRM D-F2-4: base printing rule (S4) and tokens shown/filterable (supertype `Token`).
-- CONFIRM D-F2-5: price fields `market` (with source), `market_foil`, trends 7/30 d; no "High".
+none — the CONFIRM items of the draft (D-F2-1, D-F2-4, D-F2-5) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / c |
-| Branch | `feat/f2c-cards-list-api` (from up-to-date `main`) |
+| Branch | `feat/f2c-cards-list-api` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-b merged (`app/services/catalog.py`, `price_summaries`, `card_summary`) |
 | Size forecast | ~550 authored lines (tests and docs included) |
 | Risk | `Risk: item 3 (GET /cards and the upgraded validate_query are contracts consumed by the catalog UI, the combobox, F3 and F5)` |
@@ -204,5 +204,5 @@ none
 
 ## Open questions
 
-- CONFIRM D-F2-3: catalog API for signed-in users only (U).
-- CONFIRM D-F2-13: default `per_page` 48, max 192; default sort `number` ascending.
+none — the CONFIRM items of the draft (D-F2-3, D-F2-13) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

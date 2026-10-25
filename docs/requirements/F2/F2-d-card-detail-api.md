@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / d |
-| Branch | `feat/f2d-card-detail-api` (from up-to-date `main`) |
+| Branch | `feat/f2d-card-detail-api` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-b merged (F2-c recommended first: it adds `app/api/v1/cards.py` and the upgraded `validate_query`; if F2-c is not merged yet, create the module and stop to ask — do not duplicate `validate_query`) |
 | Size forecast | ~450 authored lines (tests and docs included) |
 | Risk | `Risk: item 3 (CardDetail and the price series are contracts consumed by F2-g, F3 and F5)` |
@@ -176,6 +176,5 @@ none
 
 ## Open questions
 
-- CONFIRM D-F2-5: the detail exposes the raw Cardmarket columns (`columns`) and the UI will show
-  "Mercado", "Mín.", "Media 30 d" and "Mercado foil".
-- CONFIRM D-F2-6: ranges `30d`, `90d` (default), `1y`, `all`.
+none — the CONFIRM items of the draft (D-F2-5, D-F2-6) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.
