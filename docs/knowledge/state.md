@@ -3,7 +3,8 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-24 (F2-a: per-mode card bans, PR #34; next unit M-d, images out of git).
+Last update: 2026-10-25 (batch 1 planned: `docs/requirements/BATCH-1.md`, decisions in
+`decisions-2026-10-25.md`; next unit M-d, first of the batch).
 
 ## Phases
 
@@ -15,11 +16,11 @@ Last update: 2026-10-24 (F2-a: per-mode card bans, PR #34; next unit M-d, images
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
 | M-c Hygiene | **Done** (#31) | `docs/requirements/M/M-c-hygiene.md`. |
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
-| F2 Catalog | In progress — F2-a in review (#34); the rest after F13 | F2-a (bans) after F4-a/F4-b; the rest after F13. `docs/requirements/F2/` (phase spec + unit drafts that need the planner's rewrite). |
-| M-d Images out of git | Planned — **next** | After F2-a. Unit requirement still to write. |
-| F13 Riot sync + catalog admin | Planned | `docs/requirements/F13/README.md`. |
-| F3 Collection | Planned | With F4-c. `docs/requirements/F3/README.md`. |
-| F14 Products | Planned | `docs/requirements/F14/README.md`. |
+| F2 Catalog | In progress — F2-a done (#34); b…i and k in batch 1 (units 9-17), after F13 | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
+| M-d Images out of git | Planned — **next** (batch 1, unit 1) | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
+| F13 Riot sync + catalog admin | Planned — batch 1, units 2-8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
+| F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
+| F14 Products | Planned — batch 1, units 27-32 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
 | F15 Rules app | Planned (after production) | `docs/requirements/F15/README.md` (outline). |
 | F5-k Mulligan, F8 Events | Planned (after production, after F15) | F5-k in `docs/requirements/F5/README.md`; F8 with the new landing (F11-a/b). |

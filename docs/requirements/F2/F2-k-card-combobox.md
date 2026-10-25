@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F2 / k |
-| Branch | `feat/f2k-card-combobox` (from up-to-date `main`) |
+| Branch | `feat/f2k-card-combobox` (stacked on the previous unit's branch, `docs/requirements/BATCH-1.md` R1) |
 | Depends on | F2-c (list API), F2-e (atoms), F2-h (catalog routes) merged |
 | Size forecast | ~450 authored lines (tests and docs included) |
 | Risk | `Risk: none` |
@@ -113,4 +113,5 @@ catalog has its own search). Desktop ≥ 1240: topbar box between the nav and th
 
 ## Open questions
 
-- CONFIRM D-F2-14: global search in the topbar from 1240 px, `/` shortcut.
+none — the CONFIRM items of the draft (D-F2-14) are answered in
+`docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.

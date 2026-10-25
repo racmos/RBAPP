@@ -28,12 +28,11 @@ Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. 
 | F13 | `F13/README.md` | Phase spec only (Riot sync + catalog admin; added by M-b). |
 | F14 | `F14/README.md` | Phase spec only (Products; added by M-b). |
 | F15 | `F15/README.md` | Phase spec outline (Rules app; added by M-b; specified when the phase starts). |
-| F2-b..l | `F2/F2-{b..l}-*.md` | Drafts written before 2026-10-22; they still need the planner's rewrite before hand-over (see `F2/README.md` → Decisions already taken and Open decisions). |
+| **Batch 1** | `BATCH-1.md` | **Ready (2026-10-25)** — 32 units run autonomously in order: M-d, F13-a…g, F2-b…i + F2-k, F3-a/b, F4-c, F3-c/d/e/g/h/i, F14-a…f. Decisions in `docs/knowledge/decisions-2026-10-25.md`. |
+| F2-j, F2-l | `F2/F2-j-*.md`, `F2/F2-l-*.md` | Drafts, deferred to batch 2. |
 
-Phases F3-F15 have a phase spec only (`F<n>/README.md`; F13 Riot sync + catalog admin, F14 Products, F15
-Rules app were added by M-b); their unit requirements are written when the phase starts, after the owner
-answers its open decisions. F4 is the exception so far: F4-a and F4-b have their unit requirements (above).
-Maintenance unit M-d (card images out of git) has no requirement yet.
+Batch 1 (`BATCH-1.md`) lists the unit requirements written on 2026-10-25 for M-d, F13, F2, F3, F4-c and F14.
+The other phases have a phase spec only; their unit requirements are written when the phase starts.
 
 ## How to hand one over
 
