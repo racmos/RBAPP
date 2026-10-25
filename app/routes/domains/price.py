@@ -73,16 +73,20 @@ def refresh_riot_sets():
 @login_required
 @validate_json(RiotExtract)
 def extract_riot_cards():
-    """Scrape Riot gallery, extract cards + images, insert to DB."""
-    from app.services.riot_scraper import extract_riot_cards as _extract
+    """Queue a manual Riot sync job (D-F13-5, D-F13-11); the runner does the work."""
+    from app.services.jobs import JobAlreadyActive, enqueue
     data = request.validated_data
-    filter_sets = data.sets if data.sets else []
+    params = {'trigger': 'manual'}
+    if data.sets:
+        params['sets'] = ','.join(data.sets)
     try:
-        result = _extract(filter_sets=filter_sets if filter_sets else None)
-        return jsonify(result)
-    except Exception as e:
-        message = 'The Riot cards could not be extracted'
-        return unexpected_failure(e, message, steps=[], stats={}, errors=[message])
+        job = enqueue('riot_sync', params)
+    except JobAlreadyActive:
+        return jsonify({'success': False,
+                        'message': 'Ya hay una sincronización en curso.'}), 409
+    return jsonify({'success': True, 'job_id': job.rbjob_id,
+                    'message': f'Sincronización encolada (trabajo {job.rbjob_id}). '
+                    'Revisa el resultado en la nueva administración.'})
 
 
 @price_bp.route('/cardmarket-load', methods=['POST'])
