@@ -68,6 +68,8 @@ riftbound/
 │   │   ├── jobs.py          # flask jobs enqueue|run-pending|list
 │   │   ├── schema.py        # flask schema snapshot
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
+│   ├── api/
+│   │   └── admin/           # api_admin blueprint: /riftbound/api/v1/admin/*, admin-only
 │   ├── jobs/                # Background job kinds; the package is the single import point (create_app)
 │   │   ├── registry.py      # JobKind(name, handler, timeout_seconds), register / get / names, JobFailed
 │   │   ├── daily_prices.py  # daily_prices: Cardmarket load, validation, clear auto-match, review list (1800 s)
@@ -82,6 +84,7 @@ riftbound/
 │   │   ├── market.py        # RbCardMarket (rbcardmarket)
 │   │   ├── cardmarket.py    # Rbcm* models (rbcm_* tables, Cardmarket loader) and RbProducts (rbproducts)
 │   │   ├── captcha.py       # RbCaptchaUsed (rbcaptcha_used)
+│   │   ├── audit.py         # RbAdminAudit (rbadminaudit): audit trail of admin writes
 │   │   ├── job.py           # RbJob (rbjobs): job queue and results, one active job per kind
 │   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto
 │   ├── routes/
@@ -99,6 +102,7 @@ riftbound/
 │   │       └── profile.py   # Profile updates
 │   ├── services/            # Business logic, no Flask request objects
 │   │   ├── auth.py          # authenticate (lockout), register_user, unlock_user
+│   │   ├── audit.py         # record() adds an audit row in the caller's transaction
 │   │   ├── bans.py          # name_key, ban_map, card_bans, ban_info, list_bans, add_ban, remove_ban
 │   │   ├── captcha.py       # none / altcha providers, replay store
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
@@ -188,7 +192,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 
@@ -226,6 +230,7 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 - Admin routes use `@admin_required` (`app/security.py`); the whole `price_bp` is guarded by `before_request(require_admin)`. Anonymous callers are sent to login, plain users get 403.
 - `is_admin` and `is_blocked` are changed only by the CLI (`flask users promote|demote|block|unblock <username>`), never by request input. A blocked user is rejected exactly like a wrong password.
 - Card bans (`rbcardbans`) are changed only by the CLI (`flask bans add|remove`) until the F10 admin UI; signed-in users read them with `GET /bans`.
+- Admin writes record one `rbadminaudit` row in the same transaction (`app/services/audit.py`); admins read the catalog counters with `GET /admin/overview`.
 - Never trust ids from the client: deck and collection queries are scoped to the logged-in user.
 
 ## CSRF, Sessions and Login Protection
