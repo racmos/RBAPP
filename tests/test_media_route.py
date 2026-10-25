@@ -105,6 +105,16 @@ class TestNotFound:
         _assert_not_found(client.get(f'{MEDIA}/{suffix}'))
 
     @pytest.mark.parametrize('suffix', [
+        'ogn_1.png%0A',
+        'ogn_1.png%0D',
+        'ogn_1.png%0D%0ASet-Cookie:%20evil=1',
+    ])
+    def test_control_characters_in_a_file_name_are_404(self, images, client, suffix):
+        resp = client.get(f'{MEDIA}/ogn/{suffix}')
+        _assert_not_found(resp)
+        assert 'Set-Cookie' not in resp.headers
+
+    @pytest.mark.parametrize('suffix', [
         '../secret.txt',
         'ogn/../../secret.txt',
         '%2e%2e/secret.txt',

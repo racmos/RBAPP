@@ -25,9 +25,14 @@ def images_root() -> str:
 
 
 def is_plain_file_name(name) -> bool:
-    """True when `name` is a single path segment: no separators, no NUL, not `.`/`..`."""
+    """True when `name` is a single path segment without control characters.
+
+    Separators, NUL and C0/DEL control characters are refused: the latter can
+    make the HTTP server reject an otherwise valid on-disk name with a 500.
+    """
     return (isinstance(name, str) and name not in ('', '.', '..')
-            and name == os.path.basename(name) and '\\' not in name and '\x00' not in name)
+            and name == os.path.basename(name) and '\\' not in name
+            and all(ord(char) >= 0x20 and ord(char) != 0x7f for char in name))
 
 
 def _inside(root: str, path: str) -> bool:

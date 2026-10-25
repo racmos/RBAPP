@@ -136,3 +136,6 @@ deleted; no page links to them any more. Tests therefore check the old prefix wi
 only in `CARD_IMAGES_DIR`.
 L7 (implementer): the `.env.example` line of S1 could not be written by the implementer (its tool policy
 blocks that path); the orchestrator applies it in the same PR.
+L8 (implementer): independent route verification found that a filename containing CR/LF made
+`send_from_directory` answer 500 instead of 404. `is_plain_file_name` therefore refuses every C0/DEL
+control character, not just NUL; `card_image_path`, the media route and `import_legacy` share that rule.

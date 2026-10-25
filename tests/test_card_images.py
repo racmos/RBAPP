@@ -55,6 +55,7 @@ class TestCardImagePath:
         'ogn/ogn_1.png', '/etc/ogn_1.png',
         'ogn\\ogn_1.png',
         'ogn_1.png\x00', 'ogn_1\x00.png',
+        'ogn_1.png\n', 'ogn_1.png\r', 'ogn_1.png\r\nSet-Cookie: evil=1',
         None,
     ])
     def test_anything_but_a_plain_file_name_is_refused(self, card_images_dir, image):
