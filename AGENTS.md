@@ -62,6 +62,8 @@ riftbound/
 │   │       ├── bans.py      # GET /bans (card bans per game mode)
 │   │       ├── me.py        # GET/PATCH /me/prefs (interface preferences)
 │   │       └── meta.py      # health, meta/config
+│   ├── schemas/             # Pydantic request models
+│   │   ├── admin.py         # AdminSetCreate/Patch, AdminCardCreate/Patch/Query
 │   ├── cli/                 # Flask CLI groups
 │   │   ├── bans.py          # flask bans list|add|remove (card bans per game mode)
 │   │   ├── images.py        # flask images import-legacy (copy the old card images into CARD_IMAGES_DIR)
@@ -70,7 +72,9 @@ riftbound/
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
 │   ├── api/
 │   │   └── admin/           # api_admin blueprint: /riftbound/api/v1/admin/*, admin-only
-│   ├── jobs/                # Background job kinds; the package is the single import point (create_app)
+│   │       ├── overview.py  # GET /admin/overview (catalog counters)
+│   │       ├── sets.py      # GET/POST /admin/sets, PATCH/DELETE /admin/sets/<id>
+│   │       └── cards.py     # GET/POST /admin/cards, PATCH/DELETE + image per card│   ├── jobs/                # Background job kinds; the package is the single import point (create_app)
 │   │   ├── registry.py      # JobKind(name, handler, timeout_seconds), register / get / names, JobFailed
 │   │   ├── daily_prices.py  # daily_prices: Cardmarket load, validation, clear auto-match, review list (1800 s)
 │   │   └── heartbeat.py     # heartbeat: diagnostic kind (60 s)
@@ -249,7 +253,7 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 ## API v1
 
-Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`.
+Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image` (see `docs/api.md`). Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image` (see `docs/api.md`).
 
 - `GET /auth/session` returns `{authenticated, csrf_token}` for anonymous callers and `{authenticated, user, prefs, csrf_token}` when signed in. `prefs` always has the five keys `lang`, `density`, `accent`, `bg_intensity`, `collection_view`; `null` means Auto (a user without a row gets five `null`s and no row is created).
 - `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
