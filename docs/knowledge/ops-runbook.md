@@ -170,6 +170,45 @@ needs the `daily_prices` rows gone first, otherwise it stops with a clear messag
 `DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'daily_prices';` then
 `venv/bin/flask db downgrade 0007_jobs`.
 
+## Card images (from M-d)
+
+Card images are not in git and not in the code tree. They live in the data directory set by
+`CARD_IMAGES_DIR=<data dir>` in `.env` (absolute path, outside the checkout, owned by the service user; the
+host value is in `ops.local.md`). Unset, the app uses `<project>/data/card-images` (git-ignored; dev and
+tests only). Flask serves the directory at `/riftbound/media/cards/<folder>/<file>` (public, cached a
+week); the admin upload and the Riot scraper write there. The old `/riftbound/static/images/cards/...`
+URLs no longer serve the images. The Nginx template proxies every `/riftbound/` URL to Flask, so the
+proxy needs no change.
+
+- Backup: the data directory is the only copy of the scraped and uploaded images. Copy it with the
+  database backup (`tar -C <data dir> -czf <backup folder>/card-images-<date>.tar.gz .`, private folder);
+  F12 schedules it.
+- Copy images from elsewhere: `venv/bin/flask images import-legacy [--source PATH]` copies every
+  `<folder>/<file>` of `PATH` (default `app/static/images/cards`) into the data directory. It never
+  overwrites a file and never deletes the source, so it can run any number of times; it prints
+  `Copied <n>, skipped <m> existing, ignored <k>.`
+
+### Deploy of M-d (before or together with the deploy that pulls the M-d commit)
+
+The M-d commit removes the tracked images from git, so the next `git pull` deletes them from the
+checkout. Copy first.
+
+1. **Before pulling**: create the data directory (outside the checkout), owned by the service user, and
+   copy the images: `cp -a <checkout>/app/static/images/cards/. <data dir>/`. If the pull already
+   happened, the files are gone from the checkout: restore them from the previous commit with
+   `git -C <checkout> archive <old sha> app/static/images/cards | tar -x -C /tmp/cards-restore` and run
+   `venv/bin/flask images import-legacy --source /tmp/cards-restore/app/static/images/cards`.
+2. Set `CARD_IMAGES_DIR=<data dir>` in `.env`, deploy, restart, then run `venv/bin/flask images
+   import-legacy` (copies 0 if step 1 was done; it also picks up the untracked images the Riot scraper
+   left in the checkout).
+3. Live check: open a Jinja catalog page; its images load from `/riftbound/media/cards/…`;
+   `curl -sI <URL>/riftbound/media/cards/ogn/ogn_1.png` → 200 with `Cache-Control: public, max-age=604800`.
+
+Rollback: revert the PR and redeploy; the revert puts the tracked images back in the checkout and the
+pages read `/riftbound/static/images/cards/...` again. Images added after the deploy exist only in the data
+directory: copy them back first (`cp -a <data dir>/. <checkout>/app/static/images/cards/`). Leave the data
+directory in place.
+
 ## Never
 
 - Commit or print `.env`, the database URL, passwords or keys. Write IPs, hostnames or domains in a

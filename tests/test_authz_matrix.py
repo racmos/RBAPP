@@ -34,6 +34,7 @@ from tests.conftest import login_as
 MATRIX = {
     # --- public -----------------------------------------------------------
     'static': 'P',
+    'media.card_image': 'P',                # card images from CARD_IMAGES_DIR (M-d)
     'landing.*': 'P',                       # landing page, HTMX partials, frames
     'auth.login': 'P',
     'auth.register': 'P',

@@ -91,6 +91,7 @@ landing page.
 | `price_bp` | `/riftbound/price` | `app/routes/domains/price.py` | admin (all 23 rules) |
 | `profile_bp` | `/riftbound/profile` | `app/routes/domains/profile.py` | user |
 | `spa_bp` | `/riftbound/app` | `app/routes/spa.py` | public |
+| `media_bp` | `/riftbound/media` (`/cards/<folder>/<filename>`) | `app/routes/media.py` (card images from `CARD_IMAGES_DIR`) | public |
 | `api_v1` | `/riftbound/api/v1` | `app/api/v1/{auth,me,meta}.py` | mixed, see section 3 |
 | `static` (Flask) | `/riftbound/static` | `app/static/` | public |
 
@@ -115,7 +116,8 @@ answer:
   plus redirect to `/riftbound/login?next=...`.
 - The `api_v1` blueprint has its own catch-all error handler that returns the envelope for anything.
 - `spa_bp` errors never use Jinja (`base.html` would write the session cookie): JSON for JSON clients,
-  a minimal inline HTML page otherwise, `Cache-Control: no-store`.
+  a minimal inline HTML page otherwise, `Cache-Control: no-store`. `media_bp` likewise answers its 404
+  without Jinja (JSON or plain text), so no image response sets a cookie.
 
 Note: a few legacy admin endpoints (`cards.upload_card_image` and several in `price.py`) still return
 `str(exception)` in a 500 body, and `validate_json`'s generic `except` puts it in a 400. That predates the API contract; the
@@ -158,8 +160,13 @@ the legacy pattern.
   `PASSWORD_MAX_LENGTH` in `app/schemas/validators.py`, used by register, profile and the CLI).
 - **Outbound URLs.** Cardmarket loader overrides must be https on `CARDMARKET_ALLOWED_HOSTS`, port 443
   or none, no userinfo (`validate_override_url`).
-- **Images.** Reads use `RbCard.image_src`; every write goes through `app/services/card_images.card_image_path`
-  (folder letters and digits only, path must stay under `<static>/images/cards/`).
+- **Images.** Card images live in the data directory `CARD_IMAGES_DIR` (absolute; default
+  `<project>/data/card-images`, git-ignored), never in git (M-d). `app/services/card_images.py` is the only
+  module that knows it: `images_root()`, `card_image_url()` (= `RbCard.image_src`,
+  `/riftbound/media/cards/<folder>/<image>`) and `card_image_path()`, which every write goes through
+  (folder letters and digits only, plain file name, the resolved path must stay under the root).
+  `media.card_image` serves them (same name rules, symlinks out of the root refused, cached 7 days);
+  `flask images import-legacy` copies the old `app/static/images/cards/` tree in.
 - **Secrets.** Only through environment variables; `SECRET_KEY` weak or default is refused outside
   development; errors name variables, never values.
 
@@ -264,7 +271,7 @@ Schema `riftbound`. Tables use the `rb` prefix; columns use the table prefix (`r
 |---|---|---|---|
 | `rbusers` | `User` (`user.py`) | `id` | `username` (unique, 64), `email` (unique, 120), `password_hash`, `created_at`, `is_admin`, `is_blocked`, `failed_login_count`, `locked_until`, `last_login_at`. Other tables reference `username` (collection, decks) or `id` (prefs) |
 | `rbset` | `RbSet` (`set.py`) | `rbset_id` (text) | `rbset_name`, `rbset_ncard` (smallint), `rbset_outdat` (date). Parent of `rbcards` |
-| `rbcards` | `RbCard` (`card.py`) | (`rbcar_rbset_id`, `rbcar_id`), both text | `rbcar_name`, `_domain`, `_type`, `_tags`, `_energy`, `_power`, `_might` (smallint), `_ability`, `_rarity`, `_artist`, `_banned`, `image_url`, `image`. FK to `rbset` (cascade). `image_src` property builds `/riftbound/static/images/cards/<folder>/<image>` |
+| `rbcards` | `RbCard` (`card.py`) | (`rbcar_rbset_id`, `rbcar_id`), both text | `rbcar_name`, `_domain`, `_type`, `_tags`, `_energy`, `_power`, `_might` (smallint), `_ability`, `_rarity`, `_artist`, `_banned`, `image_url`, `image`. FK to `rbset` (cascade). `image_src` property builds `/riftbound/media/cards/<folder>/<image>` (M-d) |
 | `rbcollection` | `RbCollection` (`collection.py`) | `rbcol_id` (synthetic bigint) | `rbcol_rbset_id`, `rbcol_rbcar_id` (FK to `rbcards`), `rbcol_user` (FK to `rbusers.username`), `rbcol_foil`, `rbcol_quantity` (integer), `rbcol_selling`, `rbcol_playset`, `rbcol_sell_price` (numeric), `rbcol_condition`, `rbcol_language`, `rbcol_chadat` |
 | `rbdecks` | `RbDeck` (`deck.py`) | `id` | `rbdck_user` (FK to `rbusers.username`), `rbdck_name`, `rbdck_seq`, `rbdck_snapshot`, `rbdck_description`, `rbdck_mode`, `rbdck_format`, `rbdck_max_set`, `rbdck_ncards`, `rbdck_orden`, `rbdck_cards` (JSONB). Unique (`rbdck_user`, `rbdck_name`, `rbdck_seq`) |
 | `rbcardmarket` | `RbCardMarket` (`market.py`) | (`rbcmk_snapshot`, `rbcmk_rbset_id`, `rbcmk_rbcar_id`, `rbcmk_foil`) | `rbcmk_name`, `rbcmk_price`. FK to `rbcards`. No route or service reads it (legacy) |
@@ -337,7 +344,7 @@ repeats it on PostgreSQL 18. Runbook: `docs/migrations.md`.
   `avg7 -> avg7_foil -> low -> low_foil`. NULL and 0 count as missing; no price gives `None`, never 0.
   Collection and deck views both use it; deck cards are priced as non-foil. Note: the shorthand
   "avg7_foil, avg7, low_foil, low" describes only the premium/foil order.
-- `card_images.py`: safe image paths (see 2.4).
+- `card_images.py`: the images root, image URLs, safe write paths and the legacy copy (see 2.4).
 - `cardmarket_loader.py`: `CardmarketLoader.run()` downloads price guide, singles and non-singles JSON from
   the allow-listed host, hashes them, loads `rbcm_*` (price guide always reloads; products only when the
   hash changed), records `rbcm_load_history`. `CARDMARKET_URLS`, `validate_override_url`.
@@ -345,7 +352,7 @@ repeats it on PostgreSQL 18. Runbook: `docs/migrations.md`.
   normalised name and price/rarity ranking (Basic Rune: one slot without foil; common/uncommon: normal and
   foil slots; rare/epic: separate card entries), writing `rbcm_product_card_map`.
 - `riot_scraper.py`: `refresh_riot_sets()` and `extract_riot_cards(filter_sets)` read the official card
-  gallery (`__NEXT_DATA__` JSON), upsert `rbset`/`rbcards` and download images into `images/cards/<folder>/`.
+  gallery (`__NEXT_DATA__` JSON), upsert `rbset`/`rbcards` and download images into `<CARD_IMAGES_DIR>/<folder>/`.
 - `scraper.py`: landing feeds (`fetch_noticias`, `fetch_discord`, `fetch_torneos_online`,
   `fetch_torneos_fisicos`, `fetch_videos`, `fetch_decks`) with placeholder fallbacks and a per-feed,
   per-worker TTL cache (`LANDING_CACHE_TTL`, default 300 s; failures are not cached; `clear_cache()`).

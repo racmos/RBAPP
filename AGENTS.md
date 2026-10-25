@@ -64,6 +64,7 @@ riftbound/
 │   │       └── meta.py      # health, meta/config
 │   ├── cli/                 # Flask CLI groups
 │   │   ├── bans.py          # flask bans list|add|remove (card bans per game mode)
+│   │   ├── images.py        # flask images import-legacy (copy the old card images into CARD_IMAGES_DIR)
 │   │   ├── jobs.py          # flask jobs enqueue|run-pending|list
 │   │   ├── schema.py        # flask schema snapshot
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
@@ -86,6 +87,7 @@ riftbound/
 │   ├── routes/
 │   │   ├── auth.py          # Login / register / logout (Jinja forms)
 │   │   ├── landing.py       # Public landing page and its HTMX partials (/ and /api/*)
+│   │   ├── media.py         # media_bp: card images from CARD_IMAGES_DIR at /riftbound/media/cards/
 │   │   ├── spa.py           # spa_bp: serves the React build from FRONTEND_DIST at /riftbound/app/
 │   │   ├── routes.py        # Dashboard + domain blueprint imports
 │   │   └── domains/         # Domain routes
@@ -103,7 +105,7 @@ riftbound/
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
 │   │   ├── pricing.py       # resolve_price, latest_price_for_card
-│   │   ├── card_images.py   # Safe image paths
+│   │   ├── card_images.py   # images_root, card_image_path, card_image_url, import_legacy (CARD_IMAGES_DIR)
 │   │   ├── cardmarket_loader.py
 │   │   ├── cardmarket_matcher.py
 │   │   ├── riot_scraper.py
@@ -179,6 +181,7 @@ Settings come only from environment variables (`config.py`). A git-ignored `.env
 | `RB_ENV` | `development`, `testing` or `production` (unset = production) |
 | `SECRET_KEY` | 32+ random characters; the app refuses weak or default keys outside development |
 | `DATABASE_URL` | `postgresql+psycopg://user:password@host:5432/riftbound` |
+| `CARD_IMAGES_DIR` | Absolute path of the card images data directory (`ogn/`, `ogs/`, ...); unset = `<project>/data/card-images` (git-ignored); a relative path stops the app with `ConfigError`. Card images live in `CARD_IMAGES_DIR`, never in git (M-d) |
 
 The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in `.env.example`. Never commit real values and never write a credential, IP address or hostname into code or docs.
 
@@ -199,10 +202,13 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 - Legacy JSON endpoints stay flat (`{"success": true, ...}`); the API v1 uses the envelope below.
 
 ### Blueprints
-`landing_bp`, `main_bp` (dashboard), `auth_bp`, `sets_bp`, `cards_bp`, `collection_bp`, `deck_bp`, `price_bp`, `profile_bp` and `api_v1` (JSON API).
+`landing_bp`, `media_bp`, `main_bp` (dashboard), `auth_bp`, `sets_bp`, `cards_bp`, `collection_bp`, `deck_bp`, `price_bp`, `profile_bp` and `api_v1` (JSON API).
 
 ### SPA hosting (`spa_bp`)
 `app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise, never the Jinja error templates). The `index.html` responses carry `Content-Security-Policy-Report-Only` (`SPA_CSP=report-only`, the default, or `off`; any other value stops the app with `ConfigError`); no other response gets a CSP. It is registered after the domain blueprints; Tests get a temporary dist from the `spa_dist` / `spa_app` fixtures, no Node needed. See `docs/frontend.md`.
+
+### Card images (`media_bp`)
+Card images live in `CARD_IMAGES_DIR`, never in git (`/data/` is git-ignored; `app/static/images/cards/` keeps only `.gitkeep`). `app/services/card_images.py` is the only module that knows the directory: `images_root()`, `card_image_path(image, set_id=None)` (every write: admin upload, Riot scraper) and `card_image_url(image, set_id=None)`, which `RbCard.image_src` returns: `/riftbound/media/cards/<folder>/<image>`. `app/routes/media.py` serves it (endpoint `media.card_image`, public): the folder must be letters and digits and the file a plain name, otherwise 404, as are missing files, folders and symlinks resolving outside the root; `Cache-Control: public, max-age=604800`; it never touches the session (no `Set-Cookie`; its 404 skips the Jinja error page). The old `/riftbound/static/images/cards/...` URLs no longer serve the images. `flask images import-legacy [--source PATH]` copies `<folder>/<file>` images (default source `app/static/images/cards`) into `CARD_IMAGES_DIR`, never overwriting (`docs/knowledge/ops-runbook.md` → "Card images"). Tests use the `card_images_dir` fixture (a temporary `CARD_IMAGES_DIR`) and never touch the real images.
 
 ### Color Scheme (Dark Teal Theme)
 | Element | Color | Hex |
@@ -312,7 +318,7 @@ pytest --cov=app --cov-report=term
 TEST_POSTGRES_URL=postgresql+psycopg://user:password@localhost:5432/riftbound_test pytest -m postgres
 ```
 - `tests/conftest.py` sets `RB_ENV=testing`; the default `app` has CSRF, rate limits and captcha **off**.
-- Fixtures: `make_user`, `login_as`, `authenticated_client`, `admin_client`, `other_user_client`, `csrf_app`, `limited_app`, `altcha_app`, `frozen_clock`, `migration_app`, `pg_url`.
+- Fixtures: `make_user`, `login_as`, `authenticated_client`, `admin_client`, `other_user_client`, `csrf_app`, `limited_app`, `altcha_app`, `frozen_clock`, `migration_app`, `pg_url`, `spa_dist`, `spa_app`, `card_images_dir`.
 - Request `admin_client` / `authenticated_client` **before** `csrf_app` (they log in through the form).
 - PostgreSQL-marked tests (none today) need a database whose name contains `test`; a unit that adds them re-adds the `pytest -m postgres` CI step (PostgreSQL 18).
 - Nothing in the tests may reach the internet.
@@ -321,7 +327,7 @@ TEST_POSTGRES_URL=postgresql+psycopg://user:password@localhost:5432/riftbound_te
 - Passwords are hashed with Werkzeug's `generate_password_hash`; minimum 8 characters.
 - All routes except login, register, landing and the public API endpoints require login.
 - Secrets only through environment variables.
-- File uploads and image paths go through `app/services/card_images.py`.
+- File uploads and image paths go through `app/services/card_images.py`: `card_image_path(image, set_id)` (rooted at `CARD_IMAGES_DIR`), never the static folder or the working directory.
 - Cardmarket URLs must be on the allow-list (`CARDMARKET_ALLOWED_HOSTS`).
 
 ## Database Operations

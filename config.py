@@ -13,6 +13,7 @@ Nothing in this module may hold a credential or a default secret.
 """
 import hashlib
 import logging
+import os
 import secrets
 from datetime import timedelta
 from pathlib import Path
@@ -46,6 +47,10 @@ SPA_CSP_MODES = ('report-only', 'off')
 
 # Where the Vite build lives (HOST-1). Overridden by FRONTEND_DIST.
 DEFAULT_FRONTEND_DIST = str(Path(__file__).resolve().parent / 'frontend' / 'dist')
+
+# Root of the card images (M-d): the folder that holds ogn/, ogs/, ... Git-ignored
+# (`/data/`). Overridden by CARD_IMAGES_DIR, which must be an absolute path.
+DEFAULT_CARD_IMAGES_DIR = str(Path(__file__).resolve().parent / 'data' / 'card-images')
 
 _TRUE_WORDS = frozenset({'1', 'true', 'yes', 'on'})
 _FALSE_WORDS = frozenset({'0', 'false', 'no', 'off'})
@@ -106,6 +111,18 @@ def _spa_csp_setting(environ: Mapping[str, str]) -> str:
     raise ConfigError('SPA_CSP must be report-only or off')
 
 
+def _card_images_dir_setting(environ: Mapping[str, str]) -> str:
+    """CARD_IMAGES_DIR: blank keeps <project>/data/card-images; a relative path stops
+    the app in every environment (it would depend on the working directory). The
+    directory is created on first write, not here."""
+    text = (environ.get('CARD_IMAGES_DIR') or '').strip()
+    if not text:
+        return DEFAULT_CARD_IMAGES_DIR
+    if not os.path.isabs(text):
+        raise ConfigError('CARD_IMAGES_DIR must be an absolute path')
+    return text
+
+
 def _host_list(environ: Mapping[str, str], name: str, default: tuple) -> tuple:
     """A comma-separated list of host names, lower-cased; blank keeps `default`."""
     hosts = tuple(h.strip().lower() for h in (environ.get(name) or '').split(',') if h.strip())
@@ -141,6 +158,7 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
         environ, 'CARDMARKET_ALLOWED_HOSTS', CARDMARKET_ALLOWED_HOSTS)
     settings['FRONTEND_DIST'] = (environ.get('FRONTEND_DIST') or '').strip() or DEFAULT_FRONTEND_DIST
     settings['SPA_CSP'] = _spa_csp_setting(environ)
+    settings['CARD_IMAGES_DIR'] = _card_images_dir_setting(environ)
     settings.update(_session_settings(env, environ))
     settings.update(_protection_settings(env, environ))
     return settings

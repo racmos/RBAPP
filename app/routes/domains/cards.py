@@ -2,7 +2,7 @@
 Cards routes module with Pydantic validation.
 """
 import re
-from flask import Blueprint, render_template, request, jsonify, current_app
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from app import db
 from app.errors import unexpected_failure
@@ -184,10 +184,10 @@ def upload_card_image():
         if '.' not in filename or filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             return jsonify({'success': False, 'message': 'Invalid file type. Allowed: jpg, jpeg, png, webp'}), 400
         
-        # Same folder rule the page reads with (IMG-1), rooted at the app's static
-        # folder (never the working directory), and never outside images/cards/.
+        # Same folder rule the page reads with (IMG-1), rooted at CARD_IMAGES_DIR
+        # (never the working directory), and never outside it.
         try:
-            file_path = card_image_path(current_app.static_folder, filename, set_id)
+            file_path = card_image_path(filename, set_id)
         except ValueError as e:
             return jsonify({'success': False, 'message': f'Invalid image destination: {e}'}), 400
         os.makedirs(os.path.dirname(file_path), exist_ok=True)

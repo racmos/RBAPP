@@ -109,3 +109,33 @@ starts with the server step of "After merge" in bold.
 ## Open questions
 
 none
+
+## Log
+
+L1 (implementer): the branch already held an earlier M-d implementation written from a superseded draft
+(`M/M-d-card-images.md`: default `app/static/images/cards`, `card_image_path(images_root, image, set_id)`,
+route `card_images.serve` at the old static URLs). It was reworked to this requirement in later commits on
+the same branch (no history rewrite); the draft was removed with `git rm`. The 376 images were already
+untracked by that work (commit `5bb2f0e`).
+L2 (implementer): S6 verify: `git ls-files app/static/images/cards/placeholder.png` prints nothing, so the
+legend placeholder in `deck.html` is an inline neutral SVG data URI; no `placeholder-card.png` was added.
+L3 (implementer): S4 extras, same spirit as the SPA blueprint: a folder or a symlink that resolves outside
+the root is a 404 too, and the route's 404 is a minimal answer (JSON envelope for JSON clients, plain text
+otherwise) instead of the Jinja error page, so no image response sets a cookie, 404s included.
+L4 (implementer): S7 counting: `ignored` counts every file that is not copied or skipped (files directly
+in the source root such as `.gitkeep`, files in a folder that is not letters and digits or deeper down,
+symlinks, a destination that would resolve outside the root). A `--source` that does not exist is a click
+usage error (exit 2) and copies nothing.
+L5 (implementer): `openspec/specs/card-images/spec.md`: IMG-1, IMG-2 and also IMG-3 (the scraper root)
+amended for the new URL and root. Outside S8, for G7: `docs/knowledge/specs-index.md` (IMG-1/IMG-2
+lines), `docs/requirements/F2/README.md` (Images row, which the earlier work had edited with the old
+URL), `README.md` (`CARD_IMAGES_DIR` row) and `docs/knowledge/roadmap.md` (M-d row).
+L6 (implementer): D-Md-2 on a host: untracked images that stay in the checkout's `app/static/images/cards/`
+(the Riot scraper's, git-ignored) are still answered by Flask's static rule at the old URLs until they are
+deleted; no page links to them any more. Tests therefore check the old prefix with a file that exists
+only in `CARD_IMAGES_DIR`.
+L7 (implementer): the `.env.example` line of S1 could not be written by the implementer (its tool policy
+blocks that path); the orchestrator applies it in the same PR.
+L8 (implementer): independent route verification found that a filename containing CR/LF made
+`send_from_directory` answer 500 instead of 404. `is_plain_file_name` therefore refuses every C0/DEL
+control character, not just NUL; `card_image_path`, the media route and `import_legacy` share that rule.
