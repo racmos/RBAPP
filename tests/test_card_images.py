@@ -172,6 +172,13 @@ class TestServe:
         (images_root / 'ogn').mkdir()
         assert client.get(url).status_code == 404
 
+    @pytest.mark.parametrize('suffix', ['ogn_1.png%00', 'ogn_1.png%00.png', '%00'])
+    def test_a_null_byte_is_a_404_like_static(self, images_root, client, suffix):
+        (images_root / 'ogn').mkdir()
+        (images_root / 'ogn' / 'ogn_1.png').write_bytes(PNG)
+        assert client.get(f'{CARDS_URL}/ogn/{suffix}').status_code == 404
+        assert client.get('/riftbound/static/js/csrf.js%00').status_code == 404
+
     @pytest.mark.parametrize('suffix', [
         '../secret.txt',
         'ogn/../../secret.txt',

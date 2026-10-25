@@ -8,7 +8,7 @@ only where the files live on disk does. The rule is more specific than Flask's
 URL keeps coming from the app's static folder.
 
 Public, like the static files. `..`, absolute paths and symlinks that resolve
-outside the root are a 404, as is a missing file or a folder. Caching is
+outside the root are a 404, as is a missing file, a folder or a null byte. Caching is
 Flask's static one: conditional requests and SEND_FILE_MAX_AGE_DEFAULT.
 """
 import os
@@ -28,6 +28,8 @@ def _inside(root: str, path: str) -> bool:
 @card_images_bp.get('/riftbound/static/images/cards/<path:filename>')
 def serve(filename):
     root = current_app.config['CARD_IMAGES_DIR']
+    if '\x00' in filename:                          # os.path would raise; static answers 404
+        abort(404)
     path = safe_join(root, filename)                # None for `..` or an absolute path
     if path is None or not _inside(root, path) or not os.path.isfile(path):
         abort(404)
