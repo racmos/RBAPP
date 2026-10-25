@@ -147,9 +147,9 @@ def create_app(**overrides):
     from app.routes.landing import landing_bp
     app.register_blueprint(landing_bp)
 
-    # Card images (/riftbound/static/images/cards/), served from CARD_IMAGES_DIR
-    from app.routes.card_images import card_images_bp
-    app.register_blueprint(card_images_bp)
+    # Card images (/riftbound/media/cards/), served from CARD_IMAGES_DIR (M-d)
+    from app.routes.media import media_bp
+    app.register_blueprint(media_bp)
 
     from app.routes.routes import main_bp
     app.register_blueprint(main_bp)

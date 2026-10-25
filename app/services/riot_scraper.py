@@ -14,11 +14,9 @@ import logging
 import os
 import re
 from html import unescape
-from pathlib import Path
 from typing import Optional
 
 import requests
-from flask import current_app
 from app import db
 from app.models import RbCard, RbSet
 from app.services.card_images import card_image_path
@@ -373,12 +371,10 @@ def extract_riot_cards(filter_sets: list[str] | None = None) -> dict:
     # Step 4: Download images
     steps.append({'step': '4. Download images', 'status': 'RUNNING', 'message': 'Downloading card images...'})
     try:
-        images_root = current_app.config['CARD_IMAGES_DIR']
-
         for card_data in parsed_cards:
             # Same folder rule the UI reads with; refuses anything outside the root.
             try:
-                dest = card_image_path(images_root, card_data['image'], card_data['rbcar_rbset_id'])
+                dest = card_image_path(card_data['image'], card_data['rbcar_rbset_id'])
             except ValueError as e:
                 logger.warning(f"Image skipped for {card_data['rbcar_rbset_id']}-{card_data['rbcar_id']}: {e}")
                 stats['images_failed'] += 1
@@ -387,7 +383,7 @@ def extract_riot_cards(filter_sets: list[str] | None = None) -> dict:
             if os.path.exists(dest):
                 stats['images_existed'] += 1
             else:
-                Path(dest).parent.mkdir(parents=True, exist_ok=True)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
                 if _download_image(session, card_data['image_url'], dest):
                     stats['images_downloaded'] += 1
                 else:

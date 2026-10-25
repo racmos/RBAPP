@@ -48,9 +48,9 @@ SPA_CSP_MODES = ('report-only', 'off')
 # Where the Vite build lives (HOST-1). Overridden by FRONTEND_DIST.
 DEFAULT_FRONTEND_DIST = str(Path(__file__).resolve().parent / 'frontend' / 'dist')
 
-# Root of the card images (M-d): the folder that holds ogn/, ogs/, ... Overridden
-# by CARD_IMAGES_DIR, which must be absolute (a data directory outside the code).
-DEFAULT_CARD_IMAGES_DIR = str(Path(__file__).resolve().parent / 'app' / 'static' / 'images' / 'cards')
+# Root of the card images (M-d): the folder that holds ogn/, ogs/, ... Git-ignored
+# (`/data/`). Overridden by CARD_IMAGES_DIR, which must be an absolute path.
+DEFAULT_CARD_IMAGES_DIR = str(Path(__file__).resolve().parent / 'data' / 'card-images')
 
 _TRUE_WORDS = frozenset({'1', 'true', 'yes', 'on'})
 _FALSE_WORDS = frozenset({'0', 'false', 'no', 'off'})
@@ -112,8 +112,9 @@ def _spa_csp_setting(environ: Mapping[str, str]) -> str:
 
 
 def _card_images_dir_setting(environ: Mapping[str, str]) -> str:
-    """CARD_IMAGES_DIR: blank keeps the static cards folder; a relative path stops
-    the app in every environment (it would depend on the working directory)."""
+    """CARD_IMAGES_DIR: blank keeps <project>/data/card-images; a relative path stops
+    the app in every environment (it would depend on the working directory). The
+    directory is created on first write, not here."""
     text = (environ.get('CARD_IMAGES_DIR') or '').strip()
     if not text:
         return DEFAULT_CARD_IMAGES_DIR

@@ -34,7 +34,7 @@ from tests.conftest import login_as
 MATRIX = {
     # --- public -----------------------------------------------------------
     'static': 'P',
-    'card_images.serve': 'P',               # card images from CARD_IMAGES_DIR (M-d)
+    'media.card_image': 'P',                # card images from CARD_IMAGES_DIR (M-d)
     'landing.*': 'P',                       # landing page, HTMX partials, frames
     'auth.login': 'P',
     'auth.register': 'P',
@@ -235,23 +235,6 @@ class TestSpaIsPublic:
     @pytest.mark.parametrize('url', ['/riftbound/app/', '/riftbound/app/account/interface'])
     def test_anonymous_gets_the_shell(self, spa_app, client, url):
         assert client.get(url).status_code == 200
-
-
-class TestCardImagesArePublic:
-    """M-d S3: card images are served to anyone, like the static files."""
-
-    def test_the_card_images_rule_is_classified_public(self, rules):
-        image_rules = [r for r in rules if r.endpoint == 'card_images.serve']
-        assert [r.rule for r in image_rules] == ['/riftbound/static/images/cards/<path:filename>']
-        assert classify(image_rules[0]) == 'P'
-
-    def test_anonymous_gets_an_image(self, app, client, tmp_path):
-        (tmp_path / 'ogn').mkdir()
-        (tmp_path / 'ogn' / 'ogn_1.png').write_bytes(b'png')
-        app.config['CARD_IMAGES_DIR'] = str(tmp_path)
-        resp = client.get('/riftbound/static/images/cards/ogn/ogn_1.png')
-        assert resp.status_code == 200
-        assert resp.data == b'png'
 
 
 class TestAuthenticatedRules:

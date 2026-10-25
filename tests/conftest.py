@@ -337,3 +337,18 @@ def spa_app(app, spa_dist):
     """`app` whose FRONTEND_DIST points at `spa_dist` (read per request)."""
     app.config['FRONTEND_DIST'] = str(spa_dist)
     return app
+
+
+# ---------------------------------------------------------------------------
+# Card images (M-d)
+# ---------------------------------------------------------------------------
+# Tests never read or write the real images: CARD_IMAGES_DIR points at a
+# temporary folder that does not exist yet (the app creates it on first write).
+
+
+@pytest.fixture
+def card_images_dir(app, tmp_path):
+    """`app` whose CARD_IMAGES_DIR is `tmp_path/card-images`. Returns that path."""
+    root = tmp_path / 'card-images'
+    app.config['CARD_IMAGES_DIR'] = str(root)
+    return root

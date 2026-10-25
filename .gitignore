@@ -17,13 +17,14 @@ build/
 *.sqlite
 *.db
 
-# Downloaded card images (generated at runtime by riot scraper)
+# Old location of the card images (M-d: they live in CARD_IMAGES_DIR, never in git)
 app/static/images/cards/**/
 !app/static/images/cards/.gitkeep
 .coverage
 
 # Runtime data (legacy-table backups contain emails and password hashes; never commit)
 instance/
+/data/
 legacy_tables_*.sql
 
 # Frontend (F1): dependencies and build output

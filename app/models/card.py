@@ -24,7 +24,12 @@ def card_image_folder(image_filename, set_id=None):
             folder = prefix.lower()
     if not folder:
         folder = (set_id or '').lower()
-    return folder if _SAFE_FOLDER.fullmatch(folder) else ''
+    return folder if is_safe_folder(folder) else ''
+
+
+def is_safe_folder(folder) -> bool:
+    """True when `folder` is a card images folder name: lowercase letters and digits only."""
+    return isinstance(folder, str) and _SAFE_FOLDER.fullmatch(folder) is not None
 
 
 # Name used by the IMG-1 characterization tests; same rule, set id optional.
@@ -59,16 +64,12 @@ class RbCard(db.Model):
 
     @property
     def image_src(self):
-        """Full image URL path derived from the image filename.
+        """Image URL, /riftbound/media/cards/<folder>/<image> (IMG-1, M-d).
 
         Uses the set_prefix embedded in the filename (e.g. ogn_257.png -> ogn/)
         instead of rbcar_rbset_id (which would give ognx/ or prok/ for promo sets);
         a name without prefix falls back to the set id. None when there is no
         image or no safe folder.
         """
-        if not self.image:
-            return None
-        folder = card_image_folder(self.image, self.rbcar_rbset_id)
-        if not folder:
-            return None
-        return f"/riftbound/static/images/cards/{folder}/{self.image}"
+        from app.services.card_images import card_image_url
+        return card_image_url(self.image, self.rbcar_rbset_id)
