@@ -80,3 +80,34 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   (`params: {"collection_lines": n, "decks": m}`) when a collection line or a deck
   (`rbdck_cards` main/sideboard `{set, id}`) references it. The image file is not deleted.
   Audit `card.delete`.
+
+### Sync, jobs and change review
+
+- `POST /admin/riot/sync` body `{sets?: [codes]}` (codes upper-cased; unknown → 400
+  `validation_error`, `field: sets`, `invalid_value`, `params: {values: [...]}`) → 202
+  `{"job_id": n}`; the job runs `riot_sync` with `trigger=manual`. Active sync → 409
+  `job_running`. Audit `riot.sync_requested`. A scheduled run with nothing due ends
+  `success` with `{"message": "nothing due", "sets": []}` and fetches nothing.
+- `GET /admin/jobs` with `kind`, `status`, `limit` (1-100, default 20), newest first →
+  `items[]` of `{id, kind, status, requested_by (username|null), requested_at,
+  started_at, finished_at, message}`. `GET /admin/jobs/<id>` adds `params` and `result`;
+  404 when missing.
+- `GET /admin/riot/changes` with `status` (`pending` default, `approved`, `rejected`,
+  `all`), `set`, `field`, `q` (name substring or card id), `page` ≥ 1, `per_page` ≤ 100
+  (default 50) → `items[]` of `{id, set_id, card_id, card_name, image_src, field,
+  old_value, new_value, status, detected_at, job_id, decided_at, decided_by
+  (username|null)}`, newest first; `meta = {page, per_page, total, pages,
+  counts: {pending, approved, rejected}}` (global counts).
+- `POST /admin/riot/changes/<id>/approve`: pending only (else 409 `change_decided`); the
+  card must still hold the old value (else 409 `change_stale`, nothing written). Numbers are
+  parsed back to int; an approved `image_url` re-downloads the image over the card's file
+  (a failure keeps the approval and adds `warnings: ["image_download_failed"]`). Audit
+  `riot.change_approve`. → 200 with the item.
+- `POST /admin/riot/changes/<id>/reject`: pending only → `rejected`. Audit
+  `riot.change_reject`. → 200 with the item.
+- `POST /admin/riot/changes/bulk` body `{ids: [1..500], action: "approve"|"reject"}` →
+  200 `{"results": [{"id", "outcome": "approved"|"rejected"|"stale"|"decided"|"not_found"}],
+  "counts": {...}}`; each id in its own transaction, ascending id order.
+- `GET /admin/overview` gains `riot`: `{pending_changes, active_sets: [{id, name, window,
+  next_run_at}], last_sync: {job_id, status, finished_at, trigger} | null,
+  placeholder_sets: [codes whose name equals their id and have no release date]}`.

@@ -93,6 +93,65 @@ class AdminCardPatch(AdminCardBase):
     """PATCH /admin/cards/<set>/<id> body (S8): no keys (`set_id`/`card_id` are unknown here)."""
 
 
+class AdminRiotSyncBody(BaseModel):
+    """POST /admin/riot/sync body (S1): codes are upper-cased, then checked."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    sets: list[str] = Field(default_factory=list)
+
+    @field_validator('sets', mode='before')
+    @classmethod
+    def _one_or_many(cls, value):
+        if isinstance(value, str):
+            return [value]
+        return value
+
+    @field_validator('sets', mode='after')
+    @classmethod
+    def _upper_codes(cls, value: list) -> list:
+        return [code.strip().upper() for code in value if code.strip()]
+
+
+class AdminChangesQuery(BaseModel):
+    """GET /admin/riot/changes query (S3)."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    status: str = 'pending'
+    set: Optional[str] = None
+    field: Optional[str] = None
+    q: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    per_page: int = Field(default=50, ge=1, le=100)
+
+    @field_validator('status', mode='after')
+    @classmethod
+    def _known_status(cls, value: str) -> str:
+        if value not in ('pending', 'approved', 'rejected', 'all'):
+            raise ValueError('status must be pending, approved, rejected or all')
+        return value
+
+
+class AdminJobsQuery(BaseModel):
+    """GET /admin/jobs query (S2)."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    kind: Optional[str] = None
+    status: Optional[str] = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class AdminBulkBody(BaseModel):
+    """POST /admin/riot/changes/bulk body (S6)."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    ids: list[int] = Field(min_length=1, max_length=500)
+    action: Literal['approve', 'reject']
+
+
 class AdminCardQuery(BaseModel):
     """GET /admin/cards query (S6). Repeatable params accept one value or many."""
 

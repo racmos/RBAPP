@@ -74,3 +74,11 @@ job shows up in `GET /admin/jobs?kind=riot_sync`.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no product deviations. `decided_by` is the username (not the id) so the
+  review UI shows it without another lookup; `counts` are global (all statuses) for the tab badges;
+  ties order by id descending (newest first). Numbers compare as ints, NULL and empty text as equal
+  (same rule as F13-c). A scheduled run with nothing due never fetches (returns before `sync`).
+  F13-a overview tests were extended (frozen clock) for the new `riot` block instead of replaced.
