@@ -40,6 +40,7 @@ MATRIX = {
     'auth.register': 'P',
     'api_v1.health': 'P',                   # JSON API v1 (unit e)
     'api_v1.meta_config': 'P',
+    'api_v1.meta_game': 'P',                      # game metadata for the catalog UI (F2-b)
     'api_v1.auth_session': 'P',
     'api_v1.auth_captcha': 'P',
     'api_v1.auth_login': 'P',
