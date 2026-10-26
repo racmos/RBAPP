@@ -1,9 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { getAdminOverview } from '@/api/endpoints';
 import { Select } from '@/components/ui/Select';
 import { down, up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { ADMIN_NAV } from './adminNav';
+import { ADMIN_NAV, changesLabelKey, type AdminNavEntry } from './adminNav';
 import styles from './AdminLayout.module.css';
 
 /** Frame of the admin area (F13-a S6): side navigation on desktop, a select below it. */
@@ -13,6 +15,15 @@ export function AdminLayout() {
   const phone = useMediaQuery(down('md'));
   const location = useLocation();
   const navigate = useNavigate();
+  const overview = useQuery({
+    queryKey: ['admin', 'overview'],
+    queryFn: ({ signal }) => getAdminOverview(signal),
+  });
+  const pending = overview.data?.riot?.pending_changes ?? 0;
+  const labelOf = (entry: AdminNavEntry) =>
+    entry.id === 'changes' && entry.labelKey === 'nav.changes'
+      ? t(changesLabelKey(pending), pending ? { count: pending } : undefined)
+      : t(entry.labelKey);
 
   return (
     <div className={styles.layout}>
@@ -20,7 +31,7 @@ export function AdminLayout() {
         <nav aria-label={t('nav.label')} className={styles.nav}>
           {ADMIN_NAV.map((entry) => (
             <NavLink key={entry.id} to={entry.to} end className={styles.link}>
-              {t(entry.labelKey)}
+              {labelOf(entry)}
             </NavLink>
           ))}
         </nav>
@@ -35,7 +46,7 @@ export function AdminLayout() {
         >
           {ADMIN_NAV.map((entry) => (
             <option key={entry.id} value={entry.to}>
-              {t(entry.labelKey)}
+              {labelOf(entry)}
             </option>
           ))}
         </Select>

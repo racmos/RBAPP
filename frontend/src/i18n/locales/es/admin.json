@@ -5,7 +5,9 @@
     "overview": "Resumen",
     "sets": "Sets",
     "cards": "Cartas",
-    "riot": "Riot"
+    "riot": "Riot",
+    "changes": "Cambios",
+    "changesCount": "Cambios ({{count}})"
   },
   "mobileHint": "Más cómodo en un ordenador.",
   "overview": {
@@ -15,8 +17,14 @@
       "sets": "Sets",
       "setsWithoutDate": "Sets sin fecha de salida",
       "cards": "Cartas",
-      "cardsWithoutImage": "Cartas sin imagen"
-    }
+      "cardsWithoutImage": "Cartas sin imagen",
+      "pendingChanges": "Cambios pendientes",
+      "activeSets": "Sets en ventana activa",
+      "lastSync": "Última sincronización"
+    },
+    "riotTitle": "Riot",
+    "noSync": "Todavía no se ha sincronizado.",
+    "placeholderSets": "Sets creados por la sincronización (ponles nombre y fecha): {{codes}}"
   },
   "window": {
     "pre_release": "Antes de la salida",
@@ -138,5 +146,65 @@
       "success": "Terminado",
       "error": "Error"
     }
+  },
+  "changes": {
+    "title": "Cambios de Riot",
+    "subtitle": "Cambios detectados en la revisión mensual de la galería.",
+    "caption": "Cambios detectados",
+    "status": {
+      "pending": "Pendientes",
+      "approved": "Aprobados",
+      "rejected": "Rechazados",
+      "all": "Todos"
+    },
+    "columns": {
+      "card": "Carta",
+      "field": "Campo",
+      "change": "Cambio",
+      "detected": "Detectado",
+      "actions": "Acciones"
+    },
+    "field": {
+      "rbcar_name": "Nombre",
+      "rbcar_domain": "Dominio",
+      "rbcar_type": "Tipo",
+      "rbcar_tags": "Etiquetas",
+      "rbcar_energy": "Energía",
+      "rbcar_power": "Poder",
+      "rbcar_might": "Fuerza",
+      "rbcar_ability": "Habilidad",
+      "rbcar_rarity": "Rareza",
+      "rbcar_artist": "Artista",
+      "image_url": "URL de la imagen",
+      "image": "Fichero de imagen"
+    },
+    "allFields": "Todos los campos",
+    "search": "Buscar carta",
+    "old": "Antes:",
+    "new": "Ahora:",
+    "empty": "(vacío)",
+    "selectPage": "Seleccionar los pendientes de esta página",
+    "selected_one": "{{count}} cambio seleccionado",
+    "selected_other": "{{count}} cambios seleccionados",
+    "approveOne": "Aprobar el cambio de {{name}}",
+    "rejectOne": "Rechazar el cambio de {{name}}",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "approveSelected": "Aprobar seleccionados",
+    "rejectSelected": "Rechazar seleccionados",
+    "confirm": {
+      "approve_one": "¿Aplicar {{count}} cambio?",
+      "approve_other": "¿Aplicar {{count}} cambios?",
+      "reject_one": "¿Rechazar {{count}} cambio?",
+      "reject_other": "¿Rechazar {{count}} cambios?",
+      "body": "Los cambios que ya no coincidan con la carta se marcarán como desfasados y no se aplicarán.",
+      "approve_many": "¿Aplicar {{count}} cambios?",
+      "reject_many": "¿Rechazar {{count}} cambios?"
+    },
+    "bulkResult": "Aprobados: {{approved}} · Rechazados: {{rejected}} · Desfasados: {{stale}} · Ya decididos: {{decided}}",
+    "imageWarning": "Cambio aplicado, pero la imagen nueva no se pudo descargar.",
+    "emptyPending": "No hay cambios pendientes.",
+    "emptyOther": "No hay cambios con estos filtros.",
+    "selected_many": "{{count}} cambios seleccionados"
   }
 }

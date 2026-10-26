@@ -1,0 +1,41 @@
+@layer components {
+  .diff {
+    display: inline-flex;
+    gap: 8px;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  .stacked {
+    display: grid;
+    gap: 4px;
+  }
+
+  .side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .old {
+    text-decoration: line-through;
+  }
+
+  .prefix {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .newValue {
+    font-weight: 600;
+  }
+
+  .empty {
+    color: var(--muted);
+    font-style: italic;
+  }
+}

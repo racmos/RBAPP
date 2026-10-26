@@ -214,10 +214,14 @@ the run is skipped, nothing failed.
 
 Rollback: disable both timers (`sudo systemctl disable --now riftbound-riot-sync-am.timer
 riftbound-riot-sync-pm.timer`); downgrading the migrations (owner's go-ahead only) drops the change
-table and its history. downgrading the migrations (owner's go-ahead only) drops the change
 table and its history. The 0012 downgrade refuses while `riot_sync` jobs exist, so delete them first
 (`DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'riot_sync';`), then
 `venv/bin/flask db downgrade 0011_card_changes` (runs the 0012 and 0011 downgrades).
+
+How to review Riot changes (F13-g): after a monthly-window load, open `/riftbound/app/admin/riot/changes`
+as an admin. Each row shows the card, the field and the old vs new value; approve or reject it there
+(single or in bulk with the checkbox selection). A change whose card no longer matches is reported as
+stale and stays undecided. Approving an `image_url` change re-downloads the image over the card's file.
 
 ## Card images (from M-d)
 

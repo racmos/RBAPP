@@ -136,3 +136,11 @@ approve one, reject one, bulk-approve two.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no product deviations. The detail panel shows the last selected pending
+  change (checkbox-driven) instead of opening on row click, so keyboard users get the same content
+  without nested interactive elements; no separate modal on small screens, as the cards already carry
+  the full actions inline. `common:actions.delete` was added alongside save/cancel for the admin
+  confirm dialogs.

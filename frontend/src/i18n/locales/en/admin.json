@@ -5,7 +5,9 @@
     "overview": "Overview",
     "sets": "Sets",
     "cards": "Cards",
-    "riot": "Riot"
+    "riot": "Riot",
+    "changes": "Changes",
+    "changesCount": "Changes ({{count}})"
   },
   "mobileHint": "Easier on a computer.",
   "overview": {
@@ -15,8 +17,14 @@
       "sets": "Sets",
       "setsWithoutDate": "Sets without release date",
       "cards": "Cards",
-      "cardsWithoutImage": "Cards without image"
-    }
+      "cardsWithoutImage": "Cards without image",
+      "pendingChanges": "Pending changes",
+      "activeSets": "Sets in an active window",
+      "lastSync": "Last sync"
+    },
+    "riotTitle": "Riot",
+    "noSync": "No sync yet.",
+    "placeholderSets": "Sets created by the sync (give them a name and date): {{codes}}"
   },
   "window": {
     "pre_release": "Before release",
@@ -138,5 +146,62 @@
       "success": "Finished",
       "error": "Error"
     }
+  },
+  "changes": {
+    "title": "Riot changes",
+    "subtitle": "Changes found by the monthly gallery check.",
+    "caption": "Detected changes",
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "all": "All"
+    },
+    "columns": {
+      "card": "Card",
+      "field": "Field",
+      "change": "Change",
+      "detected": "Detected",
+      "actions": "Actions"
+    },
+    "field": {
+      "rbcar_name": "Name",
+      "rbcar_domain": "Domain",
+      "rbcar_type": "Type",
+      "rbcar_tags": "Tags",
+      "rbcar_energy": "Energy",
+      "rbcar_power": "Power",
+      "rbcar_might": "Might",
+      "rbcar_ability": "Ability",
+      "rbcar_rarity": "Rarity",
+      "rbcar_artist": "Artist",
+      "image_url": "Image URL",
+      "image": "Image file"
+    },
+    "allFields": "All fields",
+    "search": "Search card",
+    "old": "Before:",
+    "new": "Now:",
+    "empty": "(empty)",
+    "selectPage": "Select the pending ones on this page",
+    "selected_one": "{{count}} change selected",
+    "selected_other": "{{count}} changes selected",
+    "approveOne": "Approve the change of {{name}}",
+    "rejectOne": "Reject the change of {{name}}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveSelected": "Approve selected",
+    "rejectSelected": "Reject selected",
+    "confirm": {
+      "approve_one": "Apply {{count}} change?",
+      "approve_other": "Apply {{count}} changes?",
+      "reject_one": "Reject {{count}} change?",
+      "reject_other": "Reject {{count}} changes?",
+      "body": "Changes that no longer match the card are reported as stale and not applied."
+    },
+    "bulkResult": "Approved: {{approved}} · Rejected: {{rejected}} · Stale: {{stale}} · Already decided: {{decided}}",
+    "imageWarning": "Change applied, but the new image could not be downloaded.",
+    "emptyPending": "There are no pending changes.",
+    "emptyOther": "No changes match these filters."
   }
 }

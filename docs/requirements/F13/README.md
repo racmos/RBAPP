@@ -1,6 +1,6 @@
 # F13: Riot sync + catalog admin — phase spec
 
-Status: planned · Depends on: F4-a (job runner + timers), M-c (no exception text in legacy endpoints), M-d (card images in a data directory outside the code tree) · Source: `docs/knowledge/decisions-2026-10-22.md` ("Riot sync", "Catalog admin", "Job runner", "Bans"), F10 phase spec (units F10-a, F10-e, F10-f moved here), product.md "Data" · Phase IDs are identifiers, not order; the order lives in `docs/knowledge/roadmap.md`.
+Status: implemented in batch 1 (units F13-a…g; F13-e merged or in review, F13-f and F13-g PRs open in the same run) · Depends on: F4-a (job runner + timers), M-c (no exception text in legacy endpoints), M-d (card images in a data directory outside the code tree) · Source: `docs/knowledge/decisions-2026-10-22.md` ("Riot sync", "Catalog admin", "Job runner", "Bans"), F10 phase spec (units F10-a, F10-e, F10-f moved here), product.md "Data" · Phase IDs are identifiers, not order; the order lives in `docs/knowledge/roadmap.md`.
 
 ## Goal
 
