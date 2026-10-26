@@ -230,3 +230,11 @@ none
 
 none — the CONFIRM items of the draft (D-F2-1, D-F2-4, D-F2-5) are answered in
 `docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.
+
+## Log
+
+- L1 (implementer): migration numbered `0013_price_product_date_idx` (not `0008` as drafted) per BATCH-1 G3 (next free number at implementation time, chained to the current head `0012`).
+- L2 (implementer): `tests/test_pricing.py` re-created in its smallest form per the test policy (test guard): PRC-1/PRC-2 characterization table plus the new `resolve_price_with_source` table. `resolve_price` keeps its exact signature.
+- L3 (implementer): dev-database GROUP BY (D-F2-1, read-only, 2026-10-26, 1298 cards) confirmed the S1 tuples unchanged — no extra enum values exist; also confirmed zero NULL/empty domain/type/rarity values.
+- L4 (implementer): AC7 timing (dev database, 1298 cards): ~170-230 ms, host-variance-dominated (the 14k-row transfer alone varies 97-155 ms between runs); the paginated case (50 cards) runs in 15-23 ms with 2 SQL statements.
+- L5 (implementer): delivered as one PR per the Delivery section above (6 reviewable commits, ~1000 authored lines); not split into chained PRs because the unit's S#→test evidence map and the state.md row reference a single PR.

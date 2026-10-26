@@ -111,11 +111,12 @@ riftbound/
 │   │   ├── audit.py         # record() adds an audit row in the caller's transaction
 │   │   ├── bans.py          # name_key, ban_map, card_bans, ban_info, list_bans, add_ban, remove_ban
 │   │   ├── captcha.py       # none / altcha providers, replay store
-│   │   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
+│   │   ├── catalog.py       # card parsing, natural sort, foil eligibility, base printings, card_summary (F2-b)
+│   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
-│   │   ├── pricing.py       # resolve_price, latest_price_for_card
+│   │   ├── pricing.py       # resolve_price (+_with_source), latest_price_for_card, batched price_summaries (F2-b)
 │   │   ├── card_images.py   # images_root, card_image_path, card_image_url, import_legacy (CARD_IMAGES_DIR)
 │   │   ├── cardmarket_loader.py
 │   │   ├── cardmarket_matcher.py
@@ -123,7 +124,7 @@ riftbound/
 │   │   ├── riot_sync.py     # fetch_gallery, window_for, sync (per-set savepoints)
 │   │   └── scraper.py       # Landing feeds with a TTL cache
 │   ├── schemas/             # Pydantic
-│   │   ├── game_domain.py   # Game enumerations (GAME_MODES), the single source for schemas and CHECKs
+│   │   ├── game_domain.py   # Game enumerations (modes, domains, types, supertypes, rarities), the single source for schemas and CHECKs (F2-b; see docs/api.md)
 │   │   ├── prefs_domain.py  # Value domains of the interface preferences (schema + model CHECKs)
 │   │   ├── validators.py    # Request schemas
 │   │   └── validation.py    # @validate_json decorator
@@ -257,12 +258,13 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 ## API v1
 
-Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image`, `POST /admin/riot/sync`, `GET /admin/jobs`, `GET /admin/jobs/<id>`, `GET /admin/riot/changes`, `POST .../changes/<id>/approve|reject` and `POST .../changes/bulk` (see `docs/api.md`).
+Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`, `GET /meta/game`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image`, `POST /admin/riot/sync`, `GET /admin/jobs`, `GET /admin/jobs/<id>`, `GET /admin/riot/changes`, `POST .../changes/<id>/approve|reject` and `POST .../changes/bulk` (see `docs/api.md`).
 
 - `GET /auth/session` returns `{authenticated, csrf_token}` for anonymous callers and `{authenticated, user, prefs, csrf_token}` when signed in. `prefs` always has the five keys `lang`, `density`, `accent`, `bg_intensity`, `collection_view`; `null` means Auto (a user without a row gets five `null`s and no row is created).
 - `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
 - `GET`/`PATCH /me/prefs` (`app/api/v1/me.py`): a key that is absent stays unchanged, `null` resets it to Auto, an invalid value is a 400 and nothing is stored (all-or-nothing), unknown keys are ignored. Domains live in `app/schemas/prefs_domain.py` (shared by the schema and the model CHECKs). Logic is in `app/services/prefs.py`.
 - `GET /bans` (`app/api/v1/bans.py`, U) returns `{items: [{name, mode, since, reason, printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2` (any other value is a 400 `validation_error`). A ban covers every printing of a card name (`name_key` in `app/services/bans.py`); modes come from `app/schemas/game_domain.py`. Bans are managed with `flask bans list [--mode M]`, `flask bans add NAME --mode 1v1|2v2|all [--since YYYY-MM-DD] [--reason TEXT] [--force]` and `flask bans remove NAME --mode 1v1|2v2|all`. The legacy `rbcar_banned` column is not a source (F11 drops it).
+- `GET /meta/game` (`app/api/v1/meta.py`, P) returns a `GameMeta` (`docs/api.md` → "Data shapes"): modes, domains/types/supertypes/rarities (S1 tuples plus unknown data values), every set with `card_count`, price freshness (`updated_on` from `rbcm_price`, null when empty), `rules: {}` reserved for F15. Anonymous 200, `Cache-Control: no-cache`. Card objects use `CardSummary` from `app/services/catalog.py::card_summary` (batched prices via `price_summaries`, at most two SQL statements).
 
 ```json
 {"success": true, "data": {}, "meta": {}}

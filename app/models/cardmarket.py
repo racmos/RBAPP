@@ -21,7 +21,10 @@ class RbcmProduct(db.Model):
 class RbcmPrice(db.Model):
     """Daily price snapshots from Cardmarket."""
     __tablename__ = 'rbcm_price'
-    __table_args__ = {"schema": "riftbound"}
+    __table_args__ = (
+        db.Index('idx_rbcm_price_product_date', 'rbprc_id_product', 'rbprc_date'),
+        {"schema": "riftbound"},
+    )
 
     rbprc_date = db.Column(db.Text, primary_key=True)            # YYYYMMDD
     rbprc_id_product = db.Column(db.Integer, primary_key=True)

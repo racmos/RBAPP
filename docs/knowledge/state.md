@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-27 (F13-g in review (#44), batch 1 unit 8; F13-f in review (#43)).
+Last update: 2026-10-27 (F2-b in review, batch 1 unit 9; F13-g in review (#44)).
 
 ## Phases
 
@@ -15,7 +15,7 @@ Last update: 2026-10-27 (F13-g in review (#44), batch 1 unit 8; F13-f in review 
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
 | M-c Hygiene | **Done** (#31) | `docs/requirements/M/M-c-hygiene.md`. |
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
-| F2 Catalog | In progress — F2-a done (#34); b…i and k in batch 1 (units 9-17), after F13 | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
+| F2 Catalog | In progress — F2-a done (#34); F2-b in review, c…i and k in batch 1 (units 10-17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
@@ -76,6 +76,7 @@ that file and in its `verify-report.md`.
 | M-d on the server (before or with the deploy that pulls it): **before pulling**, copy `<checkout>/app/static/images/cards/.` into the data directory (outside the checkout, owned by the service user); set `CARD_IMAGES_DIR` in `.env`, deploy, restart, run `flask images import-legacy` (copies 0 when the copy was done); live check: a Jinja catalog page loads its images from `/riftbound/media/cards/…` and `curl -sI` of one image answers 200 with `Cache-Control: public, max-age=604800` (`ops-runbook.md` → "Card images") | **Pending (owner).** |
 | F4-b on the server (after merge): backup, `flask db upgrade` (`0008_jobs_daily_prices`) + `flask db check`, restart, install and enable `riftbound-daily.timer` and `riftbound-daily-retry.timer`, run `flask jobs enqueue daily_prices` once and read the result a few minutes later (`ops-runbook.md` → "Scheduled jobs" → "Daily Cardmarket load") | **Pending (owner).** |
 | Rollback rehearsal on dev (6.34) | Not run on dev on purpose (it would uninstall the worker on the owner's devices); verified locally in Chromium. |
+| F2-b on the server (after merge): backup, `flask db upgrade` (`0013_price_product_date_idx`) + `flask db check`, restart; anonymous `GET /riftbound/api/v1/meta/game` answers 200 with `Cache-Control: no-cache` and a non-null `price.updated_on` | **Pending (owner).** |
 
 ## Follow-ups
 
@@ -109,6 +110,7 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
+| F2-b | in review | `feat/f2b-game-meta-card-dto` / TBD | Game meta + card DTO (S1-S10): `game_domain` enums confirmed against the dev DB, `catalog.py` parsing/`card_summary`, `resolve_price_with_source` + batched `price_summaries` (2 SQL statements; 15-23 ms for 50 cards, ~170-230 ms for all 1298 dev cards), migration `0013_price_product_date_idx`, public `GET /meta/game` (P, `no-cache`), `docs/api.md` "API v1 reference" + "Data shapes". pytest 629 → 688. Next unit: **F2-c**. |
 | F13-g | in review (#44) | `feat/f13g-change-review-ui` / #44 | Riot change review UI (S1-S9): ValueDiff, filters in URL, bulk select+confirm, detail panel ≥1600 px, cards <860 px, overview Riot band, admin nav count, Jinja hand-off notice. Vitest 30 → 42. Next unit: **F2-b**. |
 | F13-f | in review (#43) | `feat/f13f-catalog-admin-ui` / #43 | Admin sets/cards/Riot screens: tables/cards lists, drawer + bottom-sheet editors, inline panel ≥1600 px, image upload, JobStatus polling, validation + translated errors, axe clean. No backend change. Vitest 12 → 30. Next unit: **F13-g**. |
 | F13-e | in review (#42) | `feat/f13e-riot-sync-api` / #42 | Riot sync/read API (S1-S7): queue `riot_sync` (202/409), jobs list+detail, changes list/approve/reject/bulk (per-id transactions, stale/decided guards), overview `riot` block; new codes `job_running`/`change_stale`/`change_decided`; `docs/api.md` extended. No migration. Next unit: **F13-f**. |

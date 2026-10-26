@@ -7,3 +7,20 @@ rule values.
 """
 # Game modes, in display order. Bans are per mode (product.md → "Game rules").
 GAME_MODES = ('1v1', '2v2')
+
+# Card domains, in display order. Read from the dev database on 2026-10-26
+# (GROUP BY rbcar_domain): every value below exists there, so the tuple is
+# unchanged; multi-word rows ("Fury Chaos") are split by parse_domains.
+DOMAINS = ('Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless')
+
+# Card types: the last word of `rbcar_type`, in display order. Read from the
+# dev database on 2026-10-26 (GROUP BY rbcar_type): every value below exists
+# there ("Champion Unit" → Unit, "Token Battlefield" → Battlefield, …).
+CARD_TYPES = ('Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield')
+
+# Leading words of `rbcar_type` that name a supertype.
+SUPERTYPES = ('Champion', 'Signature', 'Token', 'Basic')
+
+# Card rarities, lowest first. Read from the dev database on 2026-10-26
+# (GROUP BY rbcar_rarity): every value below exists there.
+RARITIES = ('Common', 'Uncommon', 'Rare', 'Epic', 'Showcase')
