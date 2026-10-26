@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-26 (F13-e in review (#<PR>), batch 1 unit 6; F13-d in review (#41)).
+Last update: 2026-10-26 (F13-e in review (#42), batch 1 unit 6; F13-d in review (#41)).
 
 ## Phases
 
@@ -17,7 +17,7 @@ Last update: 2026-10-26 (F13-e in review (#<PR>), batch 1 unit 6; F13-d in revie
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
 | F2 Catalog | In progress — F2-a done (#34); b…i and k in batch 1 (units 9-17), after F13 | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
-| F13 Riot sync + catalog admin | In progress — F13-e in review (#<PR>), batch 1 unit 6 | `docs/requirements/F13/F13-{a..g}-*.md`. |
+| F13 Riot sync + catalog admin | In progress — F13-e in review (#42), batch 1 unit 6 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
 | F14 Products | Planned — batch 1, units 27-32 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
@@ -109,7 +109,7 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| F13-e | in review (#<PR>) | `feat/f13e-riot-sync-api` / #<PR> | Riot sync/read API (S1-S7): queue `riot_sync` (202/409), jobs list+detail, changes list/approve/reject/bulk (per-id transactions, stale/decided guards), overview `riot` block; new codes `job_running`/`change_stale`/`change_decided`; `docs/api.md` extended. No migration. Next unit: **F13-f**. |
+| F13-e | in review (#42) | `feat/f13e-riot-sync-api` / #42 | Riot sync/read API (S1-S7): queue `riot_sync` (202/409), jobs list+detail, changes list/approve/reject/bulk (per-id transactions, stale/decided guards), overview `riot` block; new codes `job_running`/`change_stale`/`change_decided`; `docs/api.md` extended. No migration. Next unit: **F13-f**. |
 | F13-d | in review (#41) | `feat/f13d-riot-sync-schedule` / #41 | `due_sets`/`next_run` (Madrid aware, DST tested), scheduled `riot_sync` requires `slot` (`nothing due` without fetch), `am`/`pm` timers with `SuccessExitStatus=1`, `window` + `next_run_at` on `GET /admin/sets`. No migration. Next unit: **F13-e**. |
 | F13-c | in review (#40) | `feat/f13c-riot-sync-engine` / #40 | Sync engine `app/services/riot_sync.py`: fetch/parse split, window calculator (Madrid date), per-set savepoints, auto-apply in active windows else `rbcardchanges` proposals (migration `0011_card_changes`), `riot_sync` job kind (migration `0012_jobs_riot_sync`), legacy Jinja button queues the job. The old scraper write path is removed. pytest 522 → 570. Next unit: **F13-d**. |
 | F13-b | in review (#39) | `feat/f13b-catalog-admin-api` / #39 | Admin sets/cards API (S2-S10): list/create/patch/delete with validation, in-use guards, image upload by magic bytes, every write audited in the same transaction; new codes `already_exists`/`set_in_use`/`card_in_use`; `docs/api.md` created. No migration. |
