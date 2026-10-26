@@ -45,6 +45,20 @@
     padding-bottom: var(--safe-bottom);
   }
 
+  /* Right drawer for editors on desktop (F13-f): 420 px, full height. */
+  .side {
+    width: min(420px, calc(100vw - 2 * var(--pad)));
+    max-width: none;
+    max-height: none;
+    margin: 0 0 0 auto;
+  }
+
+  .side .surface {
+    min-height: calc(100vh - 2 * var(--pad));
+    min-height: calc(100dvh - 2 * var(--pad));
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
   .head {
     display: flex;
     align-items: center;

@@ -2,7 +2,10 @@
   "title": "Administración",
   "nav": {
     "label": "Secciones de administración",
-    "overview": "Resumen"
+    "overview": "Resumen",
+    "sets": "Sets",
+    "cards": "Cartas",
+    "riot": "Riot"
   },
   "mobileHint": "Más cómodo en un ordenador.",
   "overview": {
@@ -13,6 +16,127 @@
       "setsWithoutDate": "Sets sin fecha de salida",
       "cards": "Cartas",
       "cardsWithoutImage": "Cartas sin imagen"
+    }
+  },
+  "window": {
+    "pre_release": "Antes de la salida",
+    "post_release": "Recién salido",
+    "monthly": "Mensual",
+    "none": "Sin empezar"
+  },
+  "sets": {
+    "title": "Sets",
+    "subtitle": "Alta, fecha de salida y estado de sincronización.",
+    "caption": "Sets del catálogo",
+    "new": "Nuevo set",
+    "edit": "Editar {{id}}",
+    "delete": "Borrar {{id}}",
+    "cardsValue": "{{count}} / {{declared}}",
+    "columns": {
+      "id": "Código",
+      "name": "Nombre",
+      "releaseDate": "Salida",
+      "cards": "Cartas",
+      "window": "Ventana",
+      "nextRun": "Próxima sincronización",
+      "actions": "Acciones"
+    },
+    "fields": {
+      "id": "Código",
+      "name": "Nombre",
+      "releaseDate": "Fecha de salida",
+      "declaredCount": "Cartas anunciadas"
+    },
+    "idLocked": "El código no se puede cambiar porque el set ya tiene cartas.",
+    "windowHelp": "La sincronización empieza 21 días antes de la salida (08:00 y 14:00), sigue una vez al día durante 14 días después y luego una vez al mes.",
+    "saved": "Set guardado.",
+    "pickOne": "Elige un set para editarlo.",
+    "empty": "Todavía no hay sets.",
+    "confirmDelete": {
+      "title": "¿Borrar el set {{id}}?",
+      "body": "Solo se puede borrar un set sin cartas. Esta acción no se puede deshacer."
+    }
+  },
+  "cards": {
+    "title": "Cartas",
+    "subtitle": "Datos e imágenes del catálogo.",
+    "caption": "Cartas del catálogo",
+    "new": "Nueva carta",
+    "empty": "Ninguna carta coincide con los filtros.",
+    "noImage": "Sin imagen",
+    "filters": {
+      "allSets": "Todos los sets",
+      "allRarities": "Todas las rarezas",
+      "type": "Tipo",
+      "search": "Buscar por nombre o número",
+      "missingImage": "Solo sin imagen",
+      "pageSize": "Por página"
+    },
+    "columns": {
+      "image": "Imagen",
+      "set": "Set",
+      "number": "Nº",
+      "name": "Nombre",
+      "type": "Tipo",
+      "rarity": "Rareza"
+    },
+    "fields": {
+      "set_id": "Set",
+      "card_id": "Número",
+      "name": "Nombre",
+      "domain": "Dominio",
+      "type": "Tipo",
+      "tags": "Etiquetas",
+      "energy": "Energía",
+      "power": "Poder",
+      "might": "Fuerza",
+      "ability": "Habilidad",
+      "rarity": "Rareza",
+      "artist": "Artista",
+      "image_url": "URL de la imagen en la galería"
+    },
+    "hints": {
+      "domain": "Como en la galería, separados por espacios: Fury Chaos",
+      "type": "Como en la galería: Champion Unit",
+      "tags": "Separadas por comas."
+    },
+    "keyLocked": "El set y el número no se pueden cambiar.",
+    "saved": "Carta guardada.",
+    "image": {
+      "upload": "Subir imagen",
+      "hint": "PNG, JPG o WebP de hasta 2 MB.",
+      "uploaded": "Imagen actualizada."
+    },
+    "confirmDelete": {
+      "title": "¿Borrar {{name}}?",
+      "body": "Solo se puede borrar una carta que no esté en colecciones ni mazos."
+    },
+    "edit": "Editar {{name}}",
+    "delete": "Borrar {{name}}"
+  },
+  "riot": {
+    "title": "Sincronización con Riot",
+    "subtitle": "La galería oficial se consulta según la fecha de salida de cada set.",
+    "activeTitle": "Sets en ventana activa",
+    "noActive": "Ningún set está cerca de su salida.",
+    "pickSets": "Sets a sincronizar",
+    "allSetsHint": "Sin selección se sincronizan todos los sets.",
+    "syncNow": "Sincronizar ahora",
+    "summary": "{{set}}: {{inserted}} nuevas · {{applied}} aplicadas · {{proposed}} propuestas · {{unchanged}} sin cambios",
+    "reviewChanges": "Revisar cambios",
+    "recentTitle": "Últimas ejecuciones",
+    "recentSummary": "{{sets}} sets · {{inserted}} nuevas · {{proposed}} propuestas",
+    "trigger": {
+      "schedule": "Programada",
+      "manual": "Manual"
+    }
+  },
+  "job": {
+    "status": {
+      "queued": "En cola",
+      "running": "En curso",
+      "success": "Terminado",
+      "error": "Error"
     }
   }
 }

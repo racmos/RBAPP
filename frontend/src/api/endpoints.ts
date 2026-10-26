@@ -34,9 +34,145 @@ export const getCaptcha = (signal?: AbortSignal) =>
 export const getMetaConfig = (signal?: AbortSignal) =>
   request<MetaConfig>('/meta/config', { signal });
 
-/** `GET /admin/overview` (F13-a): catalog counters for the admin overview. */
+/** F13-b admin API (F13-f S1). Every mutation invalidates `['admin']`. */
+export type AdminSet = {
+  id: string;
+  name: string;
+  release_date: string | null;
+  card_count: number;
+  declared_count: number | null;
+  window: string;
+  next_run_at: string | null;
+};
+
+export type AdminCard = {
+  set_id: string;
+  card_id: string;
+  key: string;
+  name: string;
+  domain: string | null;
+  type: string | null;
+  tags: string | null;
+  energy: number | null;
+  power: number | null;
+  might: number | null;
+  ability: string | null;
+  rarity: string | null;
+  artist: string | null;
+  image: string | null;
+  image_url: string | null;
+  image_src: string | null;
+};
+
+export const listAdminSets = (signal?: AbortSignal) =>
+  request<AdminSet[]>('/admin/sets', { signal });
+
+export const createAdminSet = (body: {
+  id: string;
+  name: string;
+  release_date: string;
+  declared_count?: number | null;
+}) => request<AdminSet>('/admin/sets', { method: 'POST', body });
+
+export const patchAdminSet = (
+  id: string,
+  body: {
+    id?: string;
+    name?: string;
+    release_date?: string | null;
+    declared_count?: number | null;
+  },
+) => request<AdminSet>(`/admin/sets/${id}`, { method: 'PATCH', body });
+
+export const deleteAdminSet = (id: string) =>
+  request<{ deleted: string }>(`/admin/sets/${id}`, { method: 'DELETE' });
+
+export type AdminCardList = {
+  items: AdminCard[];
+  meta: { page: number; per_page: number; total: number; pages: number };
+};
+
+export const listAdminCards = (params: Record<string, string | string[]>, signal?: AbortSignal) => {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    for (const one of Array.isArray(value) ? value : [value]) query.append(key, one);
+  }
+  const suffix = query.toString();
+  return request<AdminCardList>(`/admin/cards${suffix ? `?${suffix}` : ''}`, { signal });
+};
+
+export const createAdminCard = (body: Record<string, unknown>) =>
+  request<AdminCard>('/admin/cards', { method: 'POST', body });
+
+export const patchAdminCard = (setId: string, cardId: string, body: Record<string, unknown>) =>
+  request<AdminCard>(`/admin/cards/${setId}/${cardId}`, { method: 'PATCH', body });
+
+export const deleteAdminCard = (setId: string, cardId: string) =>
+  request<{ deleted: string }>(`/admin/cards/${setId}/${cardId}`, { method: 'DELETE' });
+
+export const uploadAdminCardImage = (setId: string, cardId: string, file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  return request<AdminCard>(`/admin/cards/${setId}/${cardId}/image`, {
+    method: 'POST',
+    body: form,
+  });
+};
+
+export type AdminJob = {
+  id: number;
+  kind: string;
+  status: string;
+  requested_by: string | null;
+  requested_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  message: string | null;
+};
+
+export const listAdminJobs = (
+  params: Record<string, string | number> = {},
+  signal?: AbortSignal,
+) => {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries({ limit: 100, ...params })) {
+    query.set(key, String(value));
+  }
+  return request<{ items: AdminJob[] }>(`/admin/jobs?${query.toString()}`, { signal });
+};
+
+export const getAdminJob = (id: number, signal?: AbortSignal) =>
+  request<AdminJob & { params: Record<string, unknown>; result: unknown }>(`/admin/jobs/${id}`, {
+    signal,
+  });
+
+export const startRiotSync = (sets: string[]) =>
+  request<{ job_id: number }>('/admin/riot/sync', {
+    method: 'POST',
+    body: sets.length > 0 ? { sets } : {},
+  });
+
+/** `GET /admin/overview` (F13-a, extended in F13-e with the `riot` block). */
+export type AdminRiotActive = {
+  id: string;
+  name: string;
+  window: string;
+  next_run_at: string | null;
+};
+export type AdminRiot = {
+  pending_changes: number;
+  active_sets: AdminRiotActive[];
+  last_sync: {
+    job_id: number;
+    status: string;
+    finished_at: string | null;
+    trigger: string;
+  } | null;
+  placeholder_sets: string[];
+};
+
 export const getAdminOverview = (signal?: AbortSignal) =>
-  request<{ catalog: AdminCatalog }>('/admin/overview', { signal });
+  request<{ catalog: AdminCatalog; riot: AdminRiot }>('/admin/overview', { signal });
 
 /** `PATCH /me/prefs`: absent fields stay, `null` resets to Auto (PREF-4). Returns the full prefs. */
 export const patchPrefs = async (changes: Partial<Prefs>): Promise<Prefs> =>

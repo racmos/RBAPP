@@ -31,6 +31,7 @@ Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. 
 | F13-c | `F13/F13-c-riot-sync-engine.md` | Implemented, in review (#40). |
 | F13-d | `F13/F13-d-riot-sync-schedule.md` | Implemented, in review (#41). |
 | F13-e | `F13/F13-e-riot-sync-api.md` | Implemented, in review (#42). |
+| F13-f | `F13/F13-f-catalog-admin-ui.md` | Implemented, in review (#43). |
 | F13 | `F13/README.md` | Phase spec only (Riot sync + catalog admin; added by M-b). |
 | F14 | `F14/README.md` | Phase spec only (Products; added by M-b). |
 | F15 | `F15/README.md` | Phase spec outline (Rules app; added by M-b; specified when the phase starts). |

@@ -21,7 +21,9 @@ function adminApi() {
 async function tileValue(label: string): Promise<string> {
   let value = '';
   await waitFor(() => {
-    const term = screen.queryAllByText(label).find((element) => element.closest('main') !== null);
+    const term = screen
+      .queryAllByText(label)
+      .find((element) => element.tagName !== 'A' && element.closest('main') !== null);
     expect(term).toBeDefined();
     value = ((term as HTMLElement).parentElement?.textContent ?? '').replace(label, '');
   }, LONG);
