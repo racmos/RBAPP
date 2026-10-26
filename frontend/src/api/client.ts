@@ -29,7 +29,9 @@ async function send(
   { method = 'GET', body, signal }: RequestOptions,
 ): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  // FormData sets its own multipart boundary; a JSON content type would break it (F13-f).
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
   const token = getCsrfToken();
   if (UNSAFE.has(method) && token) headers['X-CSRFToken'] = token;
 
@@ -47,7 +49,7 @@ async function send(
     return await fetch(`${API_BASE}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
       credentials: 'same-origin',
       signal: controller.signal,
     });

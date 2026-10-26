@@ -20,7 +20,7 @@ export type ModalProps = {
   children: ReactNode;
   /** Close on a backdrop click (default). A ConfirmDialog turns it off. */
   dismissOnBackdrop?: boolean;
-  variant?: 'modal' | 'sheet';
+  variant?: 'modal' | 'sheet' | 'side';
   /** Keep the heading for assistive technology only. */
   hideTitle?: boolean;
   /** Leave out the corner close button (the content has its own buttons). */

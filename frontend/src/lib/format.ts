@@ -16,3 +16,10 @@ export const formatDate = (value: Date | string, lang: Lang): string =>
   new Intl.DateTimeFormat(localeFor(lang), { dateStyle: 'medium', timeZone: 'UTC' }).format(
     new Date(value),
   );
+
+/** Medium date and time (for example "5 oct 2026, 8:00"). The value carries its own offset. */
+export const formatDateTime = (value: Date | string, lang: Lang): string =>
+  new Intl.DateTimeFormat(localeFor(lang), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));

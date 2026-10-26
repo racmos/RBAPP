@@ -2,7 +2,10 @@
   "title": "Administration",
   "nav": {
     "label": "Administration sections",
-    "overview": "Overview"
+    "overview": "Overview",
+    "sets": "Sets",
+    "cards": "Cards",
+    "riot": "Riot"
   },
   "mobileHint": "Easier on a computer.",
   "overview": {
@@ -13,6 +16,127 @@
       "setsWithoutDate": "Sets without release date",
       "cards": "Cards",
       "cardsWithoutImage": "Cards without image"
+    }
+  },
+  "window": {
+    "pre_release": "Before release",
+    "post_release": "Just released",
+    "monthly": "Monthly",
+    "none": "Not started"
+  },
+  "sets": {
+    "title": "Sets",
+    "subtitle": "Creation, release date and sync status.",
+    "caption": "Catalog sets",
+    "new": "New set",
+    "edit": "Edit {{id}}",
+    "delete": "Delete {{id}}",
+    "cardsValue": "{{count}} / {{declared}}",
+    "columns": {
+      "id": "Code",
+      "name": "Name",
+      "releaseDate": "Release",
+      "cards": "Cards",
+      "window": "Window",
+      "nextRun": "Next sync",
+      "actions": "Actions"
+    },
+    "fields": {
+      "id": "Code",
+      "name": "Name",
+      "releaseDate": "Release date",
+      "declaredCount": "Announced cards"
+    },
+    "idLocked": "The code cannot change because the set already has cards.",
+    "windowHelp": "Sync starts 21 days before release (08:00 and 14:00), runs once a day for 14 days after it and then once a month.",
+    "saved": "Set saved.",
+    "pickOne": "Pick a set to edit it.",
+    "empty": "There are no sets yet.",
+    "confirmDelete": {
+      "title": "Delete set {{id}}?",
+      "body": "Only a set without cards can be deleted. This cannot be undone."
+    }
+  },
+  "cards": {
+    "title": "Cards",
+    "subtitle": "Catalog data and images.",
+    "caption": "Catalog cards",
+    "new": "New card",
+    "empty": "No card matches the filters.",
+    "noImage": "No image",
+    "filters": {
+      "allSets": "All sets",
+      "allRarities": "All rarities",
+      "type": "Type",
+      "search": "Search by name or number",
+      "missingImage": "Missing image only",
+      "pageSize": "Per page"
+    },
+    "columns": {
+      "image": "Image",
+      "set": "Set",
+      "number": "No.",
+      "name": "Name",
+      "type": "Type",
+      "rarity": "Rarity"
+    },
+    "fields": {
+      "set_id": "Set",
+      "card_id": "Number",
+      "name": "Name",
+      "domain": "Domain",
+      "type": "Type",
+      "tags": "Tags",
+      "energy": "Energy",
+      "power": "Power",
+      "might": "Might",
+      "ability": "Ability",
+      "rarity": "Rarity",
+      "artist": "Artist",
+      "image_url": "Gallery image URL"
+    },
+    "hints": {
+      "domain": "As in the gallery, separated by spaces: Fury Chaos",
+      "type": "As in the gallery: Champion Unit",
+      "tags": "Separated by commas."
+    },
+    "keyLocked": "The set and number cannot change.",
+    "saved": "Card saved.",
+    "image": {
+      "upload": "Upload image",
+      "hint": "PNG, JPG or WebP up to 2 MB.",
+      "uploaded": "Image updated."
+    },
+    "confirmDelete": {
+      "title": "Delete {{name}}?",
+      "body": "Only a card that is not in collections or decks can be deleted."
+    },
+    "edit": "Edit {{name}}",
+    "delete": "Delete {{name}}"
+  },
+  "riot": {
+    "title": "Riot sync",
+    "subtitle": "The official gallery is read according to each set's release date.",
+    "activeTitle": "Sets in an active window",
+    "noActive": "No set is close to its release.",
+    "pickSets": "Sets to sync",
+    "allSetsHint": "With no selection every set is synced.",
+    "syncNow": "Sync now",
+    "summary": "{{set}}: {{inserted}} new · {{applied}} applied · {{proposed}} proposed · {{unchanged}} unchanged",
+    "reviewChanges": "Review changes",
+    "recentTitle": "Recent runs",
+    "recentSummary": "{{sets}} sets · {{inserted}} new · {{proposed}} proposed",
+    "trigger": {
+      "schedule": "Scheduled",
+      "manual": "Manual"
+    }
+  },
+  "job": {
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "success": "Finished",
+      "error": "Error"
     }
   }
 }

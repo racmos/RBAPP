@@ -4,7 +4,10 @@
     "close": "Cerrar",
     "retry": "Reintentar",
     "reload": "Recargar",
-    "back": "Volver"
+    "back": "Volver",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Borrar"
   },
   "password": {
     "show": "Mostrar contraseña",
@@ -35,5 +38,11 @@
   "offline": {
     "banner": "Sin conexión. Puedes seguir consultando la app, pero los cambios no se guardarán.",
     "editDisabled": "Necesitas conexión para hacer cambios."
+  },
+  "pagination": {
+    "label": "Paginación",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "page": "Página {{page}} de {{pages}}"
   }
 }

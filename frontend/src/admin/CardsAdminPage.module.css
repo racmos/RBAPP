@@ -1,0 +1,137 @@
+@layer components {
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: var(--gap);
+  }
+
+  .filterField {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+  }
+
+  .table tbody tr {
+    cursor: pointer;
+  }
+
+  .table tbody tr:hover {
+    background: var(--panel-2);
+  }
+
+  .thumb {
+    width: 40px;
+    height: auto;
+    display: block;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: var(--gap);
+    flex-wrap: wrap;
+  }
+
+  .rows {
+    display: grid;
+    gap: 12px;
+  }
+
+  .row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 12px;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .rowTitle {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  .rowMeta {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .layout {
+    display: grid;
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  @media (min-width: 1600px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr) 420px;
+    }
+  }
+
+  .editorPanel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: var(--pad);
+  }
+
+  .form {
+    display: grid;
+    gap: var(--gap);
+  }
+
+  .formError {
+    margin: 0;
+    color: var(--red-text);
+    font-size: 14px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .preview {
+    width: 80px;
+    height: auto;
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
