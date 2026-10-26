@@ -28,6 +28,47 @@ Failure:
 - Unexpected failures log the traceback and return a clear message; only a signed-in
   admin sees the exception text, under `detail` (`app/errors.py::unexpected_failure`).
 
+## API v1 reference
+
+Public endpoints under `/riftbound/api/v1/` (auth and preferences live in
+`AGENTS.md` → "API v1"). Later units extend this reference.
+
+### GET /meta/game
+
+`app/api/v1/meta.py` (`api_v1.meta_game`, P): game metadata for the catalog UI.
+Anonymous and signed-in callers get 200; `Cache-Control: no-cache`. Response `data`
+is a `GameMeta` (see "Data shapes"): `modes` from `GAME_MODES`; `domains`, `types`,
+`supertypes`, `rarities` are the S1 tuples of `app/schemas/game_domain.py` followed by
+any other distinct non-empty value found in the data (sorted case-insensitively);
+`sets` are every `rbset` row ordered by release date (NULLs last), then id, each with
+`{id, name, released_on (ISO|null), card_count}`; `price` is
+`{provider: "cardmarket", currency: "EUR", updated_on (ISO|null)}` where `updated_on`
+is the newest `rbcm_price` date; `rules` is `{}` (reserved for F15). No new error code.
+
+### GET /bans
+
+`app/api/v1/bans.py` (U): `{items: [{name, mode, since, reason,
+printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2`
+(any other value is a 400 `validation_error`).
+
+## Data shapes
+
+Additive changes only: new keys may be appended, existing keys are never renamed,
+retyped or removed without a new unit.
+
+`GameMeta` = the `data` object of `GET /meta/game`:
+`{modes: [str], domains: [str], types: [str], supertypes: [str], rarities: [str],
+sets: [{id, name, released_on (ISO|null), card_count}],
+price: {provider, currency, updated_on (ISO|null)}, rules: {}}`.
+
+`CardSummary` = the object `app/services/catalog.py::card_summary` builds for one
+card (F2-c/F2-d return it): `{set_id, card_id, key ("<set>-<id>"), number (natural
+card number|null), name, domains: [str], type, supertype|null, type_raw, tags: [str],
+energy|power|might (int|null), rarity, image_src, image_thumb_src (null until F2-l),
+foilable, is_base, price: {market, market_source, market_foil, market_foil_source,
+trend_7d_pct, trend_30d_pct, as_of}|null, bans: {<mode>: bool},
+owned: {total, foil}}` (`market_source` is the `rbprc_*` column the value came from).
+
 ## Admin API
 
 `app/api/admin/` (`api_admin`, `/riftbound/api/v1/admin/*`) is admin-only:
