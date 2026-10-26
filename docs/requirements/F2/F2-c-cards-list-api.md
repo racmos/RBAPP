@@ -206,3 +206,8 @@ none
 
 none — the CONFIRM items of the draft (D-F2-3, D-F2-13) are answered in
 `docs/knowledge/decisions-2026-10-25.md`; batch rules in `docs/requirements/BATCH-1.md` (G1-G12) apply.
+
+## Log
+
+- L1 (implementer): S1 empty-drop changes `GET /bans?mode=` from 400 to 200 (absent → `None` → all bans). Only the `''` case of `test_api_bans.py::test_invalid_mode_is_a_400` updated; `3v3`, `all`, `1V1`, `' 1v1'` still 400 with the unchanged body.
+- L2 (implementer): slice boundary — slice 1 (`078c7d2`: `validate_query` + bans) and slice 2 (`06cc52b`: `CardListQuery`, filters, facets, endpoint) ship in the single unit PR per the Delivery section; facet key order is preserved on the wire with `sort_keys=False` (Flask `jsonify` sorts keys alphabetically).
