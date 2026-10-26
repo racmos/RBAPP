@@ -1,10 +1,10 @@
 """Catalog list query: filters, facets, sort and pagination (F2-c S2-S9)."""
 import math
 
-from sqlalchemy import func
+from sqlalchemy import case, func, tuple_
 
 from app import db
-from app.models import RbCard, RbSet, RbcmPrice
+from app.models import RbCard, RbCollection, RbSet, RbcmPrice
 from app.schemas.game_domain import CARD_TYPES, DOMAINS, RARITIES, SUPERTYPES
 from app.schemas.validators import CardListQuery
 from app.services import bans as bans_service
@@ -203,8 +203,9 @@ def _apply_sort(parsed: list[dict], sort: str, direction: str, prices: dict) -> 
         with_value.append((p, v))
     nulls = [p for p, v in with_value if v is None]
     vals = [(p, v) for p, v in with_value if v is not None]
-    vals.sort(key=lambda pv: (pv[1], pv[0]['natural_key']),
-              reverse=(direction == 'desc'))
+    # Stable sort: tiebreak by natural_key ascending first, then the main key.
+    vals.sort(key=lambda pv: pv[0]['natural_key'])
+    vals.sort(key=lambda pv: pv[1], reverse=(direction == 'desc'))
     nulls.sort(key=lambda p: p['natural_key'])
     return [p for p, _ in vals] + nulls
 
@@ -284,6 +285,31 @@ def _facet_query(query: CardListQuery, facet: str) -> CardListQuery:
     return CardListQuery(**data)
 
 
+def _owned_counts(parsed: list[dict], username: str | None) -> dict:
+    """One batched query summing the current user's quantities per printing."""
+    if not parsed or not username:
+        return {}
+    keys = [(p['card'].rbcar_rbset_id, p['card'].rbcar_id) for p in parsed]
+    rows = db.session.query(
+        RbCollection.rbcol_rbset_id,
+        RbCollection.rbcol_rbcar_id,
+        func.sum(RbCollection.rbcol_quantity).label('total'),
+        func.sum(case((RbCollection.rbcol_foil == 'S',
+                       RbCollection.rbcol_quantity), else_=0)).label('foil'),
+    ).filter(
+        RbCollection.rbcol_user == username,
+        tuple_(RbCollection.rbcol_rbset_id,
+               RbCollection.rbcol_rbcar_id).in_(keys),
+    ).group_by(
+        RbCollection.rbcol_rbset_id,
+        RbCollection.rbcol_rbcar_id,
+    ).all()
+    return {
+        (set_id, card_id): {'total': int(total or 0), 'foil': int(foil or 0)}
+        for set_id, card_id, total, foil in rows
+    }
+
+
 def _compute_facets(parsed: list[dict], query: CardListQuery, prices: dict,
                     bans: dict, base_keys: set, owned_counts: dict,
                     set_rank: dict[str, int]) -> dict:
@@ -306,8 +332,7 @@ def search_cards(query: CardListQuery, username: str | None = None) -> dict:
 
     parsed = [_parse_card(card, set_rank) for card in all_cards]
 
-    # Placeholder until slice 3 wires in collection counts per user.
-    owned_counts: dict[tuple[str, str], dict] = {}
+    owned_counts = _owned_counts(parsed, username)
     for p in parsed:
         p['owned'] = owned_counts.get(
             (p['card'].rbcar_rbset_id, p['card'].rbcar_id),
@@ -328,16 +353,29 @@ def search_cards(query: CardListQuery, username: str | None = None) -> dict:
             },
         }
 
-    need_all_prices = (
-        query.price_min is not None
-        or query.price_max is not None
-        or query.sort in ('price', 'trend_7d', 'trend_30d')
-    )
-    all_prices = (pricing.price_summaries(_price_inputs(parsed))
-                  if need_all_prices else {})
+    has_price_bounds = query.price_min is not None or query.price_max is not None
+    has_price_sort = query.sort in ('price', 'trend_7d', 'trend_30d')
 
-    filtered = [p for p in parsed
-                if _matches(query, p, all_prices, bans, base_keys, owned_counts)]
+    if has_price_bounds:
+        # Price filtering needs every card priced; facets are correct by default.
+        all_prices = pricing.price_summaries(_price_inputs(parsed))
+        filtered = [p for p in parsed
+                    if _matches(query, p, all_prices, bans, base_keys, owned_counts)]
+    elif has_price_sort:
+        # Apply every filter except price bounds (none here), price only matches,
+        # then sort by the requested price field.
+        non_price_query = query.model_copy(update={'price_min': None,
+                                                   'price_max': None})
+        pre_price = [p for p in parsed
+                     if _matches(non_price_query, p, {}, bans, base_keys,
+                                 owned_counts)]
+        all_prices = pricing.price_summaries(_price_inputs(pre_price))
+        filtered = pre_price
+    else:
+        all_prices = {}
+        filtered = [p for p in parsed
+                    if _matches(query, p, all_prices, bans, base_keys, owned_counts)]
+
     sorted_cards = _apply_sort(filtered, query.sort, query.dir, all_prices)
 
     total = len(sorted_cards)
@@ -346,8 +384,8 @@ def search_cards(query: CardListQuery, username: str | None = None) -> dict:
     start = (query.page - 1) * per_page
     page_cards = sorted_cards[start:start + per_page]
 
-    page_prices = (all_prices if need_all_prices
-                   else pricing.price_summaries(_price_inputs(page_cards)))
+    page_prices = all_prices if has_price_bounds or has_price_sort else \
+        pricing.price_summaries(_price_inputs(page_cards))
 
     items = []
     for p in page_cards:
@@ -362,9 +400,7 @@ def search_cards(query: CardListQuery, username: str | None = None) -> dict:
             owned=p['owned'],
         ))
 
-    facet_prices = (all_prices
-                    if query.price_min is not None or query.price_max is not None
-                    else {})
+    facet_prices = all_prices if has_price_bounds or has_price_sort else {}
     facets = _compute_facets(parsed, query, facet_prices, bans, base_keys,
                              owned_counts, set_rank)
 

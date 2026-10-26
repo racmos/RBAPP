@@ -1,10 +1,12 @@
 """F2-c S2-S9: GET /riftbound/api/v1/cards filters, facets, pagination."""
 from datetime import date
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy import event
 
 from app import db
-from app.models import RbCard, RbSet, RbcmPrice, RbcmProductCardMap
+from app.models import RbCard, RbCollection, RbSet, RbcmPrice, RbcmProductCardMap
 from app.services import bans
 
 URL = '/riftbound/api/v1/cards'
@@ -316,6 +318,373 @@ class TestFacets:
         assert len(tags) == 30
         expected = [{'tag': f'tag_{i:02d}', 'count': 1} for i in range(30)]
         assert tags == expected
+
+
+def _seed_sort(app):
+    """Five-card catalog with distinct sort attributes and prices."""
+    with app.app_context():
+        db.session.add_all([
+            RbSet(rbset_id='OGN', rbset_name='Origins', rbset_outdat=date(2025, 6, 1)),
+            RbSet(rbset_id='SFD', rbset_name='Spiritforged', rbset_outdat=date(2025, 9, 1)),
+        ])
+        db.session.add_all([
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='1', rbcar_name='Alpha',
+                   rbcar_domain='Fury', rbcar_type='Unit', rbcar_rarity='Common',
+                   rbcar_energy=1, rbcar_power=1, rbcar_might=1),
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='2', rbcar_name='beta',
+                   rbcar_domain='Calm', rbcar_type='Unit', rbcar_rarity='Uncommon',
+                   rbcar_energy=2, rbcar_power=None, rbcar_might=2),
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='10', rbcar_name='Gamma',
+                   rbcar_domain='Body', rbcar_type='Unit', rbcar_rarity='Rare',
+                   rbcar_energy=3, rbcar_power=3, rbcar_might=None),
+            RbCard(rbcar_rbset_id='SFD', rbcar_id='1', rbcar_name='delta',
+                   rbcar_domain='Chaos', rbcar_type='Unit', rbcar_rarity='Epic',
+                   rbcar_energy=None, rbcar_power=4, rbcar_might=4),
+            RbCard(rbcar_rbset_id='SFD', rbcar_id='2', rbcar_name='Epsilon',
+                   rbcar_domain='Order', rbcar_type='Unit', rbcar_rarity='Showcase',
+                   rbcar_energy=0, rbcar_power=0, rbcar_might=0),
+        ])
+        db.session.add_all([
+            # OGN-1: 7d trend +25.0, 30d None
+            RbcmProductCardMap(rbpcm_rbset_id='OGN', rbpcm_rbcar_id='1',
+                               rbpcm_id_product=1, rbpcm_foil='N'),
+            RbcmPrice(rbprc_date='20261020', rbprc_id_product=1, rbprc_avg7=10),
+            RbcmPrice(rbprc_date='20261013', rbprc_id_product=1, rbprc_avg7=8),
+            # OGN-2: 7d trend -16.7, 30d None
+            RbcmProductCardMap(rbpcm_rbset_id='OGN', rbpcm_rbcar_id='2',
+                               rbpcm_id_product=2, rbpcm_foil='N'),
+            RbcmPrice(rbprc_date='20261020', rbprc_id_product=2, rbprc_avg7=5),
+            RbcmPrice(rbprc_date='20261013', rbprc_id_product=2, rbprc_avg7=6),
+            # OGN-10: 7d None (no row <= 20261013), 30d trend +100.0
+            RbcmProductCardMap(rbpcm_rbset_id='OGN', rbpcm_rbcar_id='10',
+                               rbpcm_id_product=3, rbpcm_foil='N'),
+            RbcmPrice(rbprc_date='20261020', rbprc_id_product=3, rbprc_avg7=20),
+            RbcmPrice(rbprc_date='20261014', rbprc_id_product=3, rbprc_avg7=15),
+            RbcmPrice(rbprc_date='20260920', rbprc_id_product=3, rbprc_avg7=10),
+            # SFD-1: 7d trend 0.0, 30d None; same price as OGN-1 to test tiebreak
+            RbcmProductCardMap(rbpcm_rbset_id='SFD', rbpcm_rbcar_id='1',
+                               rbpcm_id_product=4, rbpcm_foil='N'),
+            RbcmPrice(rbprc_date='20261020', rbprc_id_product=4, rbprc_avg7=10),
+            RbcmPrice(rbprc_date='20261010', rbprc_id_product=4, rbprc_avg7=10),
+            # SFD-2: no price -> nulls in price/trend sorts
+        ])
+        db.session.commit()
+
+
+def _seed_owned(app):
+    """Three cards with collection rows for two users."""
+    with app.app_context():
+        db.session.add(RbSet(rbset_id='OGN', rbset_name='Origins',
+                             rbset_outdat=date(2025, 6, 1)))
+        db.session.add_all([
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='1', rbcar_name='One',
+                   rbcar_domain='Fury', rbcar_type='Unit', rbcar_rarity='Common'),
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='2', rbcar_name='Two',
+                   rbcar_domain='Fury', rbcar_type='Unit', rbcar_rarity='Common'),
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='3', rbcar_name='Three',
+                   rbcar_domain='Fury', rbcar_type='Unit', rbcar_rarity='Common'),
+        ])
+        db.session.commit()
+
+
+def _add_collection(app, username, rows):
+    """rows: list of (set_id, card_id, foil, quantity)."""
+    with app.app_context():
+        for set_id, card_id, foil, quantity in rows:
+            db.session.add(RbCollection(
+                rbcol_rbset_id=set_id,
+                rbcol_rbcar_id=card_id,
+                rbcol_user=username,
+                rbcol_foil=foil,
+                rbcol_quantity=quantity,
+            ))
+        db.session.commit()
+
+
+def _seed_200(app):
+    """200 cards across two sets, with prices for every other card."""
+    with app.app_context():
+        db.session.add_all([
+            RbSet(rbset_id='OGN', rbset_name='Origins', rbset_outdat=date(2025, 6, 1)),
+            RbSet(rbset_id='SFD', rbset_name='Spiritforged', rbset_outdat=date(2025, 9, 1)),
+        ])
+        products = []
+        prices = []
+        for i in range(200):
+            set_id = 'OGN' if i < 100 else 'SFD'
+            card_id = str(i + 1)
+            db.session.add(RbCard(
+                rbcar_rbset_id=set_id,
+                rbcar_id=card_id,
+                rbcar_name=f'Card {card_id}',
+                rbcar_domain='Fury',
+                rbcar_type='Unit',
+                rbcar_rarity='Common',
+            ))
+            if i % 2 == 0:
+                products.append(RbcmProductCardMap(
+                    rbpcm_rbset_id=set_id, rbpcm_rbcar_id=card_id,
+                    rbpcm_id_product=i + 1, rbpcm_foil='N'))
+                prices.append(RbcmPrice(
+                    rbprc_date='20261020', rbprc_id_product=i + 1, rbprc_avg7=1))
+        db.session.add_all(products)
+        db.session.add_all(prices)
+        db.session.commit()
+
+
+class TestSortAndPages:
+    def test_sort_number_asc(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'number', 'dir': 'asc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-1', 'OGN-2', 'OGN-10', 'SFD-1', 'SFD-2']
+
+    def test_sort_number_desc(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'number', 'dir': 'desc'})
+        # number sort desc reverses natural_key; no separate tiebreak applies.
+        assert _keys(resp.get_json()['data']['items']) == [
+            'SFD-2', 'SFD-1', 'OGN-10', 'OGN-2', 'OGN-1']
+
+    def test_sort_name_asc(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'name', 'dir': 'asc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-1', 'OGN-2', 'SFD-1', 'SFD-2', 'OGN-10']
+
+    def test_sort_name_desc(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'name', 'dir': 'desc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-10', 'SFD-2', 'SFD-1', 'OGN-2', 'OGN-1']
+
+    def test_sort_rarity_asc(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'rarity', 'dir': 'asc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-1', 'OGN-2', 'OGN-10', 'SFD-1', 'SFD-2']
+
+    def test_sort_rarity_desc(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'rarity', 'dir': 'desc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'SFD-2', 'SFD-1', 'OGN-10', 'OGN-2', 'OGN-1']
+
+    def test_sort_price_asc_nulls_last_with_tiebreak(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'price', 'dir': 'asc'})
+        # OGN-2=5, OGN-1=10, SFD-1=10 (tiebreak OGN before SFD), OGN-10=20, SFD-2=None
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-2', 'OGN-1', 'SFD-1', 'OGN-10', 'SFD-2']
+
+    def test_sort_price_desc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'price', 'dir': 'desc'})
+        # OGN-1 and SFD-1 both price 10; natural_key tiebreak puts OGN first.
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-10', 'OGN-1', 'SFD-1', 'OGN-2', 'SFD-2']
+
+    def test_sort_trend_7d_asc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'trend_7d', 'dir': 'asc'})
+        items = resp.get_json()['data']['items']
+        assert _keys(items) == ['OGN-2', 'SFD-1', 'OGN-1', 'OGN-10', 'SFD-2']
+        assert items[0]['price']['trend_7d_pct'] == -16.7
+        assert items[1]['price']['trend_7d_pct'] == 0.0
+        assert items[2]['price']['trend_7d_pct'] == 25.0
+        assert items[3]['price']['trend_7d_pct'] == 100.0
+        assert items[4]['price'] is None
+
+    def test_sort_trend_7d_desc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'trend_7d', 'dir': 'desc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-10', 'OGN-1', 'SFD-1', 'OGN-2', 'SFD-2']
+
+    def test_sort_trend_30d_asc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'trend_30d', 'dir': 'asc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-10', 'OGN-1', 'OGN-2', 'SFD-1', 'SFD-2']
+
+    def test_sort_trend_30d_desc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'trend_30d', 'dir': 'desc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-10', 'OGN-1', 'OGN-2', 'SFD-1', 'SFD-2']
+
+    def test_sort_energy_asc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'energy', 'dir': 'asc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'SFD-2', 'OGN-1', 'OGN-2', 'OGN-10', 'SFD-1']
+
+    def test_sort_energy_desc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'energy', 'dir': 'desc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'OGN-10', 'OGN-2', 'OGN-1', 'SFD-2', 'SFD-1']
+
+    def test_sort_power_asc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'power', 'dir': 'asc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'SFD-2', 'OGN-1', 'OGN-10', 'SFD-1', 'OGN-2']
+
+    def test_sort_power_desc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'power', 'dir': 'desc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'SFD-1', 'OGN-10', 'OGN-1', 'SFD-2', 'OGN-2']
+
+    def test_sort_might_asc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'might', 'dir': 'asc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'SFD-2', 'OGN-1', 'OGN-2', 'SFD-1', 'OGN-10']
+
+    def test_sort_might_desc_nulls_last(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'sort': 'might', 'dir': 'desc'})
+        assert _keys(resp.get_json()['data']['items']) == [
+            'SFD-1', 'OGN-2', 'OGN-1', 'SFD-2', 'OGN-10']
+
+    def test_pagination_total_pages_and_past_the_end(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL, query_string={'per_page': 2})
+        body = resp.get_json()
+        assert body['meta']['total'] == 5
+        assert body['meta']['pages'] == 3
+        assert len(body['data']['items']) == 2
+
+        resp = authenticated_client.get(URL, query_string={'per_page': 2, 'page': 3})
+        body = resp.get_json()
+        assert len(body['data']['items']) == 1
+
+        resp = authenticated_client.get(URL, query_string={'per_page': 2, 'page': 4})
+        body = resp.get_json()
+        assert resp.status_code == 200
+        assert body['data']['items'] == []
+        assert body['meta']['total'] == 5
+        assert body['meta']['pages'] == 3
+
+    def test_price_as_of_set(self, authenticated_client, app):
+        _seed_sort(app)
+        resp = authenticated_client.get(URL)
+        assert resp.get_json()['meta']['price_as_of'] == '2026-10-20'
+
+    def test_price_as_of_null(self, authenticated_client, app):
+        with app.app_context():
+            db.session.add(RbSet(rbset_id='OGN', rbset_name='Origins',
+                                 rbset_outdat=date(2025, 6, 1)))
+            db.session.add(RbCard(rbcar_rbset_id='OGN', rbcar_id='1',
+                                  rbcar_name='Only', rbcar_domain='Fury',
+                                  rbcar_type='Unit', rbcar_rarity='Common'))
+            db.session.commit()
+        resp = authenticated_client.get(URL)
+        assert resp.get_json()['meta']['price_as_of'] is None
+
+
+class TestOwned:
+    def test_owned_totals_sum_quantity(self, authenticated_client, app):
+        _seed_owned(app)
+        _add_collection(app, 'testuser', [
+            ('OGN', '1', 'N', 2),
+            ('OGN', '1', 'S', 1),
+            ('OGN', '2', 'N', 3),
+        ])
+        resp = authenticated_client.get(URL, query_string={
+            'set': 'OGN',
+            'sort': 'name',
+            'dir': 'asc',
+        })
+        items = resp.get_json()['data']['items']
+        assert {item['key']: item['owned'] for item in items} == {
+            'OGN-1': {'total': 3, 'foil': 1},
+            'OGN-2': {'total': 3, 'foil': 0},
+            'OGN-3': {'total': 0, 'foil': 0},
+        }
+
+    def test_owned_never_includes_other_user(self, authenticated_client, app, make_user):
+        _seed_owned(app)
+        make_user('otheruser')
+        _add_collection(app, 'testuser', [('OGN', '1', 'N', 2)])
+        _add_collection(app, 'otheruser', [
+            ('OGN', '1', 'N', 99),
+            ('OGN', '2', 'S', 50),
+        ])
+        resp = authenticated_client.get(URL, query_string={
+            'set': 'OGN',
+            'sort': 'name',
+            'dir': 'asc',
+        })
+        items = resp.get_json()['data']['items']
+        assert {item['key']: item['owned'] for item in items} == {
+            'OGN-1': {'total': 2, 'foil': 0},
+            'OGN-2': {'total': 0, 'foil': 0},
+            'OGN-3': {'total': 0, 'foil': 0},
+        }
+
+
+class TestPriceScope:
+    def test_default_query_prices_only_the_page(self, authenticated_client, app):
+        _seed_sort(app)
+        from app.services import pricing
+        calls = []
+        original = pricing.price_summaries
+
+        def spy(items):
+            calls.append(len(list(items)))
+            return original(items)
+
+        with patch.object(pricing, 'price_summaries', spy):
+            resp = authenticated_client.get(URL, query_string={'per_page': 2})
+        assert resp.status_code == 200
+        assert calls == [2]
+
+    def test_sort_price_prices_all_matches(self, authenticated_client, app):
+        _seed_sort(app)
+        from app.services import pricing
+        calls = []
+        original = pricing.price_summaries
+
+        def spy(items):
+            calls.append(len(list(items)))
+            return original(items)
+
+        with patch.object(pricing, 'price_summaries', spy):
+            resp = authenticated_client.get(URL, query_string={
+                'sort': 'price', 'dir': 'desc', 'per_page': 2})
+        assert resp.status_code == 200
+        assert calls == [5]
+
+
+class TestStatementBound:
+    def _count_statements(self, app, client, query_string):
+        counts = []
+
+        def listener(conn, cursor, statement, parameters, context, executemany):
+            counts.append(statement)
+
+        with app.app_context():
+            event.listen(db.engine, 'before_cursor_execute', listener)
+            try:
+                resp = client.get(URL, query_string=query_string)
+                assert resp.status_code == 200
+            finally:
+                event.remove(db.engine, 'before_cursor_execute', listener)
+        return len(counts)
+
+    def test_default_query_under_12_statements(self, authenticated_client, app):
+        _seed_200(app)
+        count = self._count_statements(app, authenticated_client, {})
+        assert count <= 12
+
+    def test_sort_price_query_under_12_statements(self, authenticated_client, app):
+        _seed_200(app)
+        count = self._count_statements(app, authenticated_client,
+                                       {'sort': 'price', 'dir': 'desc'})
+        assert count <= 12
 
 
 class TestAuthzAndShape:
