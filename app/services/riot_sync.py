@@ -11,7 +11,7 @@ inserted with the column default `'N'`, and updates skip the field.
 """
 import logging
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from app import db
@@ -63,9 +63,48 @@ def fetch_gallery() -> dict:
 
 def today_madrid(now: datetime) -> date:
     """The Europe/Madrid local date of `now` (naive datetimes read as UTC)."""
+    return now_madrid(now).date()
+
+
+def now_madrid(now: datetime | None = None) -> datetime:
+    """`now` (default: current UTC) as an aware Europe/Madrid datetime."""
+    if now is None:
+        now = clock.utcnow()
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
-    return now.astimezone(MADRID).date()
+    return now.astimezone(MADRID)
+
+
+def _slot_due(window: str, day: date, slot: str) -> bool:
+    """Whether S1 runs a set in `window` at `slot` on `day`."""
+    if slot == 'am':
+        return window in ACTIVE_WINDOWS or (window == 'monthly' and day.day == 1)
+    return window == 'pre_release'
+
+
+def due_sets(sets: list, slot: str, today: date) -> list:
+    """`[(set_id, window)]` due at `slot` on `today` (S1, D-F13-5)."""
+    return [(set_id, window_for(release_date, today))
+            for set_id, release_date in sets
+            for window in [window_for(release_date, today)]
+            if _slot_due(window, today, slot)]
+
+
+def next_run(release_date: date | None, now_local: datetime) -> datetime | None:
+    """The next 08:00/14:00 Europe/Madrid run covering the set (S2)."""
+    if now_local.tzinfo is None:
+        now_local = now_local.replace(tzinfo=MADRID)
+    day = now_local.date()
+    for offset in range(0, 400):
+        current = day + timedelta(days=offset)
+        for hour, slot in ((8, 'am'), (14, 'pm')):
+            candidate = datetime(current.year, current.month, current.day,
+                                 hour, 0, tzinfo=MADRID)
+            if candidate <= now_local:
+                continue
+            if _slot_due(window_for(release_date, current), current, slot):
+                return candidate
+    return None
 
 
 def window_for(release_date: date | None, today: date) -> str:

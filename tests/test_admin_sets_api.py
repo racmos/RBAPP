@@ -43,20 +43,29 @@ class TestGuard:
 
 
 class TestList:
-    def test_order_and_counts(self, admin_client, catalog):
+    def test_order_and_counts(self, admin_client, catalog, frozen_clock):
         body = payload(admin_client.get(URL))
         assert body['success'] is True
         assert [(i['id'], i['card_count'], i['declared_count']) for i in body['data']] == [
             ('AAA', 0, 5), ('DDD', 0, 0), ('CCC', 0, 2), ('BBB', 1, 1)]
+        for item in body['data']:
+            assert item['window'] == 'monthly'
+            assert item['next_run_at'] == '2030-02-01T08:00:00+01:00'
+
+    def test_window_follows_the_sync_calendar(self, admin_client, catalog, frozen_clock):
+        body = payload(admin_client.post(
+            URL, json={'id': 'FUT', 'name': 'Future', 'release_date': '2030-01-10'}))
+        assert body['data']['window'] == 'pre_release'
+        assert body['data']['next_run_at'] == '2030-01-01T14:00:00+01:00'
 
 
 class TestCreate:
-    def test_create_uppercases_the_id(self, admin_client):
+    def test_create_uppercases_the_id(self, admin_client, frozen_clock):
         body = payload(admin_client.post(
             URL, json={'id': 'tst', 'name': 'Test set', 'release_date': '2026-12-04'}))
         assert body['data'] == {'id': 'TST', 'name': 'Test set',
                                 'release_date': '2026-12-04', 'card_count': 0,
-                                'declared_count': None}
+                                'declared_count': None, 'window': 'monthly', 'next_run_at': '2030-02-01T08:00:00+01:00'}
 
     def test_duplicate_id_is_409(self, admin_client, catalog):
         resp = admin_client.post(
@@ -94,10 +103,11 @@ class TestCreate:
 
 
 class TestPatch:
-    def test_rename_and_dates(self, admin_client, catalog):
+    def test_rename_and_dates(self, admin_client, catalog, frozen_clock):
         body = payload(admin_client.patch(
             f'{URL}/AAA', json={'name': 'Renamed', 'release_date': '2027-02-03'}))
         assert body['data']['name'] == 'Renamed'
+        assert body['data']['window'] == 'monthly'
         row = RbAdminAudit.query.one()
         assert row.rbaud_action == 'set.update'
         assert row.rbaud_details == {'name': ['A first', 'Renamed'],

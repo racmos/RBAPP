@@ -62,12 +62,12 @@ def test_run_pending_stores_the_result_and_stamps_the_job(app, make_user, monkey
     monkeypatch.setattr('app.services.riot_sync.fetch_gallery',
                         lambda: copy.deepcopy(only_one))
     monkeypatch.setattr('app.services.riot_sync._get_session', lambda: FakeSession())
-    job = jobs_service.enqueue('riot_sync', {'trigger': 'schedule'})
+    job = jobs_service.enqueue('riot_sync', {'trigger': 'manual'})
     done = jobs_service.run_pending()
     assert [j.rbjob_id for j in done] == [job.rbjob_id]
     stored = db.session.get(type(job), job.rbjob_id)
     assert stored.rbjob_status == 'success'
-    assert stored.rbjob_result['trigger'] == 'schedule'
+    assert stored.rbjob_result['trigger'] == 'manual'
     row = RbCardChange.query.one()
     assert (row.rbchg_status, row.rbchg_job_id) == ('pending', job.rbjob_id)
 
@@ -133,3 +133,38 @@ class TestMigrations:
         with pytest.raises(RuntimeError, match='riot_sync'):
             downgrade('0011_card_changes')
         assert 'rbjobs' in tables()
+
+
+class TestSchedule:
+    def test_missing_slot_is_invalid(self, app):
+        with pytest.raises(JobFailed, match='riot_sync: invalid params'):
+            run({'trigger': 'schedule'})
+
+    def test_nothing_due_runs_no_fetch(self, app, monkeypatch):
+        from app.services import riot_sync as rs
+        def _no_fetch():
+            raise AssertionError('fetch must not run without due sets')
+        monkeypatch.setattr(rs, 'fetch_gallery', _no_fetch)
+        result = run({'trigger': 'schedule', 'slot': 'am'})
+        assert result == {'trigger': 'schedule', 'slot': 'am', 'today': result['today'],
+                          'message': 'nothing due', 'sets': []}
+
+    def test_only_due_sets_are_passed_to_sync(self, app, monkeypatch):
+        from datetime import date
+        from app.models.set import RbSet
+        db.session.add(RbSet(rbset_id='PRE', rbset_name='Pre',
+                             rbset_outdat=date(2030, 1, 10)))
+        db.session.add(RbSet(rbset_id='OLD', rbset_name='Old',
+                             rbset_outdat=date(2025, 1, 1)))
+        db.session.commit()
+        seen = {}
+
+        def _fake(set_codes, trigger, now, job_id=None):
+            seen['set_codes'] = set_codes
+            return {'trigger': trigger, 'sets': []}
+        monkeypatch.setattr('app.services.riot_sync.sync', _fake)
+        monkeypatch.setattr('app.jobs.riot_sync.clock.utcnow',
+                            lambda: __import__('datetime').datetime(2030, 1, 15, 12, 0))
+        result = run({'trigger': 'schedule', 'slot': 'am'})
+        assert seen['set_codes'] == ['PRE']
+        assert result['trigger'] == 'schedule'

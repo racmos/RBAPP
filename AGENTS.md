@@ -372,7 +372,7 @@ gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
 ```
 Firewall port 8000 so only the Nginx host reaches it. ProxyFix trusts exactly one proxy hop (`PROXY_FIX_X_*=1`); the proxy must send `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`, and must not strip `Referer` (the CSRF check needs it over HTTPS).
 
-Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n`; kinds: `heartbeat` (diagnostic), `daily_prices` (daily Cardmarket load at 06:30 Europe/Madrid, retried at 08:00 with `--unless-succeeded-today` when it did not succeed) and `riot_sync` (gallery sync, queued by hand or by the F13-d timers) (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
+Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n`; kinds: `heartbeat` (diagnostic), `daily_prices` (daily Cardmarket load at 06:30 Europe/Madrid, retried at 08:00 with `--unless-succeeded-today` when it did not succeed) and `riot_sync` (gallery sync: `riftbound-riot-sync-am.timer` at 08:00 and `-pm.timer` at 14:00 Europe/Madrid queue `trigger=schedule` + `slot`; exit 1 when a sync is active is the normal skip via `SuccessExitStatus=1`) (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
 ```bash
 flask jobs enqueue <kind> [--param key=value]...   # one queued or running job per kind
 flask jobs enqueue <kind> --unless-succeeded-today  # skip (exit 0) when a <kind> job succeeded today (UTC)

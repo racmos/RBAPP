@@ -29,10 +29,12 @@ VENV_FLASK = APP['WorkingDirectory'] + '/venv/bin/flask'
 
 UNITS = ['riftbound-jobs.service', 'riftbound-jobs.timer', 'riftbound-daily.service',
          'riftbound-daily.timer', 'riftbound-daily-retry.service',
-         'riftbound-daily-retry.timer']
+         'riftbound-daily-retry.timer', 'riftbound-riot-sync-am.service',
+         'riftbound-riot-sync-am.timer', 'riftbound-riot-sync-pm.service',
+         'riftbound-riot-sync-pm.timer']
 
 
-def test_exactly_the_six_templates_exist():
+def test_exactly_the_ten_templates_exist():
     assert sorted(p.name for p in SYSTEMD.iterdir()) == sorted(UNITS)
 
 
@@ -126,3 +128,24 @@ def test_runbook_scheduled_jobs_section():
                    'systemctl disable --now riftbound-jobs.timer', 'F4-b',
                    'flask db upgrade', 'flask db check'):
         assert needle in section, needle
+
+
+def test_riot_sync_units():
+    for slot, hour in (('am', '08:00:00'), ('pm', '14:00:00')):
+        service = _directives(SYSTEMD / f'riftbound-riot-sync-{slot}.service')
+        assert service['ExecStart'] == (
+            f'{VENV_FLASK} jobs enqueue riot_sync --param trigger=schedule '
+            f'--param slot={slot}')
+        assert service['SuccessExitStatus'] == '1'
+        timer = _directives(SYSTEMD / f'riftbound-riot-sync-{slot}.timer')
+        assert timer['OnCalendar'] == f'*-*-* {hour} Europe/Madrid'
+        assert timer['Unit'] == f'riftbound-riot-sync-{slot}.service'
+
+
+@pytest.mark.parametrize('name', ['riftbound-riot-sync-am.service',
+                                  'riftbound-riot-sync-pm.service'])
+def test_riot_services_match_the_jobs_service(name):
+    jobs_unit = _directives(SYSTEMD / 'riftbound-jobs.service')
+    unit = _directives(SYSTEMD / name)
+    for key in ('User', 'Group', 'WorkingDirectory', 'Environment', 'EnvironmentFile'):
+        assert unit[key] == jobs_unit[key], key
