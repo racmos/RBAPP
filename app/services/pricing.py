@@ -81,12 +81,18 @@ def canonical_product_id(rbset_id: str, rbcar_id: str, foil: str = 'N') -> Optio
     return base.scalar()
 
 
-def _mapped_products(mapping_rows, set_id: str, card_id: str, foil_slot: str):
+def _mapped_index(mapping_rows):
+    """`{(set_id, card_id): [(foil, id_product), ...]}` for one lookup per card."""
+    index = {}
+    for row_set, row_card, row_foil, product in mapping_rows:
+        index.setdefault((row_set, row_card), []).append((row_foil, product))
+    return index
+
+
+def _mapped_products(by_card, set_id: str, card_id: str, foil_slot: str):
     """Lowest Cardmarket id for one card and foil slot, or None (S4 rule)."""
     exact, unclassified, any_match = None, None, None
-    for row_set, row_card, row_foil, product in mapping_rows:
-        if (row_set, row_card) != (set_id, card_id):
-            continue
+    for row_foil, product in by_card.get((set_id, card_id), ()):
         if row_foil == foil_slot and (exact is None or product < exact):
             exact = product
         if row_foil is None and (unclassified is None or product < unclassified):
@@ -102,6 +108,25 @@ def _day(text):
     """'YYYYMMDD' to a date."""
     import datetime as _datetime
     return _datetime.date(int(text[0:4]), int(text[4:6]), int(text[6:8]))
+
+
+class _PriceRow:
+    """The six price columns `price_summaries` reads, without ORM overhead."""
+
+    __slots__ = ('rbprc_id_product', 'rbprc_date', 'rbprc_avg7',
+                 'rbprc_avg7_foil', 'rbprc_low', 'rbprc_low_foil')
+
+    def __init__(self, id_product, date, avg7, avg7_foil, low, low_foil):
+        self.rbprc_id_product = id_product
+        self.rbprc_date = date
+        self.rbprc_avg7 = avg7
+        self.rbprc_avg7_foil = avg7_foil
+        self.rbprc_low = low
+        self.rbprc_low_foil = low_foil
+
+
+def _price_row(*values):
+    return _PriceRow(*values)
 
 
 def _reference(rows, latest_day, days):
@@ -126,41 +151,46 @@ def price_summaries(items):
     `items` are `(set_id, card_id, rarity, foilable)` tuples. Returns
     `{(set_id, card_id): summary or None}`; unmapped cards map to None.
     """
-    from sqlalchemy import tuple_
-
     items = list(items)
     if not items:
         return {}
-    keys = [(set_id, card_id) for set_id, card_id, _, _ in items]
+    # The mapping table is tiny: one scan beats a 1000-pair tuple IN (S6).
     mapping_rows = db.session.query(
         RbcmProductCardMap.rbpcm_rbset_id,
         RbcmProductCardMap.rbpcm_rbcar_id,
         RbcmProductCardMap.rbpcm_foil,
         RbcmProductCardMap.rbpcm_id_product,
-    ).filter(tuple_(RbcmProductCardMap.rbpcm_rbset_id,
-                    RbcmProductCardMap.rbpcm_rbcar_id).in_(keys)).all()
+    ).all()
 
+    by_card = _mapped_index(mapping_rows)
     wanted = set()
     slots = {}
     for set_id, card_id, _, foilable in items:
         kinds = ['N'] + (['S'] if foilable else [])
         slots[(set_id, card_id)] = kinds
         for slot in kinds:
-            product = _mapped_products(mapping_rows, set_id, card_id, slot)
+            product = _mapped_products(by_card, set_id, card_id, slot)
             if product is not None:
                 wanted.add(product)
 
+    from sqlalchemy import cast as _cast, Float as _Float
     by_product = {}
     if wanted:
-        for row in RbcmPrice.query.filter(
+        columns = (RbcmPrice.rbprc_id_product, RbcmPrice.rbprc_date,
+                   _cast(RbcmPrice.rbprc_avg7, _Float).label('rbprc_avg7'),
+                   _cast(RbcmPrice.rbprc_avg7_foil, _Float).label('rbprc_avg7_foil'),
+                   _cast(RbcmPrice.rbprc_low, _Float).label('rbprc_low'),
+                   _cast(RbcmPrice.rbprc_low_foil, _Float).label('rbprc_low_foil'))
+        for values in db.session.query(*columns).filter(
                 RbcmPrice.rbprc_id_product.in_(sorted(wanted))).all():
+            row = _price_row(*values)
             by_product.setdefault(row.rbprc_id_product, []).append(row)
     for rows in by_product.values():
         rows.sort(key=lambda row: row.rbprc_date or '')
 
     result = {}
     for set_id, card_id, rarity, foilable in items:
-        products = {slot: _mapped_products(mapping_rows, set_id, card_id, slot)
+        products = {slot: _mapped_products(by_card, set_id, card_id, slot)
                     for slot in slots[(set_id, card_id)]}
         if all(product is None for product in products.values()):
             result[(set_id, card_id)] = None
