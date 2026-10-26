@@ -206,3 +206,10 @@ Deploy (frontend build). Manual (owner): create a test set with a date in three 
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no product changes. Rows open the editor through explicit per-row
+  Edit/Delete buttons instead of a clickable `<tr>`, so keyboard users get the same action without
+  nested interactive elements (axe stays clean). `common:actions.save/cancel/delete` were added
+  (reused by every admin form).
