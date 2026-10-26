@@ -109,6 +109,12 @@ export function createAppRoutes(
                         Component: (await import('@/admin/RiotPage')).RiotPage,
                       }),
                     },
+                    {
+                      path: 'riot/changes',
+                      lazy: async () => ({
+                        Component: (await import('@/admin/ChangesPage')).ChangesPage,
+                      }),
+                    },
                   ],
                 },
                 // Development only; Vite replaces the flag at build time and drops the branch.

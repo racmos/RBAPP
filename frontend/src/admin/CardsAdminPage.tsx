@@ -76,6 +76,8 @@ export function CardsAdminPage() {
           if (search) next.set('q', search);
           else next.delete('q');
           next.delete('page');
+          // Skip no-op navigations: they remount and drop element handles.
+          if (next.toString() === previous.toString()) return previous;
           return next;
         },
         { replace: true },

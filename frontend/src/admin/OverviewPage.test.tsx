@@ -10,10 +10,24 @@ import { renderApp } from '@/test/renderApp';
 const CATALOG = { sets: 3, sets_without_release_date: 2, cards: 4, cards_without_image: 1 };
 const LONG = { timeout: 10000 };
 
+const RIOT = {
+  pending_changes: 2,
+  active_sets: [
+    { id: 'OGN', name: 'Origen', window: 'pre_release', next_run_at: '2030-01-01T08:00:00+01:00' },
+  ],
+  last_sync: {
+    job_id: 7,
+    status: 'success',
+    finished_at: '2030-01-01T12:00:00',
+    trigger: 'manual',
+  },
+  placeholder_sets: ['NEW'],
+};
+
 function adminApi() {
   server.use(
     http.get(`${API}/auth/session`, () => adminSession()),
-    http.get(`${API}/admin/overview`, () => ok({ catalog: CATALOG })),
+    http.get(`${API}/admin/overview`, () => ok({ catalog: CATALOG, riot: RIOT })),
   );
 }
 
@@ -39,8 +53,36 @@ describe('OverviewPage (F13-a S6)', () => {
     expect(await tileValue('Sets sin fecha de salida')).toBe('2');
     expect(await tileValue('Cartas')).toBe('4');
     expect(await tileValue('Cartas sin imagen')).toBe('1');
+    expect(await screen.findByRole('heading', { level: 2, name: 'Riot' }, LONG)).toBeVisible();
+    expect(screen.getByRole('link', { name: '2' })).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/riot/changes',
+    );
+    expect(screen.getByText('Última sincronización')).toBeVisible();
+    expect(screen.getByRole('link', { name: /NEW/ })).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/sets',
+    );
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it(
+    'shows no-sync and no placeholders when there was no sync yet',
+    { timeout: 30000 },
+    async () => {
+      server.use(
+        http.get(`${API}/auth/session`, () => adminSession()),
+        http.get(`${API}/admin/overview`, () =>
+          ok({
+            catalog: CATALOG,
+            riot: { pending_changes: 0, active_sets: [], last_sync: null, placeholder_sets: [] },
+          }),
+        ),
+      );
+      await renderApp({ path: '/admin', width: 1280 });
+      expect(await screen.findByText('Todavía no se ha sincronizado.', {}, LONG)).toBeVisible();
+    },
+  );
 
   it('sets the document title', { timeout: 30000 }, async () => {
     adminApi();
@@ -58,7 +100,10 @@ describe('OverviewPage (F13-a S6)', () => {
       http.get(`${API}/auth/session`, () => adminSession()),
       http.get(`${API}/admin/overview`, async () => {
         await gate;
-        return ok({ catalog: CATALOG });
+        return ok({
+          catalog: CATALOG,
+          riot: { pending_changes: 0, active_sets: [], last_sync: null, placeholder_sets: [] },
+        });
       }),
     );
     await renderApp({ path: '/admin', width: 1280 });
@@ -73,7 +118,12 @@ describe('OverviewPage (F13-a S6)', () => {
     server.use(
       http.get(`${API}/auth/session`, () => adminSession()),
       http.get(`${API}/admin/overview`, () =>
-        failing ? failure(500, { message: 'boom' }) : ok({ catalog: CATALOG }),
+        failing
+          ? failure(500, { message: 'boom' })
+          : ok({
+              catalog: CATALOG,
+              riot: { pending_changes: 0, active_sets: [], last_sync: null, placeholder_sets: [] },
+            }),
       ),
     );
     await renderApp({ path: '/admin', width: 1280 });

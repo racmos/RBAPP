@@ -1,0 +1,124 @@
+@layer components {
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: var(--gap);
+  }
+
+  .filterField {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+    vertical-align: top;
+  }
+
+  .thumb {
+    width: 40px;
+    height: auto;
+    display: block;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .iconButton {
+    min-height: 42px;
+    min-width: 42px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font-size: 16px;
+  }
+
+  .cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 12px;
+  }
+
+  .cardHead {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .cardTitle {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  .cardActions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .layout {
+    display: grid;
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  @media (min-width: 1600px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr) 420px;
+    }
+  }
+
+  .detail {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: var(--pad);
+  }
+
+  .detailImage {
+    width: 120px;
+    height: auto;
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .bulkBar {
+    position: sticky;
+    bottom: var(--pad);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: var(--gap);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+    padding: 12px 16px;
+  }
+}

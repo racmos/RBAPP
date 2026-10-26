@@ -58,7 +58,8 @@ export function JobStatus({ jobId, onDone }: { jobId: number; onDone?: () => voi
   return (
     <div>
       <p>
-        <Badge>{t(`job.status.${job.status as JobStatusKey}`)}</Badge> #{job.id}
+        <Badge>{t(`job.status.${job.status as JobStatusKey}` as 'job.status.queued')}</Badge> #
+        {job.id}
       </p>
       <ul className={styles.list}>
         {sets.map((set) => (
@@ -120,7 +121,7 @@ function ActiveSets() {
           {active.map((set) => (
             <li key={set.id} className={styles.row}>
               <strong>{set.id}</strong>
-              <Badge>{t(`window.${set.window as WindowKey}`)}</Badge>
+              <Badge>{t(`window.${set.window as WindowKey}` as 'window.monthly')}</Badge>
               <span>{set.next_run_at}</span>
             </li>
           ))}
@@ -250,8 +251,10 @@ function RecentRunRow({ job, onOpen }: { job: AdminJob; onOpen: () => void }) {
     <li>
       <button type="button" className={styles.row} onClick={onOpen}>
         <span>{job.finished_at ?? job.requested_at}</span>
-        <Badge>{t(`job.status.${job.status as JobStatusKey}`)}</Badge>
-        <span>{t(`riot.trigger.${trigger}` as const)}</span>
+        <Badge>{t(`job.status.${job.status as JobStatusKey}` as 'job.status.queued')}</Badge>
+        <span>
+          {trigger === 'schedule' ? t('riot.trigger.schedule') : t('riot.trigger.manual')}
+        </span>
         <span>{t('riot.recentSummary', { sets: sets.length, inserted, proposed })}</span>
       </button>
     </li>

@@ -58,4 +58,27 @@ describe('AdminLayout (F13-a S6)', () => {
     const entry = NAV.find((item) => item.id === 'admin');
     expect(entry).toMatchObject({ status: 'spa', to: '/admin', adminOnly: true });
   });
+
+  it('shows the pending changes count on the changes entry (F13-g S1)', async () => {
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/overview`, () =>
+        ok({
+          catalog: CATALOG,
+          riot: { pending_changes: 5, active_sets: [], last_sync: null, placeholder_sets: [] },
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin', width: 1280 });
+    expect(
+      await screen.findByRole('link', { name: 'Cambios (5)' }, { timeout: 10000 }),
+    ).toBeVisible();
+  });
+
+  it('shows no count when nothing is pending', async () => {
+    adminApi();
+    await renderApp({ path: '/admin', width: 1280 });
+    await screen.findByRole('navigation', { name: NAV_LABEL }, { timeout: 10000 });
+    expect(screen.getByRole('link', { name: 'Cambios' })).toBeVisible();
+  });
 });
