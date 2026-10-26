@@ -332,12 +332,10 @@ def search_cards(query: CardListQuery, username: str | None = None) -> dict:
 
     parsed = [_parse_card(card, set_rank) for card in all_cards]
 
-    owned_counts = _owned_counts(parsed, username)
-    for p in parsed:
-        p['owned'] = owned_counts.get(
-            (p['card'].rbcar_rbset_id, p['card'].rbcar_id),
-            {'total': 0, 'foil': 0},
-        )
+    # Owned counts are needed for every card only when the owned filter is
+    # active (it and the facets read them); otherwise the page suffices (S8).
+    need_all_owned = query.owned != 'any'
+    owned_counts = (_owned_counts(parsed, username) if need_all_owned else {})
 
     if _range_conflict(query):
         return {
@@ -383,6 +381,14 @@ def search_cards(query: CardListQuery, username: str | None = None) -> dict:
     pages = math.ceil(total / per_page) if total else 0
     start = (query.page - 1) * per_page
     page_cards = sorted_cards[start:start + per_page]
+
+    if not need_all_owned:
+        owned_counts = _owned_counts(page_cards, username)
+    for p in page_cards:
+        p['owned'] = owned_counts.get(
+            (p['card'].rbcar_rbset_id, p['card'].rbcar_id),
+            {'total': 0, 'foil': 0},
+        )
 
     page_prices = all_prices if has_price_bounds or has_price_sort else \
         pricing.price_summaries(_price_inputs(page_cards))

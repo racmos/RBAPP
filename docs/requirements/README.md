@@ -25,7 +25,8 @@ Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. 
 | F4-a | `F4/F4-a-job-runner.md` | Done (#32). |
 | F4-b | `F4/F4-b-daily-prices.md` | Done (#33). |
 | F2-a | `F2/F2-a-card-bans.md` | Done (#34). |
-| F2-b | `F2/F2-b-game-meta-card-dto.md` | Implemented, in review (PR TBD). |
+| F2-b | `F2/F2-b-game-meta-card-dto.md` | Done (#45). |
+| F2-c | `F2/F2-c-cards-list-api.md` | Implemented, in review (PR TBD). |
 | M-d | `M/M-d-card-images-out-of-git.md` | Implemented, in review (#37). |
 | F13-a | `F13/F13-a-admin-foundation.md` | Implemented, in review (#38). |
 | F13-b | `F13/F13-b-catalog-admin-api.md` | Implemented, in review (#39). |
