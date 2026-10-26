@@ -17,6 +17,22 @@ PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
 
 
+# ============== Ban Schemas ==============
+
+class BanListQuery(BaseModel, extra='ignore'):
+    """GET /bans query parameters (F2-c S1)."""
+    mode: Optional[Literal['1v1', '2v2']] = None
+
+    @field_validator('mode', mode='before')
+    @classmethod
+    def _mode_literal(cls, v):
+        if v is None or v == '':
+            return None
+        if v not in ('1v1', '2v2'):
+            raise PydanticCustomError('literal_error', 'mode must be 1v1 or 2v2')
+        return v
+
+
 # ============== Set Schemas ==============
 
 class SetCreate(BaseModel):
