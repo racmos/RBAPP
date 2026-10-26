@@ -28,6 +28,9 @@ class ErrorCode(StrEnum):
     ALREADY_EXISTS = 'already_exists'             # duplicate id/key on an admin write, 409
     SET_IN_USE = 'set_in_use'                     # set has cards: no id change, no delete, 409
     CARD_IN_USE = 'card_in_use'                   # card in collections/decks: no delete, 409
+    JOB_RUNNING = 'job_running'                   # a sync is already queued or running, 409
+    CHANGE_STALE = 'change_stale'                 # the card changed after the proposal, 409
+    CHANGE_DECIDED = 'change_decided'             # the change was already approved or rejected, 409
 
 
 class DetailCode(StrEnum):

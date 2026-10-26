@@ -13,7 +13,10 @@
     "internal_error": "Ha ocurrido un error inesperado. Inténtalo más tarde.",
     "already_exists": "Ya existe un elemento con ese identificador.",
     "set_in_use": "El set tiene cartas; no se puede cambiar su código ni borrarlo.",
-    "card_in_use": "La carta está en colecciones o mazos; no se puede borrar."
+    "card_in_use": "La carta está en colecciones o mazos; no se puede borrar.",
+    "job_running": "Ya hay una sincronización en curso. Espera a que termine.",
+    "change_stale": "La carta ha cambiado desde que se detectó este cambio. Revisa la carta.",
+    "change_decided": "Este cambio ya se aprobó o rechazó."
   },
   "status": {
     "400": "La solicitud no es válida.",
