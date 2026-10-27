@@ -17,6 +17,66 @@ PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
 
 
+# ============== Ban Schemas ==============
+
+class BanListQuery(BaseModel, extra='ignore'):
+    """GET /bans query parameters (F2-c S1)."""
+    mode: Optional[Literal['1v1', '2v2']] = None
+
+    @field_validator('mode', mode='before')
+    @classmethod
+    def _mode_literal(cls, v):
+        if v is None or v == '':
+            return None
+        if v not in ('1v1', '2v2'):
+            raise PydanticCustomError('literal_error', 'mode must be 1v1 or 2v2')
+        return v
+
+
+# ============== Card List Query ==============
+
+ShortStr = Annotated[str, Field(max_length=50)]
+
+
+class CardListQuery(BaseModel, extra='ignore'):
+    """GET /cards query parameters (F2-c S2)."""
+    q: Optional[str] = Field(None, max_length=100)
+    text: Optional[str] = Field(None, max_length=100)
+    set: List[ShortStr] = Field(default_factory=list)
+    domain: List[ShortStr] = Field(default_factory=list)
+    type: List[ShortStr] = Field(default_factory=list)
+    supertype: List[ShortStr] = Field(default_factory=list)
+    exclude_supertype: List[ShortStr] = Field(default_factory=list)
+    rarity: List[ShortStr] = Field(default_factory=list)
+    tag: List[ShortStr] = Field(default_factory=list)
+    domain_match: Literal['any', 'all', 'subset'] = 'any'
+    energy_min: Optional[int] = Field(None, ge=0, le=99)
+    energy_max: Optional[int] = Field(None, ge=0, le=99)
+    power_min: Optional[int] = Field(None, ge=0, le=99)
+    power_max: Optional[int] = Field(None, ge=0, le=99)
+    might_min: Optional[int] = Field(None, ge=0, le=99)
+    might_max: Optional[int] = Field(None, ge=0, le=99)
+    price_min: Optional[float] = Field(None, ge=0, le=100000)
+    price_max: Optional[float] = Field(None, ge=0, le=100000)
+    owned: Literal['any', 'owned', 'missing'] = 'any'
+    banned_in: Optional[Literal['1v1', '2v2', 'any']] = None
+    base_only: bool = False
+    sort: Literal['number', 'name', 'price', 'trend_7d', 'trend_30d',
+                  'rarity', 'energy', 'power', 'might'] = 'number'
+    dir: Literal['asc', 'desc'] = 'asc'
+    page: int = Field(default=1, ge=1, le=10000)
+    per_page: int = Field(default=48, ge=1, le=192)
+
+    @field_validator('set', 'domain', 'type', 'supertype', 'exclude_supertype',
+                     'rarity', 'tag', mode='after')
+    @classmethod
+    def _limit_repeated(cls, v):
+        if len(v) > 50:
+            raise PydanticCustomError(
+                'too_long', 'at most 50 values', {'max_length': 50})
+        return v
+
+
 # ============== Set Schemas ==============
 
 class SetCreate(BaseModel):

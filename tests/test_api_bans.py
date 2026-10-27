@@ -66,10 +66,18 @@ def test_no_bans_is_an_empty_list(authenticated_client):
     assert (resp.status_code, resp.get_json()) == (200, {'success': True, 'data': {'items': []}})
 
 
-@pytest.mark.parametrize('mode', ['3v3', 'all', '1V1', '', ' 1v1'])
+@pytest.mark.parametrize('mode', ['3v3', 'all', '1V1', ' 1v1'])
 def test_invalid_mode_is_a_400(authenticated_client, seeded, mode):
     resp = authenticated_client.get(URL, query_string={'mode': mode})
     assert (resp.status_code, resp.get_json()) == (400, INVALID_MODE)
+
+
+def test_empty_mode_is_absent_and_returns_all_bans(authenticated_client, seeded):
+    """S1: sent-but-empty counts as absent -> no mode filter -> every ban."""
+    resp = authenticated_client.get(URL, query_string={'mode': ''})
+    assert resp.status_code == 200
+    assert resp.get_json() == {'success': True, 'data': {'items': [
+        FUTURE, _jinx('1v1'), CALLED_SHOT, _jinx('2v2')]}}
 
 
 def test_anonymous_gets_a_json_401(client, seeded):

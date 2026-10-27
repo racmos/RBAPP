@@ -49,7 +49,62 @@ is the newest `rbcm_price` date; `rules` is `{}` (reserved for F15). No new erro
 
 `app/api/v1/bans.py` (U): `{items: [{name, mode, since, reason,
 printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2`
-(any other value is a 400 `validation_error`).
+(any other value is a 400 `validation_error`). Query validation shares
+`validate_query` with `GET /cards` (`app/schemas/validation.py`).
+
+### GET /cards
+
+`app/api/v1/cards.py` (`api_v1.list_cards`, U): one slice of the catalog in the
+shared `CardSummary` shape, plus disjunctive facet counts. Anonymous → JSON 401.
+Filtering, facets and sort MAY run in Python over the full catalog; at most 12 SQL
+statements per request. Prices cover every matching card only when `sort` is
+`price`/`trend_*` or a price bound is given, otherwise only the returned page.
+Response: `data: {items: [CardSummary]}`,
+`meta: {page, per_page, total, pages, facets, price_as_of (ISO|null)}`.
+Facet key order is canonical (sets by release order, other facets by the
+game-domain tuple order, then unknown values alphabetically) and preserved on
+the wire (`sort_keys=False`; Flask `jsonify` sorts keys alphabetically).
+
+Parameters (all optional; `extra='ignore'`; a min greater than its max is valid
+and yields an empty result):
+
+| Param | Type / domain | Default |
+|---|---|---|
+| `q` | str ≤ 100 chars (trimmed) | — |
+| `text` | str ≤ 100 chars (ability text) | — |
+| `set`, `domain`, `type`, `supertype`, `exclude_supertype`, `rarity`, `tag` | repeated str, each ≤ 50 chars, ≤ 50 values | `[]` |
+| `domain_match` | `any` \| `all` \| `subset` | `any` |
+| `energy_min`, `energy_max`, `power_min`, `power_max`, `might_min`, `might_max` | int 0-99 | — |
+| `price_min`, `price_max` | float 0-100000 | — |
+| `owned` | `any` \| `owned` \| `missing` | `any` |
+| `banned_in` | `1v1` \| `2v2` \| `any` | — |
+| `base_only` | bool | `false` |
+| `sort` | `number` \| `name` \| `price` \| `trend_7d` \| `trend_30d` \| `rarity` \| `energy` \| `power` \| `might` | `number` |
+| `dir` | `asc` \| `desc` | `asc` |
+| `page` | int 1-10000 | 1 |
+| `per_page` | int 1-192 | 48 |
+
+Filter rules (case-insensitive; OR inside a parameter, AND across parameters):
+`q` matches name/tag substring, `card_id`, `key` (`OGN-79a`), or the card `number`
+when `q` is digits-only; `text` matches the ability; `set`/`rarity`/parsed
+`type`/`supertype` match their lists; `exclude_supertype` drops listed supertypes
+(cards without supertype stay); `tag` needs one listed tag; `domain_match` = `any`
+shares a domain, `all` requires every listed domain, `subset` requires every card
+domain to be listed (a card without domains matches); ranges are inclusive and
+exclude null-valued cards once bounded; price bounds apply to `price.market` and
+exclude cards without a market price; `owned=owned|missing` filters on
+`owned.total`; `banned_in` filters by ban mode (`any` = banned in at least one);
+`base_only=true` keeps base printings only. `meta.facets` holds `set`, `domain`,
+`type`, `supertype`, `rarity` counts computed over the cards matching every filter
+except that facet's own, plus the top-30 `tag` list (`{tag, count}`) over the
+cards matching every filter except `tag`. Sort ties always break by ascending
+`natural_key`; `dir=desc` reverses the main key only; nulls are always last.
+`meta.total` counts matching cards, `pages = ceil(total / per_page)` (0 when
+total is 0); a page past the end returns `items: []` with 200.
+
+```http
+GET /riftbound/api/v1/cards?domain=Fury&sort=price&dir=desc&per_page=2
+```
 
 ## Data shapes
 

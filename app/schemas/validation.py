@@ -1,7 +1,10 @@
 """
 Validation utilities using Pydantic.
 """
+import types
 from functools import wraps
+from typing import Union, get_args, get_origin
+
 from flask import request, jsonify
 from pydantic import BaseModel, ValidationError
 
@@ -94,13 +97,32 @@ def validate_json(schema: type[BaseModel]):
     return decorator
 
 
+def _is_list_annotation(annotation) -> bool:
+    """True when a Pydantic field annotation accepts a list of values."""
+    origin = get_origin(annotation)
+    if origin is list:
+        return True
+    # `Optional[List[...]]`, `List[...] | None`, and other unions.
+    if origin is Union or origin is types.UnionType:
+        return any(_is_list_annotation(arg) for arg in get_args(annotation))
+    return False
+
+
 def validate_query(schema: type[BaseModel]):
     """
     Decorator to validate query parameters against a Pydantic schema.
-    Repeatable params (`?set=A&set=B`) arrive as lists; single values stay
-    scalar and the schema normalises them. The 400 body is the same envelope
-    as `validate_json` (error, message, details with `code`/`params`, `code`).
-    
+
+    - Fields annotated with a list type consume `request.args.getlist(name)`;
+      all other fields consume `request.args.get(name)`.
+    - Empty strings are dropped, so `?price_min=` is treated as absent.
+    - Unknown parameters are passed through to Pydantic, so schemas with
+      `extra='forbid'` reject them and `extra='ignore'` schemas discard them.
+    - Pydantic coerces scalars (`int`, `float`, `bool`, `Literal`).
+
+    On error the response body matches `validate_json` exactly, except for
+    `message: "Invalid query parameters"`. The validated model is attached
+    to `request.validated_query`.
+
     Usage:
         @validate_query(CardQueryParams)
         def cards():
@@ -112,9 +134,28 @@ def validate_query(schema: type[BaseModel]):
         def wrapper(*args, **kwargs):
             try:
                 data = {}
+                known_names = set(schema.model_fields.keys())
+
+                # Known fields: list annotations consume getlist, scalars consume get.
+                for name in known_names:
+                    field_info = schema.model_fields[name]
+                    if _is_list_annotation(field_info.annotation):
+                        data[name] = [v for v in request.args.getlist(name) if v != '']
+                    else:
+                        value = request.args.get(name)
+                        if value == '':
+                            value = None
+                        if value is not None:
+                            data[name] = value
+
+                # Unknown params are passed through so schemas with extra='forbid'
+                # can reject them; extra='ignore' schemas discard them as before.
                 for key in request.args.keys():
-                    values = request.args.getlist(key)
-                    data[key] = values[0] if len(values) == 1 else values
+                    if key not in known_names:
+                        values = [v for v in request.args.getlist(key) if v != '']
+                        if values:
+                            data[key] = values[0] if len(values) == 1 else values
+
                 validated = schema(**data)
                 request.validated_query = validated
             except ValidationError as e:
@@ -125,7 +166,7 @@ def validate_query(schema: type[BaseModel]):
                     'details': [_detail(err) for err in e.errors()],
                     'code': ErrorCode.VALIDATION_ERROR.value,
                 }), 400
-            
+
             return f(*args, **kwargs)
         return wrapper
     return decorator
