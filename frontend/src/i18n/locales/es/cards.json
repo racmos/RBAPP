@@ -74,6 +74,36 @@
       "list": "Lista",
       "table": "Tabla"
     },
+    "perPage": "Por página",
+    "table": {
+      "caption": "Cartas del catálogo",
+      "image": "Imagen",
+      "set": "Set",
+      "number": "Nº",
+      "name": "Nombre",
+      "type": "Tipo",
+      "rarity": "Rareza",
+      "energy": "Energía",
+      "power": "Poder",
+      "might": "Fuerza",
+      "tags": "Etiquetas",
+      "price": "Precio",
+      "foil": "Foil",
+      "trend7": "7 d",
+      "trend30": "30 d",
+      "owned": "Tengo",
+      "bans": "Baneos",
+      "moreTags": "+{{count}}"
+    },
+    "tile": {
+      "select": "Mostrar {{name}} en la vista previa"
+    },
+    "preview": {
+      "title": "Vista previa",
+      "open": "Ver ficha completa",
+      "empty": "Selecciona una carta para verla aquí.",
+      "trend": "Precio de los últimos 30 días"
+    },
     "owned": "Tienes {{count}}",
     "results": "Resultados",
     "loading": "Cargando cartas",

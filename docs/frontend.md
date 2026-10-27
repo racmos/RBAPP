@@ -343,12 +343,21 @@ folders. The boundary is enforced by `frontend/eslint.config.js` and tested in
 
 Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen, like `account/`):
 
-- `CatalogPage` — the `/cards` layout: toolbar (search, sort, direction, view), filter sheet,
-  active chips, grid/list results, pagination and states. URL parameters mirror the API names
-  (`params.ts`: parse/serialize/round-trip; text search debounced with `replace`, other changes
-  push; scroll restored per search string). The detail opens as a modal over the catalog at
-  ≥ 860 px and as a page below; `navRegistry` entry `cards` is `spa` (the classic Jinja page
-  stays linked as "Versión clásica").
+- `CatalogPage` — the `/cards` layout: toolbar (search, sort, direction, view, page size from
+  1240 px), filters (`CatalogFilters`: sheet below 1240, sticky collapsible sidebar at
+  ≥ 1240 with `aria-expanded` groups remembered in `rb_cards_facets`), active chips, grid/list
+  results, pagination and states. URL parameters mirror the API names (`params.ts`:
+  parse/serialize/round-trip; text search debounced with `replace`, other changes push; scroll
+  restored per search string). The detail opens as a modal over the catalog at ≥ 860 px and as
+  a page below; `navRegistry` entry `cards` is `spa` (the classic Jinja page stays linked as
+  "Versión clásica").
+- `CatalogTable` — the table view (860 px and up, optional): 13 columns below 1240 (scroll
+  wrapper), 16 with tags/foil/30 d at ≥ 1240 (sticky header); sortable headers with `aria-sort`
+  (price and trends start descending). Numbers use `tabular-nums`.
+- `CatalogPreview` — the ≥ 1600 px third column: art, prices + foil, 30-day `Sparkline`
+  (`useCardPrices(…, '30d')`), owned and a link opening the modal; tiles become `aria-pressed`
+  buttons selecting via the `selected` URL param (default: first result); empty results show
+  `preview.empty`.
 - `CardDetailRoute` — the `/cards/:setId/:cardId` route: reads the outlet context (`page` or
   `modal` with `siblings` + `onClose`), handles loading/404/error states and the modal presentation
   (prev/next through siblings, Esc/backdrop/× close).
@@ -359,6 +368,10 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   no retry on 404); `useGameMeta()` (1-hour stale) and `useCardList(params)` (`keepPreviousData`,
   5-minute stale) for the catalog. List endpoints keep `meta` via `requestWithMeta` (the F2-c
   envelope carries `meta` next to `data`).
+
+Device storage keys: `rb_cards_view` (`grid` | `list` | `table`), `rb_cards_facets` (open filter
+  groups), `rb_price_range` (chart range), `rb_cards_scroll` (scroll per search string) — all
+  through `lib/storage.ts`, invalid values fall back to defaults.
 - `context.ts` — the outlet context type (`presentation`, `siblings`, `onClose`).
 
 `catalog` sits in the `shell`/`account` boundary group (it may import everything below, never

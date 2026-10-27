@@ -79,14 +79,40 @@ export const handlers = [
     }),
   ),
   // The real `GET /cards` envelope carries `meta` next to `data` (F2-c contract).
-  http.get(`${API}/cards`, () =>
-    HttpResponse.json(
-      { success: true, data: { items: cardList.items }, meta: cardList.meta },
+  http.get(`${API}/cards`, ({ request }) => {
+    const url = new URL(request.url);
+    const perPage = Math.min(Number(url.searchParams.get('per_page')) || 48, 192);
+    const page = Math.max(Number(url.searchParams.get('page')) || 1, 1);
+    const q = url.searchParams.get('q') ?? '';
+    const domains = url.searchParams.getAll('domain');
+    let items = cardList.items;
+    if (q) {
+      const needle = q.toLowerCase();
+      items = items.filter((card) => card.name.toLowerCase().includes(needle));
+    }
+    if (domains.length > 0) {
+      items = items.filter((card) => domains.some((domain) => card.domains.includes(domain)));
+    }
+    const total = items.length;
+    const pages = Math.max(1, Math.ceil(total / perPage));
+    const safePage = Math.min(page, pages);
+    const start = (safePage - 1) * perPage;
+    const pageItems = items.slice(start, start + perPage);
+    return HttpResponse.json(
+      {
+        success: true,
+        data: { items: pageItems },
+        meta: { ...cardList.meta, page, per_page: perPage, total, pages },
+      },
       { status: 200 },
-    ),
-  ),
+    );
+  }),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
-  http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory()),
+  http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {
+    const url = new URL(request.url);
+    const range = (url.searchParams.get('range') as '30d' | '90d' | '1y' | 'all') ?? '90d';
+    return priceHistory([], { range, foilable: true, product_id: 123456 });
+  }),
 ];
 
 /** Default price history payload for MSW (F2-g). Tests override points/range as needed. */

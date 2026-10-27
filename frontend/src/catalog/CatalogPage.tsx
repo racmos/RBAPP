@@ -4,26 +4,24 @@ import { Link, Outlet, useLocation, useNavigate, useParams, useSearchParams } fr
 import type { CardListParams, CardSummary } from '@/api/types';
 import { BanBadge, CardImage, DomainPips, PriceTag, RarityDot } from '@/components/card';
 import { Button } from '@/components/ui/Button';
-import { Checkbox } from '@/components/ui/Checkbox';
-import { ChipGroup, FilterChip } from '@/components/ui/FilterChip';
+import { FilterChip } from '@/components/ui/FilterChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Field } from '@/components/ui/Field';
-import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Pagination } from '@/components/ui/Pagination';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { Select } from '@/components/ui/Select';
 import { Sheet } from '@/components/ui/Sheet';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Switch } from '@/components/ui/Switch';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
 import { up } from '@/lib/breakpoints';
-import { domainColor, rarityColor } from '@/lib/domains';
 import { readStorage, removeStorage, writeStorage } from '@/lib/storage';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { legacyHref } from '@/shell/legacyRoutes';
+import { CatalogFilters } from './CatalogFilters';
+import { CatalogPreview } from './CatalogPreview';
+import { CatalogTable } from './CatalogTable';
+import { CatalogToolbar } from './CatalogToolbar';
+import type { CardDetailOutletContext } from './context';
 import {
   DEFAULT_DIR,
   DEFAULT_PAGE,
@@ -33,31 +31,16 @@ import {
   withChange,
 } from './params';
 import { useCardList, useGameMeta } from './queries';
-import type { CardDetailOutletContext } from './context';
 import styles from './CatalogPage.module.css';
 
 const SEARCH_DEBOUNCE_MS = 300;
-const INPUT_DEBOUNCE_MS = 300;
 const VIEW_STORAGE_KEY = 'rb_cards_view';
 const SCROLL_STORAGE_KEY = 'rb_cards_scroll';
-
-const SORT_KEYS: Array<NonNullable<CardListParams['sort']>> = [
-  'number',
-  'name',
-  'price',
-  'trend_7d',
-  'trend_30d',
-  'rarity',
-  'energy',
-  'power',
-  'might',
-];
-
-type ViewMode = 'grid' | 'list';
+type ViewMode = 'grid' | 'list' | 'table';
 
 function readView(): ViewMode {
   const stored = readStorage(VIEW_STORAGE_KEY);
-  return stored === 'list' ? 'list' : 'grid';
+  return stored === 'list' || stored === 'table' ? stored : 'grid';
 }
 
 function writeView(view: ViewMode): void {
@@ -110,8 +93,11 @@ export function CatalogPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { setId } = useParams<{ setId?: string; cardId?: string }>();
   const isMd = useMediaQuery(up('md'));
+  const isXl = useMediaQuery(up('xl'));
+  const isWide = useMediaQuery(up('2xl'));
   const [params, setParams] = useCatalogParams();
   const metaQuery = useGameMeta();
   const listQuery = useCardList(params);
@@ -138,18 +124,32 @@ export function CatalogPage() {
   const total = listData?.meta?.total ?? 0;
   const pages = listData?.meta?.pages ?? 0;
   const page = listData?.meta?.page ?? params.page ?? DEFAULT_PAGE;
+  const perPage = listData?.meta?.per_page ?? params.per_page ?? 48;
   const facets = listData?.meta?.facets ?? {};
+  const items = useMemo(() => listData?.data.items ?? [], [listData]);
 
   const meta = metaQuery.data;
   const isLoading = listQuery.isLoading;
   const isFetching = listQuery.isFetching;
   const isError = listQuery.isError;
+  // S6: the sidebar dims its counts only when a refetch lasts longer than
+  // 300 ms, so fast refetches never flicker. The results region keeps the
+  // immediate `aria-busy` (F2-h behaviour).
+  const [sidebarBusy, setSidebarBusy] = useState(false);
+  useEffect(() => {
+    if (!isFetching) {
+      setSidebarBusy(false);
+      return;
+    }
+    const timer = setTimeout(() => setSidebarBusy(true), 300);
+    return () => clearTimeout(timer);
+  }, [isFetching]);
 
   const activeCount = useMemo(() => countActiveFilters(params), [params]);
 
   const siblings = useMemo(
-    () => listData?.data.items.map((item) => ({ setId: item.set_id, cardId: item.card_id })) ?? [],
-    [listData],
+    () => items.map((item) => ({ setId: item.set_id, cardId: item.card_id })),
+    [items],
   );
 
   const onClose = useCallback(() => {
@@ -162,6 +162,10 @@ export function CatalogPage() {
   const handleViewChange = (value: ViewMode) => {
     setView(value);
     writeView(value);
+  };
+
+  const handlePerPageChange = (nextPerPage: 48 | 96 | 192) => {
+    setParams({ per_page: nextPerPage });
   };
 
   const handleSearchChange = useDebouncedCallback((value: string) => {
@@ -200,7 +204,36 @@ export function CatalogPage() {
     });
   };
 
+  // Wide preview selection.
+  const selectedParam = searchParams.get('selected');
+  const selectedKey = useMemo(() => {
+    if (!isWide || view === 'table') return null;
+    const found = items.find((card) => card.key === selectedParam);
+    return found?.key ?? items[0]?.key ?? null;
+  }, [items, selectedParam, isWide, view]);
+
+  const selectedCard = useMemo(
+    () => (selectedKey ? (items.find((card) => card.key === selectedKey) ?? null) : null),
+    [items, selectedKey],
+  );
+
+  const handleSelectCard = useCallback(
+    (card: CardSummary) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('selected', card.key);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const showCatalog = !setId || isMd;
+  const effectiveView: 'grid' | 'list' | 'table' =
+    view === 'table' && isMd ? 'table' : view === 'list' ? 'list' : 'grid';
 
   return (
     <>
@@ -220,93 +253,164 @@ export function CatalogPage() {
             }
           />
 
-          <SearchInput value={params.q ?? ''} onChange={handleSearchChange} />
-
-          <CatalogToolbar
-            activeCount={activeCount}
-            onOpenFilters={() => setFilterOpen(true)}
-            sort={params.sort ?? DEFAULT_SORT}
-            dir={params.dir ?? DEFAULT_DIR}
-            view={view}
-            onSortChange={(sort) => setParams({ sort })}
-            onDirChange={(dir) => setParams({ dir })}
-            onViewChange={handleViewChange}
-          />
-
-          <ActiveFilters
-            params={params}
-            facets={facets}
-            setParams={setParams}
-            onClear={handleClearFilters}
-          />
-
-          <h2 ref={resultsRef} tabIndex={-1} className="sr-only">
-            {t('catalog.results')}
-          </h2>
-
-          <section
-            className={styles.results}
-            aria-busy={isFetching || undefined}
-            aria-live="polite"
-            data-dimmed={isFetching && !isLoading ? 'true' : undefined}
+          <div
+            className={styles.layout}
+            data-wide={isWide && effectiveView !== 'table' ? 'true' : undefined}
           >
-            {isLoading && !isError && (
-              <div className={styles.loading}>
-                <span className="sr-only">{t('catalog.loading')}</span>
-                <CardGridSkeleton />
-              </div>
-            )}
-
-            {!isLoading && isError && (
-              <ErrorState
-                message={listQuery.error?.message ?? t('catalog.loading')}
-                onRetry={() => listQuery.refetch()}
+            {isXl && (
+              <CatalogFilters
+                mode="sidebar"
+                params={params}
+                setParams={setParams}
+                meta={meta}
+                facets={facets}
+                total={total}
+                activeCount={activeCount}
+                onClear={handleClearFilters}
+                isBusy={sidebarBusy}
               />
             )}
 
-            {!isLoading && !isError && total === 0 && (
-              <EmptyState
-                icon="info"
-                title={t('catalog.empty.title')}
-                body={t('catalog.empty.body')}
-                action={{ label: t('catalog.filters.clearAll'), onAction: handleClearFilters }}
-              />
-            )}
+            <div className={styles.mainColumn}>
+              <SearchInput value={params.q ?? ''} onChange={handleSearchChange} />
 
-            {!isLoading && !isError && total > 0 && (
-              <>
-                {view === 'grid' ? (
-                  <CardGrid
-                    items={listData?.data.items ?? []}
-                    search={location.search}
-                    onBeforeNavigate={saveScroll}
-                  />
-                ) : (
-                  <CardList
-                    items={listData?.data.items ?? []}
-                    search={location.search}
-                    onBeforeNavigate={saveScroll}
-                  />
-                )}
-                {pages > 1 && (
-                  <div className={styles.pagination}>
-                    <Pagination page={page} pages={pages} onChange={handlePageChange} />
+              <CatalogToolbar
+                activeCount={activeCount}
+                total={total}
+                showSidebar={isXl}
+                showPageSize={isXl}
+                sort={params.sort ?? DEFAULT_SORT}
+                dir={params.dir ?? DEFAULT_DIR}
+                view={view}
+                perPage={perPage as 48 | 96 | 192}
+                tableEnabled={isMd}
+                onOpenFilters={() => setFilterOpen(true)}
+                onSortChange={(sort) => setParams({ sort })}
+                onDirChange={(dir) => setParams({ dir })}
+                onViewChange={handleViewChange}
+                onPerPageChange={handlePerPageChange}
+              />
+
+              <ActiveFilters
+                params={params}
+                facets={facets}
+                setParams={setParams}
+                onClear={handleClearFilters}
+              />
+
+              <h2 ref={resultsRef} tabIndex={-1} className="sr-only">
+                {t('catalog.results')}
+              </h2>
+
+              <section
+                className={styles.results}
+                aria-busy={isFetching || undefined}
+                aria-live="polite"
+                data-dimmed={isFetching && !isLoading ? 'true' : undefined}
+              >
+                {isLoading && !isError && (
+                  <div className={styles.loading}>
+                    <span className="sr-only">{t('catalog.loading')}</span>
+                    <CardGridSkeleton />
                   </div>
                 )}
-              </>
-            )}
-          </section>
 
-          <FilterSheet
-            open={filterOpen}
-            onClose={() => setFilterOpen(false)}
-            params={params}
-            setParams={setParams}
-            meta={meta}
-            facets={facets}
-            total={total}
-            resultsRef={resultsRef}
-          />
+                {!isLoading && isError && (
+                  <ErrorState
+                    message={listQuery.error?.message ?? t('catalog.loading')}
+                    onRetry={() => listQuery.refetch()}
+                  />
+                )}
+
+                {!isLoading && !isError && total === 0 && (
+                  <EmptyState
+                    icon="info"
+                    title={t('catalog.empty.title')}
+                    body={t('catalog.empty.body')}
+                    action={{ label: t('catalog.filters.clearAll'), onAction: handleClearFilters }}
+                  />
+                )}
+
+                {!isLoading && !isError && total > 0 && (
+                  <>
+                    {effectiveView === 'table' ? (
+                      <CatalogTable
+                        items={items}
+                        sort={params.sort ?? DEFAULT_SORT}
+                        dir={params.dir ?? DEFAULT_DIR}
+                        onSort={(sort, dir) => setParams({ sort, dir })}
+                        isWide={isXl}
+                      />
+                    ) : effectiveView === 'grid' ? (
+                      <CardGrid
+                        items={items}
+                        search={location.search}
+                        onBeforeNavigate={saveScroll}
+                        selectable={isWide}
+                        selectedKey={selectedCard?.key ?? null}
+                        onSelect={handleSelectCard}
+                      />
+                    ) : (
+                      <CardList
+                        items={items}
+                        search={location.search}
+                        onBeforeNavigate={saveScroll}
+                        selectable={isWide}
+                        selectedKey={selectedCard?.key ?? null}
+                        onSelect={handleSelectCard}
+                      />
+                    )}
+                    {pages > 1 && (
+                      <div className={styles.pagination}>
+                        <Pagination page={page} pages={pages} onChange={handlePageChange} />
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            </div>
+
+            {isWide && effectiveView !== 'table' && (
+              <CatalogPreview card={selectedCard} items={items} search={location.search} />
+            )}
+          </div>
+
+          {!isXl && (
+            <Sheet
+              open={filterOpen}
+              onClose={() => setFilterOpen(false)}
+              title={t('catalog.filters.title')}
+            >
+              <CatalogFilters
+                mode="sheet"
+                params={params}
+                setParams={setParams}
+                meta={meta}
+                facets={facets}
+                total={total}
+                activeCount={activeCount}
+                onClear={handleClearFilters}
+                resultsRef={resultsRef}
+                onClose={() => setFilterOpen(false)}
+              />
+              <div className={styles.sheetFooter}>
+                <Button variant="ghost" onClick={handleClearFilters}>
+                  {t('catalog.filters.clear')}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setFilterOpen(false);
+                    resultsRef.current?.focus();
+                    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                >
+                  {total === 1
+                    ? t('catalog.filters.show_one', { count: total })
+                    : t('catalog.filters.show_other', { count: total })}
+                </Button>
+              </div>
+            </Sheet>
+          )}
         </div>
       )}
 
@@ -389,87 +493,6 @@ function SearchInput({ value, onChange }: SearchInputProps) {
         onChange={(event) => setLocal(event.target.value)}
       />
     </form>
-  );
-}
-
-type CatalogToolbarProps = {
-  activeCount: number;
-  onOpenFilters: () => void;
-  sort: string;
-  dir: 'asc' | 'desc';
-  view: ViewMode;
-  onSortChange: (sort: CardListParams['sort']) => void;
-  onDirChange: (dir: 'asc' | 'desc') => void;
-  onViewChange: (view: ViewMode) => void;
-};
-
-function CatalogToolbar({
-  activeCount,
-  onOpenFilters,
-  sort,
-  dir,
-  view,
-  onSortChange,
-  onDirChange,
-  onViewChange,
-}: CatalogToolbarProps) {
-  const { t } = useTranslation('cards');
-
-  const translateKey = (key: string) => (t as (key: string) => string)(key);
-  const sortOptions = SORT_KEYS.map((key) => ({
-    value: key,
-    label: translateKey(`catalog.sort.${key}`),
-  }));
-
-  return (
-    <div className={styles.toolbar}>
-      <Button variant="ghost" size="sm" onClick={onOpenFilters} className={styles.filterButton}>
-        {t('catalog.filters.open')}
-        {activeCount > 0 && (
-          <span className={styles.badge}>
-            {activeCount === 1
-              ? t('catalog.filters.active_one', { count: activeCount })
-              : t('catalog.filters.active_other', { count: activeCount })}
-          </span>
-        )}
-      </Button>
-
-      <Field label={t('catalog.sort.label')}>
-        {(props) => (
-          <Select
-            {...props}
-            value={sort}
-            onChange={(event) => onSortChange(event.target.value as CardListParams['sort'])}
-          >
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        )}
-      </Field>
-
-      <button
-        type="button"
-        className={styles.dirButton}
-        aria-pressed={dir === 'desc'}
-        aria-label={t('catalog.sort.dirLabel')}
-        onClick={() => onDirChange(dir === 'asc' ? 'desc' : 'asc')}
-      >
-        <Icon name="arrow" size={16} className={dir === 'desc' ? styles.dirDesc : styles.dirAsc} />
-      </button>
-
-      <SegmentedControl
-        label={t('catalog.view.label')}
-        options={[
-          { value: 'grid', label: t('catalog.view.grid') },
-          { value: 'list', label: t('catalog.view.list') },
-        ]}
-        value={view}
-        onChange={onViewChange}
-      />
-    </div>
   );
 }
 
@@ -629,85 +652,175 @@ type CardGridProps = {
   items: CardSummary[];
   search: string;
   onBeforeNavigate: () => void;
+  selectable?: boolean;
+  selectedKey?: string | null;
+  onSelect?: (card: CardSummary) => void;
 };
 
-function CardGrid({ items, search, onBeforeNavigate }: CardGridProps) {
+function CardGrid({
+  items,
+  search,
+  onBeforeNavigate,
+  selectable,
+  selectedKey,
+  onSelect,
+}: CardGridProps) {
   const { t } = useTranslation('cards');
   return (
     <ul className={styles.grid} aria-label={t('catalog.results')} data-view="grid">
-      {items.map((card) => (
-        <li key={card.key}>
-          <Link
-            className={styles.tile}
-            to={{ pathname: `/cards/${card.set_id}/${card.card_id}`, search }}
-            onClick={onBeforeNavigate}
-          >
-            <div className={styles.tileImage}>
-              <CardImage card={card} size="tile" decorative />
-              {card.owned.total > 0 && (
-                <span className={styles.ownedBadge} aria-hidden="true">
-                  ×{card.owned.total}
+      {items.map((card) => {
+        const isSelected = selectable && selectedKey === card.key;
+        return (
+          <li key={card.key}>
+            {selectable ? (
+              <button
+                type="button"
+                className={styles.tile}
+                aria-pressed={isSelected}
+                onClick={() => onSelect?.(card)}
+              >
+                <div className={styles.tileImage}>
+                  <CardImage card={card} size="tile" decorative />
+                  {card.owned.total > 0 && (
+                    <span className={styles.ownedBadge} aria-hidden="true">
+                      ×{card.owned.total}
+                    </span>
+                  )}
+                  {card.owned.total > 0 && (
+                    <span className="sr-only">
+                      {t('catalog.owned', { count: card.owned.total })}
+                    </span>
+                  )}
+                  <span className={styles.banBadge}>
+                    <BanBadge bans={card.bans} variant="compact" />
+                  </span>
+                </div>
+                <span className={styles.tileName}>{card.name}</span>
+                <span className={styles.tileId}>
+                  {card.set_id} · #{card.card_id}
                 </span>
-              )}
-              {card.owned.total > 0 && (
-                <span className="sr-only">{t('catalog.owned', { count: card.owned.total })}</span>
-              )}
-              <span className={styles.banBadge}>
-                <BanBadge bans={card.bans} variant="compact" />
-              </span>
-            </div>
-            <span className={styles.tileName}>{card.name}</span>
-            <span className={styles.tileId}>
-              {card.set_id} · #{card.card_id}
-            </span>
-            <div className={styles.tileFooter}>
-              <DomainPips domains={card.domains} size={16} />
-              <PriceTag price={card.price} size="sm" />
-            </div>
-          </Link>
-        </li>
-      ))}
+                <div className={styles.tileFooter}>
+                  <DomainPips domains={card.domains} size={16} />
+                  <PriceTag price={card.price} size="sm" />
+                </div>
+              </button>
+            ) : (
+              <Link
+                className={styles.tile}
+                to={{ pathname: `/cards/${card.set_id}/${card.card_id}`, search }}
+                onClick={onBeforeNavigate}
+              >
+                <div className={styles.tileImage}>
+                  <CardImage card={card} size="tile" decorative />
+                  {card.owned.total > 0 && (
+                    <span className={styles.ownedBadge} aria-hidden="true">
+                      ×{card.owned.total}
+                    </span>
+                  )}
+                  {card.owned.total > 0 && (
+                    <span className="sr-only">
+                      {t('catalog.owned', { count: card.owned.total })}
+                    </span>
+                  )}
+                  <span className={styles.banBadge}>
+                    <BanBadge bans={card.bans} variant="compact" />
+                  </span>
+                </div>
+                <span className={styles.tileName}>{card.name}</span>
+                <span className={styles.tileId}>
+                  {card.set_id} · #{card.card_id}
+                </span>
+                <div className={styles.tileFooter}>
+                  <DomainPips domains={card.domains} size={16} />
+                  <PriceTag price={card.price} size="sm" />
+                </div>
+              </Link>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function CardList({ items, search, onBeforeNavigate }: CardGridProps) {
+function CardList({
+  items,
+  search,
+  onBeforeNavigate,
+  selectable,
+  selectedKey,
+  onSelect,
+}: CardGridProps) {
   const { t } = useTranslation('cards');
   const { typeLabel } = useEnumLabel();
 
   return (
     <ul className={styles.list} aria-label={t('catalog.results')} data-view="list">
-      {items.map((card) => (
-        <li key={card.key}>
-          <Link
-            className={styles.row}
-            to={{ pathname: `/cards/${card.set_id}/${card.card_id}`, search }}
-            onClick={onBeforeNavigate}
-          >
-            <CardImage card={card} size="thumb" decorative />
-            <div className={styles.rowMain}>
-              <span className={styles.rowName}>{card.name}</span>
-              <span className={styles.rowMeta}>
-                {card.set_id} · #{card.card_id} · {typeLabel(card.supertype, card.type)}
-              </span>
-            </div>
-            <div className={styles.rowPips}>
-              <DomainPips domains={card.domains} size={16} />
-            </div>
-            <RarityDot rarity={card.rarity} />
-            <PriceTag price={card.price} size="sm" trend="7d" />
-            {card.owned.total > 0 && (
-              <span
-                className={styles.rowOwned}
-                aria-label={t('catalog.owned', { count: card.owned.total })}
+      {items.map((card) => {
+        const isSelected = selectable && selectedKey === card.key;
+        return (
+          <li key={card.key}>
+            {selectable ? (
+              <button
+                type="button"
+                className={styles.row}
+                aria-pressed={isSelected}
+                onClick={() => onSelect?.(card)}
               >
-                ×{card.owned.total}
-              </span>
+                <CardImage card={card} size="thumb" decorative />
+                <div className={styles.rowMain}>
+                  <span className={styles.rowName}>{card.name}</span>
+                  <span className={styles.rowMeta}>
+                    {card.set_id} · #{card.card_id} · {typeLabel(card.supertype, card.type)}
+                  </span>
+                </div>
+                <div className={styles.rowPips}>
+                  <DomainPips domains={card.domains} size={16} />
+                </div>
+                <RarityDot rarity={card.rarity} />
+                <PriceTag price={card.price} size="sm" trend="7d" />
+                {card.owned.total > 0 && (
+                  <span
+                    className={styles.rowOwned}
+                    aria-label={t('catalog.owned', { count: card.owned.total })}
+                  >
+                    ×{card.owned.total}
+                  </span>
+                )}
+                <BanBadge bans={card.bans} variant="compact" />
+              </button>
+            ) : (
+              <Link
+                className={styles.row}
+                to={{ pathname: `/cards/${card.set_id}/${card.card_id}`, search }}
+                onClick={onBeforeNavigate}
+              >
+                <CardImage card={card} size="thumb" decorative />
+                <div className={styles.rowMain}>
+                  <span className={styles.rowName}>{card.name}</span>
+                  <span className={styles.rowMeta}>
+                    {card.set_id} · #{card.card_id} · {typeLabel(card.supertype, card.type)}
+                  </span>
+                </div>
+                <div className={styles.rowPips}>
+                  <DomainPips domains={card.domains} size={16} />
+                </div>
+                <RarityDot rarity={card.rarity} />
+                <PriceTag price={card.price} size="sm" trend="7d" />
+                {card.owned.total > 0 && (
+                  <span
+                    className={styles.rowOwned}
+                    aria-label={t('catalog.owned', { count: card.owned.total })}
+                  >
+                    ×{card.owned.total}
+                  </span>
+                )}
+                <BanBadge bans={card.bans} variant="compact" />
+              </Link>
             )}
-            <BanBadge bans={card.bans} variant="compact" />
-          </Link>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -721,330 +834,5 @@ function CardGridSkeleton() {
         </li>
       ))}
     </ul>
-  );
-}
-
-type FilterSheetProps = {
-  open: boolean;
-  onClose: () => void;
-  params: CardListParams;
-  setParams: (patch: Partial<CardListParams>) => void;
-  meta: import('@/api/types').GameMeta | undefined;
-  facets: import('@/api/types').CardFacets;
-  total: number;
-  resultsRef: React.RefObject<HTMLHeadingElement | null>;
-};
-
-function FilterSheet({
-  open,
-  onClose,
-  params,
-  setParams,
-  meta,
-  facets,
-  total,
-  resultsRef,
-}: FilterSheetProps) {
-  const { t } = useTranslation('cards');
-  const { label } = useEnumLabel();
-  const debouncedSetParams = useDebouncedCallback(setParams, INPUT_DEBOUNCE_MS);
-
-  const toggleArray = (
-    key: 'set' | 'domain' | 'type' | 'supertype' | 'exclude_supertype' | 'rarity' | 'tag',
-    value: string,
-  ) => {
-    const current = params[key] ?? [];
-    if (current.includes(value)) {
-      setParams({ [key]: current.filter((v) => v !== value) });
-    } else {
-      setParams({ [key]: [...current, value] });
-    }
-  };
-
-  const showCount = (
-    facet: Record<string, number> | undefined,
-    value: string,
-  ): number | undefined => {
-    const count = facet?.[value];
-    return count === undefined ? undefined : count;
-  };
-
-  return (
-    <Sheet open={open} onClose={onClose} title={t('catalog.filters.title')}>
-      <div className={styles.sheetBody}>
-        <fieldset className={styles.group}>
-          <legend className={styles.legend}>{t('catalog.facet.set')}</legend>
-          <div className={styles.checkList}>
-            {meta?.sets.map((set) => (
-              <Checkbox
-                key={set.id}
-                label={`${set.name} (${showCount(facets.set, set.id) ?? 0})`}
-                checked={params.set?.includes(set.id) ?? false}
-                onChange={() => toggleArray('set', set.id)}
-              />
-            ))}
-          </div>
-        </fieldset>
-
-        <div className={styles.group}>
-          <ChipGroup legend={t('catalog.facet.domain')}>
-            {meta?.domains.map((domain) => {
-              const selected = params.domain?.includes(domain) ?? false;
-              const count = showCount(facets.domain, domain);
-              return (
-                <FilterChip
-                  key={domain}
-                  label={label('domain', domain)}
-                  count={count}
-                  pressed={selected}
-                  color={domainColor(domain)}
-                  onClick={() => toggleArray('domain', domain)}
-                />
-              );
-            })}
-          </ChipGroup>
-          <div className={styles.matchControl}>
-            <SegmentedControl
-              label={t('catalog.facet.domainMatch')}
-              options={[
-                { value: 'any', label: t('catalog.facet.any') },
-                { value: 'all', label: t('catalog.facet.all') },
-                { value: 'subset', label: t('catalog.facet.subset') },
-              ]}
-              value={params.domain_match ?? 'any'}
-              onChange={(value) => setParams({ domain_match: value as 'any' | 'all' | 'subset' })}
-            />
-          </div>
-        </div>
-
-        <ChipGroup legend={t('catalog.facet.type')}>
-          {meta?.types.map((type) => {
-            const selected = params.type?.includes(type) ?? false;
-            return (
-              <FilterChip
-                key={type}
-                label={label('type', type)}
-                count={showCount(facets.type, type)}
-                pressed={selected}
-                onClick={() => toggleArray('type', type)}
-              />
-            );
-          })}
-        </ChipGroup>
-
-        <ChipGroup legend={t('catalog.facet.supertype')}>
-          {meta?.supertypes.map((supertype) => {
-            const selected = params.supertype?.includes(supertype) ?? false;
-            return (
-              <FilterChip
-                key={supertype}
-                label={label('supertype', supertype)}
-                count={showCount(facets.supertype, supertype)}
-                pressed={selected}
-                onClick={() => toggleArray('supertype', supertype)}
-              />
-            );
-          })}
-        </ChipGroup>
-
-        <ChipGroup legend={t('catalog.facet.rarity')}>
-          {meta?.rarities.map((rarity) => {
-            const selected = params.rarity?.includes(rarity) ?? false;
-            return (
-              <FilterChip
-                key={rarity}
-                label={label('rarity', rarity)}
-                count={showCount(facets.rarity, rarity)}
-                pressed={selected}
-                color={rarityColor(rarity)}
-                onClick={() => toggleArray('rarity', rarity)}
-              />
-            );
-          })}
-        </ChipGroup>
-
-        <RangeGroup
-          label={t('catalog.facet.energy')}
-          minKey="energy_min"
-          maxKey="energy_max"
-          min={params.energy_min}
-          max={params.energy_max}
-          onChange={(patch) => debouncedSetParams(patch)}
-        />
-
-        <RangeGroup
-          label={t('catalog.facet.power')}
-          minKey="power_min"
-          maxKey="power_max"
-          min={params.power_min}
-          max={params.power_max}
-          onChange={(patch) => debouncedSetParams(patch)}
-        />
-
-        <RangeGroup
-          label={t('catalog.facet.might')}
-          minKey="might_min"
-          maxKey="might_max"
-          min={params.might_min}
-          max={params.might_max}
-          onChange={(patch) => debouncedSetParams(patch)}
-        />
-
-        <RangeGroup
-          label={t('catalog.facet.price')}
-          minKey="price_min"
-          maxKey="price_max"
-          min={params.price_min}
-          max={params.price_max}
-          step={0.01}
-          onChange={(patch) => debouncedSetParams(patch)}
-        />
-
-        <div className={styles.group}>
-          <span className={styles.legend}>{t('catalog.facet.owned')}</span>
-          <SegmentedControl
-            options={[
-              { value: 'any', label: t('catalog.facet.ownedAny') },
-              { value: 'owned', label: t('catalog.facet.ownedOwned') },
-              { value: 'missing', label: t('catalog.facet.ownedMissing') },
-            ]}
-            value={params.owned ?? 'any'}
-            onChange={(value) => setParams({ owned: value as 'any' | 'owned' | 'missing' })}
-          />
-        </div>
-
-        <div className={styles.group}>
-          <label htmlFor="banned_in" className={styles.legend}>
-            {t('catalog.facet.banned')}
-          </label>
-          <Select
-            id="banned_in"
-            value={params.banned_in ?? ''}
-            onChange={(event) =>
-              setParams({
-                banned_in: event.target.value
-                  ? (event.target.value as '1v1' | '2v2' | 'any')
-                  : undefined,
-              })
-            }
-          >
-            <option value="">{t('catalog.facet.bannedNone')}</option>
-            <option value="1v1">{t('catalog.facet.banned1v1')}</option>
-            <option value="2v2">{t('catalog.facet.banned2v2')}</option>
-            <option value="any">{t('catalog.facet.bannedAny')}</option>
-          </Select>
-        </div>
-
-        <div className={styles.group}>
-          <Switch
-            label={t('catalog.facet.baseOnly')}
-            checked={params.base_only ?? false}
-            onCheckedChange={(checked) => setParams({ base_only: checked || undefined })}
-          />
-        </div>
-
-        <div className={styles.group}>
-          <Field label={t('catalog.facet.text')}>
-            {(props) => (
-              <Input
-                {...props}
-                type="search"
-                value={params.text ?? ''}
-                onChange={(event) => debouncedSetParams({ text: event.target.value || undefined })}
-              />
-            )}
-          </Field>
-        </div>
-
-        <ChipGroup legend={t('catalog.facet.tags')}>
-          {facets.tag?.map(({ tag, count }) => {
-            const selected = params.tag?.includes(tag) ?? false;
-            return (
-              <FilterChip
-                key={tag}
-                label={tag}
-                count={count}
-                pressed={selected}
-                onClick={() => toggleArray('tag', tag)}
-              />
-            );
-          })}
-        </ChipGroup>
-      </div>
-
-      <div className={styles.sheetFooter}>
-        <Button variant="ghost" onClick={() => setParams({})}>
-          {t('catalog.filters.clear')}
-        </Button>
-        <Button
-          onClick={() => {
-            onClose();
-            resultsRef.current?.focus();
-            resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }}
-        >
-          {total === 1
-            ? t('catalog.filters.show_one', { count: total })
-            : t('catalog.filters.show_other', { count: total })}
-        </Button>
-      </div>
-    </Sheet>
-  );
-}
-
-type RangeGroupProps = {
-  label: string;
-  minKey: 'energy_min' | 'power_min' | 'might_min' | 'price_min';
-  maxKey: 'energy_max' | 'power_max' | 'might_max' | 'price_max';
-  min: number | undefined;
-  max: number | undefined;
-  step?: number;
-  onChange: (patch: Partial<CardListParams>) => void;
-};
-
-function RangeGroup({ label, minKey, maxKey, min, max, step, onChange }: RangeGroupProps) {
-  const { t } = useTranslation('cards');
-  const debounced = useDebouncedCallback(onChange, INPUT_DEBOUNCE_MS);
-
-  return (
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{label}</legend>
-      <div className={styles.range}>
-        <Field label={t('catalog.facet.min')}>
-          {(props) => (
-            <Input
-              {...props}
-              type="number"
-              min={0}
-              max={99}
-              step={step}
-              value={min ?? ''}
-              onChange={(event) =>
-                debounced({
-                  [minKey]: event.target.value === '' ? undefined : Number(event.target.value),
-                })
-              }
-            />
-          )}
-        </Field>
-        <Field label={t('catalog.facet.max')}>
-          {(props) => (
-            <Input
-              {...props}
-              type="number"
-              min={0}
-              max={99}
-              step={step}
-              value={max ?? ''}
-              onChange={(event) =>
-                debounced({
-                  [maxKey]: event.target.value === '' ? undefined : Number(event.target.value),
-                })
-              }
-            />
-          )}
-        </Field>
-      </div>
-    </fieldset>
   );
 }
