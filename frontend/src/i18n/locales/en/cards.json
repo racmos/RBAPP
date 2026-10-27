@@ -11,5 +11,86 @@
     "down": "Down {{value}} in {{days}} days",
     "flat": "No change in {{days}} days"
   },
-  "foil": "Foil"
+  "foil": "Foil",
+  "ability": {
+    "empty": "No text",
+    "energy": "{{count}} energy",
+    "exhaust": "exhaust",
+    "might": "might",
+    "rune": "{{domain}} rune",
+    "runeAny": "rune of any domain"
+  },
+  "detail": {
+    "eyebrow": "{{set}} · #{{number}}",
+    "loading": "Loading card",
+    "notFound": {
+      "title": "Card not found",
+      "body": "The link may be old or the card may no longer exist.",
+      "action": "Go to the catalog"
+    },
+    "nav": {
+      "prev": "Previous card",
+      "next": "Next card"
+    },
+    "bans": {
+      "line": "{{mode}}: banned since {{date}}",
+      "reason": "Reason: {{reason}}",
+      "none": "Legal in 1v1 and 2v2"
+    },
+    "prices": {
+      "title": "Prices",
+      "market": "Market",
+      "marketFoil": "Foil market",
+      "low": "Low",
+      "avg30": "30-day avg.",
+      "sourceLine": "Based on the {{source}}",
+      "source": {
+        "avg7": "7-day average",
+        "avg7_foil": "7-day foil average",
+        "low": "lowest price",
+        "low_foil": "lowest foil price"
+      },
+      "asOf": "Cardmarket prices as of {{date}}",
+      "none": "This card has no Cardmarket price yet.",
+      "trend7": "7 days",
+      "trend30": "30 days"
+    },
+    "text": {
+      "title": "Text"
+    },
+    "attributes": {
+      "title": "Attributes",
+      "energy": "Energy",
+      "power": "Power",
+      "might": "Might",
+      "type": "Type",
+      "rarity": "Rarity",
+      "domains": "Domains",
+      "artist": "Artist",
+      "tags": "Tags"
+    },
+    "mine": {
+      "title": "My copies",
+      "total_one": "You have {{count}} copy",
+      "total_other": "You have {{count}} copies",
+      "none": "You don't have this card yet.",
+      "line": "{{qty}}× · {{condition}} · {{language}}",
+      "selling": "For sale at {{price}}",
+      "sellingNoPrice": "For sale",
+      "manage": "Manage in the collection"
+    },
+    "printings": {
+      "title": "Other printings"
+    },
+    "related": {
+      "title": "Related cards",
+      "none": "No related cards."
+    },
+    "decks": {
+      "title": "In my decks",
+      "qty_one": "{{count}} copy",
+      "qty_other": "{{count}} copies",
+      "none": "Not in any of your decks."
+    }
+  }
 }

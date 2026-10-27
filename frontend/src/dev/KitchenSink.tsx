@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { basicRune, champion, foilCommon, noImage, noPrice, token } from '@/test/fixtures/cards';
 import {
+  AbilityText,
   BanBadge,
   CardArtPlaceholder,
   CardImage,
@@ -148,6 +149,12 @@ export function KitchenSink() {
       <Modal open={modal} title="A modal" onClose={() => setModal(false)}>
         Content of the modal.
       </Modal>
+      <Modal open={false} title="Unused" onClose={() => {}} size="lg">
+        lg placeholder
+      </Modal>
+      <Modal open={false} title="Unused" onClose={() => {}} size="xl">
+        xl placeholder
+      </Modal>
       <Sheet open={sheet} title="A sheet" onClose={() => setSheet(false)}>
         Content of the sheet.
       </Sheet>
@@ -220,6 +227,14 @@ function CardAtomsPanel() {
           <RarityDot rarity="Rare" showLabel />
           <BanBadge bans={{ '1v1': true, '2v2': false }} />
           <BanBadge bans={{ '1v1': true, '2v2': true }} variant="compact" />
+        </div>
+      </Panel>
+
+      <Panel title="Ability text">
+        <div style={{ display: 'grid', gap: 12 }}>
+          <AbilityText text="[Accelerate] When I attack, deal 2." />
+          <AbilityText text="Pay :rb_energy_2: (then :rb_exhaust:)." />
+          <AbilityText text=":rb_rune_fury: :rb_rune_rainbow: :rb_power:" />
         </div>
       </Panel>
 

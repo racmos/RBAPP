@@ -14,6 +14,7 @@ function lint(code: string, file: string) {
 }
 
 const cardFile = (name: string) => join(process.cwd(), 'src/components/card', name);
+const catalogFile = (name: string) => join(process.cwd(), 'src/catalog', name);
 
 describe('ESLint boundaries (F2-e S13)', () => {
   it('flags a card component that imports from a feature folder', async () => {
@@ -48,6 +49,15 @@ describe('ESLint boundaries (F2-e S13)', () => {
     );
     expect(result[0].errorCount).toBeGreaterThan(0);
     expect(result[0].messages.some((m) => m.message.includes('type'))).toBe(true);
+  });
+
+  it('flags a catalog component that imports from app', async () => {
+    const result = await lint(
+      "import { createAppRoutes } from '@/app/routes';\nexport const A = () => null;\n",
+      catalogFile('Bad.tsx'),
+    );
+    expect(result[0].errorCount).toBeGreaterThan(0);
+    expect(result[0].messages.some((m) => m.message.includes('folder boundaries'))).toBe(true);
   });
 
   it('asserts every @/api import under components/card is type-only', () => {

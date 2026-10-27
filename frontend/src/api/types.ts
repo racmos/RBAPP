@@ -72,6 +72,77 @@ export type CardPrice = {
   as_of: string | null;
 };
 
+/** Mini card shape used for printings and related cards (F2-d). */
+export type CardMini = {
+  set_id: string;
+  card_id: string;
+  key: string;
+  number: string | null;
+  name: string;
+  rarity: string;
+  image_src: string | null;
+  image_thumb_src: string | null;
+  price: CardPrice | null;
+};
+
+/** Latest Cardmarket price row for a card (F2-d). */
+export type CardPriceDetail = {
+  date: string;
+  product_id: number | null;
+  columns: {
+    avg7: number | null;
+    avg7_foil: number | null;
+    avg30: number | null;
+    avg30_foil: number | null;
+    low: number | null;
+    low_foil: number | null;
+    trend: number | null;
+    trend_foil: number | null;
+    avg: number | null;
+    avg_foil: number | null;
+  };
+  foil_product_id: number | null;
+  foil_columns: {
+    avg7: number | null;
+    avg7_foil: number | null;
+    avg30: number | null;
+    avg30_foil: number | null;
+    low: number | null;
+    low_foil: number | null;
+    trend: number | null;
+    trend_foil: number | null;
+    avg: number | null;
+    avg_foil: number | null;
+  };
+};
+
+/** Ban information for one mode (F2-d). */
+export type BanInfo = {
+  mode: GameMode;
+  since: string;
+  reason: string | null;
+};
+
+/** One collection line of the current user (F2-d). */
+export type MyLine = {
+  id: number;
+  foil: boolean;
+  qty: number;
+  condition: string;
+  language: string;
+  selling: boolean;
+  sell_price: number | null;
+  playset: boolean;
+  updated_at: string;
+};
+
+/** One deck the current user has this card in (F2-d). */
+export type InDeck = {
+  deck_id: number;
+  name: string;
+  qty: number;
+};
+
 /** `CardSummary` mirrors the contract in `docs/api.md` (F2-b). */
 export type CardSummary = {
   set_id: string;
@@ -95,6 +166,19 @@ export type CardSummary = {
   price: CardPrice | null;
   bans: CardBans;
   owned: CardOwned;
+};
+
+/** `CardDetail` = `CardSummary` plus the detail payload (F2-d). */
+export type CardDetail = CardSummary & {
+  ability: string | null;
+  artist: string | null;
+  set: { id: string; name: string; released_on: string | null };
+  price_detail: CardPriceDetail | null;
+  printings: CardMini[];
+  related: CardMini[];
+  ban_info: BanInfo[];
+  my_lines: MyLine[];
+  in_decks: InDeck[];
 };
 
 export type SuccessEnvelope<T> = { success: true; data: T; meta?: Record<string, unknown> };

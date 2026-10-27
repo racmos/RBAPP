@@ -1,4 +1,5 @@
 import { HttpResponse, http } from 'msw';
+import { cardDetail } from '@/test/fixtures/cards';
 
 /** Base of the API as the SPA sees it (same-origin, behind Nginx). */
 export const API = '/riftbound/api/v1';
@@ -64,4 +65,5 @@ export const handlers = [
   ),
   http.get(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.patch(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
+  http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
 ];

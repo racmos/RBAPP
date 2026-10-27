@@ -11,5 +11,88 @@
     "down": "Baja un {{value}} en {{days}} días",
     "flat": "Sin cambios en {{days}} días"
   },
-  "foil": "Foil"
+  "foil": "Foil",
+  "ability": {
+    "empty": "Sin texto",
+    "energy": "{{count}} de energía",
+    "exhaust": "agotar",
+    "might": "fuerza",
+    "rune": "runa de {{domain}}",
+    "runeAny": "runa de cualquier dominio"
+  },
+  "detail": {
+    "eyebrow": "{{set}} · #{{number}}",
+    "loading": "Cargando carta",
+    "notFound": {
+      "title": "Carta no encontrada",
+      "body": "Puede que el enlace sea antiguo o que la carta ya no exista.",
+      "action": "Ir al catálogo"
+    },
+    "nav": {
+      "prev": "Carta anterior",
+      "next": "Carta siguiente"
+    },
+    "bans": {
+      "line": "{{mode}}: baneada desde el {{date}}",
+      "reason": "Motivo: {{reason}}",
+      "none": "Legal en 1v1 y 2v2"
+    },
+    "prices": {
+      "title": "Precios",
+      "market": "Mercado",
+      "marketFoil": "Mercado foil",
+      "low": "Mín.",
+      "avg30": "Media 30 d",
+      "sourceLine": "Según {{source}}",
+      "source": {
+        "avg7": "la media de 7 días",
+        "avg7_foil": "la media de 7 días foil",
+        "low": "el precio mínimo",
+        "low_foil": "el precio mínimo foil"
+      },
+      "asOf": "Precios de Cardmarket a {{date}}",
+      "none": "Esta carta aún no tiene precio en Cardmarket.",
+      "trend7": "7 días",
+      "trend30": "30 días"
+    },
+    "text": {
+      "title": "Texto"
+    },
+    "attributes": {
+      "title": "Atributos",
+      "energy": "Energía",
+      "power": "Poder",
+      "might": "Fuerza",
+      "type": "Tipo",
+      "rarity": "Rareza",
+      "domains": "Dominios",
+      "artist": "Artista",
+      "tags": "Etiquetas"
+    },
+    "mine": {
+      "title": "Mis copias",
+      "total_one": "Tienes {{count}} copia",
+      "total_many": "Tienes {{count}} copias",
+      "total_other": "Tienes {{count}} copias",
+      "none": "Todavía no tienes esta carta.",
+      "line": "{{qty}}× · {{condition}} · {{language}}",
+      "selling": "En venta a {{price}}",
+      "sellingNoPrice": "En venta",
+      "manage": "Gestionar en la colección"
+    },
+    "printings": {
+      "title": "Otras versiones"
+    },
+    "related": {
+      "title": "Relacionadas",
+      "none": "No hay cartas relacionadas."
+    },
+    "decks": {
+      "title": "En mis mazos",
+      "qty_one": "{{count}} copia",
+      "qty_many": "{{count}} copias",
+      "qty_other": "{{count}} copias",
+      "none": "No está en ningún mazo tuyo."
+    }
+  }
 }

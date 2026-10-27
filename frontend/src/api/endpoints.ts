@@ -2,6 +2,7 @@ import { getSession, request } from './client';
 import type {
   AdminCatalog,
   CaptchaData,
+  CardDetail,
   LoginBody,
   MetaConfig,
   Prefs,
@@ -177,3 +178,9 @@ export const getAdminOverview = (signal?: AbortSignal) =>
 /** `PATCH /me/prefs`: absent fields stay, `null` resets to Auto (PREF-4). Returns the full prefs. */
 export const patchPrefs = async (changes: Partial<Prefs>): Promise<Prefs> =>
   (await request<{ prefs: Prefs }>('/me/prefs', { method: 'PATCH', body: changes })).prefs;
+
+/** `GET /cards/:set/:id` (F2-d). */
+export const getCard = (setId: string, cardId: string, signal?: AbortSignal) =>
+  request<CardDetail>(`/cards/${encodeURIComponent(setId)}/${encodeURIComponent(cardId)}`, {
+    signal,
+  });

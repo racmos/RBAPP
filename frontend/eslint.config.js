@@ -8,7 +8,7 @@ import tseslint from 'typescript-eslint';
 // D10: one-way dependencies between folders. `lib` and `components/ui` are pure,
 // `api` depends only on `lib`, features depend downward, only `app/` wires everything.
 const FEATURES = ['auth', 'prefs', 'i18n', 'pwa'];
-const FOLDERS = ['api', 'auth', 'prefs', 'i18n', 'pwa', 'shell', 'account', 'app'];
+const FOLDERS = ['api', 'auth', 'prefs', 'i18n', 'pwa', 'shell', 'account', 'catalog', 'app'];
 
 const deep = (name) => [`@/${name}`, `@/${name}/**`];
 const parentRelative = {
@@ -77,8 +77,11 @@ export default defineConfig(
       deepOnly: FEATURES.filter((name) => name !== feature),
     }),
   ),
-  // shell and account: everything below, never app.
-  boundary(['src/shell/**/*.{ts,tsx}', 'src/account/**/*.{ts,tsx}'], ['app']),
+  // shell, account and catalog: everything below, never app.
+  boundary(
+    ['src/shell/**/*.{ts,tsx}', 'src/account/**/*.{ts,tsx}', 'src/catalog/**/*.{ts,tsx}'],
+    ['app'],
+  ),
   // card and chart atoms: lib, i18n, ui and type-only @/api (F2-e).
   {
     files: ['src/components/card/**/*.{ts,tsx}', 'src/components/charts/**/*.{ts,tsx}'],
