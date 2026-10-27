@@ -339,6 +339,27 @@ These components may import from `@/lib`, `@/i18n`, `@/components/ui` and **type
 folders. The boundary is enforced by `frontend/eslint.config.js` and tested in
 `src/test/eslint-boundaries.test.ts`.
 
+## Catalog
+
+Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen, like `account/`):
+
+- `CardsLayout` — the `/cards` layout (an `Outlet` with the presentation context for now; F2-h
+  replaces it with the catalog).
+- `CardDetailRoute` — the `/cards/:setId/:cardId` route: reads the outlet context (`page` or
+  `modal` with `siblings` + `onClose`), handles loading/404/error states and the modal presentation
+  (prev/next through siblings, Esc/backdrop/× close).
+- `CardDetailView` — the detail content in S7 section order (image, header, bans, prices, chart
+  slot, text, attributes, copies, printings, related, decks); one column below 860 px, two from
+  860 px, three from 1240 px (widths only from `src/lib/breakpoints.ts`).
+- `queries.ts` — `useCardDetail(setId, cardId)` (TanStack Query, key `['cards', 'detail', …]`,
+  5-minute stale time, no retry on 404).
+- `context.ts` — the outlet context type (`presentation`, `siblings`, `onClose`).
+
+`catalog` sits in the `shell`/`account` boundary group (it may import everything below, never
+`app`). Links back to Jinja (collection, deck view) are plain `<a>` anchors via
+`legacyHref`, not router navigation. The detail data comes from `getCard` (`GET
+/riftbound/api/v1/cards/<set>/<id>`, F2-d); the MSW handler serves the `cardDetail` fixture.
+
 ## Build output
 
 The service worker precaches every URL exactly once: the Workbox glob lists the files in `dist`

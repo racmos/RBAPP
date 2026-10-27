@@ -21,6 +21,8 @@ export type ModalProps = {
   /** Close on a backdrop click (default). A ConfirmDialog turns it off. */
   dismissOnBackdrop?: boolean;
   variant?: 'modal' | 'sheet' | 'side';
+  /** Width preset; full screen below 680 px (S10). */
+  size?: 'md' | 'lg' | 'xl';
   /** Keep the heading for assistive technology only. */
   hideTitle?: boolean;
   /** Leave out the corner close button (the content has its own buttons). */
@@ -55,6 +57,7 @@ export function Modal({
   children,
   dismissOnBackdrop = true,
   variant = 'modal',
+  size = 'md',
   hideTitle = false,
   hideClose = false,
   returnFocusRef,
@@ -107,7 +110,7 @@ export function Modal({
   return (
     <dialog
       ref={dialogRef}
-      className={[styles.dialog, styles[variant]].join(' ')}
+      className={[styles.dialog, styles[variant], styles[size]].join(' ')}
       aria-labelledby={headingId}
       onClose={handleClose}
       onKeyDown={handleKeyDown}

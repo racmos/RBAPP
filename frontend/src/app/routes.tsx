@@ -79,6 +79,20 @@ export function createAppRoutes(
                   }),
                 },
                 {
+                  path: '/cards',
+                  lazy: async () => ({
+                    Component: (await import('@/catalog/CardsLayout')).CardsLayout,
+                  }),
+                  children: [
+                    {
+                      path: ':setId/:cardId',
+                      lazy: async () => ({
+                        Component: (await import('@/catalog/CardDetailRoute')).CardDetailRoute,
+                      }),
+                    },
+                  ],
+                },
+                {
                   path: '/admin',
                   loader: requireAdmin(queryClient),
                   lazy: async () => ({

@@ -1,0 +1,30 @@
+@layer components {
+  .page {
+    padding: var(--pad);
+  }
+
+  .back {
+    margin-bottom: var(--gap);
+  }
+
+  .backIcon {
+    transform: rotate(180deg);
+  }
+
+  .modalInner {
+    position: relative;
+  }
+
+  .nav {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    gap: 8px;
+    z-index: 1;
+  }
+
+  .nextIcon {
+    transform: rotate(180deg);
+  }
+}
