@@ -1,4 +1,4 @@
-import type { CardDetail, CardMini, CardSummary } from '@/api/types';
+import type { CardDetail, CardListMeta, CardMini, CardSummary } from '@/api/types';
 
 const base: CardSummary = {
   set_id: 'OGN',
@@ -147,6 +147,28 @@ const mini = (overrides: Partial<CardMini>): CardMini => ({
   },
   ...overrides,
 });
+
+export const cardList = {
+  items: [champion, foilCommon, basicRune, token, noImage, noPrice],
+  meta: {
+    page: 1,
+    per_page: 48,
+    total: 6,
+    pages: 1,
+    facets: {
+      set: { OGN: 6 },
+      domain: { Fury: 3, Chaos: 1, Colorless: 2 },
+      type: { Unit: 3, Rune: 1, Spell: 1, Battlefield: 1 },
+      supertype: { Champion: 1, Basic: 1, Token: 1 },
+      rarity: { Common: 2, Rare: 2, Uncommon: 1, Showcase: 1 },
+      tag: [
+        { tag: 'champion', count: 1 },
+        { tag: 'fury', count: 1 },
+      ],
+    },
+    price_as_of: '2026-10-25T00:00:00Z',
+  },
+} satisfies { items: CardSummary[]; meta: CardListMeta };
 
 export const cardDetail: CardDetail = {
   ...champion,

@@ -126,6 +126,68 @@ export type PricePoint = {
   market_foil: number | null;
 };
 
+/** `GET /meta/game` (F2-h S2). */
+export type GameMeta = {
+  modes: string[];
+  domains: string[];
+  types: string[];
+  supertypes: string[];
+  rarities: string[];
+  sets: { id: string; name: string; released_on: string | null; card_count: number }[];
+  price: { provider: string; currency: string; updated_on: string | null };
+  rules: Record<string, unknown>;
+};
+
+export type CardListSort =
+  'number' | 'name' | 'price' | 'trend_7d' | 'trend_30d' | 'rarity' | 'energy' | 'power' | 'might';
+
+export type CardListParams = {
+  q?: string;
+  text?: string;
+  set?: string[];
+  domain?: string[];
+  type?: string[];
+  supertype?: string[];
+  exclude_supertype?: string[];
+  rarity?: string[];
+  tag?: string[];
+  domain_match?: 'any' | 'all' | 'subset';
+  energy_min?: number;
+  energy_max?: number;
+  power_min?: number;
+  power_max?: number;
+  might_min?: number;
+  might_max?: number;
+  price_min?: number;
+  price_max?: number;
+  owned?: 'any' | 'owned' | 'missing';
+  banned_in?: '1v1' | '2v2' | 'any';
+  base_only?: boolean;
+  sort?: CardListSort;
+  dir?: 'asc' | 'desc';
+  page?: number;
+  per_page?: 48 | 96 | 192;
+};
+
+export type CardFacets = {
+  set?: Record<string, number>;
+  domain?: Record<string, number>;
+  type?: Record<string, number>;
+  supertype?: Record<string, number>;
+  rarity?: Record<string, number>;
+  tag?: { tag: string; count: number }[];
+};
+
+/** `meta` object of `GET /cards` (F2-h S2). */
+export type CardListMeta = {
+  page: number;
+  per_page: number;
+  total: number;
+  pages: number;
+  facets: CardFacets;
+  price_as_of: string | null;
+};
+
 /** `GET /cards/:set/:id/prices` response envelope data (F2-g). */
 export type CardPricesData = {
   range: string;

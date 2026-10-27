@@ -51,7 +51,11 @@ describe('CardDetailRoute (F2-f S4-S6, S11)', () => {
 
   it('shows three columns at 1280 px', async () => {
     signedInApi();
-    await renderApp({ path: '/cards/OGN/79', width: 1280 });
+    await renderApp({
+      path: '/test-page/OGN/79',
+      width: 1280,
+      extraRoutes: () => [{ path: '/test-page/:setId/:cardId', Component: CardDetailRoute }],
+    });
     await screen.findByRole('heading', { level: 1, name: cardDetail.name }, LONG);
     expect(document.querySelector('[data-presentation="page"]')).toBeVisible();
   });

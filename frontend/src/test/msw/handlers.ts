@@ -1,6 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import type { PricePoint } from '@/api/types';
-import { cardDetail } from '@/test/fixtures/cards';
+import { cardDetail, cardList } from '@/test/fixtures/cards';
 
 /** Base of the API as the SPA sees it (same-origin, behind Nginx). */
 export const API = '/riftbound/api/v1';
@@ -66,6 +66,25 @@ export const handlers = [
   ),
   http.get(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.patch(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
+  http.get(`${API}/meta/game`, () =>
+    ok({
+      modes: ['1v1', '2v2'],
+      domains: ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless'],
+      types: ['Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield'],
+      supertypes: ['Champion', 'Signature', 'Token', 'Basic'],
+      rarities: ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'],
+      sets: [{ id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 }],
+      price: { provider: 'cardmarket', currency: 'EUR', updated_on: '2026-10-25T00:00:00Z' },
+      rules: {},
+    }),
+  ),
+  // The real `GET /cards` envelope carries `meta` next to `data` (F2-c contract).
+  http.get(`${API}/cards`, () =>
+    HttpResponse.json(
+      { success: true, data: { items: cardList.items }, meta: cardList.meta },
+      { status: 200 },
+    ),
+  ),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory()),
 ];

@@ -1,12 +1,35 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ApiError } from '@/api/errors';
-import { getCard, getCardPrices, type PriceRange } from '@/api/endpoints';
+import { getCard, getCardPrices, getGameMeta, listCards, type PriceRange } from '@/api/endpoints';
+import type { CardListParams } from '@/api/types';
+import { serializeCatalogParams } from './params';
 
 const STALE_MS = 5 * 60 * 1000;
+const META_STALE_MS = 60 * 60 * 1000;
 
 function retryOnCardError(failureCount: number, error: unknown): boolean {
   if (error instanceof ApiError && error.kind === 'http' && error.status === 404) return false;
   return failureCount < 1;
+}
+
+/** TanStack Query hook for `GET /meta/game` (F2-h S4). */
+export function useGameMeta() {
+  return useQuery({
+    queryKey: ['meta', 'game'] as const,
+    queryFn: ({ signal }) => getGameMeta(signal),
+    staleTime: META_STALE_MS,
+  });
+}
+
+/** TanStack Query hook for the card list endpoint (F2-h S4). */
+export function useCardList(params: CardListParams) {
+  const query = serializeCatalogParams(params);
+  return useQuery({
+    queryKey: ['cards', 'list', query] as const,
+    queryFn: ({ signal }) => listCards(query, signal),
+    placeholderData: keepPreviousData,
+    staleTime: STALE_MS,
+  });
 }
 
 /** TanStack Query hook for the card detail endpoint (F2-f S2). */

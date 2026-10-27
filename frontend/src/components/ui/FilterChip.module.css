@@ -1,0 +1,80 @@
+@layer components {
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--chip-bg, var(--panel-2));
+    color: var(--text);
+    font-size: 13px;
+    overflow: hidden;
+  }
+
+  .chip[data-pressed] {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .toggle:disabled {
+    cursor: default;
+  }
+
+  .label {
+    line-height: 1.2;
+  }
+
+  .count {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .remove {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 2px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .remove:hover {
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .legend {
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

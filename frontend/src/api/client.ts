@@ -86,12 +86,10 @@ export function getSession(): Promise<SessionData> {
   return sessionInFlight;
 }
 
-/**
- * Typed `fetch` wrapper: unwraps `{success, data}`, throws `ApiError`, attaches the CSRF token
- * to unsafe methods (fetching the session first when none is held) and retries once after a
- * stale token (D12, FAUTH-6).
- */
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function performRequest<T, M = undefined>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<{ data: T; meta: M | undefined }> {
   const unsafe = UNSAFE.has(options.method ?? 'GET');
   if (unsafe && !getCsrfToken()) await getSession();
 
@@ -100,7 +98,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   if (response.ok) {
     if (typeof body === 'object' && body !== null && 'data' in body && 'success' in body) {
-      return (body as { data: T }).data;
+      return {
+        data: (body as { data: T }).data,
+        meta: 'meta' in body ? (body as { meta: M }).meta : undefined,
+      };
     }
     throw new ApiError({ kind: 'parse', status: response.status });
   }
@@ -116,11 +117,31 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     try {
       clearCsrfToken();
       await getSession();
-      return await request<T>(path, options);
+      return await performRequest<T, M>(path, options);
     } finally {
       retrying.delete(options);
     }
   }
   if (response.status === 401 && !AUTH_ANSWER_PATHS.has(path)) unauthorizedHandler?.();
   throw error;
+}
+
+/**
+ * Typed `fetch` wrapper: unwraps `{success, data}`, throws `ApiError`, attaches the CSRF token
+ * to unsafe methods (fetching the session first when none is held) and retries once after a
+ * stale token (D12, FAUTH-6).
+ */
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return performRequest<T, undefined>(path, options).then((result) => result.data);
+}
+
+/**
+ * Same as `request` but keeps the `meta` key from the envelope. Used for list endpoints that
+ * return pagination and facet information (F2-h S1).
+ */
+export async function requestWithMeta<T, M>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<{ data: T; meta: M | undefined }> {
+  return performRequest<T, M>(path, options);
 }

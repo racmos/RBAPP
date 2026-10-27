@@ -1,4 +1,87 @@
 {
+  "catalog": {
+    "title": "Cartas",
+    "count_one": "{{count}} carta",
+    "count_many": "{{count}} cartas",
+    "count_other": "{{count}} cartas",
+    "classic": "Versión clásica",
+    "search": {
+      "label": "Buscar cartas",
+      "placeholder": "Nombre, etiqueta o número"
+    },
+    "filters": {
+      "open": "Filtros",
+      "title": "Filtros",
+      "active_one": "{{count}} filtro activo",
+      "active_many": "{{count}} filtros activos",
+      "active_other": "{{count}} filtros activos",
+      "clear": "Limpiar",
+      "clearAll": "Limpiar filtros",
+      "show_one": "Ver {{count}} carta",
+      "show_many": "Ver {{count}} cartas",
+      "show_other": "Ver {{count}} cartas",
+      "remove": "Quitar filtro {{label}}"
+    },
+    "facet": {
+      "set": "Set",
+      "domain": "Dominio",
+      "type": "Tipo",
+      "supertype": "Supertipo",
+      "rarity": "Rareza",
+      "domainMatch": "Coincidencia",
+      "any": "Alguno",
+      "all": "Todos",
+      "subset": "Solo estos",
+      "energy": "Coste de energía",
+      "power": "Poder",
+      "might": "Fuerza",
+      "price": "Precio (€)",
+      "min": "Mín.",
+      "max": "Máx.",
+      "owned": "Colección",
+      "ownedAny": "Todas",
+      "ownedOwned": "Las tengo",
+      "ownedMissing": "Me faltan",
+      "banned": "Baneos",
+      "bannedNone": "Todas",
+      "banned1v1": "Baneadas en 1v1",
+      "banned2v2": "Baneadas en 2v2",
+      "bannedAny": "Baneadas en algún modo",
+      "baseOnly": "Solo versión base",
+      "text": "Texto de la carta",
+      "tags": "Etiquetas"
+    },
+    "chip": {
+      "min": "{{label}} ≥ {{value}}",
+      "max": "{{label}} ≤ {{value}}"
+    },
+    "sort": {
+      "label": "Ordenar por",
+      "dirLabel": "Orden descendente",
+      "number": "Número",
+      "name": "Nombre",
+      "price": "Precio",
+      "trend_7d": "Variación 7 d",
+      "trend_30d": "Variación 30 d",
+      "rarity": "Rareza",
+      "energy": "Energía",
+      "power": "Poder",
+      "might": "Fuerza"
+    },
+    "view": {
+      "label": "Vista",
+      "grid": "Cuadrícula",
+      "list": "Lista",
+      "table": "Tabla"
+    },
+    "owned": "Tienes {{count}}",
+    "results": "Resultados",
+    "loading": "Cargando cartas",
+    "empty": {
+      "title": "Ninguna carta coincide con los filtros",
+      "body": "Prueba con menos filtros o con otra búsqueda."
+    }
+  },
   "rarityLabel": "Rareza: {{rarity}}",
   "ban": {
     "full": "Baneada en {{modes}}"

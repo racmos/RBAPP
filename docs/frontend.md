@@ -343,16 +343,22 @@ folders. The boundary is enforced by `frontend/eslint.config.js` and tested in
 
 Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen, like `account/`):
 
-- `CardsLayout` — the `/cards` layout (an `Outlet` with the presentation context for now; F2-h
-  replaces it with the catalog).
+- `CatalogPage` — the `/cards` layout: toolbar (search, sort, direction, view), filter sheet,
+  active chips, grid/list results, pagination and states. URL parameters mirror the API names
+  (`params.ts`: parse/serialize/round-trip; text search debounced with `replace`, other changes
+  push; scroll restored per search string). The detail opens as a modal over the catalog at
+  ≥ 860 px and as a page below; `navRegistry` entry `cards` is `spa` (the classic Jinja page
+  stays linked as "Versión clásica").
 - `CardDetailRoute` — the `/cards/:setId/:cardId` route: reads the outlet context (`page` or
   `modal` with `siblings` + `onClose`), handles loading/404/error states and the modal presentation
   (prev/next through siblings, Esc/backdrop/× close).
 - `CardDetailView` — the detail content in S7 section order (image, header, bans, prices, chart
   slot, text, attributes, copies, printings, related, decks); one column below 860 px, two from
   860 px, three from 1240 px (widths only from `src/lib/breakpoints.ts`).
-- `queries.ts` — `useCardDetail(setId, cardId)` (TanStack Query, key `['cards', 'detail', …]`,
-  5-minute stale time, no retry on 404).
+- `queries.ts` — `useCardDetail(setId, cardId)` (key `['cards', 'detail', …]`, 5-minute stale,
+  no retry on 404); `useGameMeta()` (1-hour stale) and `useCardList(params)` (`keepPreviousData`,
+  5-minute stale) for the catalog. List endpoints keep `meta` via `requestWithMeta` (the F2-c
+  envelope carries `meta` next to `data`).
 - `context.ts` — the outlet context type (`presentation`, `siblings`, `onClose`).
 
 `catalog` sits in the `shell`/`account` boundary group (it may import everything below, never
