@@ -1,4 +1,5 @@
 import { HttpResponse, http } from 'msw';
+import type { PricePoint } from '@/api/types';
 import { cardDetail } from '@/test/fixtures/cards';
 
 /** Base of the API as the SPA sees it (same-origin, behind Nginx). */
@@ -66,4 +67,19 @@ export const handlers = [
   http.get(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.patch(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
+  http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory()),
 ];
+
+/** Default price history payload for MSW (F2-g). Tests override points/range as needed. */
+export function priceHistory(
+  points: PricePoint[] = [],
+  overrides: Partial<{ range: string; foilable: boolean; product_id: number | null }> = {},
+) {
+  return ok({
+    range: overrides.range ?? '90d',
+    currency: 'EUR',
+    foilable: overrides.foilable ?? true,
+    product_id: overrides.product_id ?? 123456,
+    points,
+  });
+}

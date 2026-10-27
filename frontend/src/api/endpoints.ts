@@ -3,6 +3,7 @@ import type {
   AdminCatalog,
   CaptchaData,
   CardDetail,
+  CardPricesData,
   LoginBody,
   MetaConfig,
   Prefs,
@@ -184,3 +185,17 @@ export const getCard = (setId: string, cardId: string, signal?: AbortSignal) =>
   request<CardDetail>(`/cards/${encodeURIComponent(setId)}/${encodeURIComponent(cardId)}`, {
     signal,
   });
+
+export type PriceRange = '30d' | '90d' | '1y' | 'all';
+
+/** `GET /cards/:set/:id/prices` (F2-d / F2-g). */
+export const getCardPrices = (
+  setId: string,
+  cardId: string,
+  range: PriceRange,
+  signal?: AbortSignal,
+) =>
+  request<CardPricesData>(
+    `/cards/${encodeURIComponent(setId)}/${encodeURIComponent(cardId)}/prices?range=${range}`,
+    { signal },
+  );

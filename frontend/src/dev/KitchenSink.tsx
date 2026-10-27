@@ -9,6 +9,7 @@ import {
   PriceTag,
   RarityDot,
 } from '@/components/card';
+import { PriceChart, Sparkline } from '@/components/charts';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -184,6 +185,52 @@ const fixtures = [
 function CardAtomsPanel() {
   return (
     <>
+      <Panel title="Charts">
+        <div style={{ display: 'grid', gap: 'var(--gap)' }}>
+          <Sparkline values={[1, 2, 3, 2, 4]} label="Trend up" />
+          <Sparkline values={[4, 3, 2, 3, 1]} label="Trend down" />
+          <PriceChart
+            points={[
+              {
+                date: '2026-07-22',
+                market: 1.04,
+                low: 0.98,
+                avg7: 1,
+                avg30: 1.01,
+                market_foil: 2.1,
+              },
+              {
+                date: '2026-08-22',
+                market: 1.12,
+                low: 1.05,
+                avg7: 1.08,
+                avg30: 1.06,
+                market_foil: 2.3,
+              },
+              {
+                date: '2026-09-22',
+                market: 1.08,
+                low: 1.02,
+                avg7: 1.05,
+                avg30: 1.07,
+                market_foil: 2.2,
+              },
+              {
+                date: '2026-10-22',
+                market: 1.21,
+                low: 1.15,
+                avg7: 1.17,
+                avg30: 1.16,
+                market_foil: 2.45,
+              },
+            ]}
+            series={['market', 'market_foil']}
+            lang="es"
+            title="Kitchen price history"
+          />
+        </div>
+      </Panel>
+
       <Panel title="Card atoms">
         <div
           style={{

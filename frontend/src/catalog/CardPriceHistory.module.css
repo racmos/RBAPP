@@ -1,0 +1,25 @@
+@layer components {
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 16px;
+  }
+
+  .dimmed {
+    opacity: 0.5;
+  }
+}

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createI18n } from '@/i18n';
 import { cardDetail } from '@/test/fixtures/cards';
 import { CardDetailView } from './CardDetailView';
@@ -8,11 +9,14 @@ import { CardDetailView } from './CardDetailView';
 async function renderView(props: React.ComponentProps<typeof CardDetailView>) {
   const i18n = await createI18n('es');
   const { I18nextProvider } = await import('react-i18next');
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <MemoryRouter>
-      <I18nextProvider i18n={i18n}>
-        <CardDetailView {...props} />
-      </I18nextProvider>
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <CardDetailView {...props} />
+        </I18nextProvider>
+      </QueryClientProvider>
     </MemoryRouter>,
   );
 }
