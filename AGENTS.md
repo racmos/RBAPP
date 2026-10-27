@@ -163,6 +163,7 @@ riftbound/
 │       ├── account/         # Interface settings page and its live preview
 │       ├── shell/           # AppShell, Topbar, BottomNav, MoreSheet, HomeHub, nav registry, NotFound
 │       ├── components/ui/   # Primitives (Brand, Button, Field, Input, Toast, ...)
+│       ├── components/card/ # CardImage, placeholder, pips, rarity, ban badge, price (F2-e)
 │       ├── lib/             # breakpoints, contrast, format, background, storage
 │       ├── styles/          # Layered tokens, base, background, fonts
 │       └── test/            # Vitest setup, MSW server, renderApp, viewport mock, CSS helpers

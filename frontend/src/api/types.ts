@@ -54,6 +54,49 @@ export type ErrorDetail = {
   params?: ErrorParams;
 };
 
+export type GameMode = '1v1' | '2v2';
+export type CardBans = Record<GameMode, boolean>;
+
+export type CardOwned = {
+  total: number;
+  foil: number;
+};
+
+export type CardPrice = {
+  market: number | null;
+  market_source: string | null;
+  market_foil: number | null;
+  market_foil_source: string | null;
+  trend_7d_pct: number | null;
+  trend_30d_pct: number | null;
+  as_of: string | null;
+};
+
+/** `CardSummary` mirrors the contract in `docs/api.md` (F2-b). */
+export type CardSummary = {
+  set_id: string;
+  card_id: string;
+  key: string;
+  number: string | null;
+  name: string;
+  domains: string[];
+  type: string;
+  supertype: string | null;
+  type_raw: string;
+  tags: string[];
+  energy: number | null;
+  power: number | null;
+  might: number | null;
+  rarity: string;
+  image_src: string | null;
+  image_thumb_src: string | null;
+  foilable: boolean;
+  is_base: boolean;
+  price: CardPrice | null;
+  bans: CardBans;
+  owned: CardOwned;
+};
+
 export type SuccessEnvelope<T> = { success: true; data: T; meta?: Record<string, unknown> };
 export type ErrorEnvelope = {
   success: false;

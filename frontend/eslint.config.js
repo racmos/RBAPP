@@ -79,4 +79,34 @@ export default defineConfig(
   ),
   // shell and account: everything below, never app.
   boundary(['src/shell/**/*.{ts,tsx}', 'src/account/**/*.{ts,tsx}'], ['app']),
+  // card and chart atoms: lib, i18n, ui and type-only @/api (F2-e).
+  {
+    files: ['src/components/card/**/*.{ts,tsx}', 'src/components/charts/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/api', '@/api/**'],
+              message: 'Card and chart components may import only types from @/api (D10).',
+              allowTypeImports: true,
+            },
+            {
+              group: [
+                '@/auth/**',
+                '@/prefs/**',
+                '@/pwa/**',
+                '@/shell/**',
+                '@/account/**',
+                '@/app/**',
+              ],
+              message: 'This import breaks the folder boundaries (D10).',
+            },
+            parentRelative,
+          ],
+        },
+      ],
+    },
+  },
 );

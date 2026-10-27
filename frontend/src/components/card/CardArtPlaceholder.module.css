@@ -1,0 +1,94 @@
+@layer components {
+  .box {
+    position: relative;
+    aspect-ratio: 352 / 492;
+    border-radius: 11px;
+    container-type: inline-size;
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+      var(--shadow);
+    color: #ffffff;
+    font-family: var(--font-display);
+  }
+
+  .gloss {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(90% 60% at 50% 8%, rgba(255, 255, 255, 0.18), transparent 60%);
+    pointer-events: none;
+  }
+
+  .frame {
+    position: absolute;
+    inset: 0;
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255, 255, 255, 0.14),
+      inset 0 0 30px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+
+  .glyph {
+    position: absolute;
+    right: -8%;
+    bottom: -6%;
+    width: 62%;
+    height: 62%;
+    opacity: 0.16;
+    transform: rotate(-8deg);
+    pointer-events: none;
+  }
+
+  .type {
+    position: absolute;
+    left: 6%;
+    top: 6%;
+    font-size: min(11cqi, 22px);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    opacity: 0.9;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .energy {
+    position: absolute;
+    left: 6%;
+    bottom: 18%;
+    width: 14%;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-size: min(9cqi, 18px);
+    font-weight: 700;
+    background: radial-gradient(circle at 35% 30%, #1a3a47, #06181f);
+    box-shadow: inset 0 0 0 1px rgba(95, 224, 255, 0.5);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .might {
+    position: absolute;
+    right: 6%;
+    bottom: 6%;
+    width: 12%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    background: rgba(6, 24, 31, 0.6);
+    box-shadow: inset 0 0 0 2px var(--gold);
+  }
+
+  .name {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 30% 9% 8%;
+    font-size: min(11cqi, 22px);
+    font-weight: 600;
+    line-height: 1.1;
+    background: linear-gradient(transparent, rgba(2, 12, 16, 0.86));
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+}

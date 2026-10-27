@@ -320,6 +320,25 @@ installability is covered by the live PWA check.
 | ---- | ---- | ----------- | ----------- | ------------- | -------------- |
 | —    | —    | —           | —           | —             | —              |
 
+## Card components
+
+Reusable card UI atoms live in `frontend/src/components/card/`:
+
+- `CardImage` — 352×492 image wrapper with thumb/tile/full source selection, lazy loading and a
+  placeholder fallback on error or missing image.
+- `CardArtPlaceholder` — procedural placeholder using domain colours, gloss, frame, domain glyph,
+  type text, energy/might indicators and the card name.
+- `DomainPips` — one pip per domain with an SVG glyph and an accessible list label.
+- `RarityDot` — 9 px rarity colour dot; optionally with the translated rarity text.
+- `BanBadge` — per-mode ban indicator (`full` uses `Badge tone="danger"`; `compact` uses a warning
+  icon + modes).
+- `PriceTag` — market/foil amount plus a 7-day or 30-day trend chip with screen-reader text.
+
+These components may import from `@/lib`, `@/i18n`, `@/components/ui` and **type-only** from
+`@/api`. They never import `auth`, `prefs`, `pwa`, `shell`, `account`, `app` or other feature
+folders. The boundary is enforced by `frontend/eslint.config.js` and tested in
+`src/test/eslint-boundaries.test.ts`.
+
 ## Build output
 
 The service worker precaches every URL exactly once: the Workbox glob lists the files in `dist`

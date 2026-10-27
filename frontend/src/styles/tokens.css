@@ -30,6 +30,21 @@
     --red-text: #ff8a72;
     --red-strong: #c43d26;
     --on-red: #ffffff;
+    --green-text: #5fe0a8;
+
+    /* domain and rarity colours (DS-2, F2-e) */
+    --domain-fury: #e7504a;
+    --domain-calm: #33b27b;
+    --domain-mind: #4f86e6;
+    --domain-body: #e08a36;
+    --domain-chaos: #a45cc8;
+    --domain-order: #d8b84a;
+    --domain-colorless: #8aa3ad;
+    --rarity-common: #9fb6bf;
+    --rarity-uncommon: #4fb6a5;
+    --rarity-rare: #4f86e6;
+    --rarity-epic: #a45cc8;
+    --rarity-showcase: #e0a93a;
 
     /* accent: orange is the product default; [data-accent] switches it (DS-2) */
     --accent: var(--orange);

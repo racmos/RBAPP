@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-27 (F2-d implemented, batch 1 unit 11; F2-c in review (#46)).
+Last update: 2026-10-27 (F2-e implemented, batch 1 unit 12; F2-c done (#46), F2-d done (#47)).
 
 ## Phases
 
@@ -15,7 +15,7 @@ Last update: 2026-10-27 (F2-d implemented, batch 1 unit 11; F2-c in review (#46)
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
 | M-c Hygiene | **Done** (#31) | `docs/requirements/M/M-c-hygiene.md`. |
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
-| F2 Catalog | In progress — F2-a done (#34), F2-b done (#45); F2-c in review (#46), F2-d implemented, e…i and k in batch 1 (units 12-17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
+| F2 Catalog | In progress — F2-a…d done (#34, #45, #46, #47); F2-e implemented, f…i and k in batch 1 (units 13-17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
@@ -110,8 +110,9 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| F2-d | implemented | `feat/f2d-card-detail-api` / TBD | Card detail + price history (S1-S9): `CardPricesQuery`, `app/services/card_detail.py` (CardDetail with ability/set/price_detail/printings/related/ban_info/my_lines/in_decks, prices with 30d/90d/1y/all windows and same-date foil), `GET /cards/<set>/<id>` + `…/prices` (U); ≤ 10/≤ 4 statements, detail p95 123 ms on dev (6 printings); `docs/api.md` "GET /cards/<set>/<id>", AGENTS.md. pytest 762 → 787. Next unit: **F2-e**. |
-| F2-c | in review (#46) | `feat/f2c-cards-list-api` / #46 | Cards list API (S1-S9): rewritten `validate_query` (lists via getlist, empty-drop, Pydantic coercion; bans moved onto it, `?mode=` now 200), `CardListQuery`, filters/facets/default sort/pagination in `app/services/card_list.py`, full sort keys with nulls-last + natural tiebreak, real `owned` counts, prices for all matches only with price sort/bounds, ≤ 8 statements with 200 cards; public `GET /cards` (U); S8 timings p95 default 177 / price_desc 415 (deviation L3) / q 185 / domains 174 ms; `docs/api.md` "GET /cards", AGENTS.md. pytest 706 → 762. Next unit: **F2-d**. |
+| F2-e | implemented | `feat/f2e-card-ui-atoms` / TBD | Card UI atoms (S1-S14): `CardSummary` types, six fixtures, domain/rarity tokens + `domains.ts` (CSS=TS test), `shadeHex`, `formatPct`, `enums`+`cards` namespaces + `useEnumLabel`, `CardImage`/`CardArtPlaceholder`/`DomainPips`/`RarityDot`/`BanBadge`/`PriceTag`, ESLint card/charts boundary + type-only `@/api` test, kitchen entries, axe test; `docs/frontend.md` "Card components", AGENTS.md. Vitest 42 → 103; pytest 787 unchanged. Next unit: **F2-f**. |
+| F2-d | done (#47) | `feat/f2d-card-detail-api` / #47 | Card detail + price history (S1-S9): `CardPricesQuery`, `app/services/card_detail.py` (CardDetail with ability/set/price_detail/printings/related/ban_info/my_lines/in_decks, prices with 30d/90d/1y/all windows and same-date foil), `GET /cards/<set>/<id>` + `…/prices` (U); ≤ 10/≤ 4 statements, detail p95 123 ms on dev (6 printings); `docs/api.md` "GET /cards/<set>/<id>", AGENTS.md. pytest 762 → 787. Next unit: **F2-e**. |
+| F2-c | done (#46) | `feat/f2c-cards-list-api` / #46 | Cards list API (S1-S9): rewritten `validate_query` (lists via getlist, empty-drop, Pydantic coercion; bans moved onto it, `?mode=` now 200), `CardListQuery`, filters/facets/default sort/pagination in `app/services/card_list.py`, full sort keys with nulls-last + natural tiebreak, real `owned` counts, prices for all matches only with price sort/bounds, ≤ 8 statements with 200 cards; public `GET /cards` (U); S8 timings p95 default 177 / price_desc 415 (deviation L3) / q 185 / domains 174 ms; `docs/api.md` "GET /cards", AGENTS.md. pytest 706 → 762. Next unit: **F2-d**. |
 | F2-b | done (#45) | `feat/f2b-game-meta-card-dto` / #45 | Game meta + card DTO (S1-S10): `game_domain` enums confirmed against the dev DB, `catalog.py` parsing/`card_summary`, `resolve_price_with_source` + batched `price_summaries` (2 SQL statements; 15-23 ms for 50 cards, ~170-230 ms for all 1298 dev cards), migration `0013_price_product_date_idx`, public `GET /meta/game` (P, `no-cache`), `docs/api.md` "API v1 reference" + "Data shapes". pytest 629 → 688. Next unit: **F2-c**. |
 | F13-g | in review (#44) | `feat/f13g-change-review-ui` / #44 | Riot change review UI (S1-S9): ValueDiff, filters in URL, bulk select+confirm, detail panel ≥1600 px, cards <860 px, overview Riot band, admin nav count, Jinja hand-off notice. Vitest 30 → 42. Next unit: **F2-b**. |
 | F13-f | in review (#43) | `feat/f13f-catalog-admin-ui` / #43 | Admin sets/cards/Riot screens: tables/cards lists, drawer + bottom-sheet editors, inline panel ≥1600 px, image upload, JobStatus polling, validation + translated errors, axe clean. No backend change. Vitest 12 → 30. Next unit: **F13-g**. |

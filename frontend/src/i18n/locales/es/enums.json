@@ -1,0 +1,36 @@
+{
+  "domain": {
+    "Fury": "Furia",
+    "Calm": "Calma",
+    "Mind": "Mente",
+    "Body": "Cuerpo",
+    "Chaos": "Caos",
+    "Order": "Orden",
+    "Colorless": "Incoloro"
+  },
+  "type": {
+    "Legend": "Leyenda",
+    "Unit": "Unidad",
+    "Spell": "Hechizo",
+    "Gear": "Equipo",
+    "Rune": "Runa",
+    "Battlefield": "Campo de batalla"
+  },
+  "supertype": {
+    "Champion": "Campeón",
+    "Signature": "Distintiva",
+    "Token": "Ficha",
+    "Basic": "Básica"
+  },
+  "rarity": {
+    "Common": "Común",
+    "Uncommon": "Infrecuente",
+    "Rare": "Rara",
+    "Epic": "Épica",
+    "Showcase": "Showcase"
+  },
+  "mode": {
+    "1v1": "1v1",
+    "2v2": "2v2"
+  }
+}
