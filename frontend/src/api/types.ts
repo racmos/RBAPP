@@ -116,6 +116,25 @@ export type CardPriceDetail = {
   };
 };
 
+/** One daily price point for a card (F2-d). */
+export type PricePoint = {
+  date: string;
+  market: number | null;
+  low: number | null;
+  avg7: number | null;
+  avg30: number | null;
+  market_foil: number | null;
+};
+
+/** `GET /cards/:set/:id/prices` response envelope data (F2-g). */
+export type CardPricesData = {
+  range: string;
+  currency: string;
+  foilable: boolean;
+  product_id: number | null;
+  points: PricePoint[];
+};
+
 /** Ban information for one mode (F2-d). */
 export type BanInfo = {
   mode: GameMode;

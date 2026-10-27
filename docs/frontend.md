@@ -360,6 +360,25 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
 `legacyHref`, not router navigation. The detail data comes from `getCard` (`GET
 /riftbound/api/v1/cards/<set>/<id>`, F2-d); the MSW handler serves the `cardDetail` fixture.
 
+## Charts
+
+Charts are hand-made SVG components in `frontend/src/components/charts/`. There is no chart
+library dependency.
+
+- `PriceChart` renders a card's daily Cardmarket history: measured container width via
+  `ResizeObserver`, `niceTicks` grid, date axis, an area gradient under the market line,
+  a dashed foil line, keyboard navigation (arrow keys, Home/End, Esc), a crosshair tooltip
+  and a screen-reader summary (`cards:chart.summary`). A "Show as table" button reveals a
+  table alternative with the newest rows first.
+- `Sparkline` is a compact 120×34 SVG line for small spaces; it turns green when the last
+  non-null value is greater than or equal to the first, red otherwise.
+- `src/lib/scale.ts` provides `linearScale` (with `.invert`) and `niceTicks` for the chart
+  axes.
+
+`CardPriceHistory` wires `PriceChart` into the card detail slot (`data-slot="price-chart"`),
+adds a range selector (`30d`, `90d`, `1y`, `all`) and persists the last choice in
+`localStorage` (`rb_price_range`).
+
 ## Build output
 
 The service worker precaches every URL exactly once: the Workbox glob lists the files in `dist`

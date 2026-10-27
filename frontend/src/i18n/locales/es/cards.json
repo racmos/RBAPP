@@ -12,6 +12,32 @@
     "flat": "Sin cambios en {{days}} días"
   },
   "foil": "Foil",
+  "chart": {
+    "title": "Historial de precios",
+    "loading": "Cargando historial",
+    "empty": "Sin historial de precios todavía.",
+    "range": {
+      "label": "Periodo",
+      "30d": "30 d",
+      "90d": "90 d",
+      "1y": "1 año",
+      "all": "Todo"
+    },
+    "series": {
+      "market": "Mercado",
+      "market_foil": "Mercado foil"
+    },
+    "summary": "Precio de mercado del {{from}} al {{to}}: de {{first}} a {{last}} (mín. {{min}}, máx. {{max}}).",
+    "point": "{{date}}: {{values}}",
+    "showTable": "Ver como tabla",
+    "hideTable": "Ocultar tabla",
+    "table": {
+      "caption": "Precios diarios de {{name}}",
+      "date": "Fecha",
+      "market": "Mercado",
+      "market_foil": "Mercado foil"
+    }
+  },
   "ability": {
     "empty": "Sin texto",
     "energy": "{{count}} de energía",

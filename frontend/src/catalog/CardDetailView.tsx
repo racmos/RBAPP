@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
 import { formatDate, formatMoney, type Lang } from '@/lib/format';
 import { legacyHref } from '@/shell/legacyRoutes';
+import { CardPriceHistory } from './CardPriceHistory';
 import styles from './CardDetailView.module.css';
 
 type CardImageCard = Parameters<typeof CardImage>[0]['card'];
@@ -79,7 +80,12 @@ export function CardDetailView({
             <CardImage card={card} size="full" priority decorative />
           </div>
           <PricesPanel card={card} lang={lang} />
-          <div data-slot="price-chart" />
+          <CardPriceHistory
+            setId={card.set_id}
+            cardId={card.card_id}
+            foilable={card.foilable}
+            name={card.name}
+          />
         </div>
 
         <div className={styles.columnB}>

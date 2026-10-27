@@ -12,6 +12,32 @@
     "flat": "No change in {{days}} days"
   },
   "foil": "Foil",
+  "chart": {
+    "title": "Price history",
+    "loading": "Loading history",
+    "empty": "No price history yet.",
+    "range": {
+      "label": "Period",
+      "30d": "30 d",
+      "90d": "90 d",
+      "1y": "1 year",
+      "all": "All"
+    },
+    "series": {
+      "market": "Market",
+      "market_foil": "Foil market"
+    },
+    "summary": "Market price from {{from}} to {{to}}: {{first}} to {{last}} (low {{min}}, high {{max}}).",
+    "point": "{{date}}: {{values}}",
+    "showTable": "Show as table",
+    "hideTable": "Hide table",
+    "table": {
+      "caption": "Daily prices of {{name}}",
+      "date": "Date",
+      "market": "Market",
+      "market_foil": "Foil market"
+    }
+  },
   "ability": {
     "empty": "No text",
     "energy": "{{count}} energy",
