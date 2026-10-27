@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-27 (F2-g implemented, batch 1 unit 14; F2-e done (#48), F2-f done (#49)).
+Last update: 2026-10-27 (F2-h implemented, batch 1 unit 15; F2-g done (#50)).
 
 ## Phases
 
@@ -15,7 +15,7 @@ Last update: 2026-10-27 (F2-g implemented, batch 1 unit 14; F2-e done (#48), F2-
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
 | M-c Hygiene | **Done** (#31) | `docs/requirements/M/M-c-hygiene.md`. |
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
-| F2 Catalog | In progress — F2-a…f done (#34, #45, #46, #47, #48, #49); F2-g implemented, h-i and k in batch 1 (units 15-17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
+| F2 Catalog | In progress — F2-a…g done (#34, #45, #46, #47, #48, #49, #50); F2-h implemented, i and k in batch 1 (units 16-17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
@@ -110,7 +110,8 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| F2-g | implemented | `feat/f2g-price-chart` / TBD | Price history chart + sparkline (S1-S7): `getCardPrices`/`useCardPrices` (keepPreviousData, 10-min stale), `scale.ts` (`linearScale` + `niceTicks`), `PriceChart` (measured SVG, keyboard, live region, table alternative), `CardPriceHistory` in the detail slot (`rb_price_range` remembered), `Sparkline`; `docs/frontend.md` "Charts". Vitest 148 → 184; pytest 787 unchanged. Next unit: **F2-h**. |
+| F2-h | implemented | `feat/f2h-catalog-page` / TBD | Catalog page + nav flip (S1-S13): `requestWithMeta`, `getGameMeta`/`listCards` (envelope-level meta fix), params parse/serialize/round-trip, `CatalogPage` (toolbar, sheet, chips, grid/list, pagination, scroll restore), `FilterChip`/`Pagination` primitives, `cards` → spa; `docs/frontend.md` "Catalog", AGENTS.md. Vitest 184 → 226; pytest 787 unchanged. Next unit: **F2-i**. |
+| F2-g | done (#50) | `feat/f2g-price-chart` / #50 | Price history chart + sparkline (S1-S7): `getCardPrices`/`useCardPrices` (keepPreviousData, 10-min stale), `scale.ts` (`linearScale` + `niceTicks`), `PriceChart` (measured SVG, keyboard, live region, table alternative), `CardPriceHistory` in the detail slot (`rb_price_range` remembered), `Sparkline`; `docs/frontend.md` "Charts". Vitest 148 → 184; pytest 787 unchanged. Next unit: **F2-h**. |
 | F2-f | done (#49) | `feat/f2f-card-detail-screen` / #49 | Card detail screen (S1-S11): `CardDetail` types, `getCard`, `useCardDetail` (5-min stale, no 404 retry), `/cards` layout + `/:setId/:cardId` route (page/modal, prev/next, Esc close), 11 sections, 1/2/3-column layouts, `parseAbility`/`AbilityText`, `Modal` sizes, skeleton/404/retry states; `docs/frontend.md` "Catalog", AGENTS.md. Vitest 103 → 148; pytest 787 unchanged. Next unit: **F2-g**. |
 | F2-e | done (#48) | `feat/f2e-card-ui-atoms` / #48 | Card UI atoms (S1-S14): `CardSummary` types, six fixtures, domain/rarity tokens + `domains.ts` (CSS=TS test), `shadeHex`, `formatPct`, `enums`+`cards` namespaces + `useEnumLabel`, `CardImage`/`CardArtPlaceholder`/`DomainPips`/`RarityDot`/`BanBadge`/`PriceTag`, ESLint card/charts boundary + type-only `@/api` test, kitchen entries, axe test; `docs/frontend.md` "Card components", AGENTS.md. Vitest 42 → 103; pytest 787 unchanged. Next unit: **F2-f**. |
 | F2-d | done (#47) | `feat/f2d-card-detail-api` / #47 | Card detail + price history (S1-S9): `CardPricesQuery`, `app/services/card_detail.py` (CardDetail with ability/set/price_detail/printings/related/ban_info/my_lines/in_decks, prices with 30d/90d/1y/all windows and same-date foil), `GET /cards/<set>/<id>` + `…/prices` (U); ≤ 10/≤ 4 statements, detail p95 123 ms on dev (6 printings); `docs/api.md` "GET /cards/<set>/<id>", AGENTS.md. pytest 762 → 787. Next unit: **F2-e**. |

@@ -70,8 +70,8 @@ export const NAV: readonly NavEntry[] = [
   {
     id: 'cards',
     icon: 'cards',
-    status: 'legacy',
-    legacy: 'cards',
+    status: 'spa',
+    to: '/cards',
     placements: ['top', 'bottom', 'hub', 'more'],
   },
   {

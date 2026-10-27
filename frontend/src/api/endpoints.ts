@@ -1,9 +1,12 @@
-import { getSession, request } from './client';
+import { getSession, request, requestWithMeta } from './client';
 import type {
   AdminCatalog,
   CaptchaData,
   CardDetail,
+  CardListMeta,
   CardPricesData,
+  CardSummary,
+  GameMeta,
   LoginBody,
   MetaConfig,
   Prefs,
@@ -179,6 +182,16 @@ export const getAdminOverview = (signal?: AbortSignal) =>
 /** `PATCH /me/prefs`: absent fields stay, `null` resets to Auto (PREF-4). Returns the full prefs. */
 export const patchPrefs = async (changes: Partial<Prefs>): Promise<Prefs> =>
   (await request<{ prefs: Prefs }>('/me/prefs', { method: 'PATCH', body: changes })).prefs;
+
+/** `GET /meta/game` (F2-h S2). */
+export const getGameMeta = (signal?: AbortSignal) => request<GameMeta>('/meta/game', { signal });
+
+/** `GET /cards` (F2-h S2). The caller serialises the params with `serializeCatalogParams`.
+    `meta` travels at the envelope level (F2-c contract), so this keeps it via `requestWithMeta`. */
+export const listCards = (query: string, signal?: AbortSignal) =>
+  requestWithMeta<{ items: CardSummary[] }, CardListMeta>(`/cards${query ? `?${query}` : ''}`, {
+    signal,
+  });
 
 /** `GET /cards/:set/:id` (F2-d). */
 export const getCard = (setId: string, cardId: string, signal?: AbortSignal) =>

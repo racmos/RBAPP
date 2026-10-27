@@ -95,7 +95,7 @@ export function CardDetailRoute() {
       <Modal
         open
         onClose={onClose ?? (() => {})}
-        title={query.data?.name ?? ''}
+        title={query.data?.name ?? t('detail.loading')}
         size="xl"
         hideTitle
       >

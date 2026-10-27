@@ -81,7 +81,7 @@ export function createAppRoutes(
                 {
                   path: '/cards',
                   lazy: async () => ({
-                    Component: (await import('@/catalog/CardsLayout')).CardsLayout,
+                    Component: (await import('@/catalog/CatalogPage')).CatalogPage,
                   }),
                   children: [
                     {

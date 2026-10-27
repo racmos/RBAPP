@@ -1,6 +1,6 @@
 /** AC1 (F13-f S1): `request` sends FormData without a JSON content type. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { request } from './client';
+import { request, requestWithMeta, setUnauthorizedHandler } from './client';
 import { clearCsrfToken, setCsrfToken } from './csrf';
 
 afterEach(() => {
@@ -21,6 +21,14 @@ function mockFetchJson(body: unknown, status = 200) {
     }),
   );
   return calls;
+}
+
+function mockFetchWithSequence(responses: (() => Response)[]) {
+  let index = 0;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => responses[index++]()),
+  );
 }
 
 describe('request bodies (F13-f S1)', () => {
@@ -47,5 +55,67 @@ describe('request bodies (F13-f S1)', () => {
     expect(headers['Content-Type']).toBe('application/json');
     expect(headers['X-CSRFToken']).toBe('token-2');
     expect(calls[0].init.body).toBe('{"id":"TST"}');
+  });
+});
+
+describe('requestWithMeta (F2-h S1)', () => {
+  it('returns data and meta from a successful envelope', async () => {
+    mockFetchJson({ success: true, data: { items: [] }, meta: { page: 1, pages: 1 } });
+    const result = await requestWithMeta<{ items: string[] }, { page: number }>('/cards');
+    expect(result.data).toEqual({ items: [] });
+    expect(result.meta).toEqual({ page: 1, pages: 1 });
+  });
+
+  it('returns undefined meta when the envelope has none', async () => {
+    mockFetchJson({ success: true, data: { ok: true } });
+    const result = await requestWithMeta<{ ok: boolean }, { page: number }>('/meta/config');
+    expect(result.data).toEqual({ ok: true });
+    expect(result.meta).toBeUndefined();
+  });
+
+  it('shares the error path with request', async () => {
+    mockFetchJson({ success: false, error: 'Validation Error', message: 'bad' }, 400);
+    await expect(requestWithMeta('/cards')).rejects.toMatchObject({ kind: 'http', status: 400 });
+  });
+
+  it('calls the unauthorized handler on 401 like request', async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    mockFetchJson({ success: false, error: 'Unauthorized', message: 'no' }, 401);
+    await expect(requestWithMeta('/cards')).rejects.toMatchObject({ kind: 'http', status: 401 });
+    expect(handler).toHaveBeenCalled();
+    setUnauthorizedHandler(null);
+    clearCsrfToken();
+  });
+
+  it('retries once on csrf_invalid like request', async () => {
+    setCsrfToken('stale');
+    mockFetchWithSequence([
+      () =>
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: 'CSRF Error',
+            message: 'CSRF',
+            code: 'csrf_invalid',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        ),
+      () =>
+        new Response(
+          JSON.stringify({ success: true, data: { csrf_token: 'fresh', authenticated: false } }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      () =>
+        new Response(JSON.stringify({ success: true, data: { items: [] }, meta: { page: 1 } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    ]);
+    const result = await requestWithMeta('/cards', { method: 'POST', body: {} });
+    expect(result.data).toEqual({ items: [] });
   });
 });

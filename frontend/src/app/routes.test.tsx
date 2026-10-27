@@ -13,7 +13,7 @@ function signedInApi() {
   server.use(http.get(`${API}/auth/session`, () => signedInSession()));
 }
 
-describe('createAppRoutes /cards (F2-f S4, AC6)', () => {
+describe('createAppRoutes /cards (F2-h S6, S13)', () => {
   it('renders the card detail page at 390 px, axe clean', async () => {
     signedInApi();
     const { container } = await renderApp({ path: '/cards/OGN/79', width: 390 });
@@ -23,12 +23,14 @@ describe('createAppRoutes /cards (F2-f S4, AC6)', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it('renders the card detail page at 1280 px, axe clean', async () => {
+  it('renders the catalog and detail modal at 1280 px, axe clean', async () => {
     signedInApi();
     const { container } = await renderApp({ path: '/cards/OGN/79', width: 1280 });
-    expect(
-      await screen.findByRole('heading', { level: 1, name: cardDetail.name }, LONG),
-    ).toBeVisible();
+    expect(await screen.findByRole('dialog', undefined, LONG)).toBeVisible();
+    expect(await screen.findByText(/Origen · #79/, {}, LONG)).toBeVisible();
+    const modal = document.querySelector('[data-presentation="modal"]');
+    expect(modal).toBeTruthy();
+    expect(modal).toHaveTextContent(cardDetail.name);
     expect(await axe(container)).toHaveNoViolations();
   });
 });
