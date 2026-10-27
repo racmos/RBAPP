@@ -136,6 +136,7 @@ export function CatalogPage() {
   // 300 ms, so fast refetches never flicker. The results region keeps the
   // immediate `aria-busy` (F2-h behaviour).
   const [sidebarBusy, setSidebarBusy] = useState(false);
+  /* eslint-disable react-hooks/set-state-in-effect -- delayed busy flag reset */
   useEffect(() => {
     if (!isFetching) {
       setSidebarBusy(false);
@@ -144,6 +145,7 @@ export function CatalogPage() {
     const timer = setTimeout(() => setSidebarBusy(true), 300);
     return () => clearTimeout(timer);
   }, [isFetching]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const activeCount = useMemo(() => countActiveFilters(params), [params]);
 
