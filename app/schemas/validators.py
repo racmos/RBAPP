@@ -77,6 +77,14 @@ class CardListQuery(BaseModel, extra='ignore'):
         return v
 
 
+# ============== Card Prices Query ==============
+
+
+class CardPricesQuery(BaseModel, extra='ignore'):
+    """GET /cards/<set>/<id>/prices query parameters (F2-d S8)."""
+    range: Literal['30d', '90d', '1y', 'all'] = '90d'
+
+
 # ============== Set Schemas ==============
 
 class SetCreate(BaseModel):

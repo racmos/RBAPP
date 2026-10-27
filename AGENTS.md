@@ -60,7 +60,7 @@ riftbound/
 │   │       ├── __init__.py
 │   │       ├── auth.py      # session, captcha, login, logout, register
 │   │       ├── bans.py      # GET /bans (card bans per game mode)
-│   │       ├── cards.py       # GET /cards (cards list: filters, facets, sort, pages; F2-c)
+│   │       ├── cards.py       # GET /cards (list; F2-c), GET /cards/<set>/<id> + /prices (detail; F2-d)
 │   │       ├── me.py        # GET/PATCH /me/prefs (interface preferences)
 │   │       └── meta.py      # health, meta/config
 │   ├── schemas/             # Pydantic request models
@@ -113,6 +113,7 @@ riftbound/
 │   │   ├── bans.py          # name_key, ban_map, card_bans, ban_info, list_bans, add_ban, remove_ban
 │   │   ├── captcha.py       # none / altcha providers, replay store
 │   │   ├── catalog.py       # card parsing, natural sort, foil eligibility, base printings, card_summary (F2-b)
+│   │   ├── card_detail.py   # card detail + price history: printings, related, user lines/decks (F2-d)
 │   │   ├── card_list.py     # cards list query: filters, disjunctive facets, sort, pagination (F2-c)
 │   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
@@ -266,6 +267,7 @@ Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/sessio
 - `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
 - `GET`/`PATCH /me/prefs` (`app/api/v1/me.py`): a key that is absent stays unchanged, `null` resets it to Auto, an invalid value is a 400 and nothing is stored (all-or-nothing), unknown keys are ignored. Domains live in `app/schemas/prefs_domain.py` (shared by the schema and the model CHECKs). Logic is in `app/services/prefs.py`.
 - `GET /bans` (`app/api/v1/bans.py`, U) returns `{items: [{name, mode, since, reason, printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2` (any other value is a 400 `validation_error`). A ban covers every printing of a card name (`name_key` in `app/services/bans.py`); modes come from `app/schemas/game_domain.py`. Bans are managed with `flask bans list [--mode M]`, `flask bans add NAME --mode 1v1|2v2|all [--since YYYY-MM-DD] [--reason TEXT] [--force]` and `flask bans remove NAME --mode 1v1|2v2|all`. The legacy `rbcar_banned` column is not a source (F11 drops it).
+- `GET /cards/<set_id>/<card_id>` (`api_v1.get_card`, U) returns `CardDetail` (summary + ability, set, price_detail, printings/related `CardMini`, ban_info, my_lines, in_decks); `GET …/prices` (`api_v1.get_card_prices`, U) returns `{range, currency: EUR, foilable, product_id, points}` (`docs/api.md` → "GET /cards/<set>/<id>"). At most 10/4 SQL statements; detail p95 123 ms on dev (6 printings).
 - `GET /cards` (`app/api/v1/cards.py`, U) returns `{data: {items: [CardSummary]}, meta: {page, per_page, total, pages, facets, price_as_of}}` (`docs/api.md` → "GET /cards"): free-text `q`/`text`, 7 repeated facet params, numeric/price ranges, `owned`, `banned_in`, `base_only`, 9 sort keys with nulls-last and natural tiebreak; disjunctive facets in canonical order; at most 12 SQL statements; prices for all matches only with price sort/bounds, else the page only. Query validation via `@validate_query` (`CardListQuery`); same 400 body as `validate_json` with message "Invalid query parameters".
 - `GET /meta/game` (`app/api/v1/meta.py`, P) returns a `GameMeta` (`docs/api.md` → "Data shapes"): modes, domains/types/supertypes/rarities (S1 tuples plus unknown data values), every set with `card_count`, price freshness (`updated_on` from `rbcm_price`, null when empty), `rules: {}` reserved for F15. Anonymous 200, `Cache-Control: no-cache`. Card objects use `CardSummary` from `app/services/catalog.py::card_summary` (batched prices via `price_summaries`, at most two SQL statements).
 
