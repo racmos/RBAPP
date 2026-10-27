@@ -1,4 +1,13 @@
 import { useState } from 'react';
+import { basicRune, champion, foilCommon, noImage, noPrice, token } from '@/test/fixtures/cards';
+import {
+  BanBadge,
+  CardArtPlaceholder,
+  CardImage,
+  DomainPips,
+  PriceTag,
+  RarityDot,
+} from '@/components/card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -132,6 +141,8 @@ export function KitchenSink() {
             ))}
           </div>
         </Panel>
+
+        <CardAtomsPanel />
       </div>
 
       <Modal open={modal} title="A modal" onClose={() => setModal(false)}>
@@ -150,6 +161,76 @@ export function KitchenSink() {
         onConfirm={() => setConfirm(false)}
         onCancel={() => setConfirm(false)}
       />
+    </>
+  );
+}
+
+const fixtures = [
+  { name: 'champion', card: champion },
+  { name: 'foilCommon', card: foilCommon },
+  { name: 'basicRune', card: basicRune },
+  { name: 'token', card: token },
+  { name: 'noImage', card: noImage },
+  { name: 'noPrice', card: noPrice },
+];
+
+function CardAtomsPanel() {
+  return (
+    <>
+      <Panel title="Card atoms">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+            gap: 'var(--gap)',
+          }}
+        >
+          {fixtures.map(({ name, card }) => (
+            <div key={name} style={{ display: 'grid', gap: 8 }}>
+              <CardImage card={card} size="tile" />
+              <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>{name}</div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel title="Card placeholders">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+            gap: 'var(--gap)',
+          }}
+        >
+          {fixtures.map(({ name, card }) => (
+            <div key={name} style={{ display: 'grid', gap: 8 }}>
+              <CardArtPlaceholder card={card} />
+              <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>{name}</div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel title="Domain pips, rarity and bans">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          <DomainPips domains={['Fury', 'Chaos']} />
+          <DomainPips domains={['Mind']} />
+          <DomainPips domains={[]} />
+          <RarityDot rarity="Rare" />
+          <RarityDot rarity="Rare" showLabel />
+          <BanBadge bans={{ '1v1': true, '2v2': false }} />
+          <BanBadge bans={{ '1v1': true, '2v2': true }} variant="compact" />
+        </div>
+      </Panel>
+
+      <Panel title="Price tags">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          <PriceTag price={champion.price} />
+          <PriceTag price={champion.price} trend="30d" />
+          <PriceTag price={null} />
+          <PriceTag price={{ ...champion.price!, market_foil: 2.5 }} foil />
+        </div>
+      </Panel>
     </>
   );
 }

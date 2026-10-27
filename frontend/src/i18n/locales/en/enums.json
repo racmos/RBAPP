@@ -1,0 +1,36 @@
+{
+  "domain": {
+    "Fury": "Fury",
+    "Calm": "Calm",
+    "Mind": "Mind",
+    "Body": "Body",
+    "Chaos": "Chaos",
+    "Order": "Order",
+    "Colorless": "Colorless"
+  },
+  "type": {
+    "Legend": "Legend",
+    "Unit": "Unit",
+    "Spell": "Spell",
+    "Gear": "Gear",
+    "Rune": "Rune",
+    "Battlefield": "Battlefield"
+  },
+  "supertype": {
+    "Champion": "Champion",
+    "Signature": "Signature",
+    "Token": "Token",
+    "Basic": "Basic"
+  },
+  "rarity": {
+    "Common": "Common",
+    "Uncommon": "Uncommon",
+    "Rare": "Rare",
+    "Epic": "Epic",
+    "Showcase": "Showcase"
+  },
+  "mode": {
+    "1v1": "1v1",
+    "2v2": "2v2"
+  }
+}

@@ -7,6 +7,7 @@ export { clearStoredLang, initialLang, resolveLang, storeLang, storedLang } from
 export { translateDetail, translateError } from './translateError';
 export { useDocumentTitle } from './useDocumentTitle';
 export { LanguageToggle } from './LanguageToggle';
+export { useEnumLabel } from './enumLabel';
 
 /**
  * A ready i18next instance. ES is the fallback (I18N-5); a key missing everywhere renders

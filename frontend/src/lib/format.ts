@@ -23,3 +23,12 @@ export const formatDateTime = (value: Date | string, lang: Lang): string =>
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
+
+/** Percentage with one decimal and an explicit sign for non-zero values (DS-2). */
+export const formatPct = (value: number, lang: Lang): string =>
+  new Intl.NumberFormat(localeFor(lang), {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    signDisplay: 'exceptZero',
+  }).format(value / 100);

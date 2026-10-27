@@ -1,0 +1,15 @@
+{
+  "rarityLabel": "Rarity: {{rarity}}",
+  "ban": {
+    "full": "Banned in {{modes}}"
+  },
+  "price": {
+    "none": "No price"
+  },
+  "trend": {
+    "up": "Up {{value}} in {{days}} days",
+    "down": "Down {{value}} in {{days}} days",
+    "flat": "No change in {{days}} days"
+  },
+  "foil": "Foil"
+}

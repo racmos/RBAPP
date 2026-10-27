@@ -1,0 +1,78 @@
+@layer components {
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sm {
+    font-size: 12px;
+  }
+
+  .md {
+    font-size: 14px;
+  }
+
+  .lg {
+    font-size: 16px;
+  }
+
+  .amount {
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .muted {
+    color: var(--muted-2);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.88em;
+  }
+
+  .up {
+    color: var(--green-text);
+    background: rgba(95, 224, 168, 0.12);
+  }
+
+  .down {
+    color: var(--red-text);
+    background: rgba(255, 138, 114, 0.12);
+  }
+
+  .flat {
+    color: var(--muted);
+    background: rgba(120, 205, 228, 0.1);
+  }
+
+  .icon {
+    display: inline-flex;
+  }
+
+  .upIcon {
+    transform: rotate(-90deg);
+  }
+
+  .downIcon {
+    transform: rotate(90deg);
+  }
+
+  .srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
