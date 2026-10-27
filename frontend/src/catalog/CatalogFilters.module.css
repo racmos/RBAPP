@@ -1,0 +1,111 @@
+@layer components {
+  .sheetBody {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+  }
+
+  .sidebarHeader {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .sidebarBody {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+  }
+
+  .collapsible {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .groupToggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .groupToggle:hover {
+    color: var(--accent);
+  }
+
+  .chevron {
+    transform: rotate(-90deg);
+    transition: transform 150ms ease;
+  }
+
+  .chevronOpen {
+    transform: rotate(90deg);
+    transition: transform 150ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chevron,
+    .chevronOpen {
+      transition: none;
+    }
+  }
+
+  .groupContent {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .legend {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .checkList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .matchControl {
+    margin-top: 10px;
+  }
+
+  .range {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}

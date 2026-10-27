@@ -1,0 +1,101 @@
+@layer components {
+  .scrollWrap {
+    overflow-x: auto;
+  }
+
+  .scrollWrap .table {
+    min-width: 920px;
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .th {
+    position: sticky;
+    top: 64px;
+    padding: 10px 8px;
+    background: var(--panel-3);
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .td {
+    padding: 8px;
+    border-bottom: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+
+  .right {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .imageCell {
+    width: 48px;
+    padding: 4px;
+  }
+
+  .imageCell img {
+    width: 40px;
+    height: auto;
+    border-radius: var(--radius-sm);
+  }
+
+  .sortButton {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .sortButton:hover {
+    color: var(--accent);
+  }
+
+  .nameCell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 160px;
+  }
+
+  .nameLink {
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .nameLink:hover {
+    text-decoration: underline;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .tag {
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--text);
+    font-size: 11px;
+  }
+
+  .moreTags {
+    color: var(--muted);
+  }
+}

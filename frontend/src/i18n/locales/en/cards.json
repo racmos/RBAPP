@@ -71,6 +71,36 @@
       "list": "List",
       "table": "Table"
     },
+    "perPage": "Per page",
+    "table": {
+      "caption": "Catalog cards",
+      "image": "Image",
+      "set": "Set",
+      "number": "No.",
+      "name": "Name",
+      "type": "Type",
+      "rarity": "Rarity",
+      "energy": "Energy",
+      "power": "Power",
+      "might": "Might",
+      "tags": "Tags",
+      "price": "Price",
+      "foil": "Foil",
+      "trend7": "7 d",
+      "trend30": "30 d",
+      "owned": "Owned",
+      "bans": "Bans",
+      "moreTags": "+{{count}}"
+    },
+    "tile": {
+      "select": "Show {{name}} in the preview"
+    },
+    "preview": {
+      "title": "Preview",
+      "open": "Open full card",
+      "empty": "Select a card to preview it here.",
+      "trend": "Price over the last 30 days"
+    },
     "owned": "You have {{count}}",
     "results": "Results",
     "loading": "Loading cards",
