@@ -1,5 +1,6 @@
 import { ESLint } from 'eslint';
 import { globSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error ESM config file has no TypeScript declaration.
 import config from '../../eslint.config.js';
@@ -12,11 +13,13 @@ function lint(code: string, file: string) {
   return eslint.lintText(code, { filePath: file });
 }
 
+const cardFile = (name: string) => join(process.cwd(), 'src/components/card', name);
+
 describe('ESLint boundaries (F2-e S13)', () => {
   it('flags a card component that imports from a feature folder', async () => {
     const result = await lint(
       "import { useAuth } from '@/auth/useAuth';\nexport const A = () => null;\n",
-      '/home/racmos/RBAPP-f2e/frontend/src/components/card/Bad.tsx',
+      cardFile('Bad.tsx'),
     );
     expect(result[0].errorCount).toBeGreaterThan(0);
     expect(result[0].messages.some((m) => m.message.includes('folder boundaries'))).toBe(true);
@@ -25,7 +28,7 @@ describe('ESLint boundaries (F2-e S13)', () => {
   it('allows a card component with permitted imports', async () => {
     const result = await lint(
       "import { formatMoney } from '@/lib/format';\nimport { useTranslation } from 'react-i18next';\nimport { Badge } from '@/components/ui/Badge';\nimport type { CardSummary } from '@/api/types';\nexport function A({ p }: { p: CardSummary }) {\n  const { t } = useTranslation();\n  return <Badge tone=\"accent\">{formatMoney(1, 'es')} {t('ok')} {p.name}</Badge>;\n}\n",
-      '/home/racmos/RBAPP-f2e/frontend/src/components/card/Okay.tsx',
+      cardFile('Okay.tsx'),
     );
     expect(result[0].errorCount).toBe(0);
   });
@@ -33,7 +36,7 @@ describe('ESLint boundaries (F2-e S13)', () => {
   it('allows type-only imports from @/api in card components', async () => {
     const result = await lint(
       "import type { CardSummary } from '@/api/types';\nexport const A = (p: CardSummary) => p.name;\n",
-      '/home/racmos/RBAPP-f2e/frontend/src/components/card/Good.tsx',
+      cardFile('Good.tsx'),
     );
     expect(result[0].errorCount).toBe(0);
   });
@@ -41,7 +44,7 @@ describe('ESLint boundaries (F2-e S13)', () => {
   it('flags a card component that imports values from @/api', async () => {
     const result = await lint(
       "import { CardSummary } from '@/api/types';\nexport const x: CardSummary = {} as CardSummary;\n",
-      '/home/racmos/RBAPP-f2e/frontend/src/components/card/BadApi.tsx',
+      cardFile('BadApi.tsx'),
     );
     expect(result[0].errorCount).toBeGreaterThan(0);
     expect(result[0].messages.some((m) => m.message.includes('type'))).toBe(true);
