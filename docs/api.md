@@ -106,6 +106,49 @@ total is 0); a page past the end returns `items: []` with 200.
 GET /riftbound/api/v1/cards?domain=Fury&sort=price&dir=desc&per_page=2
 ```
 
+### GET /cards/<set_id>/<card_id>
+
+`app/api/v1/cards.py` (`api_v1.get_card`, U): one card in the shared
+`CardSummary` shape plus the keys below. Lookup is exact on both segments;
+a missing card answers 404 with the standard envelope. Anonymous → JSON 401.
+Filtering, ordering and user scoping run in Python over batched queries
+(at most 10 SQL statements).
+
+Response: `data: CardDetail` = `CardSummary` plus `ability` (text|null),
+`artist` (already in the summary), `set: {id, name, released_on (ISO|null)}`,
+`price_detail` (null when unmapped; else `{date, product_id, columns` with the
+11 `rbprc_*` columns as floats|null, `foil_product_id`, `foil_columns}` from
+the latest rows of the canonical products, foil only when foilable and a
+different product), `printings: [CardMini]` (every printing of the name by
+`natural_key`, including itself), `related: [CardMini]` (up to 12 base
+printings of other names sharing ≥1 tag, most shared tags first, then name),
+`ban_info` (`ban_info(name)`, `[]` when legal), `my_lines` (the current user's
+rows of this printing ordered by foil N first, condition, language, id; each
+`{id, foil (bool), qty, condition, language, selling, sell_price, playset,
+updated_at (UTC `…Z`)}`), `in_decks` (per deck name the highest `rbdck_seq`
+row only; `{deck_id, name, qty}` summed over main + sideboard entries of the
+same name, missing-card entries skipped, ordered by name).
+
+```http
+GET /riftbound/api/v1/cards/OGN/79
+```
+
+### GET /cards/<set_id>/<card_id>/prices
+
+`app/api/v1/cards.py` (`api_v1.get_card_prices`, U): daily price history.
+Query `range: 30d|90d|1y|all = 90d` via `validate_query` (bad range → 400
+`validation_error`, `field: "range"`, `code: invalid_value`). A missing card
+answers 404; an unmapped card answers 200 with `product_id: null` and
+`points: []`. Otherwise N product = canonical non-foil product; the window runs
+from latest − 30/90/365 days inclusive (`all` = every row); one ascending point
+per N row `{date, market (foil N), low, avg7, avg30, market_foil (same-date
+foil-product row, foil S; null when not foilable or no row that day)}`.
+At most 4 SQL statements.
+
+```http
+GET /riftbound/api/v1/cards/OGN/79/prices?range=30d
+```
+
 ## Data shapes
 
 Additive changes only: new keys may be appended, existing keys are never renamed,

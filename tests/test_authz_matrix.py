@@ -53,6 +53,8 @@ MATRIX = {
     'api_v1.patch_me_prefs': 'U',
     'api_v1.list_bans': 'U',                # F2 unit a (D-F2-3)
     'api_v1.list_cards': 'U',                # F2 unit c
+    'api_v1.get_card': 'U',                  # F2 unit d
+    'api_v1.get_card_prices': 'U',           # F2 unit d
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',
