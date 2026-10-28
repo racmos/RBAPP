@@ -61,3 +61,10 @@ Deploy (no migration). Live: `GET /riftbound/api/v1/products` lists the sealed p
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): products with a NULL kind or set are listed but not counted in that facet; `kind` and `set` filters are case-insensitive and an unknown kind is not a 400 (same as `GET /cards` sets).
+- L2 (implementer): `price` is null only when the product has no `rbcm_price` row; a latest row without a usable value gives `{value: null, source: null, changes: null, as_of}`. `meta.price_as_of` is the global newest price date, as in `GET /cards`.
+- L3 (implementer): `/products/<id>/prices` answers 404 for hidden, single and missing products, like the detail; a non-integer id gives the JSON 404 envelope.
+- L4 (parent): at the latest load `avg7` is zero for every non-single, so in practice prices come from `trend` (source `trend`); the chain is unchanged and will pick `avg7` as soon as Cardmarket fills it.

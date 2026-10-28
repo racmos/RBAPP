@@ -251,6 +251,42 @@ decimals; lines come back as `CollectionLine` plus `set_id` and `card_id`.
 New error codes: `foil_not_allowed` (400), `insufficient_quantity` (409, `params.available`),
 `stale_line` (409).
 
+### GET /products
+
+`app/api/v1/products.py` (`api_v1.list_products`, U, F14-b): the sealed product catalog
+(`rbproducts`, only `rbpdt_type = 'nonsingle'`; hidden products never appear). Query via
+`validate_query` (`ProductListQuery`): `q` (case-insensitive name substring), repeated `kind` and
+`set` (case-insensitive), `owned=any|owned|missing` (accepted; `owned`/`missing` behave as `any`
+until F14-c), `listed=true|any` (default `true`: only products in the latest Cardmarket file),
+`sort=name|price|change_7d|change_30d` (default `name`; nulls last in both directions, ties by
+name), `dir=asc|desc`, `page`, `per_page` 24-96 (default 48). Any other value -> 400
+`validation_error`. `data.items` are `ProductSummary`s; `meta` is `{page, per_page, total,
+pages, facets: {kind, set}, price_as_of}`. The facets are disjunctive counts (each ignores its
+own filter): `kind` in the `PRODUCT_KINDS` order, `set` by set release order then unknown set
+ids by name; products with a NULL kind or set are not counted. `price_as_of` is the newest
+`rbcm_price` date (as in `GET /cards`). At most 10 SQL statements whatever the size of the
+catalog (5 today).
+
+```http
+GET /riftbound/api/v1/products?kind=box&sort=price&dir=desc
+```
+
+### GET /products/<id>
+
+`api_v1.get_product` (U): `ProductSummary` + `{description, columns: {avg7, trend, low, avg30}
+(floats or null, the product's latest `rbcm_price` row) | null (no row), lines: []}` (`lines` is
+filled by F14-c). A missing id, a product that is not a non-single, or a hidden one (F14-c:
+unless owned) answers the 404 envelope; an unlisted product is shown with `listed: false`.
+
+### GET /products/<id>/prices
+
+`api_v1.get_product_prices` (U): `{range, points: [{date (ISO), value, avg7, trend, low}]}`,
+ascending, one point per `rbcm_price` row of the product. Query `range: 30d|90d|1y|all = 90d`
+(`ProductPricesQuery`; a bad range -> 400 `validation_error`, `field: "range"`,
+`code: invalid_value`); the window runs from the latest row - 30/90/365 days inclusive (`all` =
+every row). `value` follows the product rule below; a product without rows answers
+`points: []`. Same 404 cases as the detail.
+
 ### GET /cards/<set_id>/<card_id>/prices
 
 `app/api/v1/cards.py` (`api_v1.get_card_prices`, U): daily price history.
@@ -285,6 +321,16 @@ energy|power|might (int|null), rarity, image_src, image_thumb_src (null until F2
 foilable, is_base, price: {market, market_source, market_foil, market_foil_source,
 trend_7d_pct, trend_30d_pct, as_of}|null, bans: {<mode>: bool},
 owned: {total, foil}}` (`market_source` is the `rbprc_*` column the value came from).
+
+`ProductSummary` (F14-b) is a contract for the product screens: additive changes only.
+`ProductSummary` = `{id, name, kind|null, category|null, set_id|null, image_src (null until
+F14-d, then `/riftbound/media/products/<file>`), listed (bool), price: {value|null,
+source (avg7|trend|low)|null, change_7d_pct|null, change_30d_pct|null, as_of (ISO)}|null,
+owned_qty}`. `value` is the first of `rbprc_avg7`, `rbprc_trend`, `rbprc_low` of the latest row
+that is not NULL and not 0 (no foil columns; `app/services/product_prices.py`); the changes use
+the `CardSummary` reference-row rule (newest row on or before latest - 7/30 days) and rounding
+(1 decimal) on that value; `price` is null when the product has no `rbcm_price` row. `owned_qty`
+is always 0 until F14-c (copies in the user's `rbuserproducts` lines).
 
 `CollectionLine` and `CollectionGroup` (F3-b) are contracts for the collection screens, the
 value snapshots and the sales: additive changes only.

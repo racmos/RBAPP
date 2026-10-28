@@ -65,6 +65,9 @@ MATRIX = {
     'api_v1.bulk_collection_lines': 'U',
     'api_v1.keep_collection_playset': 'U',
     'api_v1.get_card_prices': 'U',           # F2 unit d
+    'api_v1.list_products': 'U',             # F14 unit b
+    'api_v1.get_product': 'U',
+    'api_v1.get_product_prices': 'U',
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',
