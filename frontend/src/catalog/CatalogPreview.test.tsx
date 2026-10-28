@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -64,7 +64,11 @@ describe('CatalogPreview (F2-i S5)', () => {
     const tile = screen.getByText('Ember Wisp').closest('button')!;
     await userEvent.click(tile);
     await waitFor(() => expect(where()).toMatch(/selected=OGN-12/), LONG);
-    expect(await screen.findByText('Ember Wisp', {}, LONG)).toBeVisible();
+    const preview = screen.getByTestId('catalog-preview');
+    await waitFor(
+      () => expect(within(preview).getByRole('heading', { name: 'Ember Wisp' })).toBeVisible(),
+      LONG,
+    );
   }, 15000);
 
   it('loads table at 1680', async () => {

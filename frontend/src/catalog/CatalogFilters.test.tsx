@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -92,4 +92,20 @@ describe('CatalogFilters (F2-i S1)', () => {
     release();
     await waitFor(() => expect(sidebar).not.toHaveAttribute('aria-busy'), LONG);
   });
+});
+
+describe('CatalogFilters numeric ranges', () => {
+  it('keeps the digits typed while the URL waits for the debounce', async () => {
+    signedInApi();
+    const { where } = await renderApp({ path: '/cards', width: 390 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Filtros' }, LONG);
+    const energy = within(dialog).getByRole('group', { name: 'Coste de energía' });
+    const min = within(energy).getByLabelText('Mín.');
+    await userEvent.type(min, '12');
+    expect(min).toHaveValue(12);
+    await waitFor(() => expect(where()).toBe('/cards?energy_min=12'), LONG);
+    expect(min).toHaveValue(12);
+  }, 15000);
 });
