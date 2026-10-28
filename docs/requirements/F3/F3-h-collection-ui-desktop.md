@@ -138,3 +138,12 @@ summary band against your expectations.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): `collection:bulk.sellRule` is both a label and a parent of `.all/.none/.keep` in the requirement's table, which a JSON catalog cannot hold: the label key is `bulk.sellRuleLabel`.
+- L2 (implementer): the sidebar reuses the F3-g filter groups (`CollectionFilters variant="sidebar"`) rather than F2-i's `CatalogFilters`, which is built around catalog facets; its groups are not collapsible.
+- L3 (implementer): the wide panel shows the first row of the page until a row is clicked, so it is never empty while there are cards (the empty text is for an empty result).
+- L4 (implementer): the profit percentage of a card with several lines is computed in the UI from its lines (profit / what was paid for the lines that have a purchase price).
+- L5 (implementer): "select all filtered" reads the ids with `GET /collection?sort=number&per_page=200` pages; the link is replaced by `bulk.tooMany` when `totals.lines` is above 1000.
+- L6 (implementer): screenshots at 1280 and 1700 px are not attached (the branch is not deployed and no browser was run against it).

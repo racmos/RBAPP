@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-28 (F3-g implemented, batch 1 unit 24; F3-e done (#61)).
+Last update: 2026-10-28 (F3-h implemented, batch 1 unit 25; F3-g in review (#62)).
 
 ## Phases
 
@@ -18,7 +18,7 @@ Last update: 2026-10-28 (F3-g implemented, batch 1 unit 24; F3-e done (#61)).
 | F2 Catalog | In progress — F2-a…i done (#34, #45, #46, #47, #48, #49, #50, #51, #52); F2-k implemented (batch 1 unit 17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
-| F3 Collection | In progress — F3-a, b, c, d, e done (#55, #56, #59, #60, #61), F3-g implemented (batch 1 unit 24); units 25-26 planned | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
+| F3 Collection | In progress — F3-a..e done, F3-g in review (#62), F3-h implemented (batch 1 unit 25); unit 26 planned | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
 | F14 Products | Planned — batch 1, units 27-32 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
 | F15 Rules app | Planned (after production) | `docs/requirements/F15/README.md` (outline). |
@@ -114,6 +114,7 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
 | F2-fix | done (#54) | `fix/catalog-search-typing` / #54 | Typing bug in the catalog: inputs whose value lives in the URL (search, "text" facet, numeric ranges) lost letters when the URL answered a debounced commit (search) or on every keystroke (ranges). New `DebouncedInput` keeps local text and adopts the URL only for outside changes; single debounce. Vitest 288 → 291; pytest unchanged. |
+| F3-h | implemented | `feat/f3h-collection-ui-desktop` / TBD | Collection on the desktop (S1-S7): `useCollectionScreen` shared by `CollectionMobile` and `CollectionDesktop` (from 1240 px); facet sidebar, summary band with signed profit, toolbar with page size and grid/table, `CollectionTable` (folded sub-lines, inline edits through `LineCells`, sortable headers with `aria-sort`), selection per line / card / page / all filtered (cap 1000), `BulkBar` (apply and delete behind confirmation, 8 s undo), wide `CollectionPanel` (30-day chart, lines, decks); bulk API hooks. Vitest 376 → 405. Deviations L1-L6 in the requirement. Next unit: **F3-i**. |
 | F3-g | in review (#62) | `feat/f3g-collection-ui-mobile` / #62 | Collection screen (S1-S9): `src/collection/` (params ⇄ URL, queries and mutations that refresh `['collection']` and `['cards']`, `CollectionPage`, tile/row with the playset shortage as outline and text, filters sheet, `LineSheet` with PATCH + `if_updated_at`, split, delete with 8 s undo and keep-playset, `AddSheet` with `CardCombobox`), `/collection` route and `spa` nav entry, card detail link `/collection?q=SET-ID`, playset size in `/account/interface`; `CollectionGroup.kept` added to the API (additive); ES/EN `collection` namespace and condition/language enums; ESLint boundary for the new folder. Vitest 301 → 376; pytest unchanged apart from `kept`. Deviations L1-L6 in the requirement. Next unit: **F3-h**. |
 | F3-e | done (#61) | `feat/f3e-collection-import-api` / #61 | CSV import (S1-S7): table `rbimportpreviews` (migration `0018_import_previews`, JSON rows, 30 min, FK cascade), `POST /collection/import/preview` (format detection, 2 MB / 10 000 rows, row statuses and reason codes, expired previews purged, one preview per user) and `/commit` (`add` or `replace`, all or nothing, 410 `import_expired`); codes `import_expired`, `import_format_unknown`; `collection_write.add_row` is the shared merge rule. Export -> import with `replace` leaves the collection identical (test). pytest 1 107 → 1 192. Deviations L1-L5 in the requirement. Next unit: **F3-g**. |
 | F3-d | done (#60) | `feat/f3d-collection-export-api` / #60 | CSV export (S1-S5): `GET /collection/export?format=rbapp|cardmarket` (+ list filters, `only_selling`), BOM, streamed, `X-Rows-Exported`, UTC file names; RBAPP format re-importable, Cardmarket byte-identical to the Jinja export (golden test), formula-injection prefix; `collection_read.export_lines`/`_load_lines` shared with the list, `pricing.product_names`. pytest 1 085 → 1 107. No migration. Next unit: **F3-e**. |

@@ -408,3 +408,14 @@ export type KeepPlaysetResult = {
   playset_size: number;
   playset_short: boolean;
 };
+
+/** `set` of `POST /collection/bulk` (F3-c): only the keys sent change. */
+export type CollectionBulkSet = Partial<{
+  condition: string | null;
+  language: string | null;
+  selling: boolean;
+  sell_qty_rule: 'all' | 'none' | 'keep_n';
+  keep: number;
+  sell_price: number | null;
+  purchase_price: number | null;
+}>;

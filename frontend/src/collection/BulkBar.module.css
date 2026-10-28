@@ -1,0 +1,55 @@
+@layer components {
+  .bar {
+    position: sticky;
+    z-index: var(--z-popover);
+    bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--panel-3);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .bar label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .count {
+    align-self: center;
+    margin: 0;
+    color: var(--text);
+    font-weight: 800;
+  }
+
+  .small {
+    width: 90px;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(5, 26, 34, 0.6);
+    color: var(--text);
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .hint {
+    color: var(--muted);
+    font-size: 12px;
+  }
+}

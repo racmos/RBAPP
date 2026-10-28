@@ -421,6 +421,23 @@ layout on a desktop.
   condition, language, purchase price, selling; it stays open for the next card.
 - The playset size is set in `/account/interface` (`collection:settings.*`, `PATCH /me/prefs`
   `playset_size`, empty = 3). Condition and language labels live in the `enums` namespace.
+- From 1240 px (F3-h) `CollectionPage` renders `CollectionDesktop` instead of `CollectionMobile`; both use
+  `useCollectionScreen` (URL params, the list, the open sheets). Desktop: sticky facet sidebar
+  (`CollectionFilters variant="sidebar"`), `SummaryBand` (value, cost, profit in € and % with a written
+  sign, lines, unique, on sale, % foil), toolbar (count, sort, direction, page size 25/50/100/200,
+  grid/table; table is the default when the preference is Auto), and `CollectionTable`.
+- `CollectionTable` — one row per card and foil with its lines folded below (expand button with
+  `aria-expanded`); single-line cards are edited in their own row. `LineCells` holds the seven editable
+  cells (copies, to sell, on sale, sale price, condition, language, purchase) and saves like the line
+  sheet. Sortable headers carry `aria-sort`: number, name, copies, market, profit €, 7 d, updated.
+- Selection (`useSelection`, forgotten when the filters change): a box per line, per card (indeterminate
+  when partial) and per page; when the page is only a part of the result, "Seleccionar las N líneas
+  filtradas" reads the ids page by page (`fetchFilteredLineIds`, at most 1000 lines). `BulkBar` (sticky,
+  while something is selected): condition, language, on sale, copies-to-sell rule (all / none / keep N),
+  prices; apply and delete go through a `ConfirmDialog`, delete offers "Deshacer" for 8 s (it posts
+  the deleted lines back).
+- From 1600 px `CollectionPanel` (380 px) shows the clicked row's card: image, totals, 30-day `PriceChart`
+  (foil series for a foil group), lines, the decks using the card (`in_decks`) and a link to the card page.
 - ESLint: `collection` may import everything below `app`, like `catalog`.
 
 ## Charts

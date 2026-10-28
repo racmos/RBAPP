@@ -53,7 +53,8 @@
   "view": {
     "label": "View",
     "grid": "Grid",
-    "list": "List"
+    "list": "List",
+    "table": "Table"
   },
   "foil": "Foil",
   "selling": {
@@ -123,5 +124,94 @@
   },
   "count_one": "{{count}} card",
   "count_many": "{{count}} cards",
-  "count_other": "{{count}} cards"
+  "count_other": "{{count}} cards",
+  "desktop": {
+    "groups_one": "{{count}} card",
+    "groups_many": "{{count}} cards",
+    "groups_other": "{{count}} cards",
+    "pageSize": "Per page"
+  },
+  "totals": {
+    "value": "Value",
+    "cost": "Cost",
+    "pl": "Profit",
+    "lines": "Lines",
+    "unique": "Unique",
+    "selling": "On sale",
+    "foil": "Foil"
+  },
+  "table": {
+    "caption": "Your collection grouped by card",
+    "expand": "Show the lines of {{name}}",
+    "selectLine": "Select {{name}}",
+    "selectPage": "Select all on this page",
+    "lineOf": "{{name}}, line {{index}}",
+    "columns": {
+      "select": "Select",
+      "image": "Image",
+      "set": "Set",
+      "number": "No.",
+      "name": "Name",
+      "foil": "Foil",
+      "qty": "Copies",
+      "sellQty": "To sell",
+      "selling": "On sale",
+      "sellPrice": "Sale price",
+      "condition": "Condition",
+      "language": "Language",
+      "purchase": "Purchase",
+      "market": "Market",
+      "plAbs": "Profit €",
+      "plPct": "Profit %",
+      "trend7d": "7 d",
+      "updated": "Updated"
+    }
+  },
+  "bulk": {
+    "selected_one": "{{count}} line selected",
+    "selected_many": "{{count}} lines selected",
+    "selected_other": "{{count}} lines selected",
+    "selectAllFiltered": "Select all {{count}} filtered lines",
+    "tooMany": "More than 1000 lines: filter a bit more.",
+    "loadingIds": "Selecting…",
+    "condition": "Condition",
+    "language": "Language",
+    "selling": "On sale",
+    "keepUnchanged": "Unchanged",
+    "sellRuleLabel": "Copies to sell",
+    "sellRule": {
+      "all": "All",
+      "none": "None",
+      "keep": "Keep"
+    },
+    "keep": "Copies to keep",
+    "sellPrice": "Sale price",
+    "purchasePrice": "Purchase price",
+    "apply": "Apply",
+    "delete": "Delete",
+    "clear": "Clear selection",
+    "confirm": {
+      "apply_one": "Apply the changes to {{count}} line?",
+      "apply_many": "Apply the changes to {{count}} lines?",
+      "apply_other": "Apply the changes to {{count}} lines?",
+      "delete_one": "Delete {{count}} line?",
+      "delete_many": "Delete {{count}} lines?",
+      "delete_other": "Delete {{count}} lines?"
+    },
+    "applied": "Changes applied.",
+    "deleted_one": "{{count}} line deleted.",
+    "deleted_many": "{{count}} lines deleted.",
+    "deleted_other": "{{count}} lines deleted.",
+    "nothingToApply": "Choose at least one change."
+  },
+  "panel": {
+    "title": "Card details",
+    "empty": "Pick a card to see its details.",
+    "decks": "In your decks",
+    "noDecks": "It is not in any deck.",
+    "openDetail": "Open the card page",
+    "lines": "Lines",
+    "chart": "Price, last 30 days",
+    "decksCount": "{{name}}: {{qty}}"
+  }
 }

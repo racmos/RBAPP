@@ -7,6 +7,7 @@ import type {
   CardPricesData,
   CardSummary,
   CollectionAddBody,
+  CollectionBulkSet,
   CollectionGroup,
   CollectionLineWithCard,
   CollectionMeta,
@@ -249,3 +250,12 @@ export const splitCollectionLine = (id: number, body: CollectionSplitBody) =>
 
 export const keepPlayset = (body: { set_id: string; card_id: string; keep: boolean }) =>
   request<KeepPlaysetResult>('/collection/keep-playset', { method: 'POST', body });
+
+export const bulkSetCollection = (ids: number[], set: CollectionBulkSet) =>
+  request<{ updated: number }>('/collection/bulk', { method: 'POST', body: { ids, set } });
+
+export const bulkDeleteCollection = (ids: number[]) =>
+  request<{ deleted: CollectionLineWithCard[] }>('/collection/bulk', {
+    method: 'POST',
+    body: { ids, delete: true },
+  });
