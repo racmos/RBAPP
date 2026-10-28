@@ -233,6 +233,15 @@ and the job runner (which keeps claiming queued jobs) runs it right after the lo
 fails the price load.
 A second run the same day replaces that day's rows; the history cannot be rebuilt later, so do not delete rows.
 
+Since F14-c (migration `0022_snapshot_products_value`) each row also stores `rbvsn_products_value`: the value
+of the user's sealed products (`rbuserproducts`, sum of price x quantity over the priced lines, priced like
+`GET /me/products`), kept apart and never added to `rbvsn_value`. It is NULL for a user without product lines
+and for every row taken before 0022. A user with product lines but no collection lines now gets a row too,
+with the cards at 0 (`rbvsn_value` 0, `rbvsn_cost` NULL, qty, unique and unpriced 0); a user with neither gets
+no row. The job result adds `products_value` (the sum over all users). Rollback: the 0022 downgrade drops the
+column and its values, and the 0021 downgrade drops `rbuserproducts` with every user's products, so back up
+first and only with the owner's go-ahead.
+
 By hand: `venv/bin/flask jobs enqueue value_snapshot`, then `venv/bin/flask jobs list`. Read today's rows:
 
 ```bash

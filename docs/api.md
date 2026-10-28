@@ -254,10 +254,11 @@ New error codes: `foil_not_allowed` (400), `insufficient_quantity` (409, `params
 ### GET /products
 
 `app/api/v1/products.py` (`api_v1.list_products`, U, F14-b): the sealed product catalog
-(`rbproducts`, only `rbpdt_type = 'nonsingle'`; hidden products never appear). Query via
+(`rbproducts`, only `rbpdt_type = 'nonsingle'`; hidden products appear only to users who own
+them, F14-c). Query via
 `validate_query` (`ProductListQuery`): `q` (case-insensitive name substring), repeated `kind` and
-`set` (case-insensitive), `owned=any|owned|missing` (accepted; `owned`/`missing` behave as `any`
-until F14-c), `listed=true|any` (default `true`: only products in the latest Cardmarket file),
+`set` (case-insensitive), `owned=any|owned|missing` (F14-c: `owned` = the caller has at least one
+copy in `rbuserproducts`, `missing` = none; it also narrows the facets and `total`), `listed=true|any` (default `true`: only products in the latest Cardmarket file),
 `sort=name|price|change_7d|change_30d` (default `name`; nulls last in both directions, ties by
 name), `dir=asc|desc`, `page`, `per_page` 24-96 (default 48). Any other value -> 400
 `validation_error`. `data.items` are `ProductSummary`s; `meta` is `{page, per_page, total,
@@ -265,7 +266,7 @@ pages, facets: {kind, set}, price_as_of}`. The facets are disjunctive counts (ea
 own filter): `kind` in the `PRODUCT_KINDS` order, `set` by set release order then unknown set
 ids by name; products with a NULL kind or set are not counted. `price_as_of` is the newest
 `rbcm_price` date (as in `GET /cards`). At most 10 SQL statements whatever the size of the
-catalog (5 today).
+catalog (6 today: the caller's owned quantities are one more).
 
 ```http
 GET /riftbound/api/v1/products?kind=box&sort=price&dir=desc
@@ -274,9 +275,13 @@ GET /riftbound/api/v1/products?kind=box&sort=price&dir=desc
 ### GET /products/<id>
 
 `api_v1.get_product` (U): `ProductSummary` + `{description, columns: {avg7, trend, low, avg30}
-(floats or null, the product's latest `rbcm_price` row) | null (no row), lines: []}` (`lines` is
-filled by F14-c). A missing id, a product that is not a non-single, or a hidden one (F14-c:
-unless owned) answers the 404 envelope; an unlisted product is shown with `listed: false`.
+(floats or null, the product's latest `rbcm_price` row) | null (no row), lines}`. `lines`
+(F14-c) are the caller's `rbuserproducts` lines of the product, oldest first, each an
+`OwnedProductLine` without `product`: `{id, quantity, purchase_price|null, note|null,
+value|null, pl_abs|null, pl_pct|null, updated_at}` (`[]` when the caller owns none; another
+user's lines are never shown). A missing id, a product that is not a non-single, or a hidden one
+the caller does not own answers the 404 envelope; an unlisted product is shown with
+`listed: false`. At most 6 SQL statements.
 
 ### GET /products/<id>/prices
 
@@ -285,7 +290,44 @@ ascending, one point per `rbcm_price` row of the product. Query `range: 30d|90d|
 (`ProductPricesQuery`; a bad range -> 400 `validation_error`, `field: "range"`,
 `code: invalid_value`); the window runs from the latest row - 30/90/365 days inclusive (`all` =
 every row). `value` follows the product rule below; a product without rows answers
-`points: []`. Same 404 cases as the detail.
+`points: []`. Same 404 cases as the detail (a hidden product's history is shown to its owners).
+
+### Owned products (F14-c)
+
+`app/api/v1/me_products.py` (U), logic in `app/services/user_products.py`. The caller's sealed
+products (`rbuserproducts`). The products total is **never** part of the collection value:
+`GET /collection`, its totals and every F3 field ignore these lines; the daily snapshot keeps
+them apart in `rbvsn_products_value`.
+
+`OwnedProductLine` = `{id, product: ProductSummary, quantity, purchase_price|null, note|null,
+value|null, pl_abs|null, pl_pct|null, updated_at (UTC, "YYYY-MM-DDTHH:MM:SSZ")}`, keys in this
+order. `product.owned_qty` adds up all the caller's lines of that product. `value` = product
+price (`ProductSummary.price.value`) x quantity, null without a price; P/L as F3-b: `pl_abs` =
+(price - purchase) x quantity and `pl_pct` = (price - purchase) / purchase x 100, both only with a
+price and a purchase price above 0. Money is rounded half up to cents, `pl_pct` to one decimal.
+
+- `GET /me/products` (`api_v1.list_my_products`) -> `{items: [OwnedProductLine], total: {value,
+  lines, qty, unpriced}}`: ordered by product name (case-insensitive), then id; hidden products
+  the caller owns are included. `total.value` = sum of the priced line values (0 when none),
+  `lines` = number of lines, `qty` = copies, `unpriced` = lines without a price. No pagination.
+  At most 6 SQL statements whatever the number of lines.
+- `POST /me/products` (`api_v1.create_my_product`) body `{product_id (int >= 1), quantity (strict
+  int 1-9999), purchase_price? (0-99999.99 or null), note? (up to 200 characters, trimmed; empty =
+  null)}` -> 201 `{line, merged}`. An unknown `product_id` or one that is not a non-single -> 400
+  `validation_error` with `details: [{field: "product_id", message: "unknown product", type:
+  "value_error", code: "invalid_value"}]` (a hidden non-single can be added). A line of the same
+  product with the same purchase price (NULL-safe) gets the quantity added in SQL (`merged:
+  true`); it keeps its note, or takes the sent one when it had none. A merge past 9999 copies ->
+  400 `validation_error`, `field: "quantity"`, `code: out_of_range`, `params: {max: 9999}`, and
+  nothing changes. Extra keys are ignored, so a deleted line can be posted back with its
+  `product_id`.
+- `PATCH /me/products/<id>` (`api_v1.update_my_product`) any of `{quantity, purchase_price,
+  note}` (same domains; `quantity: null` is a 400; `null` clears the price or the note) -> 200 the
+  `OwnedProductLine`. No merge on edit. `updated_at` is refreshed.
+- `DELETE /me/products/<id>` (`api_v1.delete_my_product`) -> 200 `{deleted: OwnedProductLine}`
+  (its `product.owned_qty` no longer counts the line).
+
+An id that does not exist or is another user's line -> the 404 envelope (PATCH/DELETE).
 
 ### GET /cards/<set_id>/<card_id>/prices
 
@@ -330,7 +372,7 @@ owned_qty}`. `value` is the first of `rbprc_avg7`, `rbprc_trend`, `rbprc_low` of
 that is not NULL and not 0 (no foil columns; `app/services/product_prices.py`); the changes use
 the `CardSummary` reference-row rule (newest row on or before latest - 7/30 days) and rounding
 (1 decimal) on that value; `price` is null when the product has no `rbcm_price` row. `owned_qty`
-is always 0 until F14-c (copies in the user's `rbuserproducts` lines).
+(F14-c) is the number of copies in the caller's `rbuserproducts` lines (0 when none).
 
 `CollectionLine` and `CollectionGroup` (F3-b) are contracts for the collection screens, the
 value snapshots and the sales: additive changes only.

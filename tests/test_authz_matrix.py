@@ -68,6 +68,10 @@ MATRIX = {
     'api_v1.list_products': 'U',             # F14 unit b
     'api_v1.get_product': 'U',
     'api_v1.get_product_prices': 'U',
+    'api_v1.list_my_products': 'U',          # F14 unit c
+    'api_v1.create_my_product': 'U',
+    'api_v1.update_my_product': 'U',
+    'api_v1.delete_my_product': 'U',
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',
