@@ -79,6 +79,7 @@ riftbound/
 │   │       └── cards.py     # GET/POST /admin/cards, PATCH/DELETE + image per card│   ├── jobs/                # Background job kinds; the package is the single import point (create_app)
 │   │   ├── registry.py      # JobKind(name, handler, timeout_seconds), register / get / names, JobFailed
 │   │   ├── riot_sync.py     # riot_sync: gallery diff, auto-apply vs approval (1800 s)
+│   │   ├── products_refresh.py # products_refresh: product catalog from the non-singles of a load, queued after daily_prices (600 s, F14-a)
 │   │   ├── value_snapshot.py # value_snapshot: daily collection value per user, queued after daily_prices (900 s, F4-c)
 │   │   ├── daily_prices.py  # daily_prices: Cardmarket load, validation, clear auto-match, review list (1800 s)
 │   │   └── heartbeat.py     # heartbeat: diagnostic kind (60 s)
@@ -129,6 +130,7 @@ riftbound/
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
+│   │   ├── products.py      # kind_for(category), refresh_products(date): rbproducts catalog (F14-a)
 │   │   ├── snapshots.py     # take_snapshots(today): one rbvaluesnaps row per user with a collection (F4-c)
 │   │   ├── pricing.py       # resolve_price (+_with_source), latest_price_for_card, batched price_summaries (F2-b)
 │   │   ├── card_images.py   # images_root, card_image_path, card_image_url, import_legacy (CARD_IMAGES_DIR)
@@ -221,6 +223,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 - Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
+- `rbproducts` (F14-a): keyed by `rbpdt_id_product` (`rbpdt_id_set` nullable), with `rbpdt_category`, `rbpdt_kind` (CHECK `rbproducts_kind_chk`), `rbpdt_kind_locked`, `rbpdt_set_locked`, `rbpdt_hidden`, `rbpdt_listed`, `rbpdt_updated_at`; only `rbpdt_type = 'nonsingle'` rows are products; `products_refresh` never deletes (a product that leaves the file gets `rbpdt_listed = false`)
 - `rbcollection` (F3-a): `rbcol_sell_qty` (0..quantity) is the number of copies for sale and `rbcol_purchase_price` the optional unit purchase price; `rbcol_selling` is only `Y` or `N`; **`rbcol_playset` is deprecated** (read only by the Jinja collection, dropped in F11); the Jinja writes keep `rbcol_sell_qty` coherent through `app/services/collection_rules.py`. Playset size per user is `rbuserprefs.rbprf_playset_size` (NULL = 3) and the "keep a playset" marks are `rbkeepplayset` (one row per user and `name_key`)
 
 ### Column Naming
@@ -398,7 +401,7 @@ gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
 ```
 Firewall port 8000 so only the Nginx host reaches it. ProxyFix trusts exactly one proxy hop (`PROXY_FIX_X_*=1`); the proxy must send `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`, and must not strip `Referer` (the CSRF check needs it over HTTPS).
 
-Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n`; kinds: `heartbeat` (diagnostic), `daily_prices` (daily Cardmarket load at 06:30 Europe/Madrid, retried at 08:00 with `--unless-succeeded-today` when it did not succeed), `value_snapshot` (daily collection value per user in `rbvaluesnaps`, queued by `daily_prices` as its last step on success) and `riot_sync` (gallery sync: `riftbound-riot-sync-am.timer` at 08:00 and `-pm.timer` at 14:00 Europe/Madrid queue `trigger=schedule` + `slot`; exit 1 when a sync is active is the normal skip via `SuccessExitStatus=1`) (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
+Background jobs (table `rbjobs`): `riftbound-jobs.timer` starts `flask jobs run-pending` every minute under `flock -n`; kinds: `heartbeat` (diagnostic), `daily_prices` (daily Cardmarket load at 06:30 Europe/Madrid, retried at 08:00 with `--unless-succeeded-today` when it did not succeed), `value_snapshot` (daily collection value per user in `rbvaluesnaps`) and `products_refresh` (product catalog in `rbproducts`; both queued by `daily_prices` as its last steps on success) and `riot_sync` (gallery sync: `riftbound-riot-sync-am.timer` at 08:00 and `-pm.timer` at 14:00 Europe/Madrid queue `trigger=schedule` + `slot`; exit 1 when a sync is active is the normal skip via `SuccessExitStatus=1`) (templates in `docs/systemd/`, install and rollback in `docs/knowledge/ops-runbook.md` → "Scheduled jobs").
 ```bash
 flask jobs enqueue <kind> [--param key=value]...   # one queued or running job per kind
 flask jobs enqueue <kind> --unless-succeeded-today  # skip (exit 0) when a <kind> job succeeded today (UTC)
