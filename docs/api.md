@@ -182,6 +182,34 @@ changed).
   else the card name; `quantity` is `sell_qty`; `price` is `sell_price`, else the market price,
   else `0.00`, formatted with `{:.2f}` like the Jinja export. A golden test compares both.
 
+### Collection import (F3-e)
+
+Two steps, both `U`, JSON bodies. Only the RBAPP format (the file `GET /collection/export` writes)
+is read; other formats wait for the owner's samples.
+
+- `POST /collection/import/preview` `{text, format?: "auto"|"rbapp"}` -> 200 `{preview_id, format,
+  rows, summary: {total, ok, warning, error, printings}}`. `text` is at most 2 MB and 10 000 data
+  rows (else `validation_error`, field `text`, `out_of_range`, `params.max`). A UTF-8 BOM is
+  stripped; the header is required and must contain every RBAPP column (any order, any case,
+  extra columns ignored), else 400 `import_format_unknown`. Nothing is written to the collection.
+  The parsed rows are stored in `rbimportpreviews` for 30 minutes; expired previews are deleted at
+  the start of every preview request and a user keeps only their latest one.
+- Each row is `{line (1-based, header = 1), status: ok|warning|error, reason_codes, card?
+  (CardSummary when resolved), set_id, card_id, foil, qty, condition, language, purchase_price,
+  selling, sell_qty, sell_price}`. Reason codes: errors `card_not_found`, `invalid_value` (foil,
+  language or selling), `foil_not_allowed`, `invalid_qty` (1-9999), `invalid_price` (empty or >= 0
+  up to 99999.99, `.` or `,` as decimal separator), `invalid_sell_qty` (0-`qty`); warnings
+  `name_mismatch` (the key wins), `unknown_condition` (stored as null), `duplicate_row` (same merge
+  key as an earlier row; merged on commit). `set_id` is upper-cased and `card_id` lower-cased;
+  `foil` accepts `S|N|true|false|1|0`; an empty `sell_qty` is 0, or `qty` when `selling` is `Y`;
+  a leading `'` that the export adds before formula-like text is removed.
+- `POST /collection/import/commit` `{preview_id, mode: "add"|"replace"}` -> 200 `{created, merged,
+  replaced, skipped}`. An unknown, expired or another user's preview -> 410 `import_expired`. One
+  transaction, all or nothing: `add` adds every `ok`/`warning` row with the merge rule of
+  `POST /collection`; `replace` first deletes the user's lines of every (set, card, foil) present
+  in the valid rows (`replaced` counts them), printings not in the file are untouched. Error rows
+  are skipped. The preview is deleted when the commit succeeds.
+
 ### Collection writes (F3-c)
 
 `app/api/v1/collection.py`, all `U`, JSON bodies, scoped to the signed-in user: a line that is not

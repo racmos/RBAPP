@@ -34,6 +34,8 @@ class ErrorCode(StrEnum):
     FOIL_NOT_ALLOWED = 'foil_not_allowed'         # foil line of a card without foil version, 400
     INSUFFICIENT_QUANTITY = 'insufficient_quantity'  # not enough copies; params.available, 409
     STALE_LINE = 'stale_line'                     # the collection line changed meanwhile, 409
+    IMPORT_EXPIRED = 'import_expired'             # the import preview is gone or not the user's, 410
+    IMPORT_FORMAT_UNKNOWN = 'import_format_unknown'  # the file header is not a known format, 400
 
 
 class DetailCode(StrEnum):

@@ -56,6 +56,8 @@ MATRIX = {
     'api_v1.get_card': 'U',                  # F2 unit d
     'api_v1.list_collection_groups': 'U',    # F3 unit b
     'api_v1.export_collection': 'U',         # F3 unit d
+    'api_v1.preview_collection_import': 'U', # F3 unit e
+    'api_v1.commit_collection_import': 'U',
     'api_v1.create_collection_line': 'U',    # F3 unit c
     'api_v1.update_collection_line': 'U',
     'api_v1.delete_collection_line': 'U',
