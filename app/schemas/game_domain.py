@@ -24,3 +24,10 @@ SUPERTYPES = ('Champion', 'Signature', 'Token', 'Basic')
 # Card rarities, lowest first. Read from the dev database on 2026-10-26
 # (GROUP BY rbcar_rarity): every value below exists there.
 RARITIES = ('Common', 'Uncommon', 'Rare', 'Epic', 'Showcase')
+
+# Card conditions, best to worst (F3-b, D-F3-4).
+CONDITIONS = ('MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO')
+
+# Card languages offered by the collection (F3-b, D-F3-4); the data may hold others.
+LANGUAGES = ('English', 'French', 'German', 'Spanish', 'Italian', 'Simplified Chinese',
+             'Japanese', 'Portuguese', 'Russian', 'Korean', 'Traditional Chinese')

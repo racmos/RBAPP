@@ -77,6 +77,33 @@ class CardListQuery(BaseModel, extra='ignore'):
         return v
 
 
+class CollectionListQuery(BaseModel, extra='ignore'):
+    """GET /collection query parameters (F3-b S1)."""
+    q: Optional[str] = Field(None, max_length=100)
+    set: List[ShortStr] = Field(default_factory=list)
+    domain: List[ShortStr] = Field(default_factory=list)
+    type: List[ShortStr] = Field(default_factory=list)
+    rarity: List[ShortStr] = Field(default_factory=list)
+    condition: List[ShortStr] = Field(default_factory=list)
+    language: List[ShortStr] = Field(default_factory=list)
+    foil: Literal['any', 'foil', 'nonfoil'] = 'any'
+    selling: Literal['any', 'yes', 'no'] = 'any'
+    has_purchase: Literal['any', 'yes', 'no'] = 'any'
+    sort: Literal['number', 'name', 'price', 'qty', 'value', 'pl', 'trend_7d', 'updated',
+                  'rarity'] = 'number'
+    dir: Literal['asc', 'desc'] = 'asc'
+    page: int = Field(default=1, ge=1, le=10000)
+    per_page: int = Field(default=50, ge=25, le=200)
+
+    @field_validator('set', 'domain', 'type', 'rarity', 'condition', 'language', mode='after')
+    @classmethod
+    def _limit_repeated(cls, v):
+        if len(v) > 50:
+            raise PydanticCustomError(
+                'too_long', 'at most 50 values', {'max_length': 50})
+        return v
+
+
 # ============== Card Prices Query ==============
 
 

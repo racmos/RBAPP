@@ -234,3 +234,11 @@ def latest_price_for_card(rbset_id: str, rbcar_id: str, *, rarity: Optional[str]
     row = (RbcmPrice.query.filter_by(rbprc_id_product=id_product)
            .order_by(RbcmPrice.rbprc_date.desc()).first())
     return resolve_price(row, rarity=rarity, foil=foil)
+
+
+def price_as_of() -> Optional[str]:
+    """The date (`YYYY-MM-DD`) of the newest `rbcm_price` row, or None when there is none."""
+    latest = db.session.query(func.max(RbcmPrice.rbprc_date)).scalar()
+    if not latest:
+        return None
+    return f'{latest[0:4]}-{latest[4:6]}-{latest[6:8]}'
