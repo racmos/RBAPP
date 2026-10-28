@@ -158,6 +158,47 @@ the size of the collection. Other users' lines never appear.
 GET /riftbound/api/v1/collection?sort=value&dir=desc&per_page=25
 ```
 
+### Collection writes (F3-c)
+
+`app/api/v1/collection.py`, all `U`, JSON bodies, scoped to the signed-in user: a line that is not
+theirs answers 404 (never 403). Every write stamps `rbcol_chadat`; money is rounded half up to 2
+decimals; lines come back as `CollectionLine` plus `set_id` and `card_id`.
+
+- `POST /collection` `{set_id, card_id, foil, qty 1-9999, condition?, language?, purchase_price?,
+  selling?, sell_qty?, sell_price?}` -> 201 `{line, merged}`. An identical line (same card, foil,
+  condition, language, purchase price, selling flag and sell price, NULL-safe) is merged: `qty` and
+  `sell_qty` are added in SQL. `selling: true` without `sell_qty` sells every copy; without
+  `sell_price` it asks market x 1.05 (null without a market). Errors: unknown card ->
+  `validation_error` on `card_id`; `foil: true` on a card with no foil version -> 400
+  `foil_not_allowed`; `sell_qty` > `qty` -> 409 `insufficient_quantity`.
+- `PATCH /collection/<id>` any of `qty, condition, language, purchase_price, selling, sell_qty,
+  sell_price, if_updated_at` -> the line. Lowering `qty` below `sell_qty` lowers `sell_qty`;
+  `sell_qty` > `qty` -> 409 `insufficient_quantity` (`params.available` = the quantity);
+  `selling: true` on a line with nothing for sale sells every copy and, without any price, asks
+  market x 1.05; `selling: false` keeps `sell_qty` and `sell_price`. The edit is applied only if the
+  line still has the change time it was read with: a different `if_updated_at` (ISO, compared to the
+  second) or a concurrent change -> 409 `stale_line`, nothing changed.
+- `DELETE /collection/<id>` -> `{deleted: <line>}`; posting that object back to `POST /collection`
+  restores the line (undo).
+- `POST /collection/<id>/split` `{qty, condition?, language?, purchase_price?, selling?, sell_price?}`
+  -> `{source, target, merged}`: moves `qty` copies (at least one stays, else 409
+  `insufficient_quantity` with `available = quantity - 1`) into a new line made from the source with
+  the given fields replaced, or into an identical existing line (quantity added in SQL). The source
+  `sell_qty` is clamped to its new quantity; the target sells all its copies when `selling` is true,
+  none otherwise. A split that changes nothing moves nothing (`merged: true`, source = target).
+- `POST /collection/bulk` `{ids: 1-1000, set: {condition?, language?, selling?,
+  sell_qty_rule: all|none|keep_n, keep: 1-9, sell_price?, purchase_price?}}` -> `{updated: n}`, or
+  `{ids, delete: true}` -> `{deleted: [lines]}`. All or nothing: an id that is not the user's -> 404
+  and nothing changes. `keep_n` sells `max(0, qty - keep)`.
+- `POST /collection/keep-playset` `{set_id, card_id, keep}` -> `{name, keep_playset, kept,
+  playset_size, playset_short}`: inserts or deletes the `rbkeepplayset` row of the card name
+  (idempotent). `kept` counts the copies not for sale of every printing of the name.
+- `GET`/`PATCH /me/prefs` also carry `playset_size` (`null` = 3, otherwise 1-9; out of range ->
+  `validation_error`, `out_of_range`, `params {min: 1, max: 9}`).
+
+New error codes: `foil_not_allowed` (400), `insufficient_quantity` (409, `params.available`),
+`stale_line` (409).
+
 ### GET /cards/<set_id>/<card_id>/prices
 
 `app/api/v1/cards.py` (`api_v1.get_card_prices`, U): daily price history.

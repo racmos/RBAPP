@@ -84,3 +84,12 @@ Deploy (no migration).
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): `PATCH` with `selling: true` on a line whose `sell_qty` is 0 and without `sell_qty` in the body sets `sell_qty = qty` (the spec only says it for `POST`); the same rule applies in `bulk` when no `sell_qty_rule` is given.
+- L2 (implementer): a `split` that changes nothing (target key equals the source key) moves nothing and answers `merged: true` with source = target. When the target merges into an existing line, `sell_qty` grows by `qty` only if the split is selling; the ×1.05 default price also applies to a selling split without a price.
+- L3 (implementer): every `PATCH` is applied with `WHERE rbcol_chadat = <time read>`; a concurrent change answers `stale_line` even without `if_updated_at`. `if_updated_at` is compared to the second (the API shows seconds only).
+- L4 (implementer): `POST` with `sell_qty` > `qty` answers 409 `insufficient_quantity` (`available = qty`); the spec did not say.
+- L5 (implementer): the 9999 limit applies to the quantity of one request, not to the total of a merged line (as in the legacy `add`).
+- L6 (implementer): `playset_size` is added to the stored preference keys, so `/auth/session` prefs carry six keys.
