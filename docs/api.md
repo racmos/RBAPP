@@ -43,7 +43,9 @@ any other distinct non-empty value found in the data (sorted case-insensitively)
 `sets` are every `rbset` row ordered by release date (NULLs last), then id, each with
 `{id, name, released_on (ISO|null), card_count}`; `price` is
 `{provider: "cardmarket", currency: "EUR", updated_on (ISO|null)}` where `updated_on`
-is the newest `rbcm_price` date; `rules` is `{}` (reserved for F15). No new error code.
+is the newest `rbcm_price` date; `rules` is `{}` (reserved for F15); `conditions` is
+`["MT","NM","EX","GD","LP","PL","PO"]` (best to worst) and `languages` the 11 languages of
+the collection (`CONDITIONS` / `LANGUAGES` in `game_domain.py`, F3-b). No new error code.
 
 ### GET /bans
 
@@ -133,6 +135,29 @@ same name, missing-card entries skipped, ordered by name).
 GET /riftbound/api/v1/cards/OGN/79
 ```
 
+### GET /collection
+
+`app/api/v1/collection.py` (`api_v1.list_collection_groups`, U, F3-b): the signed-in user's
+collection as groups. Query via `validate_query` (`CollectionListQuery`): `q` (name
+substring, card id, key `SET-ID` or tag), repeated `set`, `domain`, `type`, `rarity`,
+`condition`, `language`; `foil=any|foil|nonfoil`, `selling=any|yes|no`,
+`has_purchase=any|yes|no`; `sort=number|name|price|qty|value|pl|trend_7d|updated|rarity`
+(`number` default; nulls last in both directions; ties by catalog order, non-foil first),
+`dir=asc|desc`, `page`, `per_page` 25-200 (default 50). Card filters (`q`, `set`, `domain`,
+`type`, `rarity`) drop groups; line filters (`foil`, `selling`, `condition`, `language`,
+`has_purchase`) drop lines, and a group lists and adds up only its matching lines.
+`data.items` are `CollectionGroup`s; `meta` is `{page, per_page, total_groups, pages,
+totals, facets, price_as_of, playset_size}`. `totals` cover every matching line, not only
+the page: `{lines, qty, unique (distinct printings), value, cost (null without purchase
+prices), pl (null without any), selling_value, foil_pct}`. `facets` are disjunctive group
+counts for `set`, `rarity`, `condition`, `language` and `foil` (`{foil, nonfoil}`).
+Money is rounded half up to 2 decimals, `pl_pct` to 1. At most 10 SQL statements whatever
+the size of the collection. Other users' lines never appear.
+
+```http
+GET /riftbound/api/v1/collection?sort=value&dir=desc&per_page=25
+```
+
 ### GET /cards/<set_id>/<card_id>/prices
 
 `app/api/v1/cards.py` (`api_v1.get_card_prices`, U): daily price history.
@@ -157,7 +182,8 @@ retyped or removed without a new unit.
 `GameMeta` = the `data` object of `GET /meta/game`:
 `{modes: [str], domains: [str], types: [str], supertypes: [str], rarities: [str],
 sets: [{id, name, released_on (ISO|null), card_count}],
-price: {provider, currency, updated_on (ISO|null)}, rules: {}}`.
+price: {provider, currency, updated_on (ISO|null)}, rules: {},
+conditions: [str], languages: [str]}`.
 
 `CardSummary` = the object `app/services/catalog.py::card_summary` builds for one
 card (F2-c/F2-d return it): `{set_id, card_id, key ("<set>-<id>"), number (natural
@@ -166,6 +192,22 @@ energy|power|might (int|null), rarity, image_src, image_thumb_src (null until F2
 foilable, is_base, price: {market, market_source, market_foil, market_foil_source,
 trend_7d_pct, trend_30d_pct, as_of}|null, bans: {<mode>: bool},
 owned: {total, foil}}` (`market_source` is the `rbprc_*` column the value came from).
+
+`CollectionLine` and `CollectionGroup` (F3-b) are contracts for the collection screens, the
+value snapshots and the sales: additive changes only.
+`CollectionLine` = `{id, foil (bool), qty, condition|null, language|null,
+purchase_price|null, selling (bool), sell_qty, sell_price|null, updated_at (UTC,
+"YYYY-MM-DDTHH:MM:SSZ"), market|null, value|null, pl_abs|null, pl_pct|null}`: `market` is the
+price of the line's own foil, `value` = market x qty, `pl_abs` = (market - purchase) x qty and
+`pl_pct` = (market - purchase) / purchase x 100, both null unless there is a market price and
+a purchase price above 0.
+`CollectionGroup` = `{key ("<set>-<id>:N" or ":S"), card: CardSummary, foil (bool), qty,
+sell_qty, value|null, lines: [CollectionLine] (by id), keep_playset, playset_short}`.
+`keep_playset` is true when the user marked the card name (`rbkeepplayset`);
+`playset_short` is true when it is kept and the copies not for sale (`qty - sell_qty`) of
+**every** printing and foil of that name, whatever the filters, are fewer than the user's
+playset size (3 by default). `GET /cards/<set>/<id>` `my_lines[]` also carry
+`purchase_price` and `sell_qty`.
 
 ## Admin API
 

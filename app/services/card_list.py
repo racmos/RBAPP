@@ -4,7 +4,7 @@ import math
 from sqlalchemy import case, func, tuple_
 
 from app import db
-from app.models import RbCard, RbCollection, RbSet, RbcmPrice
+from app.models import RbCard, RbCollection, RbSet
 from app.schemas.game_domain import CARD_TYPES, DOMAINS, RARITIES, SUPERTYPES
 from app.schemas.validators import CardListQuery
 from app.services import bans as bans_service
@@ -20,13 +20,10 @@ _RANGE_PAIRS = [
 
 
 def _price_as_of() -> str | None:
-    latest = db.session.query(func.max(RbcmPrice.rbprc_date)).scalar()
-    if not latest:
-        return None
-    return f'{latest[0:4]}-{latest[4:6]}-{latest[6:8]}'
+    return pricing.price_as_of()
 
 
-def _parse_card(card: RbCard, set_rank: dict[str, int]) -> dict:
+def parse_card(card: RbCard, set_rank: dict[str, int]) -> dict:
     parsed_type, supertype = catalog.parse_type(card.rbcar_type)
     domains = catalog.parse_domains(card.rbcar_domain)
     tags = catalog.parse_tags(card.rbcar_tags)
@@ -72,22 +69,29 @@ def _range_conflict(query: CardListQuery) -> bool:
     return False
 
 
+def text_matches(q: str | None, p: dict) -> bool:
+    """Free-text `q` against a parsed card: name substring, tag substring, card id, key
+    `SET-ID` or card number. Empty `q` matches everything. Shared with the collection list."""
+    q = (q or '').strip().casefold()
+    if not q:
+        return True
+    card = p['card']
+    key_text = f'{card.rbcar_rbset_id}-{card.rbcar_id}'.casefold()
+    number_match = q.isdigit() and p['number'] is not None and str(p['number']) == q
+    return bool(q in p['name_lower']
+                or any(q in tag for tag in p['tags_lower'])
+                or q == (card.rbcar_id or '').casefold()
+                or q == key_text
+                or number_match)
+
+
 def _matches(query: CardListQuery, p: dict, prices: dict, bans: dict,
              base_keys: set, owned_counts: dict) -> bool:
     card = p['card']
     key = (card.rbcar_rbset_id, card.rbcar_id)
 
-    q = (query.q or '').strip().casefold()
-    if q:
-        key_text = f'{card.rbcar_rbset_id}-{card.rbcar_id}'.casefold()
-        number_match = (q.isdigit() and p['number'] is not None
-                        and str(p['number']) == q)
-        if not (q in p['name_lower']
-                or any(q in tag for tag in p['tags_lower'])
-                or q == (card.rbcar_id or '').casefold()
-                or q == key_text
-                or number_match):
-            return False
+    if not text_matches(query.q, p):
+        return False
 
     text = (query.text or '').casefold()
     if text and text not in p['ability_lower']:
@@ -330,7 +334,7 @@ def search_cards(query: CardListQuery, username: str | None = None) -> dict:
     base_keys = catalog.base_printing_keys(all_cards, set_rank)
     bans = bans_service.ban_map()
 
-    parsed = [_parse_card(card, set_rank) for card in all_cards]
+    parsed = [parse_card(card, set_rank) for card in all_cards]
 
     # Owned counts are needed for every card only when the owned filter is
     # active (it and the facets read them); otherwise the page suffices (S8).

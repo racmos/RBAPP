@@ -250,6 +250,8 @@ def get_card_detail(set_id, card_id, username):
             'language': row.rbcol_language,
             'selling': (row.rbcol_selling or 'N') in ('Y', 'S'),
             'sell_price': _float(row.rbcol_sell_price),
+            'purchase_price': _float(row.rbcol_purchase_price),
+            'sell_qty': row.rbcol_sell_qty,
             'playset': row.rbcol_playset,
             'updated_at': _iso_utc(row.rbcol_chadat),
         } for row in my_lines],

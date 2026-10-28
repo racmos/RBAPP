@@ -9,7 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.api.responses import fail, ok
 from app.api.v1 import api_v1
-from app.schemas.game_domain import CARD_TYPES, DOMAINS, GAME_MODES, RARITIES, SUPERTYPES
+from app.schemas.game_domain import (CARD_TYPES, CONDITIONS, DOMAINS, GAME_MODES, LANGUAGES,
+                                     RARITIES, SUPERTYPES)
 from app.services.captcha import get_captcha_provider
 from app.services.catalog import parse_type, set_order
 
@@ -91,6 +92,8 @@ def meta_game():
                   'updated_on': date(int(latest[0:4]), int(latest[4:6]),
                                      int(latest[6:8])).isoformat() if latest else None},
         'rules': {},
+        'conditions': list(CONDITIONS),
+        'languages': list(LANGUAGES),
     })
     body.headers['Cache-Control'] = 'no-cache'
     return body
