@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-28 (F3-d implemented, batch 1 unit 22; F3-c done (#59)).
+Last update: 2026-10-28 (F3-g implemented, batch 1 unit 24; F3-d done (#60)).
 
 ## Phases
 
@@ -18,7 +18,7 @@ Last update: 2026-10-28 (F3-d implemented, batch 1 unit 22; F3-c done (#59)).
 | F2 Catalog | In progress — F2-a…i done (#34, #45, #46, #47, #48, #49, #50, #51, #52); F2-k implemented (batch 1 unit 17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
-| F3 Collection | In progress — F3-a, b, c done (#55, #56, #59), F3-d implemented (batch 1 unit 22); units 23-26 planned | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
+| F3 Collection | In progress — F3-a, b, c, d done (#55, #56, #59, #60), F3-g implemented (batch 1 unit 24); F3-e in review; units 25-26 planned | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
 | F14 Products | Planned — batch 1, units 27-32 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
 | F15 Rules app | Planned (after production) | `docs/requirements/F15/README.md` (outline). |
@@ -112,6 +112,7 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
 | F2-fix | done (#54) | `fix/catalog-search-typing` / #54 | Typing bug in the catalog: inputs whose value lives in the URL (search, "text" facet, numeric ranges) lost letters when the URL answered a debounced commit (search) or on every keystroke (ranges). New `DebouncedInput` keeps local text and adopts the URL only for outside changes; single debounce. Vitest 288 → 291; pytest unchanged. |
+| F3-g | implemented | `feat/f3g-collection-ui-mobile` / TBD | Collection screen (S1-S9): `src/collection/` (params ⇄ URL, queries and mutations that refresh `['collection']` and `['cards']`, `CollectionPage`, tile/row with the playset shortage as outline and text, filters sheet, `LineSheet` with PATCH + `if_updated_at`, split, delete with 8 s undo and keep-playset, `AddSheet` with `CardCombobox`), `/collection` route and `spa` nav entry, card detail link `/collection?q=SET-ID`, playset size in `/account/interface`; `CollectionGroup.kept` added to the API (additive); ES/EN `collection` namespace and condition/language enums; ESLint boundary for the new folder. Vitest 301 → 376; pytest unchanged apart from `kept`. Deviations L1-L6 in the requirement. Next unit: **F3-h**. |
 | F3-d | in review (#60) | `feat/f3d-collection-export-api` / #60 | CSV export (S1-S5): `GET /collection/export?format=rbapp|cardmarket` (+ list filters, `only_selling`), BOM, streamed, `X-Rows-Exported`, UTC file names; RBAPP format re-importable, Cardmarket byte-identical to the Jinja export (golden test), formula-injection prefix; `collection_read.export_lines`/`_load_lines` shared with the list, `pricing.product_names`. pytest 1 085 → 1 107. No migration. Next unit: **F3-e**. |
 | F3-c | done (#59) | `feat/f3c-collection-write-api` / #59 | Collection write API (S1-S10): `POST /collection` (merge of identical lines in SQL, foil rule, selling defaults market x 1.05), `PATCH /collection/<id>` (stale guard by change time, `sell_qty` rules), `DELETE` (undo payload), `split` (new line or merge, source clamped), `bulk` (all or nothing, 1000 ids), `keep-playset`; `playset_size` in `/me/prefs` and the session (frontend `Prefs` gains it); new codes `foil_not_allowed`, `insufficient_quantity`, `stale_line`; service `app/services/collection_write.py`. pytest 930 → 1 085; vitest 291 → 301. No migration. Deviations L1-L6 in the requirement. Next unit: **F3-d**. |
 | F4-c | done (#57) | `feat/f4c-value-snapshots` / #57 | Daily collection value snapshots (S1-S5): table `rbvaluesnaps` (migration `0016_value_snapshots`, PK user + date, FK cascade), `RbValueSnapshot`, `app/services/snapshots.py::take_snapshots(today)` (one row per user with a line, upsert per day, priced by `collection_read.user_value_summaries`, the F3-b code, fixed number of queries), job kind `value_snapshot` (migration `0017_jobs_value_snapshot`, 900 s, no params); `daily_prices` queues it as its last step (`queued` in its result, `JobAlreadyActive` ignored, queue failures never fail the load); runbook "Collection value snapshots". pytest 906 → 930. Next unit: **F3-c**. |
