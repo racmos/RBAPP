@@ -158,6 +158,30 @@ the size of the collection. Other users' lines never appear.
 GET /riftbound/api/v1/collection?sort=value&dir=desc&per_page=25
 ```
 
+### GET /collection/export
+
+`app/api/v1/collection.py` (`api_v1.export_collection`, U, F3-d): the collection as a CSV download.
+Query: every `GET /collection` filter (`q`, `set`, `domain`, `type`, `rarity`, `condition`,
+`language`, `foil`, `selling`, `has_purchase`; `sort`, `dir`, `page` and `per_page` are accepted and
+ignored), `format=rbapp|cardmarket` (default `rbapp`; anything else -> 400 `validation_error`) and
+`only_selling=true|false` (default false, forced true for `cardmarket`). The answer is
+`text/csv; charset=utf-8`, starts with a UTF-8 BOM, is streamed one row at a time (the filtered
+lines are held in memory to order them) and carries `Content-Disposition: attachment` and
+`X-Rows-Exported: <n>`. A text cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage
+return gets a leading `'` so a spreadsheet does not read it as a formula (the Jinja export is not
+changed).
+
+- **RBAPP** (`rbapp_collection_<YYYYMMDDHHMMSS>.csv`, UTC): comma, minimal quoting, `\n`; header
+  `set_id,card_id,name,foil,qty,condition,language,purchase_price,selling,sell_qty,sell_price`;
+  one row per line in `sort=number` order; `foil` `S`/`N`, `selling` `Y`/`N`, prices with a dot and
+  two decimals, empty when null. Re-importable by F3-e.
+- **Cardmarket** (`<YYYYMMDDHHMMSS>_cardmarket.csv`): same bytes as the Jinja export
+  (`QUOTE_ALL`, `\n`, header `name,language,quantity,price`, ordered by card name then non-foil
+  first): only `selling` lines with `sell_qty` > 0; `name` is the Cardmarket product name of the
+  mapped product (exact foil mapping, else unclassified, else any; newest `rbcm_products` row),
+  else the card name; `quantity` is `sell_qty`; `price` is `sell_price`, else the market price,
+  else `0.00`, formatted with `{:.2f}` like the Jinja export. A golden test compares both.
+
 ### Collection writes (F3-c)
 
 `app/api/v1/collection.py`, all `U`, JSON bodies, scoped to the signed-in user: a line that is not
