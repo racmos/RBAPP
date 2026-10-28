@@ -1,14 +1,14 @@
 """Collection endpoints: GET /collection (F3-b) and the writes (F3-c)."""
-from flask import abort, current_app, request
+from flask import Response, abort, current_app, request
 from flask_login import current_user, login_required
 
 from app.api.error_codes import DetailCode, ErrorCode
 from app.api.responses import fail, ok
 from app.api.v1 import api_v1
 from app.schemas.validation import validate_json, validate_query
-from app.schemas.validators import (CollectionBulk, CollectionLineCreate, CollectionLinePatch,
+from app.schemas.validators import (CollectionBulk, CollectionExportQuery, CollectionLineCreate, CollectionLinePatch,
                                     CollectionListQuery, CollectionSplit, KeepPlaysetBody)
-from app.services import collection_write
+from app.services import collection_export, collection_write
 from app.services.collection_read import list_collection
 from app.services.collection_write import (FoilNotAllowed, InsufficientQuantity, LineNotFound,
                                            StaleLine, UnknownCard)
@@ -25,6 +25,23 @@ def list_collection_groups():
         current_app.json.dumps(body, sort_keys=False),
         mimetype='application/json',
     )
+
+@api_v1.get('/collection/export')
+@login_required
+@validate_query(CollectionExportQuery)
+def export_collection():
+    """The collection as a CSV download: RBAPP format or Cardmarket stock format (F3-d)."""
+    query = request.validated_query
+    if query.format == 'cardmarket':
+        query = query.model_copy(update={'only_selling': True})
+    rows, header, file_name, quoting = collection_export.build_export(query, current_user)
+    response = Response(collection_export.stream(rows, header, quoting),
+                        mimetype='text/csv', headers={
+                            'Content-Disposition': f'attachment; filename="{file_name}"',
+                            'X-Rows-Exported': str(len(rows))})
+    response.charset = 'utf-8'
+    return response
+
 
 # --- writes (F3-c) ---------------------------------------------------------------------------
 
