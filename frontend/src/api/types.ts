@@ -419,3 +419,48 @@ export type CollectionBulkSet = Partial<{
   sell_price: number | null;
   purchase_price: number | null;
 }>;
+
+/** `GET /collection/export` formats (F3-d). */
+export type ExportFormat = 'rbapp' | 'cardmarket';
+
+export type ImportRowStatus = 'ok' | 'warning' | 'error';
+
+export type ImportReasonCode =
+  | 'card_not_found'
+  | 'name_mismatch'
+  | 'invalid_value'
+  | 'foil_not_allowed'
+  | 'invalid_qty'
+  | 'unknown_condition'
+  | 'invalid_price'
+  | 'invalid_sell_qty'
+  | 'duplicate_row';
+
+/** One parsed row of `POST /collection/import/preview` (F3-e); `line` counts the header as 1. */
+export type ImportRow = {
+  line: number;
+  status: ImportRowStatus;
+  reason_codes: ImportReasonCode[];
+  card?: CardSummary | null;
+  set_id: string;
+  card_id: string;
+  foil: boolean | null;
+  qty: number | null;
+  condition: string | null;
+  language: string | null;
+  purchase_price: number | null;
+  selling: boolean | null;
+  sell_qty: number | null;
+  sell_price: number | null;
+};
+
+export type ImportPreview = {
+  preview_id: string;
+  format: string;
+  rows: ImportRow[];
+  summary: { total: number; ok: number; warning: number; error: number; printings: number };
+};
+
+export type ImportMode = 'add' | 'replace';
+
+export type ImportResult = { created: number; merged: number; replaced: number; skipped: number };

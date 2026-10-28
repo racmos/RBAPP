@@ -27,8 +27,9 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 async function send(
   path: string,
   { method = 'GET', body, signal }: RequestOptions,
+  accept = 'application/json',
 ): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: accept };
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   // FormData sets its own multipart boundary; a JSON content type would break it (F13-f).
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
@@ -133,6 +134,60 @@ async function performRequest<T, M = undefined>(
  */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   return performRequest<T, undefined>(path, options).then((result) => result.data);
+}
+
+/** A file the API sent as a download (`GET /collection/export`, F3-i). */
+export type FileDownload = {
+  blob: Blob;
+  /** From `Content-Disposition`; null when the server sent none. */
+  filename: string | null;
+  /** From `X-Rows-Exported`; null when the server sent none. */
+  rowsExported: number | null;
+};
+
+function dispositionName(header: string | null): string | null {
+  if (!header) return null;
+  const encoded = /filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/.exec(header);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1].trim());
+    } catch {
+      // fall through to the plain name
+    }
+  }
+  const plain = /filename\s*=\s*("([^"]*)"|[^;]+)/.exec(header);
+  if (!plain) return null;
+  const name = (plain[2] ?? plain[1]).trim();
+  return name || null;
+}
+
+/**
+ * A `GET` whose success body is a file, not the JSON envelope: same timeout, credentials and
+ * error handling as `request` (a failure is still JSON and becomes an `ApiError`).
+ */
+export async function requestFile(
+  path: string,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<FileDownload> {
+  const response = await send(path, { signal }, 'text/csv, application/json');
+  if (!response.ok) {
+    const error = errorFromResponse(response.status, await readJson(response), response.headers);
+    if (response.status === 401) unauthorizedHandler?.();
+    throw error;
+  }
+  let blob: Blob;
+  try {
+    blob = await response.blob();
+  } catch {
+    throw new ApiError({ kind: 'network', status: response.status });
+  }
+  const rows = Number(response.headers.get('X-Rows-Exported') ?? '');
+  return {
+    blob,
+    filename: dispositionName(response.headers.get('Content-Disposition')),
+    rowsExported:
+      response.headers.has('X-Rows-Exported') && Number.isInteger(rows) && rows >= 0 ? rows : null,
+  };
 }
 
 /**

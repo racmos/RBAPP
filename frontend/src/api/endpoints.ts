@@ -1,4 +1,4 @@
-import { getSession, request, requestWithMeta } from './client';
+import { getSession, request, requestFile, requestWithMeta } from './client';
 import type {
   AdminCatalog,
   CaptchaData,
@@ -14,6 +14,9 @@ import type {
   CollectionPatchBody,
   CollectionSplitBody,
   GameMeta,
+  ImportMode,
+  ImportPreview,
+  ImportResult,
   KeepPlaysetResult,
   LoginBody,
   MetaConfig,
@@ -258,4 +261,19 @@ export const bulkDeleteCollection = (ids: number[]) =>
   request<{ deleted: CollectionLineWithCard[] }>('/collection/bulk', {
     method: 'POST',
     body: { ids, delete: true },
+  });
+
+// --- Collection export and import (F3-d, F3-e) ---
+
+/** `GET /collection/export`; the caller builds the query (filters, `format`, `only_selling`). */
+export const exportCollection = (query: string, signal?: AbortSignal) =>
+  requestFile(`/collection/export${query ? `?${query}` : ''}`, { signal });
+
+export const previewCollectionImport = (text: string) =>
+  request<ImportPreview>('/collection/import/preview', { method: 'POST', body: { text } });
+
+export const commitCollectionImport = (previewId: string, mode: ImportMode) =>
+  request<ImportResult>('/collection/import/commit', {
+    method: 'POST',
+    body: { preview_id: previewId, mode },
   });

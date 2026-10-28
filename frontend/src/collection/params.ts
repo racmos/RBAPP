@@ -1,4 +1,4 @@
-import type { CollectionParams, CollectionSort } from '@/api/types';
+import type { CollectionParams, CollectionSort, ExportFormat } from '@/api/types';
 
 export const DEFAULT_SORT: CollectionSort = 'number';
 export const DEFAULT_DIR = 'asc' as const;
@@ -118,4 +118,32 @@ export function activeFilterCount(params: CollectionParams): number {
   if (params.foil && params.foil !== 'any') count++;
   for (const key of TRISTATE_KEYS) if (params[key] && params[key] !== 'any') count++;
   return count;
+}
+
+export type ExportScope = 'all' | 'filtered' | 'selling';
+
+/**
+ * The query of `GET /collection/export` (F3-i S1): the current filters for `filtered` (paging and
+ * sort leave nothing out of a file), then the format; Cardmarket is always what is on sale.
+ */
+export function exportQuery(
+  params: CollectionParams,
+  format: ExportFormat,
+  scope: ExportScope,
+): string {
+  const effective = format === 'cardmarket' ? 'selling' : scope;
+  const filters =
+    effective === 'filtered'
+      ? serializeCollectionParams({
+          ...params,
+          sort: undefined,
+          dir: undefined,
+          page: undefined,
+          per_page: undefined,
+        })
+      : '';
+  const query = new URLSearchParams(filters);
+  query.append('format', format);
+  if (effective === 'selling') query.append('only_selling', 'true');
+  return query.toString();
 }

@@ -438,6 +438,20 @@ layout on a desktop.
   the deleted lines back).
 - From 1600 px `CollectionPanel` (380 px) shows the clicked row's card: image, totals, 30-day `PriceChart`
   (foil series for a foil group), lines, the decks using the card (`in_decks`) and a link to the card page.
+- Import and export (F3-i): "Exportar" (toolbar on the desktop, header on a phone; off offline) opens
+  `ExportDialog`: format RBAPP or Cardmarket (Cardmarket forces "only what is on sale"), scope all / the
+  current URL filters (`exportQuery` in `params.ts`, no sort or paging) / on sale. The file comes from
+  `requestFile` in `api/client.ts` (same timeout, credentials and `ApiError` as `request`) and is saved
+  through a Blob and a temporary link with the `Content-Disposition` name; the toast counts
+  `X-Rows-Exported`. "Importar" (header and empty state) opens `/collection/import`, `ImportWizard`:
+  `StepIndicator` (`aria-current="step"`; not the numeric `Stepper`) over four steps. File (`.csv` read
+  with `FileReader`, or pasted text; empty and over 2 MB are refused before any request), review
+  (`POST /collection/import/preview`: summary, status filter, a table from 860 px with a sticky header
+  and a list below, the summary as a side column from 1600 px; reasons from `import.reason.<code>`),
+  mode (add, or replace behind a `ConfirmDialog` with the number of cards) and result
+  (`POST /collection/import/commit`, then `['collection']` and `['cards']` are refreshed).
+  `import_expired` returns to the first step with the reason; `import_format_unknown` is shown there.
+  Offline the wizard says `common:offline.editDisabled` and its actions are disabled.
 - ESLint: `collection` may import everything below `app`, like `catalog`.
 
 ## Charts

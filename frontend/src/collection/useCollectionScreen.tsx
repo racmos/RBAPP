@@ -54,6 +54,7 @@ export function useCollectionScreen(desktop: boolean) {
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [open, setOpen] = useState<{ key: string; group: CollectionGroup } | null>(null);
 
   const data = list.data;
@@ -103,6 +104,8 @@ export function useCollectionScreen(desktop: boolean) {
     setFiltersOpen,
     addOpen,
     setAddOpen,
+    exportOpen,
+    setExportOpen,
     open,
     setOpen,
     openGroup,

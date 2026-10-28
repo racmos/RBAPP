@@ -3,10 +3,12 @@ import {
   addCollectionLine,
   bulkDeleteCollection,
   bulkSetCollection,
+  commitCollectionImport,
   deleteCollectionLine,
   keepPlayset,
   listCollection,
   patchCollectionLine,
+  previewCollectionImport,
   splitCollectionLine,
 } from '@/api/endpoints';
 import type {
@@ -15,6 +17,7 @@ import type {
   CollectionParams,
   CollectionPatchBody,
   CollectionSplitBody,
+  ImportMode,
 } from '@/api/types';
 import { serializeCollectionParams } from './params';
 
@@ -100,6 +103,20 @@ export function useBulkDelete() {
   const refresh = useRefresh();
   return useMutation({
     mutationFn: (ids: number[]) => bulkDeleteCollection(ids),
+    onSuccess: refresh,
+  });
+}
+
+/** The preview writes nothing to the collection, so it refreshes nothing (F3-e). */
+export function useImportPreview() {
+  return useMutation({ mutationFn: (text: string) => previewCollectionImport(text) });
+}
+
+export function useImportCommit() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: ({ previewId, mode }: { previewId: string; mode: ImportMode }) =>
+      commitCollectionImport(previewId, mode),
     onSuccess: refresh,
   });
 }
