@@ -1,6 +1,7 @@
 import enAdmin from './locales/en/admin.json';
 import enAuth from './locales/en/auth.json';
 import enCards from './locales/en/cards.json';
+import enCollection from './locales/en/collection.json';
 import enCommon from './locales/en/common.json';
 import enEnums from './locales/en/enums.json';
 import enErrors from './locales/en/errors.json';
@@ -9,6 +10,7 @@ import enPrefs from './locales/en/prefs.json';
 import esAdmin from './locales/es/admin.json';
 import esAuth from './locales/es/auth.json';
 import esCards from './locales/es/cards.json';
+import esCollection from './locales/es/collection.json';
 import esCommon from './locales/es/common.json';
 import esEnums from './locales/es/enums.json';
 import esErrors from './locales/es/errors.json';
@@ -29,6 +31,7 @@ export const resources = {
     admin: esAdmin,
     enums: esEnums,
     cards: esCards,
+    collection: esCollection,
   },
   en: {
     common: enCommon,
@@ -39,6 +42,7 @@ export const resources = {
     admin: enAdmin,
     enums: enEnums,
     cards: enCards,
+    collection: enCollection,
   },
 };
 
@@ -51,5 +55,6 @@ export const NAMESPACES = [
   'admin',
   'enums',
   'cards',
+  'collection',
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];

@@ -213,9 +213,12 @@ export function CardDetailView({
                     </li>
                   ))}
                 </ul>
-                <a href={legacyHref('collection')} className={styles.manageLink}>
+                <Link
+                  to={{ pathname: '/collection', search: `?q=${card.set_id}-${card.card_id}` }}
+                  className={styles.manageLink}
+                >
                   {t('detail.mine.manage')}
-                </a>
+                </Link>
               </>
             )}
           </section>

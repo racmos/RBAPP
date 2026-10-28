@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
-type EnumKind = 'domain' | 'type' | 'supertype' | 'rarity' | 'mode';
+type EnumKind = 'domain' | 'type' | 'supertype' | 'rarity' | 'mode' | 'condition' | 'language';
 
 /** Translate game enumeration values; missing keys fall back to the raw value. */
 export function useEnumLabel() {

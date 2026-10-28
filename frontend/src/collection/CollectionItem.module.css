@@ -1,0 +1,107 @@
+@layer components {
+  .tile,
+  .row {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    padding: 8px;
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .tile:hover,
+  .row:hover {
+    border-color: var(--accent);
+  }
+
+  .tile {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .row {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .short {
+    border-color: var(--red);
+  }
+
+  .art {
+    position: relative;
+    display: block;
+    flex: none;
+  }
+
+  .row .art {
+    width: 44px;
+  }
+
+  .qty,
+  .foil {
+    position: absolute;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(5, 26, 34, 0.9);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .qty {
+    right: 4px;
+    bottom: 4px;
+  }
+
+  .foil {
+    top: 4px;
+    left: 4px;
+    color: var(--cyan-bright);
+  }
+
+  .body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .name {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .selling {
+    color: var(--accent-bright);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .shortText {
+    color: var(--red);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .value {
+    flex: none;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+}

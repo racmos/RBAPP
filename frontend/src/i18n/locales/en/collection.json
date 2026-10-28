@@ -1,0 +1,127 @@
+{
+  "title": "Collection",
+  "classic": "Classic version",
+  "summary": {
+    "line": "Copies: {{qty}} · Unique: {{unique}} · Value: {{value}}",
+    "copies": "Copies",
+    "unique": "Unique",
+    "value": "Value"
+  },
+  "search": {
+    "label": "Search your collection",
+    "placeholder": "Name, number or tag"
+  },
+  "filters": {
+    "open": "Filters",
+    "title": "Filter collection",
+    "foil": "Foil",
+    "foilAny": "All",
+    "foilOnly": "Foil only",
+    "nonfoilOnly": "Non-foil",
+    "selling": "On sale",
+    "condition": "Condition",
+    "language": "Language",
+    "hasPurchase": "With purchase price",
+    "any": "Any",
+    "yes": "Yes",
+    "no": "No",
+    "set": "Set",
+    "domain": "Domain",
+    "type": "Type",
+    "rarity": "Rarity",
+    "remove": "Remove filter {{label}}",
+    "active_one": "{{count}} active filter",
+    "active_many": "{{count}} active filters",
+    "active_other": "{{count}} active filters",
+    "show_one": "Show {{count}} card",
+    "show_many": "Show {{count}} cards",
+    "show_other": "Show {{count}} cards"
+  },
+  "sort": {
+    "label": "Sort by",
+    "number": "Number",
+    "name": "Name",
+    "price": "Price",
+    "qty": "Copies",
+    "value": "Value",
+    "pl": "Profit",
+    "trend_7d": "7-day change",
+    "updated": "Last change",
+    "rarity": "Rarity",
+    "direction": "Change sort direction"
+  },
+  "view": {
+    "label": "View",
+    "grid": "Grid",
+    "list": "List"
+  },
+  "foil": "Foil",
+  "selling": {
+    "tag": "On sale: {{count}}"
+  },
+  "qtyBadge": "×{{count}}",
+  "playset": {
+    "keep": "Keep a playset of this card",
+    "short": "Playset incomplete ({{kept}}/{{size}})",
+    "warning": "Unsold copies: {{kept}} of {{size}}."
+  },
+  "line": {
+    "title": "Copies of {{name}}",
+    "legend": "Line {{index}}",
+    "qty": "Copies",
+    "condition": "Condition",
+    "language": "Language",
+    "noValue": "Not set",
+    "purchasePrice": "Purchase price (each)",
+    "selling": "On sale",
+    "sellQty": "Copies to sell",
+    "sellPrice": "Sale price (each)",
+    "split": "Split copies",
+    "splitQty": "Copies to split",
+    "splitSubmit": "Split",
+    "delete": "Delete",
+    "more": "More copies",
+    "fewer": "Fewer copies",
+    "confirmDelete": {
+      "title": "Delete this line?",
+      "body_one": "{{count}} copy will be removed from your collection.",
+      "body_many": "{{count}} copies will be removed from your collection.",
+      "body_other": "{{count}} copies will be removed from your collection."
+    },
+    "deleted": "Line deleted.",
+    "undo": "Undo",
+    "restored": "Line restored.",
+    "saved": "Saved.",
+    "split_done": "Copies split.",
+    "euro": "euros"
+  },
+  "add": {
+    "open": "Add card",
+    "title": "Add to collection",
+    "card": "Card",
+    "foil": "Foil",
+    "foilNotAvailable": "This card has no foil version.",
+    "submit": "Add",
+    "added": "Added to your collection.",
+    "merged": "Added to a line you already had.",
+    "chosen": "Chosen card: {{name}}",
+    "chooseFirst": "Choose a card first."
+  },
+  "empty": {
+    "title": "Your collection is empty",
+    "body": "Add cards one by one or import a file.",
+    "import": "Import"
+  },
+  "emptyFilters": "No card in your collection matches the filters.",
+  "clearFilters": "Clear filters",
+  "error": "Your collection could not be loaded.",
+  "loading": "Loading your collection…",
+  "settings": {
+    "title": "Collection",
+    "playsetSize": "Playset size",
+    "playsetHint": "Copies you want to keep of each marked card. 3 by default."
+  },
+  "count_one": "{{count}} card",
+  "count_many": "{{count}} cards",
+  "count_other": "{{count}} cards"
+}

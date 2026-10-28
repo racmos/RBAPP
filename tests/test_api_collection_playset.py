@@ -107,3 +107,14 @@ def test_another_users_mark_does_not_count(app, api, make_user):
         db.session.commit()
     keep(app, 'Jinx, Loose Cannon', username='otheruser')
     assert groups(api)['OGN-79:N']['keep_playset'] is False
+
+
+def test_every_group_of_a_name_reports_the_kept_copies_of_the_name(app, api):
+    with app.app_context():
+        db.session.add_all([line('79', 2, selling='Y', sell_qty=1),
+                            line('257', 1, set_id='SFD', condition='EX')])
+        db.session.commit()
+    found = groups(api)
+    assert found['OGN-79:N']['kept'] == found['SFD-257:N']['kept'] == 2     # (2 - 1) + 1
+    keep(app, 'Jinx, Loose Cannon')
+    assert groups(api, condition='EX')['SFD-257:N']['kept'] == 2            # filters do not change it

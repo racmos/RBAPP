@@ -32,5 +32,27 @@
   "mode": {
     "1v1": "1v1",
     "2v2": "2v2"
+  },
+  "condition": {
+    "MT": "Mint (MT)",
+    "NM": "Near Mint (NM)",
+    "EX": "Excellent (EX)",
+    "GD": "Good (GD)",
+    "LP": "Light Played (LP)",
+    "PL": "Played (PL)",
+    "PO": "Poor (PO)"
+  },
+  "language": {
+    "English": "English",
+    "French": "French",
+    "German": "German",
+    "Spanish": "Spanish",
+    "Italian": "Italian",
+    "Simplified Chinese": "Simplified Chinese",
+    "Japanese": "Japanese",
+    "Portuguese": "Portuguese",
+    "Russian": "Russian",
+    "Korean": "Korean",
+    "Traditional Chinese": "Traditional Chinese"
   }
 }
