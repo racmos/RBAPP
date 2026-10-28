@@ -72,6 +72,22 @@ class _Line:
                 self.pl_pct = (gain / purchase * 100).quantize(TENTH, ROUND_HALF_UP)
 
 
+_LINE_COLUMNS = (
+    RbCollection.rbcol_id, RbCollection.rbcol_rbset_id, RbCollection.rbcol_rbcar_id,
+    RbCollection.rbcol_foil, RbCollection.rbcol_quantity, RbCollection.rbcol_condition,
+    RbCollection.rbcol_language, RbCollection.rbcol_purchase_price, RbCollection.rbcol_selling,
+    RbCollection.rbcol_sell_qty, RbCollection.rbcol_sell_price, RbCollection.rbcol_chadat)
+
+
+def _markets(prices: dict) -> dict:
+    """`{(set, card, foil): Decimal | None}` from `price_summaries`: one conversion per printing."""
+    markets = {}
+    for key, price in prices.items():
+        for foil, field in ((False, 'market'), (True, 'market_foil')):
+            markets[(*key, foil)] = _dec(price.get(field)) if price is not None else None
+    return markets
+
+
 def _failed(query, line: _Line) -> frozenset[str]:
     """The filters this line does not satisfy (empty = it matches). Computed once per line:
     a facet counts the lines that fail nothing but its own filter."""
@@ -250,11 +266,7 @@ def list_collection(query: CollectionListQuery, user) -> dict:
     cards = {(card.rbcar_rbset_id, card.rbcar_id): card for card in all_cards}
 
     rows = db.session.execute(
-        select(RbCollection.rbcol_id, RbCollection.rbcol_rbset_id, RbCollection.rbcol_rbcar_id,
-               RbCollection.rbcol_foil, RbCollection.rbcol_quantity, RbCollection.rbcol_condition,
-               RbCollection.rbcol_language, RbCollection.rbcol_purchase_price,
-               RbCollection.rbcol_selling, RbCollection.rbcol_sell_qty,
-               RbCollection.rbcol_sell_price, RbCollection.rbcol_chadat)
+        select(*_LINE_COLUMNS)
         .where(RbCollection.rbcol_user == user.username)
         .order_by(RbCollection.rbcol_id)).all()
 
@@ -270,10 +282,7 @@ def list_collection(query: CollectionListQuery, user) -> dict:
         for key, p in parsed_by_key.items())
     price_of = prices.get
 
-    markets = {}  # (set, card, foil) -> Decimal | None, one conversion per printing
-    for key, price in prices.items():
-        for foil, field in ((False, 'market'), (True, 'market_foil')):
-            markets[(*key, foil)] = _dec(price.get(field)) if price is not None else None
+    markets = _markets(prices)
     lines = []
     for row in rows:
         key = (row.rbcol_rbset_id, row.rbcol_rbcar_id)
@@ -338,3 +347,47 @@ def list_collection(query: CollectionListQuery, user) -> dict:
             'playset_size': size,
         },
     }
+
+
+def user_value_summaries() -> dict[str, dict]:
+    """`{username: {value, cost, qty, unique, unpriced}}` for every user with a collection line,
+    priced exactly like `list_collection` (F4-c, D-F4-5): value = sum of market x quantity over
+    the priced lines, cost = sum of purchase price x quantity (None when no line has one),
+    unpriced = lines without a market price. One pass over all lines, a fixed number of queries.
+    """
+    cards = {(c.rbcar_rbset_id, c.rbcar_id): c for c in db.session.query(RbCard).all()}
+    rows = db.session.execute(
+        select(RbCollection.rbcol_user, *_LINE_COLUMNS).order_by(RbCollection.rbcol_id)).all()
+    printings = {}
+    for row in rows:
+        key = (row.rbcol_rbset_id, row.rbcol_rbcar_id)
+        card = cards.get(key)
+        if card is not None and key not in printings:
+            card_type, _ = catalog.parse_type(card.rbcar_type)
+            printings[key] = (key[0], key[1], card.rbcar_rarity,
+                              catalog.is_foilable(card_type, card.rbcar_rarity))
+    markets = _markets(pricing.price_summaries(printings.values()))
+
+    summaries: dict[str, dict] = {}
+    seen: dict[str, set] = {}
+    for row in rows:
+        key = (row.rbcol_rbset_id, row.rbcol_rbcar_id)
+        if key not in printings:
+            continue
+        line = _Line(row, None, markets.get((*key, row.rbcol_foil == 'S')))
+        summary = summaries.setdefault(row.rbcol_user, {
+            'value': Decimal(0), 'cost': None, 'qty': 0, 'unique': 0, 'unpriced': 0})
+        seen.setdefault(row.rbcol_user, set()).add(key)
+        summary['qty'] += line.qty
+        if line.value is None:
+            summary['unpriced'] += 1
+        else:
+            summary['value'] += line.value
+        if line.purchase is not None:
+            summary['cost'] = (summary['cost'] or Decimal(0)) + line.purchase * line.qty
+    for username, summary in summaries.items():
+        summary['unique'] = len(seen[username])
+        summary['value'] = _round(summary['value'], CENT)
+        if summary['cost'] is not None:
+            summary['cost'] = _round(summary['cost'], CENT)
+    return summaries

@@ -80,7 +80,7 @@ jobs running past their timeout as `error`, then claims each queued job, runs it
 `error` with the result or the message. Only one job per kind can be queued or running. The runner exits 0
 even when a job failed (the failure is on the job). Overlapping runs are safe: the unit wraps the runner
 in `flock -n /run/riftbound/jobs.lock` and each job is claimed with a conditional `UPDATE`. Kinds today:
-`heartbeat` (diagnostic, 60 s timeout) and `daily_prices` (daily Cardmarket load, 1800 s timeout, F4-b below).
+`heartbeat` (diagnostic, 60 s timeout), `daily_prices` (daily Cardmarket load, 1800 s timeout, F4-b below) and `value_snapshot` (F4-c below).
 
 Templates: `docs/systemd/` (`riftbound-jobs.service` + `.timer`). They use the same user, working
 directory and environment file as `docs/riftbound.service`; adapt them to the values in `ops.local.md`.
@@ -222,6 +222,27 @@ How to review Riot changes (F13-g): after a monthly-window load, open `/riftboun
 as an admin. Each row shows the card, the field and the old vs new value; approve or reject it there
 (single or in bulk with the checkbox selection). A change whose card no longer matches is reported as
 stale and stays undecided. Approving an `image_url` change re-downloads the image over the card's file.
+
+### Collection value snapshots (F4-c)
+
+The `value_snapshot` job (timeout 900 s, no params) stores, for every user with at least one collection
+line, today's collection value in `rbvaluesnaps` (value, cost, copies, distinct printings, lines without a
+price), priced by the same code as `GET /collection`. When `daily_prices` succeeds, its last step queues it
+and the job runner (which keeps claiming queued jobs) runs it right after the load; `daily_prices` shows
+`"queued": ["value_snapshot"]` in its result. A snapshot that cannot be queued never fails the price load.
+A second run the same day replaces that day's rows; the history cannot be rebuilt later, so do not delete rows.
+
+By hand: `venv/bin/flask jobs enqueue value_snapshot`, then `venv/bin/flask jobs list`. Read today's rows:
+
+```bash
+venv/bin/flask shell <<< "from app.models import RbValueSnapshot as S; from app.utils import clock; [print(r.rbvsn_user_id, r.rbvsn_date, r.rbvsn_value, r.rbvsn_cost, r.rbvsn_qty, r.rbvsn_unique, r.rbvsn_unpriced) for r in S.query.filter_by(rbvsn_date=clock.utcnow().date())]"
+```
+
+Install (after the F4-c deploy: backup, `venv/bin/flask db upgrade` to `0017_jobs_value_snapshot` (runs
+`0016_value_snapshots` and `0017`), `venv/bin/flask db check`, restart the service). No new timer. Rollback:
+the 0017 downgrade refuses while `value_snapshot` jobs exist (`DELETE FROM riftbound.rbjobs WHERE
+rbjob_kind = 'value_snapshot';`), and the 0016 downgrade drops `rbvaluesnaps` with every snapshot taken, so
+only with the owner's go-ahead.
 
 ## Card images (from M-d)
 
