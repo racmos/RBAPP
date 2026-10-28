@@ -17,7 +17,7 @@ from app.services import prefs as prefs_service
 @api_v1.get('/me/prefs')
 @login_required
 def get_me_prefs():
-    """The five preferences, each `null` when unset. Never creates a row."""
+    """The preferences, each `null` when unset. Never creates a row."""
     return ok({'prefs': prefs_service.get_prefs(current_user.id)})
 
 
@@ -25,7 +25,7 @@ def get_me_prefs():
 @login_required
 @validate_json(PrefsUpdate)
 def patch_me_prefs():
-    """Absent = unchanged, `null` = Auto, a valid value = stored; returns all five."""
+    """Absent = unchanged, `null` = Auto, a valid value = stored; returns all of them."""
     data = request.validated_data
     changes = data.model_dump(include=data.model_fields_set)
     return ok({'prefs': prefs_service.update_prefs(current_user.id, changes)})

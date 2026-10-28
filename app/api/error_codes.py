@@ -31,6 +31,9 @@ class ErrorCode(StrEnum):
     JOB_RUNNING = 'job_running'                   # a sync is already queued or running, 409
     CHANGE_STALE = 'change_stale'                 # the card changed after the proposal, 409
     CHANGE_DECIDED = 'change_decided'             # the change was already approved or rejected, 409
+    FOIL_NOT_ALLOWED = 'foil_not_allowed'         # foil line of a card without foil version, 400
+    INSUFFICIENT_QUANTITY = 'insufficient_quantity'  # not enough copies; params.available, 409
+    STALE_LINE = 'stale_line'                     # the collection line changed meanwhile, 409
 
 
 class DetailCode(StrEnum):

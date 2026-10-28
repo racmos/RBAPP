@@ -10,6 +10,8 @@ ACCENTS = ('cyan', 'orange')
 COLLECTION_VIEWS = ('table', 'grid')
 BG_INTENSITY_MIN = 0
 BG_INTENSITY_MAX = 100
+PLAYSET_SIZE_MIN = 1
+PLAYSET_SIZE_MAX = 9
 
 # Preference key -> allowed values, for the text-valued ones.
 CHOICES = {
@@ -20,7 +22,7 @@ CHOICES = {
 }
 
 # Public key order (API payloads, service results).
-PREF_KEYS = ('lang', 'density', 'accent', 'bg_intensity', 'collection_view')
+PREF_KEYS = ('lang', 'density', 'accent', 'bg_intensity', 'collection_view', 'playset_size')
 
 
 def sql_in(column: str, values: tuple[str, ...]) -> str:
