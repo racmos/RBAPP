@@ -1,0 +1,159 @@
+@layer components {
+  .scroll {
+    overflow-x: auto;
+  }
+
+  .table {
+    width: 100%;
+    min-width: 1280px;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .table th {
+    position: sticky;
+    z-index: 1;
+    top: 64px;
+    padding: 8px 6px;
+    background: var(--panel-3);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table td {
+    padding: 6px;
+    border-top: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+
+  .table tbody tr:hover {
+    background: rgba(120, 205, 228, 0.05);
+  }
+
+  .table tr[data-active] {
+    background: var(--accent-soft);
+  }
+
+  .short td:first-child {
+    box-shadow: inset 3px 0 0 var(--red);
+  }
+
+  .subline td {
+    background: rgba(5, 26, 34, 0.35);
+  }
+
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .thumb {
+    display: block;
+    width: 40px;
+  }
+
+  .nameCell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .name {
+    font-weight: 700;
+  }
+
+  .warn {
+    color: var(--red);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .expand {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .sortButton {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .sortButton:hover {
+    color: var(--text);
+  }
+
+  .number {
+    width: 64px;
+    height: 32px;
+    text-align: right;
+  }
+
+  .money {
+    width: 84px;
+    height: 32px;
+    text-align: right;
+  }
+
+  .select {
+    max-width: 150px;
+    height: 32px;
+  }
+
+  .switch {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(5, 26, 34, 0.6);
+    cursor: pointer;
+  }
+
+  .switch span {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.15s;
+  }
+
+  .switch[aria-checked='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .switch[aria-checked='true'] span {
+    background: var(--accent);
+    transform: translateX(16px);
+  }
+
+  .switch:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .gain {
+    color: var(--green, #5ad19a);
+  }
+
+  .loss {
+    color: var(--red);
+  }
+}

@@ -84,6 +84,7 @@ export function useCollectionScreen(desktop: boolean) {
 
   return {
     t,
+    i18n,
     lang,
     offline,
     label,

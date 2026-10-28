@@ -1,0 +1,58 @@
+@layer components {
+  .panel {
+    position: sticky;
+    top: calc(64px + var(--gap));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: calc(100dvh - 64px - 2 * var(--gap));
+    padding: 14px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+  }
+
+  .empty,
+  .muted {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .art {
+    width: 55%;
+    margin: 0 auto;
+  }
+
+  .name {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .meta,
+  .totals {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .heading {
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .lines {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+  }
+
+  .open {
+    align-self: flex-start;
+    color: var(--accent);
+    font-weight: 700;
+  }
+}

@@ -149,6 +149,13 @@ export const handlers = [
       merged: false,
     });
   }),
+  http.post(`${API}/collection/bulk`, async ({ request }) => {
+    const body = (await request.json()) as { ids: number[]; delete?: boolean };
+    if (body.delete) {
+      return ok({ deleted: body.ids.map((id) => ({ ...withCard(aylaLines[0]), id })) });
+    }
+    return ok({ updated: body.ids.length });
+  }),
   http.post(`${API}/collection/keep-playset`, async ({ request }) => {
     const body = (await request.json()) as { keep: boolean };
     return ok({

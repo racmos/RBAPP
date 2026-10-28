@@ -16,7 +16,9 @@ type CollectionFiltersProps = {
   facets: CollectionFacets;
   total: number;
   onClear: () => void;
-  onClose: () => void;
+  /** The sheet's "show" button; a sidebar has none. */
+  onClose?: () => void;
+  variant?: 'sheet' | 'sidebar';
 };
 
 /** The body of the filter sheet (F3-g S4): chips with group counts and three yes/no switches. */
@@ -28,6 +30,7 @@ export function CollectionFilters({
   total,
   onClear,
   onClose,
+  variant = 'sheet',
 }: CollectionFiltersProps) {
   const { t } = useTranslation('collection');
   const { label } = useEnumLabel();
@@ -117,7 +120,9 @@ export function CollectionFilters({
         <Button variant="ghost" disabled={active === 0} onClick={onClear}>
           {t('clearFilters')}
         </Button>
-        <Button onClick={onClose}>{t('filters.show', { count: total })}</Button>
+        {variant === 'sheet' && onClose && (
+          <Button onClick={onClose}>{t('filters.show', { count: total })}</Button>
+        )}
       </div>
     </div>
   );

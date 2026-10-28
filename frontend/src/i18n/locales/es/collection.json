@@ -53,7 +53,8 @@
   "view": {
     "label": "Vista",
     "grid": "Cuadrícula",
-    "list": "Lista"
+    "list": "Lista",
+    "table": "Tabla"
   },
   "foil": "Foil",
   "selling": {
@@ -123,5 +124,94 @@
   },
   "count_one": "{{count}} carta",
   "count_many": "{{count}} cartas",
-  "count_other": "{{count}} cartas"
+  "count_other": "{{count}} cartas",
+  "desktop": {
+    "groups_one": "{{count}} carta",
+    "groups_many": "{{count}} cartas",
+    "groups_other": "{{count}} cartas",
+    "pageSize": "Por página"
+  },
+  "totals": {
+    "value": "Valor",
+    "cost": "Coste",
+    "pl": "Ganancia",
+    "lines": "Líneas",
+    "unique": "Únicas",
+    "selling": "En venta",
+    "foil": "Foil"
+  },
+  "table": {
+    "caption": "Tu colección agrupada por carta",
+    "expand": "Ver las líneas de {{name}}",
+    "selectLine": "Seleccionar {{name}}",
+    "selectPage": "Seleccionar todo en esta página",
+    "lineOf": "{{name}}, línea {{index}}",
+    "columns": {
+      "select": "Seleccionar",
+      "image": "Imagen",
+      "set": "Set",
+      "number": "Nº",
+      "name": "Nombre",
+      "foil": "Foil",
+      "qty": "Copias",
+      "sellQty": "A vender",
+      "selling": "En venta",
+      "sellPrice": "Precio venta",
+      "condition": "Estado",
+      "language": "Idioma",
+      "purchase": "Compra",
+      "market": "Mercado",
+      "plAbs": "Ganancia €",
+      "plPct": "Ganancia %",
+      "trend7d": "7 d",
+      "updated": "Modificada"
+    }
+  },
+  "bulk": {
+    "selected_one": "{{count}} línea seleccionada",
+    "selected_many": "{{count}} líneas seleccionadas",
+    "selected_other": "{{count}} líneas seleccionadas",
+    "selectAllFiltered": "Seleccionar las {{count}} líneas filtradas",
+    "tooMany": "Más de 1000 líneas: filtra un poco más.",
+    "loadingIds": "Seleccionando…",
+    "condition": "Estado",
+    "language": "Idioma",
+    "selling": "En venta",
+    "keepUnchanged": "Sin cambios",
+    "sellRuleLabel": "Copias a vender",
+    "sellRule": {
+      "all": "Todas",
+      "none": "Ninguna",
+      "keep": "Conservar"
+    },
+    "keep": "Copias a conservar",
+    "sellPrice": "Precio de venta",
+    "purchasePrice": "Precio de compra",
+    "apply": "Aplicar",
+    "delete": "Eliminar",
+    "clear": "Quitar selección",
+    "confirm": {
+      "apply_one": "¿Aplicar los cambios a {{count}} línea?",
+      "apply_many": "¿Aplicar los cambios a {{count}} líneas?",
+      "apply_other": "¿Aplicar los cambios a {{count}} líneas?",
+      "delete_one": "¿Eliminar {{count}} línea?",
+      "delete_many": "¿Eliminar {{count}} líneas?",
+      "delete_other": "¿Eliminar {{count}} líneas?"
+    },
+    "applied": "Cambios aplicados.",
+    "deleted_one": "{{count}} línea eliminada.",
+    "deleted_many": "{{count}} líneas eliminadas.",
+    "deleted_other": "{{count}} líneas eliminadas.",
+    "nothingToApply": "Elige al menos un cambio."
+  },
+  "panel": {
+    "title": "Detalle de la carta",
+    "empty": "Elige una carta para ver su detalle.",
+    "decks": "En tus mazos",
+    "noDecks": "No está en ningún mazo.",
+    "openDetail": "Ver ficha de la carta",
+    "lines": "Líneas",
+    "chart": "Precio, últimos 30 días",
+    "decksCount": "{{name}}: {{qty}}"
+  }
 }

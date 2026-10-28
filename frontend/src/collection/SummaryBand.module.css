@@ -1,0 +1,35 @@
+@layer components {
+  .band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin: 0 0 16px;
+  }
+
+  .band > div {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .band dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .band dd {
+    margin: 2px 0 0;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+
+  .gain {
+    color: var(--green, #5ad19a);
+  }
+
+  .loss {
+    color: var(--red);
+  }
+}
