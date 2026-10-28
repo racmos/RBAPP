@@ -79,6 +79,27 @@ class CardListQuery(BaseModel, extra='ignore'):
         return v
 
 
+class ProductListQuery(BaseModel, extra='ignore'):
+    """GET /products query parameters (F14-b S3)."""
+    q: Optional[str] = Field(None, max_length=100)
+    kind: List[ShortStr] = Field(default_factory=list)
+    set: List[ShortStr] = Field(default_factory=list)
+    owned: Literal['any', 'owned', 'missing'] = 'any'
+    listed: Literal['true', 'any'] = 'true'
+    sort: Literal['name', 'price', 'change_7d', 'change_30d'] = 'name'
+    dir: Literal['asc', 'desc'] = 'asc'
+    page: int = Field(default=1, ge=1, le=10000)
+    per_page: int = Field(default=48, ge=24, le=96)
+
+    @field_validator('kind', 'set', mode='after')
+    @classmethod
+    def _limit_repeated(cls, v):
+        if len(v) > 50:
+            raise PydanticCustomError(
+                'too_long', 'at most 50 values', {'max_length': 50})
+        return v
+
+
 class CollectionListQuery(BaseModel, extra='ignore'):
     """GET /collection query parameters (F3-b S1)."""
     q: Optional[str] = Field(None, max_length=100)
@@ -260,6 +281,11 @@ class KeepPlaysetBody(BaseModel, extra='ignore'):
 
 class CardPricesQuery(BaseModel, extra='ignore'):
     """GET /cards/<set>/<id>/prices query parameters (F2-d S8)."""
+    range: Literal['30d', '90d', '1y', 'all'] = '90d'
+
+
+class ProductPricesQuery(BaseModel, extra='ignore'):
+    """GET /products/<id>/prices query parameters (F14-b S5)."""
     range: Literal['30d', '90d', '1y', 'all'] = '90d'
 
 
