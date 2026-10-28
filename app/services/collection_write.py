@@ -114,6 +114,27 @@ def _payload(row, card):
 
 # --- add -----------------------------------------------------------------------------------
 
+def add_row(user, card, foil: bool, qty: int, condition, language, purchase, selling: bool,
+            sell_qty: int, sell_price, now=None) -> tuple[RbCollection, bool]:
+    """The merge rule of S2 without validation, defaults, commit or payload: add `qty` copies to
+    the user's identical line (in SQL) or insert a new line. Returns `(row, merged)`. The caller
+    owns the transaction (the CSV import adds many rows in one)."""
+    now = now or clock.utcnow()
+    foil_code, selling_code = ('S' if foil else 'N'), ('Y' if selling else 'N')
+    existing = _identical(user, card.rbcar_rbset_id, card.rbcar_id, foil_code, condition,
+                          language, purchase, selling_code, sell_price)
+    if existing is not None:
+        _add_to(existing.rbcol_id, qty, sell_qty, now)
+        return existing, True
+    row = RbCollection(
+        rbcol_rbset_id=card.rbcar_rbset_id, rbcol_rbcar_id=card.rbcar_id, rbcol_foil=foil_code,
+        rbcol_user=user.username, rbcol_quantity=qty, rbcol_sell_qty=sell_qty,
+        rbcol_selling=selling_code, rbcol_sell_price=sell_price, rbcol_purchase_price=purchase,
+        rbcol_condition=condition, rbcol_language=language, rbcol_chadat=now)
+    db.session.add(row)
+    return row, False
+
+
 def add_line(user, data) -> tuple[dict, bool]:
     """Add copies of a card; returns `(line, merged)` (S2)."""
     card = _card(data.set_id, data.card_id)
@@ -126,22 +147,8 @@ def add_line(user, data) -> tuple[dict, bool]:
     if data.selling and sell_price is None:
         sell_price = _default_sell_price(collection_read.market_price(card, data.foil))
     purchase = _money(data.purchase_price)
-    foil, selling = ('S' if data.foil else 'N'), ('Y' if data.selling else 'N')
-    now = clock.utcnow()
-
-    existing = _identical(user, data.set_id, data.card_id, foil, data.condition, data.language,
-                          purchase, selling, sell_price)
-    if existing is not None:
-        _add_to(existing.rbcol_id, data.qty, sell_qty, now)
-        row, merged = existing, True
-    else:
-        row = RbCollection(
-            rbcol_rbset_id=data.set_id, rbcol_rbcar_id=data.card_id, rbcol_foil=foil,
-            rbcol_user=user.username, rbcol_quantity=data.qty, rbcol_sell_qty=sell_qty,
-            rbcol_selling=selling, rbcol_sell_price=sell_price, rbcol_purchase_price=purchase,
-            rbcol_condition=data.condition, rbcol_language=data.language, rbcol_chadat=now)
-        db.session.add(row)
-        merged = False
+    row, merged = add_row(user, card, data.foil, data.qty, data.condition, data.language,
+                          purchase, data.selling, sell_qty, sell_price)
     db.session.commit()
     return _payload(row, card), merged
 

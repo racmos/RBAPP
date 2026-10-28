@@ -8,6 +8,7 @@ from .captcha import RbCaptchaUsed
 from .prefs import RbUserPrefs
 from .playset import RbKeepPlayset
 from .snapshot import RbValueSnapshot
+from .import_preview import RbImportPreview
 from .job import RbJob
 from .ban import RbCardBan
 from .audit import RbAdminAudit

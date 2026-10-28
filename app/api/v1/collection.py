@@ -6,9 +6,10 @@ from app.api.error_codes import DetailCode, ErrorCode
 from app.api.responses import fail, ok
 from app.api.v1 import api_v1
 from app.schemas.validation import validate_json, validate_query
-from app.schemas.validators import (CollectionBulk, CollectionExportQuery, CollectionLineCreate, CollectionLinePatch,
+from app.schemas.validators import (CollectionBulk, CollectionExportQuery, ImportCommitBody,
+                                    ImportPreviewBody, CollectionLineCreate, CollectionLinePatch,
                                     CollectionListQuery, CollectionSplit, KeepPlaysetBody)
-from app.services import collection_export, collection_write
+from app.services import collection_export, collection_import, collection_write
 from app.services.collection_read import list_collection
 from app.services.collection_write import (FoilNotAllowed, InsufficientQuantity, LineNotFound,
                                            StaleLine, UnknownCard)
@@ -131,3 +132,37 @@ def keep_collection_playset():
     data = request.validated_data
     return _guarded(lambda: ok(collection_write.keep_playset(
         current_user, data.set_id, data.card_id, data.keep)))
+
+
+# --- import (F3-e) ---------------------------------------------------------------------------
+
+@api_v1.post('/collection/import/preview')
+@login_required
+@validate_json(ImportPreviewBody)
+def preview_collection_import():
+    """Parse an uploaded collection file and say what each row would do (S2-S4)."""
+    data = request.validated_data
+    try:
+        return ok(collection_import.create_preview(current_user, data.text, data.format))
+    except collection_import.FormatUnknown:
+        return fail('Bad Request', "The file format is not recognised. Use the RBAPP format.",
+                    400, code=ErrorCode.IMPORT_FORMAT_UNKNOWN)
+    except collection_import.TooBig as exc:
+        limit = collection_import.MAX_BYTES if 'MB' in str(exc) else collection_import.MAX_ROWS
+        return fail('Validation Error', 'Invalid request data', 400,
+                    details=[{'field': 'text', 'message': str(exc), 'type': 'value_error',
+                              'code': DetailCode.OUT_OF_RANGE.value, 'params': {'max': limit}}],
+                    code=ErrorCode.VALIDATION_ERROR)
+
+
+@api_v1.post('/collection/import/commit')
+@login_required
+@validate_json(ImportCommitBody)
+def commit_collection_import():
+    """Apply a preview to the collection: add to it or replace the printings it holds (S5)."""
+    data = request.validated_data
+    try:
+        return ok(collection_import.commit_preview(current_user, data.preview_id, data.mode))
+    except collection_import.PreviewExpired:
+        return fail('Gone', 'The preview expired. Upload the file again.', 410,
+                    code=ErrorCode.IMPORT_EXPIRED)
