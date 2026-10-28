@@ -61,6 +61,7 @@ riftbound/
 │   │       ├── auth.py      # session, captcha, login, logout, register
 │   │       ├── bans.py      # GET /bans (card bans per game mode)
 │   │       ├── cards.py       # GET /cards (list; F2-c), GET /cards/<set>/<id> + /prices (detail; F2-d)
+│   │       ├── collection.py  # GET /collection (groups, lines, totals, facets, playset flag; F3-b)
 │   │       ├── me.py        # GET/PATCH /me/prefs (interface preferences)
 │   │       └── meta.py      # health, meta/config
 │   ├── schemas/             # Pydantic request models
@@ -117,6 +118,7 @@ riftbound/
 │   │   ├── card_detail.py   # card detail + price history: printings, related, user lines/decks (F2-d)
 │   │   ├── card_list.py     # cards list query: filters, disjunctive facets, sort, pagination (F2-c)
 │   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
+│   │   ├── collection_read.py # list_collection: groups, lines, prices, P/L, totals, facets (F3-b)
 │   │   ├── collection_rules.py # legacy_sell_qty, kept_copies, playset_size, sync_legacy_sell_qty (F3-a)
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
@@ -266,7 +268,7 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 ## API v1
 
-Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`, `GET /meta/game`, `GET /cards`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image`, `POST /admin/riot/sync`, `GET /admin/jobs`, `GET /admin/jobs/<id>`, `GET /admin/riot/changes`, `POST .../changes/<id>/approve|reject` and `POST .../changes/bulk` (see `docs/api.md`).
+Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`, `GET /meta/game`, `GET /cards`, `GET /collection`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image`, `POST /admin/riot/sync`, `GET /admin/jobs`, `GET /admin/jobs/<id>`, `GET /admin/riot/changes`, `POST .../changes/<id>/approve|reject` and `POST .../changes/bulk` (see `docs/api.md`).
 
 - `GET /auth/session` returns `{authenticated, csrf_token}` for anonymous callers and `{authenticated, user, prefs, csrf_token}` when signed in. `prefs` always has the five keys `lang`, `density`, `accent`, `bg_intensity`, `collection_view`; `null` means Auto (a user without a row gets five `null`s and no row is created).
 - `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
@@ -274,6 +276,7 @@ Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/sessio
 - `GET /bans` (`app/api/v1/bans.py`, U) returns `{items: [{name, mode, since, reason, printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2` (any other value is a 400 `validation_error`). A ban covers every printing of a card name (`name_key` in `app/services/bans.py`); modes come from `app/schemas/game_domain.py`. Bans are managed with `flask bans list [--mode M]`, `flask bans add NAME --mode 1v1|2v2|all [--since YYYY-MM-DD] [--reason TEXT] [--force]` and `flask bans remove NAME --mode 1v1|2v2|all`. The legacy `rbcar_banned` column is not a source (F11 drops it).
 - `GET /cards/<set_id>/<card_id>` (`api_v1.get_card`, U) returns `CardDetail` (summary + ability, set, price_detail, printings/related `CardMini`, ban_info, my_lines, in_decks); `GET …/prices` (`api_v1.get_card_prices`, U) returns `{range, currency: EUR, foilable, product_id, points}` (`docs/api.md` → "GET /cards/<set>/<id>"). At most 10/4 SQL statements; detail p95 123 ms on dev (6 printings).
 - `GET /cards` (`app/api/v1/cards.py`, U) returns `{data: {items: [CardSummary]}, meta: {page, per_page, total, pages, facets, price_as_of}}` (`docs/api.md` → "GET /cards"): free-text `q`/`text`, 7 repeated facet params, numeric/price ranges, `owned`, `banned_in`, `base_only`, 9 sort keys with nulls-last and natural tiebreak; disjunctive facets in canonical order; at most 12 SQL statements; prices for all matches only with price sort/bounds, else the page only. Query validation via `@validate_query` (`CardListQuery`); same 400 body as `validate_json` with message "Invalid query parameters".
+- `GET /collection` (`app/api/v1/collection.py`, U, F3-b) returns `{data: {items: [CollectionGroup]}, meta: {page, per_page, total_groups, pages, totals, facets, price_as_of, playset_size}}` (`docs/api.md` → "GET /collection"): groups per printing and foil with their lines, market value and profit/loss, the playset flag, 9 sort keys, line and card filters, disjunctive facets; at most 10 SQL statements. `CollectionLine` and `CollectionGroup` are contracts (additive changes only).
 - `GET /meta/game` (`app/api/v1/meta.py`, P) returns a `GameMeta` (`docs/api.md` → "Data shapes"): modes, domains/types/supertypes/rarities (S1 tuples plus unknown data values), every set with `card_count`, price freshness (`updated_on` from `rbcm_price`, null when empty), `rules: {}` reserved for F15. Anonymous 200, `Cache-Control: no-cache`. Card objects use `CardSummary` from `app/services/catalog.py::card_summary` (batched prices via `price_summaries`, at most two SQL statements).
 
 ```json

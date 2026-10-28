@@ -37,7 +37,7 @@ def test_shape_order_and_extras(app, client):
     data = body['data']
     # jsonify sorts keys on the wire; order is pinned on the Python dict (AC1).
     assert set(data) == {'modes', 'domains', 'types', 'supertypes', 'rarities',
-                         'sets', 'price', 'rules'}
+                         'sets', 'price', 'rules', 'conditions', 'languages'}
     assert data['modes'] == ['1v1', '2v2']
     assert data['domains'][:7] == ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order',
                                    'Colorless']
@@ -54,6 +54,16 @@ def test_shape_order_and_extras(app, client):
     assert data['price'] == {'provider': 'cardmarket', 'currency': 'EUR',
                              'updated_on': '2026-10-20'}
     assert data['rules'] == {}
+
+
+def test_conditions_best_to_worst_and_languages(app, client):
+    """F3-b S7 (D-F3-4): the collection's closed lists, not read from the data."""
+    _seeded(app)
+    data = client.get('/riftbound/api/v1/meta/game').get_json()['data']
+    assert data['conditions'] == ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO']
+    assert data['languages'] == [
+        'English', 'French', 'German', 'Spanish', 'Italian', 'Simplified Chinese', 'Japanese',
+        'Portuguese', 'Russian', 'Korean', 'Traditional Chinese']
 
 
 def test_anonymous_and_signed_in_get_200(app, client, admin_client):

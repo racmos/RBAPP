@@ -84,6 +84,7 @@ def _seed_detail(app):
             RbCollection(rbcol_rbset_id='OGN', rbcol_rbcar_id='79',
                          rbcol_foil='S', rbcol_user='testuser', rbcol_quantity=1,
                          rbcol_selling='Y', rbcol_sell_price=5.5, rbcol_playset=1,
+                         rbcol_purchase_price=7.5, rbcol_sell_qty=1,
                          rbcol_condition='EX', rbcol_language='Spanish',
                          rbcol_chadat=datetime(2026, 10, 2, 9, 30)),
             RbCollection(rbcol_rbset_id='OGN', rbcol_rbcar_id='79',
@@ -220,8 +221,11 @@ class TestBansOwnedAndDecks:
         assert foil_line['condition'] == 'EX'
         assert foil_line['language'] == 'Spanish'
         assert foil_line['updated_at'] == '2026-10-02T09:30:00Z'
+        assert foil_line['purchase_price'] == 7.5
+        assert foil_line['sell_qty'] == 1
         assert set(foil_line) == {'id', 'foil', 'qty', 'condition', 'language',
-                                  'selling', 'sell_price', 'playset', 'updated_at'}
+                                  'selling', 'sell_price', 'playset', 'updated_at',
+                                  'purchase_price', 'sell_qty'}
 
     def test_in_decks_highest_seq_only_current_user(self, authenticated_client, app):
         _seed_detail(app)

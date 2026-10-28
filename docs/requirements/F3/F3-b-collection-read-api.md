@@ -97,3 +97,10 @@ Deploy (no migration). Live: signed in, `GET /riftbound/api/v1/collection` retur
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): `updated_at` is serialised as UTC with a trailing `Z` (`2026-10-25T09:12:00Z`), like `my_lines[].updated_at` of F2-d, instead of the naive form shown in the contract example, so a browser reads it as UTC.
+- L2 (implementer): group `key` for a foil group is `<set>-<id>:S` (the example only shows `:N`), the foil code the database already uses.
+- L3 (implementer): S9 p95 < 300 ms for 5 000 lines was measured on SQLite in memory (the dev database must not receive generated data): about 340 ms p95 with 1 300 cards and 1 105 groups, of which roughly half is the fixed catalog load shared with `GET /cards`. The statement bound (<= 10) holds.
+- L4 (implementer): line filters (`foil`, `selling`, `condition`, `language`, `has_purchase`) act on lines and a group shows and adds up only the matching lines; the spec does not say. Card filters act on groups.
