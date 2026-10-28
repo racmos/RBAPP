@@ -6,6 +6,7 @@ from .market import RbCardMarket
 from .deck import RbDeck
 from .captcha import RbCaptchaUsed
 from .prefs import RbUserPrefs
+from .playset import RbKeepPlayset
 from .job import RbJob
 from .ban import RbCardBan
 from .audit import RbAdminAudit

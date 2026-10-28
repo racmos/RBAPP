@@ -27,6 +27,8 @@ class RbUserPrefs(db.Model):
             name='rbuserprefs_bg_intensity_chk'),
         db.CheckConstraint(sql_in('rbprf_collection_view', COLLECTION_VIEWS),
                            name='rbuserprefs_collection_view_chk'),
+        db.CheckConstraint('rbprf_playset_size BETWEEN 1 AND 9',
+                           name='rbuserprefs_playset_size_chk'),
         {"schema": "riftbound"},
     )
 
@@ -36,5 +38,9 @@ class RbUserPrefs(db.Model):
     rbprf_accent = db.Column(db.String(10), nullable=True)
     rbprf_bg_intensity = db.Column(db.SmallInteger, nullable=True)
     rbprf_collection_view = db.Column(db.String(10), nullable=True)
+    # Copies that make a playset (F3); NULL means 3. Not an interface preference:
+    # it is not part of the prefs API payload.
+    rbprf_playset_size = db.Column(db.SmallInteger, nullable=True,
+                                   comment='Copies that make a playset; NULL = 3')
     rbprf_updated_at = db.Column(db.DateTime, nullable=False, default=lambda: clock.utcnow(),
                                  server_default=db.func.now())

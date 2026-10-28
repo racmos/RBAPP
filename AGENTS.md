@@ -93,7 +93,8 @@ riftbound/
 │   │   ├── captcha.py       # RbCaptchaUsed (rbcaptcha_used)
 │   │   ├── audit.py         # RbAdminAudit (rbadminaudit): audit trail of admin writes
 │   │   ├── job.py           # RbJob (rbjobs): job queue and results, one active job per kind
-│   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto
+│   │   ├── playset.py       # RbKeepPlayset (rbkeepplayset): card names a user keeps a playset of (F3-a)
+│   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto; playset size (F3-a)
 │   ├── routes/
 │   │   ├── auth.py          # Login / register / logout (Jinja forms)
 │   │   ├── landing.py       # Public landing page and its HTMX partials (/ and /api/*)
@@ -116,6 +117,7 @@ riftbound/
 │   │   ├── card_detail.py   # card detail + price history: printings, related, user lines/decks (F2-d)
 │   │   ├── card_list.py     # cards list query: filters, disjunctive facets, sort, pagination (F2-c)
 │   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
+│   │   ├── collection_rules.py # legacy_sell_qty, kept_copies, playset_size, sync_legacy_sell_qty (F3-a)
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
@@ -206,9 +208,10 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
+- `rbcollection` (F3-a): `rbcol_sell_qty` (0..quantity) is the number of copies for sale and `rbcol_purchase_price` the optional unit purchase price; `rbcol_selling` is only `Y` or `N`; **`rbcol_playset` is deprecated** (read only by the Jinja collection, dropped in F11); the Jinja writes keep `rbcol_sell_qty` coherent through `app/services/collection_rules.py`. Playset size per user is `rbuserprefs.rbprf_playset_size` (NULL = 3) and the "keep a playset" marks are `rbkeepplayset` (one row per user and `name_key`)
 
 ### Column Naming
 - snake_case with the table prefix: `rbcar_name`, `rbcol_quantity`, `rbdck_snapshot`
