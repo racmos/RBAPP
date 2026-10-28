@@ -15,6 +15,7 @@ export const NO_PREFS = {
   accent: null,
   bg_intensity: null,
   collection_view: null,
+  playset_size: null,
 };
 
 export const ok = <T>(data: T, status = 200) =>

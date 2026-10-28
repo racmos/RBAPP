@@ -55,6 +55,12 @@ MATRIX = {
     'api_v1.list_cards': 'U',                # F2 unit c
     'api_v1.get_card': 'U',                  # F2 unit d
     'api_v1.list_collection_groups': 'U',    # F3 unit b
+    'api_v1.create_collection_line': 'U',    # F3 unit c
+    'api_v1.update_collection_line': 'U',
+    'api_v1.delete_collection_line': 'U',
+    'api_v1.split_collection_line': 'U',
+    'api_v1.bulk_collection_lines': 'U',
+    'api_v1.keep_collection_playset': 'U',
     'api_v1.get_card_prices': 'U',           # F2 unit d
     'main.dashboard': 'U',
     'sets.sets': 'U',

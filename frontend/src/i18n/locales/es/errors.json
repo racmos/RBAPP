@@ -16,7 +16,10 @@
     "card_in_use": "La carta está en colecciones o mazos; no se puede borrar.",
     "job_running": "Ya hay una sincronización en curso. Espera a que termine.",
     "change_stale": "La carta ha cambiado desde que se detectó este cambio. Revisa la carta.",
-    "change_decided": "Este cambio ya se aprobó o rechazó."
+    "change_decided": "Este cambio ya se aprobó o rechazó.",
+    "foil_not_allowed": "Esta carta no existe en versión foil.",
+    "insufficient_quantity": "No hay suficientes copias (disponibles: {{available}}).",
+    "stale_line": "Esta línea ha cambiado en otra ventana. Recarga y vuelve a intentarlo."
   },
   "status": {
     "400": "La solicitud no es válida.",

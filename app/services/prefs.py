@@ -1,7 +1,7 @@
 """Interface preferences of an account (PREF-3, PREF-4, D7).
 
 `get_prefs` never writes; `update_prefs` creates the row on the first write.
-Both return the five public keys, `None` meaning Auto.
+Both return the public keys, `None` meaning Auto.
 """
 from sqlalchemy.exc import IntegrityError
 
@@ -18,13 +18,13 @@ def _column(key: str) -> str:
 
 
 def _as_dict(row: RbUserPrefs | None) -> dict:
-    """The five public keys of `row`; all `None` when the user has no row."""
+    """The public keys of `row`; all `None` when the user has no row."""
     return {key: getattr(row, _column(key)) if row is not None else None
             for key in PREF_KEYS}
 
 
 def get_prefs(user_id: int) -> dict:
-    """The user's preferences. A user without a row gets five `None`s and nothing is inserted."""
+    """The user's preferences. A user without a row gets all `None`s and nothing is inserted."""
     return _as_dict(db.session.get(RbUserPrefs, user_id))
 
 
@@ -35,7 +35,7 @@ def _apply(row: RbUserPrefs, changes: dict) -> None:
 
 
 def update_prefs(user_id: int, changes: dict) -> dict:
-    """Apply `changes` (only the keys present; `None` resets to Auto) and return all five.
+    """Apply `changes` (only the keys present; `None` resets to Auto) and return all of them.
 
     Keys that are not preferences are dropped, never stored. An empty change
     writes nothing, not even a row. The row is created on the first write; if

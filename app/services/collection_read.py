@@ -391,3 +391,33 @@ def user_value_summaries() -> dict[str, dict]:
         if summary['cost'] is not None:
             summary['cost'] = _round(summary['cost'], CENT)
     return summaries
+
+
+def markets_for(cards) -> dict:
+    """`{(set, card, foil): Decimal | None}` for the printings of `cards`, priced in one batch."""
+    printings = {}
+    for card in cards:
+        key = (card.rbcar_rbset_id, card.rbcar_id)
+        if key not in printings:
+            card_type, _ = catalog.parse_type(card.rbcar_type)
+            printings[key] = (key[0], key[1], card.rbcar_rarity,
+                              catalog.is_foilable(card_type, card.rbcar_rarity))
+    return _markets(pricing.price_summaries(printings.values()))
+
+
+def line_payloads(pairs) -> list[dict]:
+    """`CollectionLine` plus `set_id` and `card_id` for `(collection row, card)` pairs (F3-c S1),
+    priced in one batch. The rows may be ORM entities or anything with the `rbcol_*` columns."""
+    pairs = list(pairs)
+    markets = markets_for(card for _, card in pairs)
+    payloads = []
+    for row, card in pairs:
+        key = (card.rbcar_rbset_id, card.rbcar_id)
+        line = _Line(row, None, markets.get((*key, row.rbcol_foil == 'S')))
+        payloads.append({**_line_json(line), 'set_id': key[0], 'card_id': key[1]})
+    return payloads
+
+
+def market_price(card, foil: bool) -> Decimal | None:
+    """The market price of a printing for one foil, as `Decimal` (None when unpriced)."""
+    return markets_for([card]).get((card.rbcar_rbset_id, card.rbcar_id, foil))

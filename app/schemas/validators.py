@@ -2,14 +2,16 @@
 Pydantic schemas for request validation.
 """
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Annotated, Literal, Optional, List
 
 from pydantic import (BaseModel, Field, StrictBool, StrictInt, ValidationError, field_validator,
                       model_validator)
 from pydantic_core import PydanticCustomError
 
+from app.schemas.game_domain import CONDITIONS
 from app.schemas.prefs_domain import (ACCENTS, BG_INTENSITY_MAX, BG_INTENSITY_MIN,
+                                      PLAYSET_SIZE_MAX, PLAYSET_SIZE_MIN,
                                       COLLECTION_VIEWS, DENSITIES, LANGS)
 
 # One rule for every way of choosing a password: profile update, CLI, registration.
@@ -102,6 +104,135 @@ class CollectionListQuery(BaseModel, extra='ignore'):
             raise PydanticCustomError(
                 'too_long', 'at most 50 values', {'max_length': 50})
         return v
+
+
+# ============== Collection write API (F3-c) ==============
+
+_Money = Annotated[float, Field(ge=0, le=99999.99)]
+_Condition = Optional[Literal[CONDITIONS]]
+_Qty = Annotated[StrictInt, Field(ge=1, le=9999)]
+
+
+def _language(value):
+    """1-40 characters or None; an empty text is no language."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+class CollectionLineCreate(BaseModel, extra='ignore'):
+    """POST /collection body (F3-c S2). Extra keys are ignored, so the line returned by a
+    DELETE can be posted back as it is (undo)."""
+    set_id: str = Field(..., min_length=1, max_length=50)
+    card_id: str = Field(..., min_length=1, max_length=50)
+    foil: StrictBool = False
+    qty: _Qty
+    condition: _Condition = None
+    language: Optional[str] = Field(None, max_length=40)
+    purchase_price: Optional[_Money] = None
+    selling: StrictBool = False
+    sell_qty: Optional[Annotated[StrictInt, Field(ge=0, le=9999)]] = None
+    sell_price: Optional[_Money] = None
+
+    _language = field_validator('language')(lambda cls, v: _language(v))
+
+
+def _parse_stamp(value):
+    """ISO date-time (naive or with `Z`/offset) to a naive UTC datetime."""
+    if value is None:
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        raise PydanticCustomError('invalid_format', 'must be an ISO date-time') from None
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(timezone.utc).replace(tzinfo=None)
+    return moment
+
+
+class CollectionLinePatch(BaseModel, extra='ignore'):
+    """PATCH /collection/<id> body (F3-c S3): only the keys that were sent change."""
+    qty: Optional[_Qty] = None
+    condition: _Condition = None
+    language: Optional[str] = Field(None, max_length=40)
+    purchase_price: Optional[_Money] = None
+    selling: Optional[StrictBool] = None
+    sell_qty: Optional[Annotated[StrictInt, Field(ge=0, le=9999)]] = None
+    sell_price: Optional[_Money] = None
+    if_updated_at: Optional[str] = None
+
+    _language = field_validator('language')(lambda cls, v: _language(v))
+
+    @model_validator(mode='after')
+    def _no_null_qty_or_selling(self):
+        for name in ('qty', 'selling'):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise PydanticCustomError('missing', f'{name} cannot be null')
+        return self
+
+    @field_validator('if_updated_at', mode='after')
+    @classmethod
+    def _stamp(cls, v):
+        _parse_stamp(v)
+        return v
+
+    @property
+    def updated_stamp(self):
+        return _parse_stamp(self.if_updated_at)
+
+
+class CollectionSplit(BaseModel, extra='ignore'):
+    """POST /collection/<id>/split body (F3-c S5)."""
+    qty: _Qty
+    condition: _Condition = None
+    language: Optional[str] = Field(None, max_length=40)
+    purchase_price: Optional[_Money] = None
+    selling: Optional[StrictBool] = None
+    sell_price: Optional[_Money] = None
+
+    _language = field_validator('language')(lambda cls, v: _language(v))
+
+
+class CollectionBulkSet(BaseModel, extra='ignore'):
+    """The `set` part of POST /collection/bulk (F3-c S6)."""
+    condition: _Condition = None
+    language: Optional[str] = Field(None, max_length=40)
+    selling: Optional[StrictBool] = None
+    sell_qty_rule: Optional[Literal['all', 'none', 'keep_n']] = None
+    keep: Optional[Annotated[StrictInt, Field(ge=1, le=9)]] = None
+    sell_price: Optional[_Money] = None
+    purchase_price: Optional[_Money] = None
+
+    _language = field_validator('language')(lambda cls, v: _language(v))
+
+    @model_validator(mode='after')
+    def _keep_goes_with_keep_n(self):
+        if self.sell_qty_rule == 'keep_n' and self.keep is None:
+            raise PydanticCustomError('missing', 'keep is required with sell_qty_rule keep_n')
+        return self
+
+
+class CollectionBulk(BaseModel, extra='ignore'):
+    """POST /collection/bulk body: `{ids, set: {...}}` or `{ids, delete: true}` (F3-c S6)."""
+    ids: List[Annotated[StrictInt, Field(ge=1)]] = Field(..., min_length=1, max_length=1000)
+    set: Optional[CollectionBulkSet] = None
+    delete: Optional[StrictBool] = None
+
+    @model_validator(mode='after')
+    def _one_action(self):
+        has_set = self.set is not None and bool(self.set.model_fields_set)
+        if has_set == bool(self.delete):
+            raise PydanticCustomError(
+                'invalid_value', 'send exactly one of a non-empty "set" or "delete": true')
+        return self
+
+
+class KeepPlaysetBody(BaseModel, extra='ignore'):
+    """POST /collection/keep-playset body (F3-c S7)."""
+    set_id: str = Field(..., min_length=1, max_length=50)
+    card_id: str = Field(..., min_length=1, max_length=50)
+    keep: StrictBool
 
 
 # ============== Card Prices Query ==============
@@ -429,6 +560,8 @@ class PrefsUpdate(BaseModel):
     bg_intensity: Optional[Annotated[StrictInt, Field(ge=BG_INTENSITY_MIN,
                                                       le=BG_INTENSITY_MAX)]] = None
     collection_view: Optional[_one_of(COLLECTION_VIEWS)] = None
+    playset_size: Optional[Annotated[StrictInt, Field(ge=PLAYSET_SIZE_MIN,
+                                                      le=PLAYSET_SIZE_MAX)]] = None
 
 
 # ============== Profile Schemas ==============
