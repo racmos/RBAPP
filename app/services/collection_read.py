@@ -46,7 +46,8 @@ def _iso_utc(moment) -> str | None:
 class _Line:
     """One collection row, as plain values, with the numbers derived from its market price."""
     __slots__ = ('id', 'key', 'qty', 'condition', 'language', 'selling', 'sell_qty', 'chadat',
-                 'parsed', 'foil', 'purchase', 'sell_price', 'market', 'value', 'pl_abs', 'pl_pct')
+                 'parsed', 'foil', 'purchase', 'sell_price', 'market', 'value', 'pl_abs', 'pl_pct',
+                 'product_name')
 
     def __init__(self, row, parsed, market):
         self.id = row.rbcol_id
@@ -62,6 +63,7 @@ class _Line:
         self.purchase = _dec(row.rbcol_purchase_price)
         self.sell_price = _dec(row.rbcol_sell_price)
         self.market = market
+        self.product_name = None   # set by the Cardmarket export
         self.value = self.pl_abs = self.pl_pct = None
         if market is not None:
             self.value = (market * self.qty).quantize(CENT, ROUND_HALF_UP)
@@ -256,15 +258,8 @@ def _line_json(line: _Line) -> dict:
     }
 
 
-def list_collection(query: CollectionListQuery, user) -> dict:
-    """`{items: [CollectionGroup], meta: {...}}` for one user (F3-b S1-S6)."""
-    sets = db.session.query(RbSet).all()
-    set_rank = catalog.set_order(sets)
-    all_cards = db.session.query(RbCard).all()
-    base_keys = catalog.base_printing_keys(all_cards, set_rank)
-    bans = bans_service.ban_map()
-    cards = {(card.rbcar_rbset_id, card.rbcar_id): card for card in all_cards}
-
+def _load_lines(user, cards: dict, set_rank: dict) -> tuple[list[_Line], dict]:
+    """The user's lines as `_Line`s ordered by id, and the price summaries of their printings."""
     rows = db.session.execute(
         select(*_LINE_COLUMNS)
         .where(RbCollection.rbcol_user == user.username)
@@ -280,7 +275,6 @@ def list_collection(query: CollectionListQuery, user) -> dict:
     prices = pricing.price_summaries(
         (key[0], key[1], p['card'].rbcar_rarity, p['foilable'])
         for key, p in parsed_by_key.items())
-    price_of = prices.get
 
     markets = _markets(prices)
     lines = []
@@ -289,6 +283,31 @@ def list_collection(query: CollectionListQuery, user) -> dict:
         if key in parsed_by_key:
             lines.append(_Line(row, parsed_by_key[key],
                                markets.get((*key, row.rbcol_foil == 'S'))))
+    return lines, prices
+
+
+def export_lines(query, user) -> list[_Line]:
+    """The lines an export writes: the ones matching the filters of `query`, in catalog order
+    (printing, then non-foil before foil, then id), as in `GET /collection?sort=number` (F3-d)."""
+    set_rank = catalog.set_order(db.session.query(RbSet).all())
+    cards = {(c.rbcar_rbset_id, c.rbcar_id): c for c in db.session.query(RbCard).all()}
+    lines, prices = _load_lines(user, cards, set_rank)
+    matching = [line for line in lines if not _failed(query, line)]
+    ordered = _order_groups(_group(matching), 'number', 'asc', prices.get)
+    return [line for _, members in ordered for line in members]
+
+
+def list_collection(query: CollectionListQuery, user) -> dict:
+    """`{items: [CollectionGroup], meta: {...}}` for one user (F3-b S1-S6)."""
+    sets = db.session.query(RbSet).all()
+    set_rank = catalog.set_order(sets)
+    all_cards = db.session.query(RbCard).all()
+    base_keys = catalog.base_printing_keys(all_cards, set_rank)
+    bans = bans_service.ban_map()
+    cards = {(card.rbcar_rbset_id, card.rbcar_id): card for card in all_cards}
+
+    lines, prices = _load_lines(user, cards, set_rank)
+    price_of = prices.get
 
     # Playset (S4): everything the user owns of a name, whatever the filters say.
     kept_by_name: dict[str, int] = {}

@@ -20,7 +20,7 @@ from typing import Optional
 from sqlalchemy import func
 
 from app import db
-from app.models.cardmarket import RbcmPrice, RbcmProductCardMap
+from app.models.cardmarket import RbcmPrice, RbcmProduct, RbcmProductCardMap
 
 PREMIUM_RARITIES = frozenset({'rare', 'epic', 'showcase'})
 
@@ -242,3 +242,27 @@ def price_as_of() -> Optional[str]:
     if not latest:
         return None
     return f'{latest[0:4]}-{latest[4:6]}-{latest[6:8]}'
+
+
+def product_names(items):
+    """`{(set_id, card_id, foil): Cardmarket product name}` for `(set_id, card_id, foil)` items
+    (`foil` is 'S' or 'N'), using the same product choice as the prices (exact foil mapping,
+    else unclassified, else any) and the newest `rbcm_products` row of that product. Cards
+    without a mapped product or name are left out. At most two SQL statements (F3-d)."""
+    items = list(items)
+    if not items:
+        return {}
+    by_card = _mapped_index(db.session.query(
+        RbcmProductCardMap.rbpcm_rbset_id, RbcmProductCardMap.rbpcm_rbcar_id,
+        RbcmProductCardMap.rbpcm_foil, RbcmProductCardMap.rbpcm_id_product).all())
+    chosen = {item: _mapped_products(by_card, item[0], item[1], item[2]) for item in items}
+    wanted = sorted({product for product in chosen.values() if product is not None})
+    newest = {}
+    if wanted:
+        for product, name, day in db.session.query(
+                RbcmProduct.rbprd_id_product, RbcmProduct.rbprd_name,
+                RbcmProduct.rbprd_date).filter(RbcmProduct.rbprd_id_product.in_(wanted)):
+            if name and (product not in newest or (day or '') > newest[product][0]):
+                newest[product] = (day or '', name)
+    return {item: newest[product][1] for item, product in chosen.items()
+            if product in newest}

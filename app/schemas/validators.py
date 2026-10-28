@@ -106,6 +106,13 @@ class CollectionListQuery(BaseModel, extra='ignore'):
         return v
 
 
+class CollectionExportQuery(CollectionListQuery):
+    """GET /collection/export query: every list filter plus the format (F3-d S1). The sort and
+    page parameters of the list are accepted and ignored."""
+    format: Literal['rbapp', 'cardmarket'] = 'rbapp'
+    only_selling: bool = False
+
+
 # ============== Collection write API (F3-c) ==============
 
 _Money = Annotated[float, Field(ge=0, le=99999.99)]
