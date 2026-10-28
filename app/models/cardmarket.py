@@ -1,5 +1,9 @@
 from app import db
+from app.schemas.prefs_domain import sql_in
 from app.utils import clock
+
+# Product kinds of the catalog (F14-a S2, S3); `rbproducts_kind_chk` is built from it.
+PRODUCT_KINDS = ('booster', 'box', 'case', 'bundle', 'starter', 'sleeves', 'accessory', 'other')
 
 
 class RbcmProduct(db.Model):
@@ -135,14 +139,39 @@ class RbcmIgnored(db.Model):
 
 
 class RbProducts(db.Model):
-    """Curated product master table (future use)."""
-    __tablename__ = 'rbproducts'
-    __table_args__ = {"schema": "riftbound"}
+    """Product catalog (F14-a): one row per Cardmarket product id.
 
-    rbpdt_id_set = db.Column(db.Text, primary_key=True)
-    rbpdt_id_product = db.Column(db.Integer, primary_key=True)
+    Only `nonsingle` rows are products (D-F14-13); `refresh_products`
+    (`app/services/products.py`) keeps them in step with the daily load. The names
+    match migration 0019.
+    """
+    __tablename__ = 'rbproducts'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('rbpdt_id_product', name='rbproducts_pkey'),
+        db.CheckConstraint(sql_in('rbpdt_kind', PRODUCT_KINDS), name='rbproducts_kind_chk'),
+        {"schema": "riftbound"},
+    )
+
+    rbpdt_id_set = db.Column(db.Text, nullable=True)              # NULL: expansion not mapped
+    rbpdt_id_product = db.Column(db.Integer, autoincrement=False)
     rbpdt_name = db.Column(db.Text, nullable=False)
     rbpdt_description = db.Column(db.Text)
     rbpdt_type = db.Column(db.Text)                               # single | nonsingle
     rbpdt_image_url = db.Column(db.Text)
     rbpdt_image = db.Column(db.Text)
+    rbpdt_category = db.Column(db.Text, nullable=True, comment='Cardmarket category name')
+    rbpdt_kind = db.Column(db.String(16), nullable=True,
+                           comment='Product kind (booster, box, case, ...); NULL = not set')
+    rbpdt_kind_locked = db.Column(db.Boolean, nullable=False, default=False,
+                                  server_default=db.false(),
+                                  comment='The refresh never changes the kind')
+    rbpdt_set_locked = db.Column(db.Boolean, nullable=False, default=False,
+                                 server_default=db.false(),
+                                 comment='The refresh never changes the set')
+    rbpdt_hidden = db.Column(db.Boolean, nullable=False, default=False,
+                             server_default=db.false(), comment='Hidden from the catalog')
+    rbpdt_listed = db.Column(db.Boolean, nullable=False, default=True,
+                             server_default=db.true(),
+                             comment='In the latest Cardmarket non-singles file')
+    rbpdt_updated_at = db.Column(db.DateTime, nullable=True,
+                                 comment='Last change by the refresh (UTC)')

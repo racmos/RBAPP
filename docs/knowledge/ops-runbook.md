@@ -229,7 +229,8 @@ The `value_snapshot` job (timeout 900 s, no params) stores, for every user with 
 line, today's collection value in `rbvaluesnaps` (value, cost, copies, distinct printings, lines without a
 price), priced by the same code as `GET /collection`. When `daily_prices` succeeds, its last step queues it
 and the job runner (which keeps claiming queued jobs) runs it right after the load; `daily_prices` shows
-`"queued": ["value_snapshot"]` in its result. A snapshot that cannot be queued never fails the price load.
+`"queued": ["value_snapshot", "products_refresh"]` in its result (F14-a). A snapshot that cannot be queued never
+fails the price load.
 A second run the same day replaces that day's rows; the history cannot be rebuilt later, so do not delete rows.
 
 By hand: `venv/bin/flask jobs enqueue value_snapshot`, then `venv/bin/flask jobs list`. Read today's rows:
@@ -243,6 +244,32 @@ Install (after the F4-c deploy: backup, `venv/bin/flask db upgrade` to `0017_job
 the 0017 downgrade refuses while `value_snapshot` jobs exist (`DELETE FROM riftbound.rbjobs WHERE
 rbjob_kind = 'value_snapshot';`), and the 0016 downgrade drops `rbvaluesnaps` with every snapshot taken, so
 only with the owner's go-ahead.
+
+### Product catalog refresh (F14-a)
+
+The `products_refresh` job (timeout 600 s, optional param `date=YYYYMMDD`, default the latest
+`rbcm_products` date) brings the product catalog `rbproducts` in step with the non-single Cardmarket
+products of that date: new ids are inserted (name, category, kind, set of the mapped expansion), existing ones
+get name, category and `listed = true`, and kind / set unless `rbpdt_kind_locked` / `rbpdt_set_locked`;
+`nonsingle` products missing from the date get `listed = false`. Rows are never deleted. `daily_prices`
+queues it after `value_snapshot` (each on its own: one active or failing does not stop the other). A date
+without non-single products is an error and changes nothing; so is an unknown param or a bad date.
+
+By hand: `venv/bin/flask jobs enqueue products_refresh [--param date=YYYYMMDD]`, then
+`venv/bin/flask jobs list`. Read the counts (`date`, `new`, `updated`, `not_listed`, `total`) of the latest job:
+
+```bash
+venv/bin/flask shell <<< "from app.models import RbJob as J; j = J.query.filter_by(rbjob_kind='products_refresh').order_by(J.rbjob_id.desc()).first(); print(j.rbjob_id, j.rbjob_status, j.rbjob_result or j.rbjob_message)"
+```
+
+Install (after the F14-a deploy): backup first, `venv/bin/flask db upgrade` to `0020_jobs_products_refresh`
+(runs `0019_products_catalog`, which moves the `rbproducts` key to the product id and refuses while a
+product id is in more than one row, and `0020`), `venv/bin/flask db check`, restart the service, then
+`venv/bin/flask jobs enqueue products_refresh` and read the counts. No new timer. Rollback: the 0020
+downgrade refuses while `products_refresh` jobs exist (`DELETE FROM riftbound.rbjobs WHERE rbjob_kind =
+'products_refresh';`); the 0019 downgrade refuses while a product has no set (`rbpdt_id_set IS NULL`; set it
+or delete those rows) and drops the new columns (category, kind, locks, hidden, listed), so only with the
+owner's go-ahead.
 
 ## Card images (from M-d)
 

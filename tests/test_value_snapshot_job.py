@@ -59,7 +59,7 @@ def loaded(monkeypatch):
 
 def test_daily_prices_success_queues_the_snapshot(app, loaded):
     result = daily_prices_job.run({})
-    assert result['queued'] == ['value_snapshot']
+    assert result['queued'] == ['value_snapshot', 'products_refresh']   # F14-a S5
     jobs = active_snapshot_jobs()
     assert [(j.rbjob_status, j.rbjob_params) for j in jobs] == [('queued', {})]
 
@@ -68,7 +68,7 @@ def test_an_active_snapshot_job_is_ignored(app, loaded, caplog):
     caplog.set_level('INFO')
     jobs_service.enqueue('value_snapshot')
     result = daily_prices_job.run({})
-    assert result['queued'] == []
+    assert result['queued'] == ['products_refresh']   # F14-a S5: queued on its own
     assert len(active_snapshot_jobs()) == 1
     assert 'value_snapshot' in caplog.text
 

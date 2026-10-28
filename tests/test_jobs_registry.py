@@ -30,7 +30,8 @@ def test_register_get_and_sorted_names(isolated_registry):
     registry.register(alpha)
     assert registry.get('zeta') is zeta
     assert registry.get('alpha').timeout_seconds == 10
-    assert registry.names() == ['alpha', 'daily_prices', 'heartbeat', 'riot_sync', 'value_snapshot', 'zeta']
+    assert registry.names() == ['alpha', 'daily_prices', 'heartbeat', 'products_refresh', 'riot_sync',
+                                'value_snapshot', 'zeta']
 
 
 def test_a_name_registered_twice_raises_and_keeps_the_first(isolated_registry):
@@ -78,4 +79,5 @@ def test_kinds_are_registered_on_app_creation():
     done = subprocess.run([sys.executable, '-c', code], cwd=REPO, env=env,
                           capture_output=True, text=True, timeout=60)
     assert done.returncode == 0, done.stderr
-    assert done.stdout.strip() == "['daily_prices', 'heartbeat', 'riot_sync', 'value_snapshot']"
+    assert done.stdout.strip() == ("['daily_prices', 'heartbeat', 'products_refresh', 'riot_sync', "
+                                   "'value_snapshot']")
