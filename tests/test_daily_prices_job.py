@@ -61,6 +61,14 @@ def cardmarket_files(monkeypatch, frozen_clock):
     return files
 
 
+@pytest.fixture(autouse=True)
+def no_follow_ups(monkeypatch):
+    """This file is about the load and the matching; the job that follows a success is
+    tested in test_value_snapshot_job.py (`queued` is [] here)."""
+    from app.jobs import daily_prices as job
+    monkeypatch.setattr(job, '_queue_follow_ups', lambda: [])
+
+
 @pytest.fixture
 def cli(app):
     runner = app.test_cli_runner(mix_stderr=False)
@@ -187,6 +195,7 @@ def test_success_links_the_clear_cases_and_lists_the_rest(app, cli, cardmarket_f
         'auto_match': {'linked': 1, 'proposed': 5, 'review': 7},
         'review': REVIEW,
         'review_total': 7,
+        'queued': [],
     }
     assert mappings() == [*SEEDED_MAP, EXACT_MAP, CLEAR_MAP]
 

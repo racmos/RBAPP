@@ -16,7 +16,7 @@ from tests.migration_helpers import downgrade, drift, inspector, rows, run as sq
 def test_kind_is_registered_with_its_timeout():
     kind = registry.get('riot_sync')
     assert kind.timeout_seconds == 1800
-    assert sorted(registry.names())[-1] == 'riot_sync'
+    assert 'riot_sync' in registry.names()
 
 
 @pytest.mark.parametrize('params', [
