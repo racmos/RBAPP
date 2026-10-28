@@ -162,10 +162,12 @@ describe('CollectionPage states (F3-g S9)', () => {
     list([], { totals: { ...collectionMeta.totals, lines: 0, qty: 0, unique: 0, value: 0 } });
     await renderApp({ path: '/collection', width: 390 });
     expect(await screen.findByText('Tu colección está vacía', {}, LONG)).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Importar' })).toHaveAttribute(
-      'href',
-      '/riftbound/collection',
-    );
+    // the empty state and the header both open the import wizard (F3-i S2)
+    const imports = screen.getAllByRole('link', { name: 'Importar' });
+    expect(imports).toHaveLength(2);
+    for (const link of imports) {
+      expect(link).toHaveAttribute('href', '/riftbound/app/collection/import');
+    }
     await userEvent.click(
       screen.getByRole('button', { name: 'Añadir carta', hidden: false, description: '' }),
     );

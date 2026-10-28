@@ -1,0 +1,268 @@
+@layer components {
+  .page {
+    width: 100%;
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--pad);
+    padding-bottom: 96px;
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 720px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .label {
+    padding: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .textarea {
+    width: 100%;
+    min-height: 160px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    color: var(--text);
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    resize: vertical;
+  }
+
+  .muted,
+  .offline {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .offline {
+    margin-bottom: 14px;
+  }
+
+  .error {
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--red);
+    border-radius: var(--radius-sm);
+    color: var(--red-text);
+    font-weight: 700;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .review {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .rows {
+    min-width: 0;
+  }
+
+  .summary {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .scroll {
+    max-height: 70vh;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .table th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    padding: 8px 6px;
+    background: var(--panel-3);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table td {
+    padding: 6px;
+    border-top: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .thumb {
+    flex: none;
+    width: 32px;
+  }
+
+  .cardText {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .cardName {
+    font-weight: 700;
+  }
+
+  .reasons {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .item[data-status='error'] {
+    border-color: var(--red);
+  }
+
+  .itemHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .details {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .modes {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .option input {
+    margin-top: 3px;
+    accent-color: var(--accent);
+  }
+
+  .optionText {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .optionLabel {
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .warning {
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--red);
+    border-radius: var(--radius-sm);
+    color: var(--red-text);
+    font-size: 13px;
+  }
+
+  /* Wide: the summary and the status filter become a side column next to the table. */
+  @media (min-width: 1600px) {
+    .review {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      align-items: start;
+    }
+
+    .side {
+      position: sticky;
+      top: 80px;
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .rows {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .review > .actions {
+      grid-column: 1 / -1;
+    }
+  }
+}

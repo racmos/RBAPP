@@ -1,7 +1,15 @@
 import { HttpResponse, http } from 'msw';
 import type { PricePoint } from '@/api/types';
 import { cardDetail, cardList } from '@/test/fixtures/cards';
-import { aylaLines, collectionGroups, collectionMeta, withCard } from '@/test/fixtures/collection';
+import {
+  aylaLines,
+  collectionGroups,
+  collectionMeta,
+  exportCsv,
+  importPreview,
+  importResult,
+  withCard,
+} from '@/test/fixtures/collection';
 
 /** Base of the API as the SPA sees it (same-origin, behind Nginx). */
 export const API = '/riftbound/api/v1';
@@ -165,6 +173,24 @@ export const handlers = [
       playset_size: 3,
       playset_short: false,
     });
+  }),
+  http.get(`${API}/collection/export`, ({ request }) => {
+    const cardmarket = new URL(request.url).searchParams.get('format') === 'cardmarket';
+    return new HttpResponse(exportCsv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${
+          cardmarket ? '20261028101500_cardmarket.csv' : 'rbapp_collection_20261028101500.csv'
+        }"`,
+        'X-Rows-Exported': '1',
+      },
+    });
+  }),
+  http.post(`${API}/collection/import/preview`, () => ok(importPreview)),
+  http.post(`${API}/collection/import/commit`, async ({ request }) => {
+    const body = (await request.json()) as { mode: string };
+    return ok(body.mode === 'replace' ? { ...importResult, replaced: 2 } : importResult);
   }),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {

@@ -3,6 +3,8 @@ import type {
   CollectionLine,
   CollectionLineWithCard,
   CollectionMeta,
+  ImportPreview,
+  ImportResult,
 } from '@/api/types';
 import { champion, foilCommon, basicRune } from './cards';
 
@@ -116,3 +118,66 @@ export const withCard = (line: CollectionLine, card = champion): CollectionLineW
   set_id: card.set_id,
   card_id: card.card_id,
 });
+
+/** `POST /collection/import/preview` (F3-e): one row of each status. */
+export const importPreview: ImportPreview = {
+  preview_id: 'prev-1',
+  format: 'rbapp',
+  rows: [
+    {
+      line: 2,
+      status: 'ok',
+      reason_codes: [],
+      card: champion,
+      set_id: 'OGN',
+      card_id: '79',
+      foil: false,
+      qty: 3,
+      condition: 'NM',
+      language: 'English',
+      purchase_price: 0.8,
+      selling: true,
+      sell_qty: 2,
+      sell_price: 1.3,
+    },
+    {
+      line: 3,
+      status: 'warning',
+      reason_codes: ['name_mismatch', 'unknown_condition'],
+      card: foilCommon,
+      set_id: 'OGN',
+      card_id: '12',
+      foil: true,
+      qty: 2,
+      condition: null,
+      language: 'Spanish',
+      purchase_price: null,
+      selling: false,
+      sell_qty: 0,
+      sell_price: null,
+    },
+    {
+      line: 4,
+      status: 'error',
+      reason_codes: ['card_not_found'],
+      set_id: 'XXX',
+      card_id: '999',
+      foil: false,
+      qty: 1,
+      condition: null,
+      language: null,
+      purchase_price: null,
+      selling: false,
+      sell_qty: 0,
+      sell_price: null,
+    },
+  ],
+  summary: { total: 3, ok: 1, warning: 1, error: 1, printings: 2 },
+};
+
+export const importResult: ImportResult = { created: 2, merged: 0, replaced: 0, skipped: 1 };
+
+/** The RBAPP file the export handler answers with. */
+export const exportCsv =
+  'set_id,card_id,name,foil,qty,condition,language,purchase_price,selling,sell_qty,sell_price\n' +
+  'OGN,79,"Ayla, Fury\'s Champion",N,3,NM,English,0.80,Y,2,1.30\n';

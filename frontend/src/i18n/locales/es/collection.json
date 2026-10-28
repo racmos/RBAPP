@@ -213,5 +213,81 @@
     "lines": "Líneas",
     "chart": "Precio, últimos 30 días",
     "decksCount": "{{name}}: {{qty}}"
+  },
+  "export": {
+    "open": "Exportar",
+    "title": "Exportar colección",
+    "format": "Formato",
+    "formatRbapp": "RBAPP (copia completa, se puede volver a importar)",
+    "formatCardmarket": "Cardmarket (cartas en venta)",
+    "cardmarketHint": "El mismo fichero que la exportación clásica, para subirlo a Cardmarket.",
+    "scope": "Qué exportar",
+    "scopeAll": "Toda la colección",
+    "scopeFiltered": "Solo lo filtrado ahora",
+    "scopeSelling": "Solo lo que está en venta",
+    "download": "Descargar",
+    "done_one": "Exportada {{count}} fila.",
+    "done_many": "Exportadas {{count}} filas.",
+    "done_other": "Exportadas {{count}} filas."
+  },
+  "import": {
+    "open": "Importar",
+    "title": "Importar colección",
+    "steps": {
+      "file": "Fichero",
+      "review": "Revisión",
+      "mode": "Modo",
+      "result": "Resultado"
+    },
+    "fileLabel": "Fichero CSV en formato RBAPP",
+    "pasteLabel": "O pega aquí el contenido",
+    "formatHint": "Por ahora solo se admite el formato RBAPP (el que genera «Exportar»).",
+    "preview": "Revisar",
+    "errors": {
+      "empty": "Elige un fichero o pega el contenido.",
+      "tooBig": "El fichero supera 2 MB."
+    },
+    "summary": "Correctas: {{ok}} · Con avisos: {{warning}} · Con errores: {{error}} · Cartas distintas: {{printings}}",
+    "status": {
+      "ok": "Correcta",
+      "warning": "Aviso",
+      "error": "Error"
+    },
+    "statusFilter": {
+      "all": "Todas"
+    },
+    "skipNote": "Las filas con error no se importarán.",
+    "columns": {
+      "line": "Línea",
+      "status": "Estado",
+      "card": "Carta",
+      "reasons": "Motivos"
+    },
+    "reason": {
+      "card_not_found": "La carta no existe en el catálogo.",
+      "name_mismatch": "El nombre no coincide; se usa el del catálogo.",
+      "invalid_value": "Hay un valor no válido.",
+      "foil_not_allowed": "Esta carta no tiene versión foil.",
+      "invalid_qty": "La cantidad debe estar entre 1 y 9999.",
+      "unknown_condition": "Estado desconocido; se importa sin estado.",
+      "invalid_price": "El precio no es válido.",
+      "invalid_sell_qty": "Las copias a vender no pueden superar la cantidad.",
+      "duplicate_row": "Fila repetida; se sumará a la anterior."
+    },
+    "mode": {
+      "add": "Añadir a mi colección",
+      "addHint": "Suma las copias; las líneas iguales se juntan.",
+      "replace": "Reemplazar estas cartas",
+      "replaceHint": "Para cada carta del fichero se borran tus líneas actuales de esa carta y se ponen las del fichero. El resto de tu colección no cambia."
+    },
+    "commit": "Importar",
+    "confirmReplace_one": "¿Reemplazar {{count}} carta de tu colección?",
+    "confirmReplace_many": "¿Reemplazar {{count}} cartas de tu colección?",
+    "confirmReplace_other": "¿Reemplazar {{count}} cartas de tu colección?",
+    "result": "Creadas: {{created}} · Sumadas: {{merged}} · Cartas reemplazadas: {{replaced}} · Omitidas: {{skipped}}",
+    "goCollection": "Ir a la colección",
+    "again": "Importar otro fichero",
+    "back": "Atrás",
+    "next": "Siguiente"
   }
 }

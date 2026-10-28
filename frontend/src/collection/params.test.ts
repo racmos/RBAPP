@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activeFilterCount,
   DEFAULT_PER_PAGE,
+  exportQuery,
   parseCollectionSearch,
   serializeCollectionParams,
   withChange,
@@ -57,5 +58,29 @@ describe('collection params (F3-g S1)', () => {
         parse('set=OGN&set=SFD&foil=foil&selling=no&condition=NM&has_purchase=yes'),
       ),
     ).toBe(6);
+  });
+});
+
+describe('exportQuery (F3-i S1)', () => {
+  const params = parse('q=ayla&foil=foil&condition=NM&sort=value&dir=desc&page=2&per_page=100');
+
+  it('sends only the format for the whole collection', () => {
+    expect(exportQuery(params, 'rbapp', 'all')).toBe('format=rbapp');
+  });
+
+  it('sends the current filters without paging or sort', () => {
+    expect(exportQuery(params, 'rbapp', 'filtered')).toBe(
+      'q=ayla&condition=NM&foil=foil&format=rbapp',
+    );
+  });
+
+  it('asks for the lines on sale only', () => {
+    expect(exportQuery(params, 'rbapp', 'selling')).toBe('format=rbapp&only_selling=true');
+  });
+
+  it('Cardmarket is always the lines on sale, whatever the scope', () => {
+    for (const scope of ['all', 'filtered', 'selling'] as const) {
+      expect(exportQuery(params, 'cardmarket', scope)).toBe('format=cardmarket&only_selling=true');
+    }
   });
 });

@@ -213,5 +213,81 @@
     "lines": "Lines",
     "chart": "Price, last 30 days",
     "decksCount": "{{name}}: {{qty}}"
+  },
+  "export": {
+    "open": "Export",
+    "title": "Export collection",
+    "format": "Format",
+    "formatRbapp": "RBAPP (full copy, can be imported again)",
+    "formatCardmarket": "Cardmarket (cards on sale)",
+    "cardmarketHint": "The same file as the classic export, to upload to Cardmarket.",
+    "scope": "What to export",
+    "scopeAll": "The whole collection",
+    "scopeFiltered": "Only the current filters",
+    "scopeSelling": "Only what is on sale",
+    "download": "Download",
+    "done_one": "{{count}} row exported.",
+    "done_many": "{{count}} rows exported.",
+    "done_other": "{{count}} rows exported."
+  },
+  "import": {
+    "open": "Import",
+    "title": "Import collection",
+    "steps": {
+      "file": "File",
+      "review": "Review",
+      "mode": "Mode",
+      "result": "Result"
+    },
+    "fileLabel": "CSV file in RBAPP format",
+    "pasteLabel": "Or paste the content here",
+    "formatHint": "For now only the RBAPP format is supported (the one \"Export\" creates).",
+    "preview": "Review",
+    "errors": {
+      "empty": "Choose a file or paste the content.",
+      "tooBig": "The file is larger than 2 MB."
+    },
+    "summary": "OK: {{ok}} · With warnings: {{warning}} · With errors: {{error}} · Distinct cards: {{printings}}",
+    "status": {
+      "ok": "OK",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "statusFilter": {
+      "all": "All"
+    },
+    "skipNote": "Rows with errors will not be imported.",
+    "columns": {
+      "line": "Line",
+      "status": "Status",
+      "card": "Card",
+      "reasons": "Reasons"
+    },
+    "reason": {
+      "card_not_found": "The card is not in the catalog.",
+      "name_mismatch": "The name does not match; the catalog name is used.",
+      "invalid_value": "A value is not valid.",
+      "foil_not_allowed": "This card has no foil version.",
+      "invalid_qty": "The quantity must be between 1 and 9999.",
+      "unknown_condition": "Unknown condition; imported without one.",
+      "invalid_price": "The price is not valid.",
+      "invalid_sell_qty": "Copies to sell cannot exceed the quantity.",
+      "duplicate_row": "Repeated row; it will be added to the previous one."
+    },
+    "mode": {
+      "add": "Add to my collection",
+      "addHint": "Adds the copies; identical lines are merged.",
+      "replace": "Replace these cards",
+      "replaceHint": "For each card in the file your current lines of that card are deleted and the file's lines are added. The rest of your collection does not change."
+    },
+    "commit": "Import",
+    "confirmReplace_one": "Replace {{count}} card in your collection?",
+    "confirmReplace_many": "Replace {{count}} cards in your collection?",
+    "confirmReplace_other": "Replace {{count}} cards in your collection?",
+    "result": "Created: {{created}} · Merged: {{merged}} · Cards replaced: {{replaced}} · Skipped: {{skipped}}",
+    "goCollection": "Go to the collection",
+    "again": "Import another file",
+    "back": "Back",
+    "next": "Next"
   }
 }
