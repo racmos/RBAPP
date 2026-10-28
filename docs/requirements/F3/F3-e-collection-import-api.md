@@ -81,3 +81,11 @@ PR title: `feat(collection): CSV import preview and commit for the RBAPP format 
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): the commit adds rows with the merge rule of `POST /collection` but without its defaults for the sell price (market x 1.05): the file's price, or none, is kept as written, so exporting and importing with `replace` leaves the collection identical. `sell_qty` follows S3 (empty = 0, or `qty` when `selling` is `Y`).
+- L2 (implementer): a user keeps only their latest preview; making a new one deletes the previous one (bounds the storage a user can take).
+- L3 (implementer): `replaced` counts (set, card, foil) printings, so a card present as normal and foil counts twice.
+- L4 (implementer): rows with the same merge key are added up first, so the commit runs one statement per distinct line; `merged` still counts every row that did not create a line.
+- L5 (implementer): a leading `'` before `= + - @ tab CR` in a text cell is removed on import (the export adds it, F3-d S4), so the round trip keeps the text.

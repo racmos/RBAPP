@@ -19,7 +19,9 @@
     "change_decided": "This change was already approved or rejected.",
     "foil_not_allowed": "This card has no foil version.",
     "insufficient_quantity": "Not enough copies (available: {{available}}).",
-    "stale_line": "This line changed in another window. Reload and try again."
+    "stale_line": "This line changed in another window. Reload and try again.",
+    "import_expired": "The preview expired. Upload the file again.",
+    "import_format_unknown": "The file format is not recognised. Use the RBAPP format (the app's export)."
   },
   "status": {
     "400": "The request is not valid.",

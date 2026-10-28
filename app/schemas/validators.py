@@ -113,6 +113,19 @@ class CollectionExportQuery(CollectionListQuery):
     only_selling: bool = False
 
 
+class ImportPreviewBody(BaseModel, extra='ignore'):
+    """POST /collection/import/preview body (F3-e S2). The size and row limits are checked by
+    the service so they can report `out_of_range`."""
+    text: str
+    format: Literal['auto', 'rbapp'] = 'auto'
+
+
+class ImportCommitBody(BaseModel, extra='ignore'):
+    """POST /collection/import/commit body (F3-e S5)."""
+    preview_id: str = Field(..., min_length=1, max_length=64)
+    mode: Literal['add', 'replace']
+
+
 # ============== Collection write API (F3-c) ==============
 
 _Money = Annotated[float, Field(ge=0, le=99999.99)]
