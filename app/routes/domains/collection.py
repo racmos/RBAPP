@@ -18,6 +18,7 @@ from app.schemas.validators import (
     CollectionExport, CollectionImport, CollectionImportRow,
 )
 from app.schemas.validation import validate_json
+from app.services.collection_rules import sync_legacy_sell_qty
 from app.services.pricing import resolve_price
 from app.utils import clock
 
@@ -295,6 +296,9 @@ def add_collection():
         # peticiones simultáneas no pierden ninguna suma.
         existing.rbcol_quantity = RbCollection.rbcol_quantity + data.rbcol_quantity
         existing.rbcol_chadat = clock.utcnow()
+        db.session.flush()
+        db.session.refresh(existing)  # the sum was computed by the database
+        sync_legacy_sell_qty(existing)
         db.session.commit()
         return jsonify({'success': True, 'rbcol_id': existing.rbcol_id, 'merged': True})
 
@@ -310,6 +314,7 @@ def add_collection():
         rbcol_chadat=clock.utcnow(),
         rbcol_user=current_user.username,
     )
+    sync_legacy_sell_qty(new_row)
     db.session.add(new_row)
     db.session.commit()
     return jsonify({'success': True, 'rbcol_id': new_row.rbcol_id, 'merged': False})
@@ -328,6 +333,7 @@ def update_collection_quantity():
         return jsonify({'success': True, 'deleted': True})
 
     col.rbcol_quantity = data.quantity
+    sync_legacy_sell_qty(col)
     col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
@@ -351,6 +357,7 @@ def update_selling():
     data = request.validated_data
     col = _get_owned_row(data.rbcol_id)
     col.rbcol_selling = data.rbcol_selling
+    sync_legacy_sell_qty(col)
     col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
@@ -373,6 +380,7 @@ def update_playset():
     else:
         col.rbcol_selling = 'N'
 
+    sync_legacy_sell_qty(col)
     col.rbcol_chadat = clock.utcnow()
     db.session.commit()
     return jsonify({'success': True})
@@ -537,6 +545,8 @@ def bulk_apply():
                 col.rbcol_chadat = now
                 remaining -= assigned
 
+    for col in rows:
+        sync_legacy_sell_qty(col)
     db.session.commit()
     return jsonify({'success': True, 'updated': len(rows)})
 
@@ -667,6 +677,7 @@ def import_collection_csv():
 
         if existing:
             existing.rbcol_quantity = row.rbcol_quantity
+            sync_legacy_sell_qty(existing)
             existing.rbcol_chadat = clock.utcnow()
         else:
             db.session.add(RbCollection(
@@ -674,6 +685,7 @@ def import_collection_csv():
                 rbcol_rbcar_id=row.rbcar_id,
                 rbcol_foil=row.rbcol_foil,
                 rbcol_quantity=row.rbcol_quantity,
+                rbcol_sell_qty=0,  # a new line is not for sale ('N')
                 rbcol_chadat=clock.utcnow(),
                 rbcol_user=current_user.username,
             ))
@@ -694,8 +706,8 @@ def export_csv():
       - Columnas: name, language, quantity, price.
       - `name` usa el nombre del producto en Cardmarket cuando está mapeado
         (rbprd_name); si no, hace fallback al nombre de la carta (rbcar_name).
-      - `quantity` = rbcol_quantity - COALESCE(rbcol_playset, 0). Sólo filas
-        con sobrante > 0 y rbcol_selling = 'Y' se incluyen.
+      - `quantity` = rbcol_sell_qty (F3-a). Sólo filas con rbcol_sell_qty > 0
+        y rbcol_selling = 'Y' se incluyen.
       - Nombre del fichero: YYYYMMDDHH24MMSS_expansion_rareza.csv
     """
     data = request.validated_data
@@ -713,8 +725,7 @@ def export_csv():
 
     rows_written = 0
     for col, card, price_obj, product in query.all():
-        qty_total = col.rbcol_quantity
-        qty_sell = qty_total - (col.rbcol_playset or 0)
+        qty_sell = col.rbcol_sell_qty
         if qty_sell <= 0:
             continue
 

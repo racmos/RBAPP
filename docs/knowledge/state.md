@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-28 (F2-k done (#53); catalog typing fix).
+Last update: 2026-10-28 (F3-a implemented, batch 1 unit 18; F2-k done (#53), catalog typing fix (#54)).
 
 ## Phases
 
@@ -18,7 +18,7 @@ Last update: 2026-10-28 (F2-k done (#53); catalog typing fix).
 | F2 Catalog | In progress — F2-a…i done (#34, #45, #46, #47, #48, #49, #50, #51, #52); F2-k implemented (batch 1 unit 17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
-| F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
+| F3 Collection | In progress — F3-a implemented (batch 1 unit 18); units 19-26 planned (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
 | F14 Products | Planned — batch 1, units 27-32 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
 | F15 Rules app | Planned (after production) | `docs/requirements/F15/README.md` (outline). |
@@ -76,6 +76,7 @@ that file and in its `verify-report.md`.
 | M-d on the server (before or with the deploy that pulls it): **before pulling**, copy `<checkout>/app/static/images/cards/.` into the data directory (outside the checkout, owned by the service user); set `CARD_IMAGES_DIR` in `.env`, deploy, restart, run `flask images import-legacy` (copies 0 when the copy was done); live check: a Jinja catalog page loads its images from `/riftbound/media/cards/…` and `curl -sI` of one image answers 200 with `Cache-Control: public, max-age=604800` (`ops-runbook.md` → "Card images") | **Pending (owner).** |
 | F4-b on the server (after merge): backup, `flask db upgrade` (`0008_jobs_daily_prices`) + `flask db check`, restart, install and enable `riftbound-daily.timer` and `riftbound-daily-retry.timer`, run `flask jobs enqueue daily_prices` once and read the result a few minutes later (`ops-runbook.md` → "Scheduled jobs" → "Daily Cardmarket load") | **Pending (owner).** |
 | Rollback rehearsal on dev (6.34) | Not run on dev on purpose (it would uninstall the worker on the owner's devices); verified locally in Chromium. |
+| F3-a on the server (after merge): **backup first**, `flask db upgrade` (`0014_collection_selling`, `0015_playset`) + `flask db check`, restart; the upgrade log shows `rbcollection rows S->Y: 0`; the Jinja collection still lists, edits and exports (the CSV quantity equals what it was); `SELECT count(*) FROM riftbound.rbkeepplayset` is 1 on dev (`ops-runbook.md`) | **Pending (owner).** |
 | F2-b on the server (after merge): backup, `flask db upgrade` (`0013_price_product_date_idx`) + `flask db check`, restart; anonymous `GET /riftbound/api/v1/meta/game` answers 200 with `Cache-Control: no-cache` and a non-null `price.updated_on` | **Pending (owner).** |
 
 ## Follow-ups
@@ -98,7 +99,6 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 - The Jinja catalog SQL uses PostgreSQL-only constructs (`~`, `regexp_replace`, shimmed in SQLite tests).
 - The landing feeds (`app/services/scraper.py`) serve placeholder news/tournaments; there is no real event
   source yet (F8 starts with the official upcoming-events calendar; the landing is rebuilt with F8).
-- `rbcollection` CHECK allows `rbcol_selling = 'S'` but the app writes only Y/N (F3 evaluates and removes it).
 - The repo's systemd/Gunicorn docs use the default 30 s timeout while Cardmarket load and Riot extraction run
   inside the request (the dev server overrides it; F4 and F13 move them to jobs).
 - `cardmarket_matcher.auto_match` (also its dry run, used every day by `daily_prices`) reads every
@@ -111,6 +111,7 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
 | F2-fix | in review | `fix/catalog-search-typing` / TBD | Typing bug in the catalog: inputs whose value lives in the URL (search, "text" facet, numeric ranges) lost letters when the URL answered a debounced commit (search) or on every keystroke (ranges). New `DebouncedInput` keeps local text and adopts the URL only for outside changes; single debounce. Vitest 288 → 291; pytest unchanged. |
+| F3-a | implemented | `feat/f3a-collection-data` / TBD | Collection data (S1-S7): migration `0014_collection_selling` (`rbcol_purchase_price` NUMERIC(10,2) NULL ≥ 0, `rbcol_sell_qty` 0..quantity back-filled by the old rules, legacy `S` → `Y` logged, `rbcollection_selling_chk` = Y/N) and `0015_playset` (`rbuserprefs.rbprf_playset_size` 1..9, NULL = 3; table `rbkeepplayset` seeded one row per user and `name_key` from rows with a playset); models `RbKeepPlayset`; `app/services/collection_rules.py` (`legacy_sell_qty`, `kept_copies`, `playset_size`, `sync_legacy_sell_qty`); the Jinja writes (`add`, `update_quantity`, `update_selling`, `update_playset`, `bulk_apply`, `import_csv`) keep `rbcol_sell_qty` coherent and `export_csv` reads it (byte-identical to the pre-F3-a fixture). Preflight on dev (2026-10-28): `rbcol_selling` Y 14 / N 292 (no `S`), 1 row with a playset, no `rbcol_quantity < 1`. `rbcol_playset` is deprecated (dropped in F11). pytest 787 → 838; PostgreSQL round trip left to CI `migrations-pg`. Next unit: **F3-b**. |
 | F2-k | in review (#53) | `feat/f2k-card-combobox` / #53 | Card combobox + topbar search (S1-S7): `CardCombobox` (ARIA 1.2, 2-char threshold, 250 ms debounce, abort, `filters` pass-through, option content, "more" row, loading/empty/error/offline states through a live region), `useCardSearch`, `cards:combobox.*` ES/EN, topbar "Buscar cartas" box at ≥ 1240 px with `/` shortcut and key hint, selection opens `/cards/<set>/<id>` with `{fromCatalog: true}`; `docs/frontend.md` "CardCombobox". Vitest 255 → 288; pytest 787 unchanged. Next unit: **F3-a**. |
 | F2-i | done (#52) | `feat/f2i-catalog-desktop-wide` / #52 | Desktop sidebar, table view, wide preview (S1-S6): shared `CatalogFilters` (sheet/sidebar, collapsible, remembered), sticky sidebar layout, toolbar with per-page + table view, sortable 13/16-column table, `CatalogPreview` with 30d sparkline and `selected` param, delayed sidebar `aria-busy`, preview empty state; `docs/frontend.md` "Catalog" + storage keys. Vitest 226 → 255; pytest 787 unchanged. Next unit: **F2-k**. |
 | F2-h | done (#51) | `feat/f2h-catalog-page` / #51 | Catalog page + nav flip (S1-S13): `requestWithMeta`, `getGameMeta`/`listCards` (envelope-level meta fix), params parse/serialize/round-trip, `CatalogPage` (toolbar, sheet, chips, grid/list, pagination, scroll restore), `FilterChip`/`Pagination` primitives, `cards` → spa; `docs/frontend.md` "Catalog", AGENTS.md. Vitest 184 → 226; pytest 787 unchanged. Next unit: **F2-i**. |
