@@ -96,6 +96,37 @@
     margin-left: auto;
   }
 
+  /* Global card search (F2-k): between the navigation and the account area. */
+  .search {
+    position: relative;
+    flex: 0 1 280px;
+    min-width: 160px;
+    margin-left: auto;
+  }
+
+  .search + .right {
+    margin-left: 0;
+  }
+
+  .hint {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    padding: 1px 7px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--muted-2);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  .search:focus-within .hint {
+    display: none;
+  }
+
   .account {
     display: flex;
     align-items: center;

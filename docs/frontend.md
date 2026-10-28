@@ -364,6 +364,19 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
 - `CardDetailView` — the detail content in S7 section order (image, header, bans, prices, chart
   slot, text, attributes, copies, printings, related, decks); one column below 860 px, two from
   860 px, three from 1240 px (widths only from `src/lib/breakpoints.ts`).
+- `CardCombobox` — reusable card picker (`import { CardCombobox } from '@/catalog'`). ARIA 1.2
+  editable combobox with list autocomplete: it searches `GET /cards` as you type (2 or more
+  characters, 250 ms debounce, `sort=name`, `per_page=20`, the previous request aborted, results
+  cached by `useCardSearch`). Props: `label` (+ `hideLabel`), `onSelect(card)`, `filters` (any
+  `GET /cards` param, e.g. `{ base_only: true, exclude_supertype: ['Token'] }` for F3/F5 pickers),
+  `placeholder`, `autoFocus`, `clearOnSelect` (default `true`), `id`, `className`, `inputRef`.
+  Keys: ↓/↑ (wrapping), Home/End, Enter, Esc (closes, a second Esc clears), Tab. Loading, empty,
+  error and offline states (no request while offline unless cached) are announced through a polite
+  live region together with the result count and the active card. The popup stays inside the
+  component, so it also works inside a `Modal` (`--z-popover`). The topbar uses it at ≥ 1240 px as
+  the global "Buscar cartas" box; `/` focuses it from anywhere except an editable field, and
+  choosing a card navigates to `/cards/<set>/<id>` with state `{ fromCatalog: true }` (a modal
+  over the catalog at ≥ 860 px).
 - `queries.ts` — `useCardDetail(setId, cardId)` (key `['cards', 'detail', …]`, 5-minute stale,
   no retry on 404); `useGameMeta()` (1-hour stale) and `useCardList(params)` (`keepPreviousData`,
   5-minute stale) for the catalog. List endpoints keep `meta` via `requestWithMeta` (the F2-c

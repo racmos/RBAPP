@@ -228,5 +228,16 @@
       "qty_other": "{{count}} copies",
       "none": "Not in any of your decks."
     }
+  },
+  "combobox": {
+    "globalLabel": "Search cards",
+    "globalPlaceholder": "Search cards…",
+    "loading": "Searching…",
+    "empty": "No cards match \"{{query}}\".",
+    "error": "The search failed. Try again.",
+    "offline": "Search needs a connection.",
+    "more": "and {{count}} more: refine your search",
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results"
   }
 }

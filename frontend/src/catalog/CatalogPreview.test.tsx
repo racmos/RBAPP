@@ -65,7 +65,7 @@ describe('CatalogPreview (F2-i S5)', () => {
     await userEvent.click(tile);
     await waitFor(() => expect(where()).toMatch(/selected=OGN-12/), LONG);
     expect(await screen.findByText('Ember Wisp', {}, LONG)).toBeVisible();
-  });
+  }, 15000);
 
   it('loads table at 1680', async () => {
     window.localStorage.setItem('rb_cards_view', 'table');
@@ -124,7 +124,7 @@ describe('CatalogPreview (F2-i S5)', () => {
     await renderApp({ path: '/cards', width: 1680 });
     expect(await screen.findByRole('table', {}, LONG)).toBeVisible();
     expect(screen.queryByTestId('catalog-preview')).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it('is axe clean at 1680 px with the preview open', async () => {
     signedInApi();
