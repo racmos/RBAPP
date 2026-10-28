@@ -46,6 +46,26 @@ export function useCardDetail(setId: string | undefined, cardId: string | undefi
   });
 }
 
+/** Options a `CardCombobox` lists at most (F2-k S2). */
+export const COMBOBOX_LIMIT = 20;
+
+/**
+ * TanStack Query hook behind `CardCombobox` (F2-k S2): name search sorted by name, at most
+ * `COMBOBOX_LIMIT` cards. `enabled` false keeps whatever is cached and makes no request.
+ */
+export function useCardSearch(filters: Partial<CardListParams>, q: string, enabled: boolean) {
+  const params = new URLSearchParams(serializeCatalogParams({ ...filters, q, sort: 'name' }));
+  params.set('per_page', String(COMBOBOX_LIMIT));
+  const query = params.toString();
+  return useQuery({
+    queryKey: ['cards', 'search', query] as const,
+    queryFn: ({ signal }) => listCards(query, signal),
+    staleTime: STALE_MS,
+    retry: false,
+    enabled,
+  });
+}
+
 const PRICE_STALE_MS = 10 * 60 * 1000;
 
 /** TanStack Query hook for the card price history endpoint (F2-g S1). */

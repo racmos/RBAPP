@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-27 (F2-i implemented, batch 1 unit 16; F2-h done (#51)).
+Last update: 2026-10-28 (F2-k implemented, batch 1 unit 17; F2-i done (#52)).
 
 ## Phases
 
@@ -15,7 +15,7 @@ Last update: 2026-10-27 (F2-i implemented, batch 1 unit 16; F2-h done (#51)).
 | M-b Plan update | **Done** (#30) | `docs/requirements/M/M-b-plan-update.md`. |
 | M-c Hygiene | **Done** (#31) | `docs/requirements/M/M-c-hygiene.md`. |
 | F4 Prices + Dashboard | In progress — F4-a done (#32), F4-b done (#33); the rest waits (F4-c with F3) | F4-a + F4-b (job runner, daily Cardmarket load) right after M-c; F4-c with F3; the rest in the medium-priority group. `docs/requirements/F4/README.md`. |
-| F2 Catalog | In progress — F2-a…h done (#34, #45, #46, #47, #48, #49, #50, #51); F2-i implemented, k in batch 1 (unit 17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
+| F2 Catalog | In progress — F2-a…i done (#34, #45, #46, #47, #48, #49, #50, #51, #52); F2-k implemented (batch 1 unit 17) | `docs/requirements/F2/` (drafts adapted for batch 1 on 2026-10-25); F2-j (offline) and F2-l (thumbnails) in batch 2. |
 | M-d Images out of git | In review (#37) — batch 1, unit 1 | `docs/requirements/M/M-d-card-images-out-of-git.md`. |
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Planned — batch 1, units 18-26 (with F4-c) | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
@@ -110,7 +110,8 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
-| F2-i | implemented | `feat/f2i-catalog-desktop-wide` / TBD | Desktop sidebar, table view, wide preview (S1-S6): shared `CatalogFilters` (sheet/sidebar, collapsible, remembered), sticky sidebar layout, toolbar with per-page + table view, sortable 13/16-column table, `CatalogPreview` with 30d sparkline and `selected` param, delayed sidebar `aria-busy`, preview empty state; `docs/frontend.md` "Catalog" + storage keys. Vitest 226 → 255; pytest 787 unchanged. Next unit: **F2-k**. |
+| F2-k | implemented | `feat/f2k-card-combobox` / TBD | Card combobox + topbar search (S1-S7): `CardCombobox` (ARIA 1.2, 2-char threshold, 250 ms debounce, abort, `filters` pass-through, option content, "more" row, loading/empty/error/offline states through a live region), `useCardSearch`, `cards:combobox.*` ES/EN, topbar "Buscar cartas" box at ≥ 1240 px with `/` shortcut and key hint, selection opens `/cards/<set>/<id>` with `{fromCatalog: true}`; `docs/frontend.md` "CardCombobox". Vitest 255 → 288; pytest 787 unchanged. Next unit: **F3-a**. |
+| F2-i | done (#52) | `feat/f2i-catalog-desktop-wide` / #52 | Desktop sidebar, table view, wide preview (S1-S6): shared `CatalogFilters` (sheet/sidebar, collapsible, remembered), sticky sidebar layout, toolbar with per-page + table view, sortable 13/16-column table, `CatalogPreview` with 30d sparkline and `selected` param, delayed sidebar `aria-busy`, preview empty state; `docs/frontend.md` "Catalog" + storage keys. Vitest 226 → 255; pytest 787 unchanged. Next unit: **F2-k**. |
 | F2-h | done (#51) | `feat/f2h-catalog-page` / #51 | Catalog page + nav flip (S1-S13): `requestWithMeta`, `getGameMeta`/`listCards` (envelope-level meta fix), params parse/serialize/round-trip, `CatalogPage` (toolbar, sheet, chips, grid/list, pagination, scroll restore), `FilterChip`/`Pagination` primitives, `cards` → spa; `docs/frontend.md` "Catalog", AGENTS.md. Vitest 184 → 226; pytest 787 unchanged. Next unit: **F2-i**. |
 | F2-g | done (#50) | `feat/f2g-price-chart` / #50 | Price history chart + sparkline (S1-S7): `getCardPrices`/`useCardPrices` (keepPreviousData, 10-min stale), `scale.ts` (`linearScale` + `niceTicks`), `PriceChart` (measured SVG, keyboard, live region, table alternative), `CardPriceHistory` in the detail slot (`rb_price_range` remembered), `Sparkline`; `docs/frontend.md` "Charts". Vitest 148 → 184; pytest 787 unchanged. Next unit: **F2-h**. |
 | F2-f | done (#49) | `feat/f2f-card-detail-screen` / #49 | Card detail screen (S1-S11): `CardDetail` types, `getCard`, `useCardDetail` (5-min stale, no 404 retry), `/cards` layout + `/:setId/:cardId` route (page/modal, prev/next, Esc close), 11 sections, 1/2/3-column layouts, `parseAbility`/`AbilityText`, `Modal` sizes, skeleton/404/retry states; `docs/frontend.md` "Catalog", AGENTS.md. Vitest 103 → 148; pytest 787 unchanged. Next unit: **F2-g**. |

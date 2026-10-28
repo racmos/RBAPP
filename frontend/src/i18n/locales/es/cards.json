@@ -233,5 +233,17 @@
       "qty_other": "{{count}} copias",
       "none": "No está en ningún mazo tuyo."
     }
+  },
+  "combobox": {
+    "globalLabel": "Buscar cartas",
+    "globalPlaceholder": "Buscar cartas…",
+    "loading": "Buscando…",
+    "empty": "No hay cartas que coincidan con «{{query}}».",
+    "error": "No se pudo buscar. Inténtalo de nuevo.",
+    "offline": "La búsqueda necesita conexión.",
+    "more": "y {{count}} más: afina la búsqueda",
+    "results_one": "{{count}} resultado",
+    "results_many": "{{count}} resultados",
+    "results_other": "{{count}} resultados"
   }
 }

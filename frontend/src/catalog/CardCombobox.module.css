@@ -1,0 +1,133 @@
+@layer components {
+  .root {
+    position: relative;
+    min-width: 0;
+  }
+
+  .label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(5, 26, 34, 0.6);
+    color: var(--text);
+    font-size: 14px;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+
+  .input::placeholder {
+    color: var(--muted-2);
+  }
+
+  .input:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .popup {
+    position: absolute;
+    z-index: var(--z-popover);
+    top: calc(100% + 6px);
+    left: 0;
+    width: max(100%, min(420px, calc(100vw - 2 * var(--pad))));
+    max-height: 60dvh;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-3);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .list {
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+  }
+
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .option:hover,
+  .option[data-active] {
+    background: var(--accent-soft);
+  }
+
+  .option[data-active] {
+    box-shadow: inset 0 0 0 1px var(--accent-ring);
+  }
+
+  .thumb {
+    flex: none;
+    width: 32px;
+  }
+
+  .body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .name {
+    overflow: hidden;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .price {
+    flex: none;
+    color: var(--text);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .state,
+  .more {
+    padding: 12px 14px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .more {
+    border-top: 1px solid var(--line-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .input {
+      transition: none;
+    }
+  }
+}
