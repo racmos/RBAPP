@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { DebouncedInput } from '@/catalog';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -16,6 +17,7 @@ import { legacyHref } from '@/shell/legacyRoutes';
 import { AddSheet } from './AddSheet';
 import { CollectionFilters } from './CollectionFilters';
 import { CollectionItem } from './CollectionItem';
+import { ExportDialog } from './ExportDialog';
 import { LineSheet } from './LineSheet';
 import { DEFAULT_PAGE } from './params';
 import type { CollectionScreen } from './useCollectionScreen';
@@ -56,6 +58,8 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
     setFiltersOpen,
     addOpen,
     setAddOpen,
+    exportOpen,
+    setExportOpen,
     setOpen,
     openGroup,
     clearFilters,
@@ -135,7 +139,7 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
           action={{ label: t('add.open'), onAction: () => setAddOpen(true) }}
         />
         <p className={styles.importLink}>
-          <a href={legacyHref('collection')}>{t('empty.import')}</a>
+          <Link to="/collection/import">{t('empty.import')}</Link>
         </p>
       </>
     );
@@ -179,9 +183,22 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
             : undefined
         }
         actions={
-          <a className={styles.classic} href={legacyHref('collection')}>
-            {t('classic')}
-          </a>
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExportOpen(true)}
+              disabled={offline}
+            >
+              {t('export.open')}
+            </Button>
+            <Link className={styles.tool} to="/collection/import">
+              {t('import.open')}
+            </Link>
+            <a className={styles.classic} href={legacyHref('collection')}>
+              {t('classic')}
+            </a>
+          </>
         }
       />
 
@@ -289,6 +306,12 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
           onClose={() => setFiltersOpen(false)}
         />
       </Sheet>
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        params={params}
+        offline={offline}
+      />
       <AddSheet
         open={addOpen}
         onClose={() => setAddOpen(false)}

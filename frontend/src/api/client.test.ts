@@ -1,6 +1,6 @@
 /** AC1 (F13-f S1): `request` sends FormData without a JSON content type. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { request, requestWithMeta, setUnauthorizedHandler } from './client';
+import { request, requestFile, requestWithMeta, setUnauthorizedHandler } from './client';
 import { clearCsrfToken, setCsrfToken } from './csrf';
 
 afterEach(() => {
@@ -117,5 +117,87 @@ describe('requestWithMeta (F2-h S1)', () => {
     ]);
     const result = await requestWithMeta('/cards', { method: 'POST', body: {} });
     expect(result.data).toEqual({ items: [] });
+  });
+});
+
+describe('requestFile (F3-i S1)', () => {
+  function mockFetchFile(response: Response) {
+    const calls: { url: unknown; init: RequestInit }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: unknown, init: RequestInit) => {
+        calls.push({ url, init });
+        return response;
+      }),
+    );
+    return calls;
+  }
+
+  it('returns the body as a Blob with the file name and the exported rows', async () => {
+    const calls = mockFetchFile(
+      new Response('set_id,card_id\nOGN,79\n', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="rbapp_collection_20261028101500.csv"',
+          'X-Rows-Exported': '1',
+        },
+      }),
+    );
+    const file = await requestFile('/collection/export?format=rbapp');
+    expect(calls[0].url).toBe('/riftbound/api/v1/collection/export?format=rbapp');
+    expect(calls[0].init.method).toBe('GET');
+    expect(calls[0].init.credentials).toBe('same-origin');
+    expect(calls[0].init.signal).toBeInstanceOf(AbortSignal);
+    expect(file.filename).toBe('rbapp_collection_20261028101500.csv');
+    expect(file.rowsExported).toBe(1);
+    expect(await file.blob.text()).toBe('set_id,card_id\nOGN,79\n');
+  });
+
+  it('reads an unquoted file name and leaves missing headers null', async () => {
+    mockFetchFile(
+      new Response('x', {
+        status: 200,
+        headers: { 'Content-Disposition': 'attachment; filename=20261028_cardmarket.csv' },
+      }),
+    );
+    const file = await requestFile('/collection/export');
+    expect(file.filename).toBe('20261028_cardmarket.csv');
+    expect(file.rowsExported).toBeNull();
+    mockFetchFile(new Response('x', { status: 200 }));
+    expect((await requestFile('/collection/export')).filename).toBeNull();
+  });
+
+  it('throws the ApiError of a JSON failure and reports a 401', async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    mockFetchFile(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Unauthorized',
+          message: 'no',
+          code: 'unauthenticated',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    await expect(requestFile('/collection/export')).rejects.toMatchObject({
+      kind: 'http',
+      status: 401,
+      code: 'unauthenticated',
+    });
+    expect(handler).toHaveBeenCalled();
+    setUnauthorizedHandler(null);
+  });
+
+  it('a network failure is an ApiError of kind network', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    await expect(requestFile('/collection/export')).rejects.toMatchObject({ kind: 'network' });
   });
 });

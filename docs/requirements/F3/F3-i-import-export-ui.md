@@ -127,3 +127,12 @@ that only that card changed.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no mobile overflow menu exists; on mobile "Exportar" and "Importar" sit in the `PageHeader` actions next to "Versión clásica".
+- L2 (implementer): the toolbar "Exportar" button is disabled offline too; the dialog shows no offline text because `common:offline.editDisabled` ("cambios") does not fit a download.
+- L3 (implementer): the step indicator is `StepIndicator`; `Stepper` is the existing numeric control of F3-g.
+- L4 (implementer): the review table reuses `collection:table.columns.*` for foil, qty, condition, language and price headers; no strings outside the spec table were added.
+- L5 (implementer): the review step's "Siguiente" is disabled when no row is ok or warning; reason codes are de-duplicated before joining (the backend can send `invalid_value` twice); a chosen file wins over pasted text; pasted text over 2 MB is refused too.
+- L6 (implementer): no screenshots (not deployed, no browser run). The Cardmarket file name comes from `Content-Disposition` via the new `requestFile` helper in `api/client.ts` (the only module that calls `fetch`).

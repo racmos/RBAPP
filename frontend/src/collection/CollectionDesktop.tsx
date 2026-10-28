@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { DebouncedInput } from '@/catalog';
 import type { CollectionGroup, CollectionSort } from '@/api/types';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +22,7 @@ import { CollectionFilters } from './CollectionFilters';
 import { CollectionItem } from './CollectionItem';
 import { CollectionPanel } from './CollectionPanel';
 import { CollectionTable } from './CollectionTable';
+import { ExportDialog } from './ExportDialog';
 import { LineSheet } from './LineSheet';
 import { DEFAULT_PAGE, serializeCollectionParams } from './params';
 import { fetchFilteredLineIds, MAX_SELECTION } from './queries';
@@ -64,6 +66,8 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
     setView,
     addOpen,
     setAddOpen,
+    exportOpen,
+    setExportOpen,
     open,
     setOpen,
     openGroup,
@@ -120,7 +124,7 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
           action={{ label: t('add.open'), onAction: () => setAddOpen(true) }}
         />
         <p className={styles.importLink}>
-          <a href={legacyHref('collection')}>{t('empty.import')}</a>
+          <Link to="/collection/import">{t('empty.import')}</Link>
         </p>
       </>
     );
@@ -218,6 +222,12 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
                 <Button onClick={() => setAddOpen(true)} disabled={offline}>
                   {t('add.open')}
                 </Button>
+                <Button variant="ghost" onClick={() => setExportOpen(true)} disabled={offline}>
+                  {t('export.open')}
+                </Button>
+                <Link className={styles.tool} to="/collection/import">
+                  {t('import.open')}
+                </Link>
                 <a className={styles.classic} href={legacyHref('collection')}>
                   {t('classic')}
                 </a>
@@ -331,6 +341,12 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
         {wide && <CollectionPanel group={active} lang={lang} />}
       </div>
 
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        params={params}
+        offline={offline}
+      />
       <AddSheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
