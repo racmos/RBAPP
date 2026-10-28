@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/FilterChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Input } from '@/components/ui/Input';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Pagination } from '@/components/ui/Pagination';
 import { Sheet } from '@/components/ui/Sheet';
@@ -31,6 +30,7 @@ import {
   withChange,
 } from './params';
 import { useCardList, useGameMeta } from './queries';
+import { DebouncedInput } from './DebouncedInput';
 import styles from './CatalogPage.module.css';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -74,17 +74,6 @@ function useCatalogParams() {
   );
 
   return [params, setParams] as const;
-}
-
-function useDebouncedCallback<T extends (...args: never[]) => void>(callback: T, delay: number) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  return useCallback(
-    (...args: Parameters<T>) => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => callback(...args), delay);
-    },
-    [callback, delay],
-  );
 }
 
 export function CatalogPage() {
@@ -170,9 +159,9 @@ export function CatalogPage() {
     setParams({ per_page: nextPerPage });
   };
 
-  const handleSearchChange = useDebouncedCallback((value: string) => {
+  const handleSearchChange = (value: string) => {
     setParams({ q: value || undefined }, { replace: true });
-  }, SEARCH_DEBOUNCE_MS);
+  };
 
   const handlePageChange = (nextPage: number) => {
     setParams({ page: nextPage });
@@ -458,41 +447,24 @@ type SearchInputProps = {
 
 function SearchInput({ value, onChange }: SearchInputProps) {
   const { t } = useTranslation('cards');
-  const [local, setLocal] = useState(value);
   const id = useId();
 
-  /* eslint-disable react-hooks/set-state-in-effect -- derived reset on prop change */
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (local !== (value ?? '')) {
-        onChange(local);
-      }
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [local, onChange, value]);
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    onChange(local);
-  };
-
   return (
-    <form onSubmit={handleSubmit} className={styles.search}>
+    <form
+      onSubmit={(event: FormEvent<HTMLFormElement>) => event.preventDefault()}
+      className={styles.search}
+    >
       <label htmlFor={id} className="sr-only">
         {t('catalog.search.label')}
       </label>
-      <Input
+      <DebouncedInput
         id={id}
         type="search"
         enterKeyHint="search"
         placeholder={t('catalog.search.placeholder')}
-        value={local}
-        onChange={(event) => setLocal(event.target.value)}
+        value={value}
+        delay={SEARCH_DEBOUNCE_MS}
+        onCommit={onChange}
       />
     </form>
   );

@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-10-28 (F2-k implemented, batch 1 unit 17; F2-i done (#52)).
+Last update: 2026-10-28 (F2-k done (#53); catalog typing fix).
 
 ## Phases
 
@@ -110,6 +110,7 @@ The legacy scraper write path is gone (F13-c): the sync inserts new cards with `
 
 | Unit | Status | Branch / PR | Notes |
 |---|---|---|---|
+| F2-fix | in review | `fix/catalog-search-typing` / TBD | Typing bug in the catalog: inputs whose value lives in the URL (search, "text" facet, numeric ranges) lost letters when the URL answered a debounced commit (search) or on every keystroke (ranges). New `DebouncedInput` keeps local text and adopts the URL only for outside changes; single debounce. Vitest 288 → 291; pytest unchanged. |
 | F2-k | in review (#53) | `feat/f2k-card-combobox` / #53 | Card combobox + topbar search (S1-S7): `CardCombobox` (ARIA 1.2, 2-char threshold, 250 ms debounce, abort, `filters` pass-through, option content, "more" row, loading/empty/error/offline states through a live region), `useCardSearch`, `cards:combobox.*` ES/EN, topbar "Buscar cartas" box at ≥ 1240 px with `/` shortcut and key hint, selection opens `/cards/<set>/<id>` with `{fromCatalog: true}`; `docs/frontend.md` "CardCombobox". Vitest 255 → 288; pytest 787 unchanged. Next unit: **F3-a**. |
 | F2-i | done (#52) | `feat/f2i-catalog-desktop-wide` / #52 | Desktop sidebar, table view, wide preview (S1-S6): shared `CatalogFilters` (sheet/sidebar, collapsible, remembered), sticky sidebar layout, toolbar with per-page + table view, sortable 13/16-column table, `CatalogPreview` with 30d sparkline and `selected` param, delayed sidebar `aria-busy`, preview empty state; `docs/frontend.md` "Catalog" + storage keys. Vitest 226 → 255; pytest 787 unchanged. Next unit: **F2-k**. |
 | F2-h | done (#51) | `feat/f2h-catalog-page` / #51 | Catalog page + nav flip (S1-S13): `requestWithMeta`, `getGameMeta`/`listCards` (envelope-level meta fix), params parse/serialize/round-trip, `CatalogPage` (toolbar, sheet, chips, grid/list, pagination, scroll restore), `FilterChip`/`Pagination` primitives, `cards` → spa; `docs/frontend.md` "Catalog", AGENTS.md. Vitest 184 → 226; pytest 787 unchanged. Next unit: **F2-i**. |

@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CardFacets, CardListParams, GameMeta } from '@/api/types';
 import { Button } from '@/components/ui/Button';
@@ -6,13 +6,13 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { ChipGroup, FilterChip } from '@/components/ui/FilterChip';
 import { Field } from '@/components/ui/Field';
 import { Icon } from '@/components/ui/Icon';
-import { Input } from '@/components/ui/Input';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import { useEnumLabel } from '@/i18n';
 import { domainColor, rarityColor } from '@/lib/domains';
 import { readStorage, writeStorage } from '@/lib/storage';
+import { DebouncedInput } from './DebouncedInput';
 import styles from './CatalogFilters.module.css';
 
 const INPUT_DEBOUNCE_MS = 300;
@@ -68,17 +68,6 @@ function writeOpenGroups(groups: GroupId[]): void {
   writeStorage(FACET_STORAGE_KEY, JSON.stringify(groups));
 }
 
-function useDebouncedCallback<T extends (...args: never[]) => void>(callback: T, delay: number) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  return useCallback(
-    (...args: Parameters<T>) => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => callback(...args), delay);
-    },
-    [callback, delay],
-  );
-}
-
 export function CatalogFilters({
   mode,
   params,
@@ -91,7 +80,6 @@ export function CatalogFilters({
 }: CatalogFiltersProps) {
   const { t } = useTranslation('cards');
   const { label } = useEnumLabel();
-  const debouncedSetParams = useDebouncedCallback(setParams, INPUT_DEBOUNCE_MS);
 
   const [openGroups, setOpenGroups] = useState<GroupId[]>(() => readOpenGroups());
 
@@ -272,7 +260,7 @@ export function CatalogFilters({
       min={params[minKey]}
       max={params[maxKey]}
       step={step}
-      onChange={(patch) => debouncedSetParams(patch)}
+      onChange={setParams}
     />
   );
 
@@ -322,11 +310,12 @@ export function CatalogFilters({
   const renderText = () => (
     <Field label={t('catalog.facet.text')}>
       {(props) => (
-        <Input
+        <DebouncedInput
           {...props}
           type="search"
           value={params.text ?? ''}
-          onChange={(event) => debouncedSetParams({ text: event.target.value || undefined })}
+          delay={INPUT_DEBOUNCE_MS}
+          onCommit={(next) => setParams({ text: next || undefined })}
         />
       )}
     </Field>
@@ -370,7 +359,7 @@ export function CatalogFilters({
       { id: 'tags', title: t('catalog.facet.tags'), render: () => renderTags() },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, label, mode, meta, facets, params, setParams, debouncedSetParams, toggleArray, showCount],
+    [t, label, mode, meta, facets, params, setParams, toggleArray, showCount],
   );
 
   if (mode === 'sheet') {
@@ -458,7 +447,6 @@ type RangeGroupProps = {
 
 function RangeGroup({ label, minKey, maxKey, min, max, step, onChange }: RangeGroupProps) {
   const { t } = useTranslation('cards');
-  const debounced = useDebouncedCallback(onChange, INPUT_DEBOUNCE_MS);
 
   return (
     <fieldset className={styles.fieldset}>
@@ -466,35 +454,29 @@ function RangeGroup({ label, minKey, maxKey, min, max, step, onChange }: RangeGr
       <div className={styles.range}>
         <Field label={t('catalog.facet.min')}>
           {(props) => (
-            <Input
+            <DebouncedInput
               {...props}
               type="number"
               min={0}
               max={99}
               step={step}
-              value={min ?? ''}
-              onChange={(event) =>
-                debounced({
-                  [minKey]: event.target.value === '' ? undefined : Number(event.target.value),
-                })
-              }
+              value={min === undefined ? '' : String(min)}
+              delay={INPUT_DEBOUNCE_MS}
+              onCommit={(next) => onChange({ [minKey]: next === '' ? undefined : Number(next) })}
             />
           )}
         </Field>
         <Field label={t('catalog.facet.max')}>
           {(props) => (
-            <Input
+            <DebouncedInput
               {...props}
               type="number"
               min={0}
               max={99}
               step={step}
-              value={max ?? ''}
-              onChange={(event) =>
-                debounced({
-                  [maxKey]: event.target.value === '' ? undefined : Number(event.target.value),
-                })
-              }
+              value={max === undefined ? '' : String(max)}
+              delay={INPUT_DEBOUNCE_MS}
+              onCommit={(next) => onChange({ [maxKey]: next === '' ? undefined : Number(next) })}
             />
           )}
         </Field>

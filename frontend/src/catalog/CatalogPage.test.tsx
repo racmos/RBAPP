@@ -34,6 +34,31 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     expect(screen.getByRole('link', { name: /Ayla/ })).toBeVisible();
   });
 
+  it('keeps a letter typed while the URL catches up with the previous ones', async () => {
+    signedInApi();
+    const { where } = await renderApp({ path: '/cards', width: 390 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    const input = screen.getByPlaceholderText('Nombre, etiqueta o número');
+    const user = userEvent.setup();
+    await user.type(input, 'ay');
+    // The previous letters are on their way to the URL: type the next one right then.
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    await user.type(input, 'l');
+    await waitFor(() => expect(where()).toBe('/cards?q=ayl'), LONG);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(input).toHaveValue('ayl');
+  }, 15000);
+
+  it('still follows the URL when the search is changed from outside', async () => {
+    signedInApi();
+    const { router, where } = await renderApp({ path: '/cards?q=ayl', width: 390 });
+    const input = await screen.findByPlaceholderText('Nombre, etiqueta o número', {}, LONG);
+    expect(input).toHaveValue('ayl');
+    await router.navigate('/cards');
+    await waitFor(() => expect(input).toHaveValue(''), LONG);
+    expect(where()).toBe('/cards');
+  }, 15000);
+
   it('opens the filter sheet and shows domain chips with counts', async () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
