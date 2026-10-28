@@ -392,6 +392,37 @@ Device storage keys: `rb_cards_view` (`grid` | `list` | `table`), `rb_cards_face
 `legacyHref`, not router navigation. The detail data comes from `getCard` (`GET
 /riftbound/api/v1/cards/<set>/<id>`, F2-d); the MSW handler serves the `cardDetail` fixture.
 
+## Collection (F3-g)
+
+`frontend/src/collection/` is the `/collection` screen (nav entry `collection` is `spa`; the Jinja page
+stays linked as "Versión clásica"). Below 1240 px it is a grid or a list, and until F3-h it is the same
+layout on a desktop.
+
+- `params.ts` — URL ⇄ `GET /collection` params (F3-b names): defaults `sort=number`, `per_page=50`
+  are never written, invalid values are dropped, any change but `page` returns to page 1.
+  `queries.ts` — `useCollectionList` (key `['collection', 'list', <query>]`) and one mutation hook per
+  write (`useAddLine`, `usePatchLine`, `useDeleteLine`, `useSplitLine`, `useKeepPlayset`); every mutation
+  refreshes `['collection']` and `['cards']` (the owned counts of the catalog).
+- `CollectionPage` — header with the summary line, summary strip (copies, unique, value), search
+  (`DebouncedInput`, writes `q`), toolbar (filters sheet with the count of active ones, sort, direction,
+  grid/list; the start view comes from the `collection_view` preference, `table` meaning the list,
+  Auto the grid), removable chips, `Pagination`, and a floating "Añadir carta" button. States: skeleton,
+  empty collection, empty filters, error with retry, offline (the button and every edit control are
+  disabled with `common:offline.editDisabled`).
+- `CollectionItem` — tile or row. A group whose `playset_short` is true gets an outline **and** the text
+  "Playset incompleto (kept/size)"; `kept` comes from the API (`CollectionGroup.kept`).
+- `LineSheet` — the lines of a group: quantity stepper, condition and language selects, purchase price,
+  selling switch, copies to sell, sale price. Each change is a `PATCH` that sends the change time the
+  server last returned (`if_updated_at`, `useLineSaver`); saves of one line run one after another, typed
+  numbers wait 500 ms, and a failure (`stale_line` included) shows the translated message and reloads the
+  list. "Separar copias" splits, "Eliminar" asks first and then offers "Deshacer" for 8 s (it posts the
+  deleted line back). The "keep a playset" checkbox calls `keep-playset`.
+- `AddSheet` — `CardCombobox`, foil (off, with a reason, for a card without a foil version), quantity,
+  condition, language, purchase price, selling; it stays open for the next card.
+- The playset size is set in `/account/interface` (`collection:settings.*`, `PATCH /me/prefs`
+  `playset_size`, empty = 3). Condition and language labels live in the `enums` namespace.
+- ESLint: `collection` may import everything below `app`, like `catalog`.
+
 ## Charts
 
 Charts are hand-made SVG components in `frontend/src/components/charts/`. There is no chart

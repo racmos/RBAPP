@@ -32,7 +32,7 @@ class TestGroups:
     def test_a_group_has_the_contract_keys(self, api):
         group = get(api)['data']['items'][0]
         assert list(group) == ['key', 'card', 'foil', 'qty', 'sell_qty', 'value', 'lines',
-                               'keep_playset', 'playset_short']
+                               'keep_playset', 'playset_short', 'kept']
         assert group['card']['name'] == 'Alpha Fury'
         assert group['card']['key'] == 'OGN-1'
         assert (group['foil'], group['qty'], group['sell_qty']) == (False, 6, 1)

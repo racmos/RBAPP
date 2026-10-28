@@ -189,3 +189,12 @@ with 2 copies and see the red warning, delete and undo.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): `CollectionGroup` gains `kept` (copies not for sale of every printing of the name). The tile text "Playset incompleto (kept/size)" needs it and the group did not carry it; the change is additive (`docs/api.md`, `tests/test_api_collection_playset.py`).
+- L2 (implementer): the group value is shown with `formatMoney` instead of `PriceTag` (a total is not a price object).
+- L3 (implementer): the `collection_view` preference `table` starts the list view (this screen has grid and list only).
+- L4 (implementer): above 1240 px the screen is still the mobile layout; F3-h adds the desktop one.
+- L5 (implementer): the 8-second undo is checked by the toast's `duration` (8000) and by posting the line back, not with fake timers (the toast timer is the toast component's).
+- L6 (implementer): condition and language filter chips take their values from `/meta/game`; domain and type have no counts because `GET /collection` has no facets for them. `condition`/`language` enum keys use the stored values as they are (`Simplified Chinese` works as an i18next key), so no key-mapping helper was needed.

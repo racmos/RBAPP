@@ -77,8 +77,8 @@ export const NAV: readonly NavEntry[] = [
   {
     id: 'collection',
     icon: 'collection',
-    status: 'legacy',
-    legacy: 'collection',
+    status: 'spa',
+    to: '/collection',
     placements: ['top', 'bottom', 'hub', 'more'],
   },
   {

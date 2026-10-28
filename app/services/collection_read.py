@@ -351,6 +351,7 @@ def list_collection(query: CollectionListQuery, user) -> dict:
             'lines': [_line_json(m) for m in members],
             'keep_playset': keep,
             'playset_short': keep and kept_by_name[name] < size,
+            'kept': kept_by_name[name],
         })
 
     return {

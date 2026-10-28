@@ -138,6 +138,10 @@ export type GameMeta = {
   sets: { id: string; name: string; released_on: string | null; card_count: number }[];
   price: { provider: string; currency: string; updated_on: string | null };
   rules: Record<string, unknown>;
+  /** Card conditions, best to worst (F3-b). */
+  conditions: string[];
+  /** Languages the collection offers (F3-b). */
+  languages: string[];
 };
 
 export type CardListSort =
@@ -272,4 +276,135 @@ export type ErrorEnvelope = {
   code?: string;
   params?: ErrorParams;
   details?: ErrorDetail[];
+};
+
+/** One row of the collection (`CollectionLine`, F3-b); money is in EUR. */
+export type CollectionLine = {
+  id: number;
+  foil: boolean;
+  qty: number;
+  condition: string | null;
+  language: string | null;
+  purchase_price: number | null;
+  selling: boolean;
+  sell_qty: number;
+  sell_price: number | null;
+  updated_at: string;
+  market: number | null;
+  value: number | null;
+  pl_abs: number | null;
+  pl_pct: number | null;
+};
+
+/** A line as the write endpoints return it. */
+export type CollectionLineWithCard = CollectionLine & { set_id: string; card_id: string };
+
+/** A printing and foil of the collection with its lines (`CollectionGroup`, F3-b). */
+export type CollectionGroup = {
+  key: string;
+  card: CardSummary;
+  foil: boolean;
+  qty: number;
+  sell_qty: number;
+  value: number | null;
+  lines: CollectionLine[];
+  keep_playset: boolean;
+  playset_short: boolean;
+  /** Copies not for sale across every printing of the card name. */
+  kept: number;
+};
+
+export type CollectionTotals = {
+  lines: number;
+  qty: number;
+  unique: number;
+  value: number;
+  cost: number | null;
+  pl: number | null;
+  selling_value: number;
+  foil_pct: number;
+};
+
+export type CollectionFacets = {
+  set?: Record<string, number>;
+  rarity?: Record<string, number>;
+  condition?: Record<string, number>;
+  language?: Record<string, number>;
+  foil?: { foil: number; nonfoil: number };
+};
+
+/** `meta` of `GET /collection`. */
+export type CollectionMeta = {
+  page: number;
+  per_page: number;
+  total_groups: number;
+  pages: number;
+  totals: CollectionTotals;
+  facets: CollectionFacets;
+  price_as_of: string | null;
+  playset_size: number;
+};
+
+export type CollectionSort =
+  'number' | 'name' | 'price' | 'qty' | 'value' | 'pl' | 'trend_7d' | 'updated' | 'rarity';
+
+/** Query of `GET /collection` (F3-b). */
+export type CollectionParams = {
+  q?: string;
+  set?: string[];
+  domain?: string[];
+  type?: string[];
+  rarity?: string[];
+  condition?: string[];
+  language?: string[];
+  foil?: 'any' | 'foil' | 'nonfoil';
+  selling?: 'any' | 'yes' | 'no';
+  has_purchase?: 'any' | 'yes' | 'no';
+  sort?: CollectionSort;
+  dir?: 'asc' | 'desc';
+  page?: number;
+  per_page?: number;
+};
+
+/** Body of `POST /collection` (F3-c). */
+export type CollectionAddBody = {
+  set_id: string;
+  card_id: string;
+  foil: boolean;
+  qty: number;
+  condition?: string | null;
+  language?: string | null;
+  purchase_price?: number | null;
+  selling?: boolean;
+  sell_qty?: number;
+  sell_price?: number | null;
+};
+
+/** Body of `PATCH /collection/:id`; only the keys sent change. */
+export type CollectionPatchBody = Partial<{
+  qty: number;
+  condition: string | null;
+  language: string | null;
+  purchase_price: number | null;
+  selling: boolean;
+  sell_qty: number;
+  sell_price: number | null;
+  if_updated_at: string;
+}>;
+
+export type CollectionSplitBody = {
+  qty: number;
+  condition?: string | null;
+  language?: string | null;
+  purchase_price?: number | null;
+  selling?: boolean;
+  sell_price?: number | null;
+};
+
+export type KeepPlaysetResult = {
+  name: string;
+  keep_playset: boolean;
+  kept: number;
+  playset_size: number;
+  playset_short: boolean;
 };

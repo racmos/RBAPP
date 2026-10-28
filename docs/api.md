@@ -295,11 +295,11 @@ price of the line's own foil, `value` = market x qty, `pl_abs` = (market - purch
 `pl_pct` = (market - purchase) / purchase x 100, both null unless there is a market price and
 a purchase price above 0.
 `CollectionGroup` = `{key ("<set>-<id>:N" or ":S"), card: CardSummary, foil (bool), qty,
-sell_qty, value|null, lines: [CollectionLine] (by id), keep_playset, playset_short}`.
+sell_qty, value|null, lines: [CollectionLine] (by id), keep_playset, playset_short, kept}`.
 `keep_playset` is true when the user marked the card name (`rbkeepplayset`);
 `playset_short` is true when it is kept and the copies not for sale (`qty - sell_qty`) of
 **every** printing and foil of that name, whatever the filters, are fewer than the user's
-playset size (3 by default). `GET /cards/<set>/<id>` `my_lines[]` also carry
+playset size (3 by default); `kept` is that number of copies (also for names not marked; F3-g). `GET /cards/<set>/<id>` `my_lines[]` also carry
 `purchase_price` and `sell_qty`.
 
 ## Admin API

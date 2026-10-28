@@ -1,0 +1,127 @@
+{
+  "title": "Colección",
+  "classic": "Versión clásica",
+  "summary": {
+    "line": "Copias: {{qty}} · Únicas: {{unique}} · Valor: {{value}}",
+    "copies": "Copias",
+    "unique": "Únicas",
+    "value": "Valor"
+  },
+  "search": {
+    "label": "Buscar en tu colección",
+    "placeholder": "Nombre, número o etiqueta"
+  },
+  "filters": {
+    "open": "Filtros",
+    "title": "Filtrar colección",
+    "foil": "Foil",
+    "foilAny": "Todas",
+    "foilOnly": "Solo foil",
+    "nonfoilOnly": "Sin foil",
+    "selling": "En venta",
+    "condition": "Estado",
+    "language": "Idioma",
+    "hasPurchase": "Con precio de compra",
+    "any": "Da igual",
+    "yes": "Sí",
+    "no": "No",
+    "set": "Set",
+    "domain": "Dominio",
+    "type": "Tipo",
+    "rarity": "Rareza",
+    "remove": "Quitar filtro {{label}}",
+    "active_one": "{{count}} filtro activo",
+    "active_many": "{{count}} filtros activos",
+    "active_other": "{{count}} filtros activos",
+    "show_one": "Ver {{count}} carta",
+    "show_many": "Ver {{count}} cartas",
+    "show_other": "Ver {{count}} cartas"
+  },
+  "sort": {
+    "label": "Ordenar por",
+    "number": "Número",
+    "name": "Nombre",
+    "price": "Precio",
+    "qty": "Copias",
+    "value": "Valor",
+    "pl": "Ganancia",
+    "trend_7d": "Cambio 7 d",
+    "updated": "Última modificación",
+    "rarity": "Rareza",
+    "direction": "Cambiar sentido del orden"
+  },
+  "view": {
+    "label": "Vista",
+    "grid": "Cuadrícula",
+    "list": "Lista"
+  },
+  "foil": "Foil",
+  "selling": {
+    "tag": "En venta: {{count}}"
+  },
+  "qtyBadge": "×{{count}}",
+  "playset": {
+    "keep": "Mantener un playset de esta carta",
+    "short": "Playset incompleto ({{kept}}/{{size}})",
+    "warning": "Copias sin vender: {{kept}} de {{size}}."
+  },
+  "line": {
+    "title": "Copias de {{name}}",
+    "legend": "Línea {{index}}",
+    "qty": "Copias",
+    "condition": "Estado",
+    "language": "Idioma",
+    "noValue": "Sin especificar",
+    "purchasePrice": "Precio de compra (unidad)",
+    "selling": "En venta",
+    "sellQty": "Copias a vender",
+    "sellPrice": "Precio de venta (unidad)",
+    "split": "Separar copias",
+    "splitQty": "Copias a separar",
+    "splitSubmit": "Separar",
+    "delete": "Eliminar",
+    "more": "Más copias",
+    "fewer": "Menos copias",
+    "confirmDelete": {
+      "title": "¿Eliminar esta línea?",
+      "body_one": "Se quitará {{count}} copia de tu colección.",
+      "body_many": "Se quitarán {{count}} copias de tu colección.",
+      "body_other": "Se quitarán {{count}} copias de tu colección."
+    },
+    "deleted": "Línea eliminada.",
+    "undo": "Deshacer",
+    "restored": "Línea restaurada.",
+    "saved": "Guardado.",
+    "split_done": "Copias separadas.",
+    "euro": "euros"
+  },
+  "add": {
+    "open": "Añadir carta",
+    "title": "Añadir a la colección",
+    "card": "Carta",
+    "foil": "Foil",
+    "foilNotAvailable": "Esta carta no tiene versión foil.",
+    "submit": "Añadir",
+    "added": "Añadida a tu colección.",
+    "merged": "Sumada a una línea que ya tenías.",
+    "chosen": "Carta elegida: {{name}}",
+    "chooseFirst": "Elige primero una carta."
+  },
+  "empty": {
+    "title": "Tu colección está vacía",
+    "body": "Añade cartas una a una o importa un fichero.",
+    "import": "Importar"
+  },
+  "emptyFilters": "Ninguna carta de tu colección coincide con los filtros.",
+  "clearFilters": "Limpiar filtros",
+  "error": "No se pudo cargar tu colección.",
+  "loading": "Cargando tu colección…",
+  "settings": {
+    "title": "Colección",
+    "playsetSize": "Tamaño del playset",
+    "playsetHint": "Copias que quieres conservar de cada carta marcada. Por defecto, 3."
+  },
+  "count_one": "{{count}} carta",
+  "count_many": "{{count}} cartas",
+  "count_other": "{{count}} cartas"
+}

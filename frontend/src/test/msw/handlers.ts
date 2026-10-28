@@ -1,6 +1,7 @@
 import { HttpResponse, http } from 'msw';
 import type { PricePoint } from '@/api/types';
 import { cardDetail, cardList } from '@/test/fixtures/cards';
+import { aylaLines, collectionGroups, collectionMeta, withCard } from '@/test/fixtures/collection';
 
 /** Base of the API as the SPA sees it (same-origin, behind Nginx). */
 export const API = '/riftbound/api/v1';
@@ -77,6 +78,8 @@ export const handlers = [
       sets: [{ id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 }],
       price: { provider: 'cardmarket', currency: 'EUR', updated_on: '2026-10-25T00:00:00Z' },
       rules: {},
+      conditions: ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'],
+      languages: ['English', 'French', 'German', 'Spanish', 'Italian'],
     }),
   ),
   // The real `GET /cards` envelope carries `meta` next to `data` (F2-c contract).
@@ -107,6 +110,54 @@ export const handlers = [
       },
       { status: 200 },
     );
+  }),
+  http.get(`${API}/collection`, ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') ?? '').toLowerCase();
+    const foil = url.searchParams.get('foil');
+    const selling = url.searchParams.get('selling');
+    let items = collectionGroups;
+    if (q) items = items.filter((group) => group.card.name.toLowerCase().includes(q));
+    if (foil === 'foil') items = items.filter((group) => group.foil);
+    if (foil === 'nonfoil') items = items.filter((group) => !group.foil);
+    if (selling === 'yes') items = items.filter((group) => group.sell_qty > 0);
+    return HttpResponse.json(
+      {
+        success: true,
+        data: { items },
+        meta: { ...collectionMeta, total_groups: items.length, pages: items.length ? 1 : 0 },
+      },
+      { status: 200 },
+    );
+  }),
+  http.post(`${API}/collection`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return ok({ line: { ...withCard(aylaLines[0]), ...body, id: 9001 }, merged: false }, 201);
+  }),
+  http.patch(`${API}/collection/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return ok({ ...withCard(aylaLines[0]), ...body, id: Number(params.id) });
+  }),
+  http.delete(`${API}/collection/:id`, ({ params }) =>
+    ok({ deleted: { ...withCard(aylaLines[0]), id: Number(params.id) } }),
+  ),
+  http.post(`${API}/collection/:id/split`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return ok({
+      source: { ...withCard(aylaLines[0]), id: Number(params.id), qty: 1 },
+      target: { ...withCard(aylaLines[0]), ...body, id: 9002 },
+      merged: false,
+    });
+  }),
+  http.post(`${API}/collection/keep-playset`, async ({ request }) => {
+    const body = (await request.json()) as { keep: boolean };
+    return ok({
+      name: "Ayla, Fury's Champion",
+      keep_playset: body.keep,
+      kept: 3,
+      playset_size: 3,
+      playset_short: false,
+    });
   }),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {

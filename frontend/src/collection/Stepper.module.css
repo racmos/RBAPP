@@ -1,0 +1,44 @@
+@layer components {
+  .stepper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .label {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(120, 205, 228, 0.06);
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .button:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  .button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .input {
+    width: 76px;
+    text-align: center;
+  }
+}

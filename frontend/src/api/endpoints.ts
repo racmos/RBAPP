@@ -6,7 +6,14 @@ import type {
   CardListMeta,
   CardPricesData,
   CardSummary,
+  CollectionAddBody,
+  CollectionGroup,
+  CollectionLineWithCard,
+  CollectionMeta,
+  CollectionPatchBody,
+  CollectionSplitBody,
   GameMeta,
+  KeepPlaysetResult,
   LoginBody,
   MetaConfig,
   Prefs,
@@ -212,3 +219,33 @@ export const getCardPrices = (
     `/cards/${encodeURIComponent(setId)}/${encodeURIComponent(cardId)}/prices?range=${range}`,
     { signal },
   );
+
+// --- Collection (F3-b, F3-c) ---
+
+/** `GET /collection`; the caller serialises the params with `serializeCollectionParams`. */
+export const listCollection = (query: string, signal?: AbortSignal) =>
+  requestWithMeta<{ items: CollectionGroup[] }, CollectionMeta>(
+    `/collection${query ? `?${query}` : ''}`,
+    { signal },
+  );
+
+export const addCollectionLine = (body: CollectionAddBody) =>
+  request<{ line: CollectionLineWithCard; merged: boolean }>('/collection', {
+    method: 'POST',
+    body,
+  });
+
+export const patchCollectionLine = (id: number, body: CollectionPatchBody) =>
+  request<CollectionLineWithCard>(`/collection/${id}`, { method: 'PATCH', body });
+
+export const deleteCollectionLine = (id: number) =>
+  request<{ deleted: CollectionLineWithCard }>(`/collection/${id}`, { method: 'DELETE' });
+
+export const splitCollectionLine = (id: number, body: CollectionSplitBody) =>
+  request<{ source: CollectionLineWithCard; target: CollectionLineWithCard; merged: boolean }>(
+    `/collection/${id}/split`,
+    { method: 'POST', body },
+  );
+
+export const keepPlayset = (body: { set_id: string; card_id: string; keep: boolean }) =>
+  request<KeepPlaysetResult>('/collection/keep-playset', { method: 'POST', body });

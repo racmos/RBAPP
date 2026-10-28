@@ -1,0 +1,140 @@
+@layer components {
+  .page {
+    width: 100%;
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--pad);
+    padding-bottom: 96px;
+  }
+
+  .classic {
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+  }
+
+  .classic:hover {
+    color: var(--accent);
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .summary > div {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .summary dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .summary dd {
+    margin: 2px 0 0;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+
+  .search {
+    margin-bottom: 12px;
+  }
+
+  .search input {
+    width: 100%;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .sort {
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+
+  .count {
+    min-width: 20px;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .grid,
+  .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .grid > li,
+  .list > li {
+    min-width: 0;
+  }
+
+  .importLink {
+    text-align: center;
+  }
+
+  .fab {
+    position: fixed;
+    z-index: var(--z-popover);
+    right: calc(16px + var(--safe-right, 0px));
+    bottom: calc(76px + var(--safe-bottom, 0px));
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: var(--shadow-pop);
+    color: var(--accent-ink);
+    cursor: pointer;
+  }
+
+  .fab:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (min-width: 860px) {
+    .fab {
+      bottom: 24px;
+    }
+  }
+}

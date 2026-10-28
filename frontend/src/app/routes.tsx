@@ -93,6 +93,12 @@ export function createAppRoutes(
                   ],
                 },
                 {
+                  path: '/collection',
+                  lazy: async () => ({
+                    Component: (await import('@/collection')).CollectionPage,
+                  }),
+                },
+                {
                   path: '/admin',
                   loader: requireAdmin(queryClient),
                   lazy: async () => ({

@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DebouncedInput } from '@/catalog';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl, type SegmentedOption } from '@/components/ui/SegmentedControl';
 import { SettingsCard, SettingsRow } from '@/components/ui/SettingsCard';
@@ -49,6 +50,7 @@ const fromControl = <T extends string>(value: Auto<T>): T | null => (value === A
  */
 export function InterfacePage() {
   const { t } = useTranslation('prefs');
+  const { t: tCollection } = useTranslation('collection');
   const { prefs, effective, set, flush, setLanguage, offline } = usePrefs();
   const wide = useMediaQuery(up('xl'));
   useDocumentTitle(t('interface.title'));
@@ -142,6 +144,30 @@ export function InterfacePage() {
                 value={toControl(prefs.collection_view)}
                 onChange={(value) => set('collection_view', fromControl(value))}
                 disabled={offline}
+              />
+            )}
+          </Setting>
+        </SettingsCard>
+
+        <SettingsCard title={tCollection('settings.title')}>
+          <Setting
+            label={tCollection('settings.playsetSize')}
+            hint={tCollection('settings.playsetHint')}
+          >
+            {(labelledBy) => (
+              <DebouncedInput
+                type="number"
+                inputMode="numeric"
+                aria-labelledby={labelledBy}
+                min={1}
+                max={9}
+                disabled={offline}
+                value={prefs.playset_size === null ? '' : String(prefs.playset_size)}
+                onCommit={(next) => {
+                  if (next === '') return set('playset_size', null);
+                  const size = Number(next);
+                  if (Number.isInteger(size) && size >= 1 && size <= 9) set('playset_size', size);
+                }}
               />
             )}
           </Setting>

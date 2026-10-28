@@ -78,11 +78,11 @@ describe('CardDetailView (F2-f S7)', () => {
     );
   });
 
-  it('shows the manage collection link', async () => {
+  it('links to the collection screen filtered by this card (F3-g S2)', async () => {
     await renderView({ presentation: 'page', card: cardDetail });
     expect(screen.getByRole('link', { name: 'Gestionar en la colección' })).toHaveAttribute(
       'href',
-      '/riftbound/collection',
+      expect.stringMatching(/\/collection\?q=OGN-79$/),
     );
   });
 
