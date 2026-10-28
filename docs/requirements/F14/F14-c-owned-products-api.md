@@ -63,3 +63,12 @@ PR title: `feat(products): owned products with a separate total and snapshot (F1
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): a merge that would go past 9999 is refused with 400 `validation_error` (`quantity`, `out_of_range`, `max 9999`) and nothing changes; without it the database CHECK would give a 500.
+- L2 (implementer): on a merge the existing line keeps its note and takes the new one only if it had none; a note is trimmed and an empty note is null.
+- L3 (implementer): a hidden non-single product can be added (the spec only requires a non-single); `PATCH` returns the line itself as `data` (like the F3-c collection PATCH) and never merges.
+- L4 (implementer): `rbvsn_products_value` is NULL for users with no product lines and 0 for users whose lines all lack a price; a line value uses the unrounded price times quantity, rounded once to cents, and the total adds the rounded line values.
+- L5 (implementer): the `owned` filter also narrows the facets and `total`; the detail `lines` have the shape of `GET /me/products` items without `product`; `take_snapshots` returns one extra key, `products_value`.
+- L6 (implementer): `list_products`, `get_product` and `get_product_prices` take the user id (not the username) because `rbuserproducts` is keyed by user id.
