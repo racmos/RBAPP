@@ -491,10 +491,9 @@ def cardmarket_product_detail():
         return jsonify({'success': False, 'message': 'rbpdt_id_product inválido'}), 400
     if not rbpdt_id_set:
         return jsonify({'success': False, 'message': 'rbpdt_id_set requerido'}), 400
-    p = RbProducts.query.filter_by(
-        rbpdt_id_set=rbpdt_id_set, rbpdt_id_product=rbpdt_id_product
-    ).first()
-    if not p:
+    # The key is the product id alone (F14-a); a product of another set is not found.
+    p = db.session.get(RbProducts, rbpdt_id_product)
+    if not p or p.rbpdt_id_set != rbpdt_id_set:
         return jsonify({'success': True, 'exists': False, 'product': None})
     return jsonify({'success': True, 'exists': True, 'product': _product_to_dict(p)})
 
@@ -714,7 +713,7 @@ def cardmarket_auto_match():
 @login_required
 def cardmarket_upsert_product():
     """Crea o actualiza una fila de rbproducts.
-    PK: (rbpdt_id_set, rbpdt_id_product)."""
+    PK: rbpdt_id_product (F14-a); updating a product moves it to rbpdt_id_set."""
     data = request.get_json() or {}
     rbpdt_id_set = (data.get('rbpdt_id_set') or '').strip()
     try:
@@ -726,9 +725,7 @@ def cardmarket_upsert_product():
     if not rbpdt_id_set or not rbpdt_name:
         return jsonify({'success': False, 'message': 'rbpdt_id_set y rbpdt_name son obligatorios'}), 400
 
-    existing = RbProducts.query.filter_by(
-        rbpdt_id_set=rbpdt_id_set, rbpdt_id_product=rbpdt_id_product
-    ).first()
+    existing = db.session.get(RbProducts, rbpdt_id_product)
     status = 'updated' if existing else 'created'
 
     if not existing:
@@ -738,6 +735,7 @@ def cardmarket_upsert_product():
             rbpdt_name=rbpdt_name,
         )
         db.session.add(existing)
+    existing.rbpdt_id_set = rbpdt_id_set
 
     for f in _PRODUCT_FIELDS:
         if f in ('rbpdt_id_set', 'rbpdt_id_product'):

@@ -81,3 +81,12 @@ read the counts.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): the 0019 upgrade also refuses (nothing changed) when a product id is in more than one row, a guard for S1(c); dev has none.
+- L2 (implementer): `refresh_products` sets `rbpdt_type = 'nonsingle'` on an existing row whose id is in the day's non-singles (for example one created by hand in Jinja with a NULL type), otherwise it would never count as a product.
+- L3 (implementer): a date with no non-single rows raises `NothingToRefresh` (the job fails, nothing changes) instead of unlisting the whole catalog.
+- L4 (implementer): counts: `updated` = existing rows of the file that changed; `not_listed` = every non-single product missing from the date; `total` = non-single rows after the refresh.
+- L5 (implementer): the Jinja upsert with an existing product id and another set moves that one row to the new set (before, the composite key created a second row); it does not lock the set.
+- L6 (parent): S1 preflight results are in state.md; categories ending in `other`: 'Riftbound Riftbound Box Sets', 'RB Set'. At the latest load `avg7` is zero for every non-single, so F14-b prices will use trend/low fallbacks unless this changes.
