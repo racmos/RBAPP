@@ -103,6 +103,8 @@ that file and in its `verify-report.md`.
 
 ## Known issues
 
+- Owner feedback 2026-10-29 (after the b8a8584 deploy): `/admin/cards` answered 500 (natural sort mixed int and str; fixed), VEN images were never downloaded because the Riot sync fetched images only for new or applied cards (fixed: every missing image of the synced set), `/admin/sets` "Nuevo set" did nothing at ≥ 1600 px (fixed, plus a filters/sort section), `/admin/riot/changes` too wide (fixed). After the deploy: run a Riot sync of VEN to download its images.
+
 - `frontend/src/assets/brand/mark.svg` and `wordmark.svg` are not byte-reproducible from
   `scripts/brand-trace.mjs` (a full run produces a heavier trace); do not regenerate them blindly.
 - `dist/.vite/manifest.json` is publicly served (harmless; it lists chunk names only).
