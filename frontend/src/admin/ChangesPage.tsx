@@ -34,7 +34,7 @@ export type AdminChange = {
   field: string;
   old_value: string | null;
   new_value: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'obsolete';
   detected_at: string | null;
   job_id: number | null;
   decided_at: string | null;
@@ -81,7 +81,9 @@ const FIELDS: readonly FieldName[] = [
   'image',
 ];
 const LONG_FIELDS: readonly string[] = ['rbcar_ability', 'rbcar_tags'];
-const STATUSES = ['pending', 'approved', 'rejected', 'all'] as const;
+const STATUSES = ['pending', 'approved', 'rejected', 'obsolete', 'all'] as const;
+const PAGE_SIZES = ['50', '100', '200'] as const;
+const DEFAULT_PAGE_SIZE = '50';
 
 async function fetchChanges(
   params: URLSearchParams,
@@ -93,7 +95,7 @@ async function fetchChanges(
     if (value) query.set(key, value);
   }
   if (!query.get('status')) query.set('status', 'pending');
-  if (!query.get('per_page')) query.set('per_page', '50');
+  if (!query.get('per_page')) query.set('per_page', DEFAULT_PAGE_SIZE);
   const { request } = await import('@/api/client');
   return request<ChangesResponse>(`/admin/riot/changes?${query.toString()}`, { signal });
 }
@@ -308,6 +310,26 @@ export function ChangesPage() {
           </Select>
         </label>
         <label className={styles.filterField}>
+          {t('changes.perPage')}
+          <Select
+            aria-label={t('changes.perPage')}
+            value={params.get('per_page') ?? DEFAULT_PAGE_SIZE}
+            disabled={offline}
+            onChange={(event) =>
+              setParam(
+                'per_page',
+                event.target.value === DEFAULT_PAGE_SIZE ? null : event.target.value,
+              )
+            }
+          >
+            {PAGE_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className={styles.filterField}>
           {t('changes.search')}
           <Input
             aria-label={t('changes.search')}
@@ -328,13 +350,8 @@ export function ChangesPage() {
         />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          {/* Long values wrap; anything still wider scrolls here, by keyboard too. */}
-          <TableScroll
-            role="region"
-            aria-label={t('changes.caption')}
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling region must be reachable by keyboard
-            tabIndex={0}
-          >
+          {/* Long values wrap to the width, so the table scrolls with the page (one scroll). */}
+          <TableScroll fit role="region" aria-label={t('changes.caption')}>
             <table className={styles.table}>
               <caption className="sr-only">{t('changes.caption')}</caption>
               <thead>

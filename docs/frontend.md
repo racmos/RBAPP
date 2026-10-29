@@ -250,8 +250,11 @@ opens the editor in the side drawer (bottom sheet below 960 px) and in the persi
 ≥ 1600 px.
 
 **Riot changes.** `/admin/riot/changes` (`src/admin/ChangesPage.tsx`) wraps long values (URLs,
-abilities) so the columns fit; the table sits in a labelled, focusable region (`tabIndex=0`)
-that scrolls horizontally if it still overflows.
+abilities) so the columns fit; the table sits in a labelled region, `TableScroll fit`, so the page
+is the only scroll (no box inside the page) and the header sticks below the topbar. With rows
+selected the bulk bar sticks to the bottom of the viewport (opaque, above the header). "Por
+página" picks 50 / 100 / 200 rows (`per_page` in the URL, 50 is not written; a change goes back
+to page 1).
 
 ## Products (F14-e)
 
@@ -309,6 +312,10 @@ row click opens `/products/:id`. Clicks on inline editors never reach the row.
   to the page, so a page offset such as `top: 64px` pushed the header over the first rows.
   `src/test/primitives-guard.test.ts` fails when a `<table>` is not wrapped or a sticky `th` has a
   `top` other than `0` (the import preview and the chart fallback table keep their own box).
+  `<TableScroll fit>` is for a table whose columns wrap to the width (the Riot changes): no
+  vertical cap and `overflow-x: clip`, which makes no scroll container, so the page scrolls and
+  the `thead` (not the `th`) sticks at `calc(64px + var(--safe-top))`, below the topbar. Anything
+  wider than the box is clipped, not scrolled.
 - **Dropdowns.** Use `components/ui/Select` only; the guard test fails on a raw `<select>`. It
   drops the platform look (`appearance: none`, its own arrow), uses an opaque dark field with dark
   options and 16 px text below 860 px (iOS zooms into smaller fields).

@@ -201,6 +201,7 @@
       "pending": "Pending",
       "approved": "Approved",
       "rejected": "Rejected",
+      "obsolete": "Obsolete",
       "all": "All"
     },
     "columns": {
@@ -224,6 +225,7 @@
       "image_url": "Image URL",
       "image": "Image file"
     },
+    "perPage": "Per page",
     "allFields": "All fields",
     "search": "Search card",
     "old": "Before:",
