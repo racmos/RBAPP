@@ -115,8 +115,10 @@
     margin-bottom: 12px;
   }
 
+  /* Sticks to the bottom of the viewport, above the rows and the sticky header. */
   .bulkBar {
     position: sticky;
+    z-index: 3;
     bottom: var(--pad);
     display: flex;
     gap: 12px;
@@ -124,7 +126,7 @@
     margin-top: var(--gap);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    background: var(--panel-2);
+    background: var(--table-head);
     padding: 12px 16px;
   }
 }

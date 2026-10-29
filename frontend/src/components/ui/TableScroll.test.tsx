@@ -38,6 +38,55 @@ describe('TableScroll (owner feedback S1)', () => {
     expect(value('.scroll thead th', 'background')).toBe('var(--table-head)');
   });
 
+  it('fit mode scrolls with the page: no vertical cap, no scroll box (owner feedback S11)', () => {
+    render(
+      <TableScroll fit>
+        <table>
+          <tbody>
+            <tr>
+              <td>cell</td>
+            </tr>
+          </tbody>
+        </table>
+      </TableScroll>,
+    );
+    const box = screen.getByRole('table').parentElement!;
+    expect(box.dataset.slot).toBe('table-scroll');
+    expect(box).toHaveAttribute('data-fit');
+    expect(box.className).toMatch(/fit/);
+    expect(box.className).not.toMatch(/scroll/);
+    // `clip` is not a scroll container, so the sticky header sticks to the page.
+    expect(value('.fit', 'overflow-x')).toBe('clip');
+    expect(value('.fit', 'overflow-y')).toBe('visible');
+    expect(value('.fit', 'overflow')).toBeUndefined();
+    expect(value('.fit', 'max-height')).toBeUndefined();
+  });
+
+  it('fit mode sticks the header below the topbar, opaque and above the rows', () => {
+    expect(value('.fit thead', 'position')).toBe('sticky');
+    expect(value('.fit thead', 'top')).toBe('calc(64px + var(--safe-top))');
+    expect(Number(value('.fit thead', 'z-index'))).toBeGreaterThanOrEqual(2);
+    expect(value('.fit thead th', 'background')).toBe('var(--table-head)');
+    expect(value('.fit thead th', 'position')).toBeUndefined();
+  });
+
+  it('the default box keeps no fit marker', () => {
+    render(
+      <TableScroll>
+        <table>
+          <tbody>
+            <tr>
+              <td>cell</td>
+            </tr>
+          </tbody>
+        </table>
+      </TableScroll>,
+    );
+    const box = screen.getByRole('table').parentElement!;
+    expect(box).not.toHaveAttribute('data-fit');
+    expect(box.className).toMatch(/scroll/);
+  });
+
   it('keeps every rule in the components layer', () => {
     expect(rules(css).every((rule) => rule.atRules.includes('layer components'))).toBe(true);
   });

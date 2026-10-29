@@ -79,7 +79,8 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
       );
       const { container } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
       const region = await screen.findByRole('region', { name: 'Cambios detectados' }, LONG);
-      expect(region).toHaveAttribute('tabindex', '0');
+      // The table scrolls with the page (S11), so the wrapper is no extra tab stop.
+      expect(region).not.toHaveAttribute('tabindex');
       expect(within(region).getByRole('table', { name: 'Cambios detectados' })).toBeVisible();
       expect(within(region).getByText(url)).toBeVisible();
       expect(await axe(container)).toHaveNoViolations();
@@ -97,9 +98,96 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
           });
         return found;
       };
-      // the scrolling itself is the shared TableScroll box (its CSS is pinned in TableScroll.test.tsx)
+      // the wrapper is the shared TableScroll in fit mode (its CSS is pinned in TableScroll.test.tsx)
       expect(region).toHaveAttribute('data-slot', 'table-scroll');
       expect(decls('.table td')).toContainEqual({ prop: 'overflow-wrap', value: 'anywhere' });
+    },
+  );
+
+  it(
+    'one scroll: the table has no vertical cap and scrolls with the page (owner feedback S11)',
+    { timeout: 30000 },
+    async () => {
+      changesApi();
+      await renderApp({ path: '/admin/riot/changes', width: 1280 });
+      const region = await screen.findByRole('region', { name: 'Cambios detectados' }, LONG);
+      expect(region).toHaveAttribute('data-fit');
+      const tableCss = readFileSync('src/components/ui/TableScroll.module.css', 'utf8');
+      const fit: Array<{ prop: string; value: string }> = [];
+      postcss.parse(tableCss).walkRules((rule) => {
+        if (!rule.selectors.map((item) => item.trim()).includes('.fit')) return;
+        rule.walkDecls((decl) => {
+          fit.push({ prop: decl.prop, value: decl.value });
+        });
+      });
+      expect(fit.map((decl) => decl.prop)).not.toContain('max-height');
+      expect(fit).not.toContainEqual({ prop: 'overflow', value: 'auto' });
+      expect(fit).not.toContainEqual({ prop: 'overflow-y', value: 'auto' });
+    },
+  );
+
+  it(
+    'selected rows keep the bulk bar sticky at the bottom of the viewport (owner feedback S11)',
+    { timeout: 30000 },
+    async () => {
+      changesApi();
+      await renderApp({ path: '/admin/riot/changes', width: 1280 });
+      const region = await screen.findByRole('region', { name: 'Cambios detectados' }, LONG);
+      expect(screen.queryByRole('region', { name: /seleccionados?$/ })).toBeNull();
+      await userEvent.click(screen.getAllByRole('checkbox', { name: /Aprobar el cambio/ })[0]);
+      const bar = await screen.findByRole('region', { name: /seleccionados?$/ }, LONG);
+      expect(within(bar).getByText('1 cambio seleccionado')).toBeVisible();
+      expect(region.contains(bar)).toBe(false);
+
+      const bulk: Array<{ prop: string; value: string }> = [];
+      postcss.parse(readFileSync('src/admin/ChangesPage.module.css', 'utf8')).walkRules((rule) => {
+        if (!rule.selectors.map((item) => item.trim()).includes('.bulkBar')) return;
+        rule.walkDecls((decl) => {
+          bulk.push({ prop: decl.prop, value: decl.value });
+        });
+      });
+      expect(bulk).toContainEqual({ prop: 'position', value: 'sticky' });
+      expect(bulk.map((decl) => decl.prop)).toContain('bottom');
+      // above the sticky header (z-index 2) and the rows, opaque so rows never show through
+      expect(Number(bulk.find((decl) => decl.prop === 'z-index')?.value)).toBeGreaterThan(2);
+      expect(bulk).toContainEqual({ prop: 'background', value: 'var(--table-head)' });
+    },
+  );
+
+  it(
+    'page size 50 / 100 / 200 lands in the URL and the request, resets the page (owner feedback S11)',
+    { timeout: 30000 },
+    async () => {
+      const requested: string[] = [];
+      server.use(
+        http.get(`${API}/auth/session`, () => adminSession()),
+        http.get(`${API}/admin/sets`, () => ok([])),
+        http.get(`${API}/admin/riot/changes`, ({ request }) => {
+          requested.push(new URL(request.url).search);
+          return ok(PAGE);
+        }),
+      );
+      const { router } = await renderApp({ path: '/admin/riot/changes?page=2', width: 1280 });
+      await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
+      const size = screen.getByRole('combobox', { name: 'Por página' });
+      expect(size).toHaveValue('50');
+      expect(
+        within(size)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(['50', '100', '200']);
+      const last = () => new URLSearchParams(requested.at(-1));
+      expect(last().get('per_page')).toBe('50');
+      expect(last().get('page')).toBe('2');
+
+      await userEvent.selectOptions(size, '200');
+      await waitFor(() => expect(router.state.location.search).toBe('?per_page=200'), LONG);
+      await waitFor(() => expect(last().get('per_page')).toBe('200'), LONG);
+      expect(last().get('page')).toBeNull();
+
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Por página' }), '50');
+      await waitFor(() => expect(router.state.location.search).toBe(''), LONG);
+      await waitFor(() => expect(last().get('per_page')).toBe('50'), LONG);
     },
   );
 

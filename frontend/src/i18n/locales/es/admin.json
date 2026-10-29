@@ -224,6 +224,7 @@
       "image_url": "URL de la imagen",
       "image": "Fichero de imagen"
     },
+    "perPage": "Por página",
     "allFields": "Todos los campos",
     "search": "Buscar carta",
     "old": "Antes:",

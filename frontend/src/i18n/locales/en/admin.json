@@ -224,6 +224,7 @@
       "image_url": "Image URL",
       "image": "Image file"
     },
+    "perPage": "Per page",
     "allFields": "All fields",
     "search": "Search card",
     "old": "Before:",
