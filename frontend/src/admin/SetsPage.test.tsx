@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import { describe, expect, it } from 'vitest';
@@ -36,16 +36,105 @@ function setsApi() {
 }
 
 describe('SetsPage (F13-f S4-S6)', () => {
-  it('table at 1280 px with sortable headers and mode creation', async () => {
+  it('table at 1280 px with plain headers, a sort section and the new button', async () => {
     setsApi();
     const { container } = await renderApp({ path: '/admin/sets', width: 1280 });
-    expect(await screen.findByRole('table', { name: 'Sets del catálogo' })).toBeVisible();
-    expect(screen.getByRole('columnheader', { name: /Código/ })).toHaveAttribute(
+    // First render of the file pays for the lazy admin chunk.
+    const table = await screen.findByRole(
+      'table',
+      { name: 'Sets del catálogo' },
+      { timeout: 10000 },
+    );
+    expect(table).toBeVisible();
+    const [head] = within(table).getAllByRole('rowgroup');
+    expect(within(head!).queryAllByRole('button')).toHaveLength(0);
+    expect(screen.getByRole('columnheader', { name: 'Código' })).toHaveAttribute(
       'aria-sort',
       'ascending',
     );
+    expect(screen.getByLabelText('Buscar set')).toBeVisible();
+    expect(screen.getByLabelText('Ordenar por')).toHaveValue('id');
+    expect(screen.getByLabelText('Dirección')).toHaveValue('asc');
     expect(screen.getByRole('button', { name: 'Nuevo set' })).toBeVisible();
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('search, sort and direction live in the URL', async () => {
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/sets`, () =>
+        ok([
+          ...SETS,
+          { ...SETS[1], id: 'ARC', name: 'Zeta', release_date: '2025-06-01', card_count: 5 },
+        ]),
+      ),
+    );
+    const { where } = await renderApp({ path: '/admin/sets?sort=name&dir=desc', width: 1280 });
+    await screen.findByRole('table', { name: 'Sets del catálogo' });
+    // Re-query: a navigation may remount the table.
+    const firstCells = () =>
+      within(screen.getByRole('table', { name: 'Sets del catálogo' }))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0]!.textContent);
+    expect(firstCells()).toEqual(['ARC', 'SFD', 'OGN']);
+    expect(screen.getByRole('columnheader', { name: 'Nombre' })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+
+    await userEvent.selectOptions(screen.getByLabelText('Ordenar por'), 'releaseDate');
+    await waitFor(() => expect(where()).toBe('/admin/sets?sort=releaseDate&dir=desc'));
+    await waitFor(() => expect(firstCells()).toEqual(['OGN', 'ARC', 'SFD']));
+    await userEvent.selectOptions(screen.getByLabelText('Dirección'), 'asc');
+    await waitFor(() => expect(where()).toBe('/admin/sets?sort=releaseDate&dir=asc'));
+    await waitFor(() => expect(firstCells()).toEqual(['SFD', 'ARC', 'OGN']));
+
+    await userEvent.type(screen.getByLabelText('Buscar set'), 'orig');
+    await waitFor(() => expect(where()).toBe('/admin/sets?sort=releaseDate&dir=asc&q=orig'));
+    await waitFor(() => expect(firstCells()).toEqual(['OGN']));
+  });
+
+  it('a search without matches says so', async () => {
+    setsApi();
+    await renderApp({ path: '/admin/sets?q=zzz', width: 1280 });
+    expect(await screen.findByText('Ningún set coincide con la búsqueda.')).toBeVisible();
+    expect(screen.getByLabelText('Buscar set')).toHaveValue('zzz');
+  });
+
+  it.each([1280, 1700])('new set opens the form and creates the set at %i px', async (width) => {
+    const created: unknown[] = [];
+    let sets = [...SETS];
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/sets`, () => ok(sets)),
+      http.post(`${API}/admin/sets`, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        created.push(body);
+        const row = {
+          ...SETS[1],
+          id: 'TST',
+          name: 'Test',
+          release_date: '2026-12-04',
+          declared_count: 12,
+        };
+        sets = [...sets, row];
+        return ok(row, 201);
+      }),
+    );
+    await renderApp({ path: '/admin/sets', width });
+    await userEvent.click(await screen.findByRole('button', { name: 'Nuevo set' }));
+    await userEvent.type(await screen.findByLabelText('Código'), 'TST');
+    await userEvent.type(screen.getByLabelText('Nombre'), 'Test');
+    await userEvent.type(screen.getByLabelText('Fecha de salida'), '2026-12-04');
+    await userEvent.type(screen.getByLabelText('Cartas anunciadas'), '12');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect((await screen.findAllByText('Set guardado.')).length).toBeGreaterThan(0);
+    expect(created).toEqual([
+      { id: 'TST', name: 'Test', release_date: '2026-12-04', declared_count: 12 },
+    ]);
+    expect(await screen.findByRole('cell', { name: 'TST' })).toBeVisible();
+    expect(screen.queryByLabelText('Código')).not.toBeInTheDocument();
   });
 
   it('cards at 390 px with an actions menu, editor in a bottom sheet', async () => {

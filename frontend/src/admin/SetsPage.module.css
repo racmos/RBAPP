@@ -1,4 +1,19 @@
 @layer components {
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: var(--gap);
+  }
+
+  .filterField {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
   .tableWrap {
     overflow-x: auto;
   }

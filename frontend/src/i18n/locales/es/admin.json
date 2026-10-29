@@ -61,6 +61,14 @@
     "saved": "Set guardado.",
     "pickOne": "Elige un set para editarlo.",
     "empty": "Todavía no hay sets.",
+    "noMatches": "Ningún set coincide con la búsqueda.",
+    "filters": {
+      "search": "Buscar set",
+      "sort": "Ordenar por",
+      "dir": "Dirección",
+      "asc": "Ascendente",
+      "desc": "Descendente"
+    },
     "confirmDelete": {
       "title": "¿Borrar el set {{id}}?",
       "body": "Solo se puede borrar un set sin cartas. Esta acción no se puede deshacer."
