@@ -4,7 +4,12 @@ import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import { NO_PREFS, API, failure, signedInSession } from '@/test/msw/handlers';
-import { aylaGroup, collectionGroups, collectionMeta } from '@/test/fixtures/collection';
+import {
+  aylaGroup,
+  collectionGroups,
+  collectionMeta,
+  emberGroup,
+} from '@/test/fixtures/collection';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 
@@ -209,4 +214,34 @@ describe('CollectionPage states (F3-g S9)', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Ayla/ }, LONG));
     expect(await screen.findByRole('dialog', { name: /Copias de Ayla/ })).toBeVisible();
   }, 20000);
+
+  it('deleting the only line of a group still offers the undo toast', async () => {
+    signedIn();
+    let deleted = false;
+    server.use(
+      http.get(`${API}/collection`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: deleted ? [] : [emberGroup] },
+          meta: { ...collectionMeta, total_groups: deleted ? 0 : 1 },
+        }),
+      ),
+      http.delete(`${API}/collection/:id`, ({ params }) => {
+        deleted = true;
+        return HttpResponse.json({
+          success: true,
+          data: { deleted: { ...emberGroup.lines[0], id: Number(params.id) } },
+        });
+      }),
+    );
+    await renderApp({ path: '/collection', width: 390 });
+    await userEvent.click(await screen.findByRole('button', { name: /Ember Wisp/ }, LONG));
+    const sheet = await screen.findByRole('dialog', { name: /Copias de Ember Wisp/ }, LONG);
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Eliminar' }));
+    const confirm = await screen.findByRole('dialog', { name: '¿Eliminar esta línea?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Eliminar' }));
+    // the group is gone from the list, so the sheet unmounts: the toast must survive
+    expect((await screen.findAllByText('Línea eliminada.', {}, LONG))[0]).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Deshacer' })).toBeVisible();
+  }, 30000);
 });
