@@ -106,7 +106,16 @@
     "added": "Añadida a tu colección.",
     "merged": "Sumada a una línea que ya tenías.",
     "chosen": "Carta elegida: {{name}}",
-    "chooseFirst": "Elige primero una carta."
+    "chooseFirst": "Elige primero una carta.",
+    "set": "Set",
+    "allSets": "Todos los sets",
+    "enterHint": "Enter añade la carta resaltada con estas opciones.",
+    "session": "Añadidas en esta sesión",
+    "copies_one": "{{count}} copia",
+    "copies_many": "{{count}} copias",
+    "copies_other": "{{count}} copias",
+    "undoRow": "Deshacer: {{name}}",
+    "undone": "Entrada deshecha."
   },
   "empty": {
     "title": "Tu colección está vacía",

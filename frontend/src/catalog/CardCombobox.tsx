@@ -16,6 +16,8 @@ export type CardComboboxProps = {
   label: string;
   hideLabel?: boolean;
   onSelect: (card: CardSummary) => void;
+  /** Called after `onSelect` when the card was picked with Enter (the quick add acts on it). */
+  onEnterSelect?: (card: CardSummary) => void;
   /** Extra `GET /cards` params, for example `{ base_only: true, exclude_supertype: ['Token'] }`. */
   filters?: Partial<CardListParams>;
   placeholder?: string;
@@ -37,6 +39,7 @@ export function CardCombobox({
   label,
   hideLabel,
   onSelect,
+  onEnterSelect,
   filters = NO_FILTERS,
   placeholder,
   autoFocus,
@@ -143,6 +146,7 @@ export function CardCombobox({
         if (listed && activeCard) {
           event.preventDefault();
           choose(activeCard);
+          onEnterSelect?.(activeCard);
         }
         break;
       case 'Escape':
