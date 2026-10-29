@@ -61,6 +61,7 @@ riftbound/
 │   │       ├── auth.py      # session, captcha, login, logout, register
 │   │       ├── bans.py      # GET /bans (card bans per game mode)
 │   │       ├── cards.py       # GET /cards (list; F2-c), GET /cards/<set>/<id> + /prices (detail; F2-d)
+│   │       ├── me_products.py # GET/POST /me/products, PATCH/DELETE /me/products/<id> (F14-c)
 │   │       ├── products.py    # GET /products, /products/<id>, /products/<id>/prices (F14-b)
 │   │       ├── collection.py  # GET /collection (F3-b) and its writes: POST, PATCH/DELETE /<id>, split, bulk, keep-playset (F3-c)
 │   │       ├── me.py        # GET/PATCH /me/prefs (interface preferences)
@@ -97,6 +98,7 @@ riftbound/
 │   │   ├── captcha.py       # RbCaptchaUsed (rbcaptcha_used)
 │   │   ├── audit.py         # RbAdminAudit (rbadminaudit): audit trail of admin writes
 │   │   ├── job.py           # RbJob (rbjobs): job queue and results, one active job per kind
+│   │   ├── user_product.py  # RbUserProduct (rbuserproducts): sealed products a user owns (F14-c)
 │   │   ├── playset.py       # RbKeepPlayset (rbkeepplayset): card names a user keeps a playset of (F3-a)
 │   │   ├── import_preview.py # RbImportPreview (rbimportpreviews): parsed import rows for 30 minutes (F3-e)
 │   │   ├── snapshot.py      # RbValueSnapshot (rbvaluesnaps): daily collection value per user (F4-c)
@@ -134,6 +136,7 @@ riftbound/
 │   │   ├── product_list.py  # products list, detail, price history (F14-b)
 │   │   ├── product_prices.py # product_price chain avg7 > trend > low, product_price_summaries (F14-b)
 │   │   ├── products.py      # kind_for(category), refresh_products(date): rbproducts catalog (F14-a)
+│   │   ├── user_products.py # owned products: list with total, add (merge in SQL), edit, delete, products_values (F14-c)
 │   │   ├── snapshots.py     # take_snapshots(today): one rbvaluesnaps row per user with a collection (F4-c)
 │   │   ├── pricing.py       # resolve_price (+_with_source), latest_price_for_card, batched price_summaries (F2-b)
 │   │   ├── card_images.py   # images_root, card_image_path, card_image_url, import_legacy (CARD_IMAGES_DIR)
@@ -223,7 +226,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, `rbuserproducts`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 - `rbproducts` (F14-a): keyed by `rbpdt_id_product` (`rbpdt_id_set` nullable), with `rbpdt_category`, `rbpdt_kind` (CHECK `rbproducts_kind_chk`), `rbpdt_kind_locked`, `rbpdt_set_locked`, `rbpdt_hidden`, `rbpdt_listed`, `rbpdt_updated_at`; only `rbpdt_type = 'nonsingle'` rows are products; `products_refresh` never deletes (a product that leaves the file gets `rbpdt_listed = false`)
@@ -282,7 +285,7 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 ## API v1
 
-Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`, `GET /meta/game`, `GET /cards`, `GET /collection`, `POST /collection`, `PATCH`/`DELETE /collection/<id>`, `POST /collection/<id>/split`, `POST /collection/bulk`, `POST /collection/keep-playset`, `GET /products`, `GET /products/<id>`, `GET /products/<id>/prices`, `GET /collection/export`, `POST /collection/import/preview`, `POST /collection/import/commit`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image`, `POST /admin/riot/sync`, `GET /admin/jobs`, `GET /admin/jobs/<id>`, `GET /admin/riot/changes`, `POST .../changes/<id>/approve|reject` and `POST .../changes/bulk` (see `docs/api.md`).
+Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `GET /bans`, `GET /meta/game`, `GET /cards`, `GET /collection`, `POST /collection`, `PATCH`/`DELETE /collection/<id>`, `POST /collection/<id>/split`, `POST /collection/bulk`, `POST /collection/keep-playset`, `GET /products`, `GET /products/<id>`, `GET /products/<id>/prices`, `GET`/`POST /me/products`, `PATCH`/`DELETE /me/products/<id>`, `GET /collection/export`, `POST /collection/import/preview`, `POST /collection/import/commit`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image`, `POST /admin/riot/sync`, `GET /admin/jobs`, `GET /admin/jobs/<id>`, `GET /admin/riot/changes`, `POST .../changes/<id>/approve|reject` and `POST .../changes/bulk` (see `docs/api.md`).
 
 - `GET /auth/session` returns `{authenticated, csrf_token}` for anonymous callers and `{authenticated, user, prefs, csrf_token}` when signed in. `prefs` always has the six keys `lang`, `density`, `accent`, `bg_intensity`, `collection_view`, `playset_size` (F3-c; `null` = 3 copies); `null` means Auto (a user without a row gets five `null`s and no row is created).
 - `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
@@ -291,6 +294,7 @@ Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/sessio
 - `GET /cards/<set_id>/<card_id>` (`api_v1.get_card`, U) returns `CardDetail` (summary + ability, set, price_detail, printings/related `CardMini`, ban_info, my_lines, in_decks); `GET …/prices` (`api_v1.get_card_prices`, U) returns `{range, currency: EUR, foilable, product_id, points}` (`docs/api.md` → "GET /cards/<set>/<id>"). At most 10/4 SQL statements; detail p95 123 ms on dev (6 printings).
 - `GET /cards` (`app/api/v1/cards.py`, U) returns `{data: {items: [CardSummary]}, meta: {page, per_page, total, pages, facets, price_as_of}}` (`docs/api.md` → "GET /cards"): free-text `q`/`text`, 7 repeated facet params, numeric/price ranges, `owned`, `banned_in`, `base_only`, 9 sort keys with nulls-last and natural tiebreak; disjunctive facets in canonical order; at most 12 SQL statements; prices for all matches only with price sort/bounds, else the page only. Query validation via `@validate_query` (`CardListQuery`); same 400 body as `validate_json` with message "Invalid query parameters".
 - Collection import (F3-e, `docs/api.md` → "Collection import"): `POST /collection/import/preview` parses an RBAPP CSV (2 MB, 10 000 rows) into rows with `status` and `reason_codes` and stores them 30 minutes; `POST /collection/import/commit` adds them or replaces the printings in the file, all or nothing. New codes `import_expired` (410) and `import_format_unknown` (400).
+- Owned products (F14-c, `app/api/v1/me_products.py`, U, `docs/api.md` → "Owned products"): `GET /me/products` returns the caller's product lines with a `total {value, lines, qty, unpriced}`; POST merges the same product and purchase price in SQL; PATCH/DELETE of an id that is not the caller's is a 404. **The products total is never part of the collection value**: no collection endpoint or F3 field changed, and `rbvaluesnaps.rbvsn_products_value` is a separate column (users who own only products get a snapshot row with the cards at 0).
 - Products (F14-b, `app/api/v1/products.py`, U, `docs/api.md` → "GET /products"): `GET /products` lists `ProductSummary` (`{id, name, kind, category, set_id, image_src, listed, price {value, source, change_7d_pct, change_30d_pct, as_of} | null, owned_qty}`; contract, additive only) with `q`, `kind[]`, `set[]`, `listed`, 4 sorts (nulls last), disjunctive facets `{kind, set}`, `per_page` 24-96; `GET /products/<id>` adds `description`, latest price `columns` and `lines`; `GET /products/<id>/prices?range=` gives the history. The price is the first non-zero of `avg7`, `trend`, `low` (never foil). Only non-single, non-hidden products; `owned_qty` is 0 until F14-c.
 - `GET /collection/export` (`app/api/v1/collection.py`, U, F3-d, `docs/api.md` → "GET /collection/export"): CSV download, `format=rbapp|cardmarket` (default rbapp) plus the list filters and `only_selling`; UTF-8 BOM, streamed, `X-Rows-Exported`; the Cardmarket file is byte-identical to the Jinja export (golden test), text cells starting with `=+-@` get a leading `'`.
 - Collection writes (F3-c, `app/api/v1/collection.py`, U, `docs/api.md` → "Collection writes"): `POST /collection` merges identical lines, `PATCH /collection/<id>` guards with `if_updated_at` (409 `stale_line`), `DELETE` returns the line so it can be posted back, `split`, `bulk` (all or nothing) and `keep-playset`; quantities that add up change in SQL; ids that are not the user's are a 404. New codes `foil_not_allowed`, `insufficient_quantity`, `stale_line`.

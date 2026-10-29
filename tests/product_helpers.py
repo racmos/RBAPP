@@ -1,10 +1,10 @@
-"""Seed helpers for the products read API tests (F14-b)."""
-from datetime import date
+"""Seed helpers for the products API tests (F14-b, F14-c)."""
+from datetime import date, datetime
 
 from sqlalchemy import event
 
 from app import db
-from app.models import RbProducts, RbSet, RbcmPrice
+from app.models import RbProducts, RbSet, RbUserProduct, RbcmPrice, User
 
 
 def add_sets():
@@ -27,6 +27,27 @@ def add_product(product_id, name, *, kind='booster', set_id='OGN', category='Boo
 def add_price(product_id, day, *, avg7=None, trend=None, low=None, avg30=None, **extra):
     db.session.add(RbcmPrice(rbprc_date=day, rbprc_id_product=product_id, rbprc_avg7=avg7,
                              rbprc_trend=trend, rbprc_low=low, rbprc_avg30=avg30, **extra))
+
+
+def user_id(username='testuser'):
+    return User.query.filter_by(username=username).one().id
+
+
+def add_owned(product_id, quantity, *, user='testuser', purchase=None, note=None,
+              at=datetime(2026, 10, 1, 9, 30)):
+    """One `rbuserproducts` line of `user` (committed); returns it."""
+    row = RbUserProduct(rbupr_user_id=user_id(user), rbupr_id_product=product_id,
+                        rbupr_quantity=quantity, rbupr_purchase_price=purchase,
+                        rbupr_note=note, rbupr_created_at=at, rbupr_updated_at=at)
+    db.session.add(row)
+    db.session.commit()
+    return row
+
+
+def owned_rows(user='testuser'):
+    db.session.expire_all()
+    return RbUserProduct.query.filter_by(rbupr_user_id=user_id(user)).order_by(
+        RbUserProduct.rbupr_id).all()
 
 
 def count_statements(app, fn):

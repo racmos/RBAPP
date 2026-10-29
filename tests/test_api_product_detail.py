@@ -1,6 +1,9 @@
-"""F14-b S4, S5 (AC3): GET /riftbound/api/v1/products/<id> and .../prices."""
+"""F14-b S4, S5 (AC3) and F14-c S5: GET /riftbound/api/v1/products/<id> and .../prices."""
+from datetime import datetime
+
 from app import db
-from tests.product_helpers import add_price, add_product, add_sets, count_statements
+from tests.product_helpers import (add_owned, add_price, add_product, add_sets,
+                                   count_statements, owned_rows)
 
 BASE = '/riftbound/api/v1/products'
 NOT_FOUND = {'success': False, 'error': 'Not Found',
@@ -142,6 +145,70 @@ class TestPriceHistory:
 
     def test_statement_count(self, authenticated_client, app):
         _seed(app)
+        resp, statements = count_statements(
+            app, lambda: authenticated_client.get(f'{BASE}/2/prices'))
+        assert resp.status_code == 200
+        assert statements <= 4
+
+
+class TestOwnerView:
+    """F14-c S5: `owned_qty`, the caller's `lines` and hidden products for their owners."""
+
+    def test_lines_are_the_callers_lines(self, authenticated_client, other_user_client, app):
+        _seed(app)
+        add_owned(2, 2, purchase=80, note='Sealed', at=datetime(2026, 10, 2, 8, 0))
+        add_owned(2, 1)
+        add_owned(4, 5)
+        add_owned(2, 9, user='otheruser')
+        first, second = (row.rbupr_id for row in owned_rows() if row.rbupr_id_product == 2)
+        data = authenticated_client.get(f'{BASE}/2').get_json()['data']
+        assert data['owned_qty'] == 3
+        assert data['lines'] == [
+            {'id': first, 'quantity': 2, 'purchase_price': 80.0, 'note': 'Sealed',
+             'value': 200.0, 'pl_abs': 40.0, 'pl_pct': 25.0,
+             'updated_at': '2026-10-02T08:00:00Z'},
+            {'id': second, 'quantity': 1, 'purchase_price': None, 'note': None,
+             'value': 100.0, 'pl_abs': None, 'pl_pct': None,
+             'updated_at': '2026-10-01T09:30:00Z'},
+        ]
+        assert list(data['lines'][0]) == ['id', 'quantity', 'purchase_price', 'note', 'value',
+                                          'pl_abs', 'pl_pct', 'updated_at']
+        theirs = other_user_client.get(f'{BASE}/2').get_json()['data']
+        assert (theirs['owned_qty'], [line['quantity'] for line in theirs['lines']]) == (9, [9])
+
+    def test_lines_of_an_unpriced_product(self, authenticated_client, app):
+        _seed(app)
+        add_owned(4, 5, purchase=3)
+        data = authenticated_client.get(f'{BASE}/4').get_json()['data']
+        assert [(line['value'], line['pl_abs']) for line in data['lines']] == [(None, None)]
+
+    def test_a_hidden_product_is_shown_to_its_owner_only(self, authenticated_client,
+                                                         other_user_client, app):
+        _seed(app)
+        add_owned(6, 1)
+        for url in (f'{BASE}/6', f'{BASE}/6/prices'):
+            assert authenticated_client.get(url).status_code == 200, url
+            resp = other_user_client.get(url)
+            assert resp.status_code == 404, url
+            assert resp.get_json() == NOT_FOUND
+        data = authenticated_client.get(f'{BASE}/6').get_json()['data']
+        assert (data['name'], data['owned_qty'], len(data['lines'])) == ('Secret Case', 1, 1)
+        points = authenticated_client.get(f'{BASE}/6/prices').get_json()['data']['points']
+        assert [point['value'] for point in points] == [10.0]
+
+    def test_an_owned_single_is_still_404(self, authenticated_client, app):
+        _seed(app)
+        add_owned(7, 1)
+        assert authenticated_client.get(f'{BASE}/7').status_code == 404
+        assert authenticated_client.get(f'{BASE}/7/prices').status_code == 404
+
+    def test_statement_count_with_lines(self, authenticated_client, app):
+        _seed(app)
+        add_owned(2, 2)
+        add_owned(2, 1)
+        resp, statements = count_statements(app, lambda: authenticated_client.get(f'{BASE}/2'))
+        assert resp.status_code == 200
+        assert statements <= 6
         resp, statements = count_statements(
             app, lambda: authenticated_client.get(f'{BASE}/2/prices'))
         assert resp.status_code == 200

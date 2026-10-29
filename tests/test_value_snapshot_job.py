@@ -40,7 +40,7 @@ def test_run_stores_todays_rows_through_the_runner(app, make_user, frozen_clock)
     done = db.session.get(RbJob, job.rbjob_id)
     assert done.rbjob_status == 'success'
     assert done.rbjob_result == {'date': '2030-01-01', 'users': 2, 'rows': 2,
-                                 'total_value': 215.0}
+                                 'total_value': 215.0, 'products_value': 0.0}
     days = db.session.execute(sa.select(RbValueSnapshot.rbvsn_date).distinct()).scalars().all()
     assert days == [date(2030, 1, 1)]
 

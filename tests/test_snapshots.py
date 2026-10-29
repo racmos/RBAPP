@@ -41,7 +41,8 @@ def test_values_for_priced_unpriced_and_foil_lines(app, two_users):
     assert (float(mine.rbvsn_value), float(mine.rbvsn_cost)) == (125.0, 77.0)
     assert (mine.rbvsn_qty, mine.rbvsn_unique, mine.rbvsn_unpriced) == (14, 5, 2)
     assert mine.rbvsn_date == DAY
-    assert result == {'date': '2030-01-01', 'users': 2, 'rows': 2, 'total_value': 215.0}
+    assert result == {'date': '2030-01-01', 'users': 2, 'rows': 2, 'total_value': 215.0,
+                      'products_value': 0.0}
 
 
 def test_same_numbers_as_the_collection_totals(app, two_users):
@@ -92,7 +93,7 @@ def test_another_day_adds_a_row_and_keeps_the_history(app, two_users):
 def test_nobody_has_a_collection(app, make_user):
     make_user('lonely')
     assert take_snapshots(DAY) == {'date': '2030-01-01', 'users': 0, 'rows': 0,
-                                   'total_value': 0.0}
+                                   'total_value': 0.0, 'products_value': 0.0}
 
 
 def test_a_bounded_number_of_queries(app, two_users):

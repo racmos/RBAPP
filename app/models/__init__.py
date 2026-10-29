@@ -9,6 +9,7 @@ from .prefs import RbUserPrefs
 from .playset import RbKeepPlayset
 from .snapshot import RbValueSnapshot
 from .import_preview import RbImportPreview
+from .user_product import RbUserProduct
 from .job import RbJob
 from .ban import RbCardBan
 from .audit import RbAdminAudit

@@ -276,6 +276,43 @@ class KeepPlaysetBody(BaseModel, extra='ignore'):
     keep: StrictBool
 
 
+# ============== Owned products (F14-c) ==============
+
+def _note(value):
+    """Up to 200 characters or None; an empty text is no note."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+class UserProductCreate(BaseModel, extra='ignore'):
+    """POST /me/products body (F14-c S4). Extra keys are ignored, so the line returned by a
+    DELETE can be posted back with its `product_id` (undo)."""
+    product_id: Annotated[StrictInt, Field(ge=1)]
+    quantity: _Qty
+    purchase_price: Optional[_Money] = None
+    note: Optional[str] = Field(None, max_length=200)
+
+    _note = field_validator('note')(lambda cls, v: _note(v))
+
+
+class UserProductPatch(BaseModel, extra='ignore'):
+    """PATCH /me/products/<id> body (F14-c S4): only the keys that were sent change; `null`
+    clears the purchase price or the note."""
+    quantity: Optional[_Qty] = None
+    purchase_price: Optional[_Money] = None
+    note: Optional[str] = Field(None, max_length=200)
+
+    _note = field_validator('note')(lambda cls, v: _note(v))
+
+    @model_validator(mode='after')
+    def _no_null_quantity(self):
+        if 'quantity' in self.model_fields_set and self.quantity is None:
+            raise PydanticCustomError('missing', 'quantity cannot be null')
+        return self
+
+
 # ============== Card Prices Query ==============
 
 

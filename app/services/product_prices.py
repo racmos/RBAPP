@@ -5,6 +5,7 @@ The ONE place that decides what a sealed product is worth: the first of
 columns are never read. The 7/30-day changes use the reference-row rule and
 the rounding of the card `price_summaries` (`app/services/pricing.py`).
 """
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional
 
 from sqlalchemy import Float, cast
@@ -14,6 +15,8 @@ from app.models.cardmarket import RbcmPrice
 from app.services.pricing import _day, _reference
 
 _ORDER = ('rbprc_avg7', 'rbprc_trend', 'rbprc_low')
+CENT = Decimal('0.01')
+TENTH = Decimal('0.1')
 
 
 def product_price(row) -> tuple[Optional[float], Optional[str]]:
@@ -89,3 +92,19 @@ def product_price_summaries(ids) -> dict[int, Optional[dict]]:
     ids = list(ids)
     rows = price_rows(ids)
     return {product_id: summary_from_rows(rows.get(product_id)) for product_id in ids}
+
+
+def line_numbers(price: Optional[float], quantity: int, purchase) -> tuple:
+    """`(value, pl_abs, pl_pct)` of an owned product line (F14-c), as `Decimal`s or None, the
+    F3-b way: value = price x quantity to cents; P/L only with a price and a purchase price
+    above 0, the percentage to one decimal; all rounded half up."""
+    if price is None:
+        return None, None, None
+    market = Decimal(str(price))
+    value = (market * quantity).quantize(CENT, ROUND_HALF_UP)
+    if purchase is None or purchase <= 0:
+        return value, None, None
+    purchase = Decimal(str(purchase))
+    gain = market - purchase
+    return (value, (gain * quantity).quantize(CENT, ROUND_HALF_UP),
+            (gain / purchase * 100).quantize(TENTH, ROUND_HALF_UP))

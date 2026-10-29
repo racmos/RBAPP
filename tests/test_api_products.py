@@ -1,7 +1,8 @@
-"""F14-b S2, S3 (AC2): GET /riftbound/api/v1/products."""
+"""F14-b S2, S3 (AC2) and F14-c S5 (AC3): GET /riftbound/api/v1/products."""
 from app import db
 from app.models import RbProducts, RbSet, RbcmPrice
-from tests.product_helpers import add_price, add_product, add_sets, count_statements
+from tests.product_helpers import (add_owned, add_price, add_product, add_sets,
+                                   count_statements)
 
 URL = '/riftbound/api/v1/products'
 
@@ -139,11 +140,12 @@ class TestFilters:
             URL, query_string=[('set', 'SFD'), ('set', 'ARC')])) == [
             'Arcane Starter', 'Spiritforged Booster']
 
-    def test_owned_values_behave_as_any(self, authenticated_client, app):
+    def test_owned_values_without_owned_products(self, authenticated_client, app):
         _seed(app)
-        for owned in ('any', 'owned', 'missing'):
-            assert _names(authenticated_client.get(URL, query_string={'owned': owned})) == \
-                VISIBLE, owned
+        assert _names(authenticated_client.get(URL, query_string={'owned': 'any'})) == VISIBLE
+        assert _names(authenticated_client.get(URL, query_string={'owned': 'owned'})) == []
+        assert _names(authenticated_client.get(URL, query_string={'owned': 'missing'})) == \
+            VISIBLE
 
     def test_filters_combine(self, authenticated_client, app):
         _seed(app)
@@ -284,6 +286,69 @@ class TestValidation:
             assert body['code'] == 'validation_error'
             assert body['message'] == 'Invalid query parameters'
             assert body['details'][0]['field'] == name
+
+
+class TestOwned:
+    """F14-c S5: `owned_qty`, the `owned` filter and hidden products for their owners."""
+
+    def _owned(self, app, other_user=False):
+        _seed(app)
+        add_owned(1, 2)
+        add_owned(1, 3, purchase=4)
+        add_owned(3, 1)
+        if other_user:
+            add_owned(2, 7, user='otheruser')
+
+    def test_owned_qty_adds_up_the_callers_lines(self, authenticated_client,
+                                                 other_user_client, app):
+        self._owned(app, other_user=True)
+        items = authenticated_client.get(URL).get_json()['data']['items']
+        assert {i['id']: i['owned_qty'] for i in items} == {8: 0, 1: 5, 2: 0, 4: 0, 3: 1}
+        theirs = other_user_client.get(URL).get_json()['data']['items']
+        assert {i['id']: i['owned_qty'] for i in theirs} == {8: 0, 1: 0, 2: 7, 4: 0, 3: 0}
+
+    def test_owned_filter(self, authenticated_client, other_user_client, app):
+        self._owned(app, other_user=True)
+        assert _names(authenticated_client.get(URL, query_string={'owned': 'owned'})) == [
+            'Origins Booster', 'Spiritforged Booster']
+        assert _names(authenticated_client.get(URL, query_string={'owned': 'missing'})) == [
+            'Arcane Starter', 'Origins Booster Box', 'Origins Sleeves']
+        assert _names(authenticated_client.get(URL, query_string={'owned': 'any'})) == VISIBLE
+
+    def test_owned_filter_counts_in_the_facets_and_the_total(self, authenticated_client, app):
+        self._owned(app)
+        body = authenticated_client.get(URL, query_string={'owned': 'owned'}).get_json()
+        assert body['meta']['total'] == 2
+        assert body['meta']['facets'] == {'kind': {'booster': 2},
+                                          'set': {'OGN': 1, 'SFD': 1}}
+
+    def test_hidden_products_are_listed_for_their_owners_only(self, authenticated_client,
+                                                              other_user_client, app):
+        self._owned(app)
+        add_owned(6, 1)
+        mine = authenticated_client.get(URL).get_json()
+        assert _names(authenticated_client.get(URL)) == VISIBLE[:4] + ['Secret Case',
+                                                                       VISIBLE[4]]
+        secret = next(i for i in mine['data']['items'] if i['id'] == 6)
+        assert (secret['owned_qty'], secret['price']['value']) == (1, 300.0)
+        assert mine['meta']['facets']['kind']['case'] == 1
+        assert _names(authenticated_client.get(URL, query_string={'owned': 'owned'})) == [
+            'Origins Booster', 'Secret Case', 'Spiritforged Booster']
+        assert 'Secret Case' not in _names(other_user_client.get(URL))
+
+    def test_owned_singles_stay_out(self, authenticated_client, app):
+        _seed(app)
+        add_owned(7, 1)            # not possible through the API; the list still drops it
+        assert 'A single card' not in _names(authenticated_client.get(
+            URL, query_string={'listed': 'any'}))
+
+    def test_statement_count_with_owned_products(self, authenticated_client, app):
+        self._owned(app)
+        for owned in ('any', 'owned'):
+            resp, statements = count_statements(
+                app, lambda: authenticated_client.get(URL, query_string={'owned': owned}))
+            assert resp.status_code == 200
+            assert statements <= 10, (owned, statements)
 
 
 class TestUsersAndStatements:
