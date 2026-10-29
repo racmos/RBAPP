@@ -34,7 +34,7 @@ export type AdminChange = {
   field: string;
   old_value: string | null;
   new_value: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'obsolete';
   detected_at: string | null;
   job_id: number | null;
   decided_at: string | null;
@@ -81,7 +81,7 @@ const FIELDS: readonly FieldName[] = [
   'image',
 ];
 const LONG_FIELDS: readonly string[] = ['rbcar_ability', 'rbcar_tags'];
-const STATUSES = ['pending', 'approved', 'rejected', 'all'] as const;
+const STATUSES = ['pending', 'approved', 'rejected', 'obsolete', 'all'] as const;
 const PAGE_SIZES = ['50', '100', '200'] as const;
 const DEFAULT_PAGE_SIZE = '50';
 

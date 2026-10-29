@@ -201,6 +201,7 @@
       "pending": "Pending",
       "approved": "Approved",
       "rejected": "Rejected",
+      "obsolete": "Obsolete",
       "all": "All"
     },
     "columns": {

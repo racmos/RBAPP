@@ -236,6 +236,14 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     await waitFor(() => expect(router.state.location.search).toContain('status=approved'), LONG);
   });
 
+  it('lists the obsolete proposals (owner feedback S17)', { timeout: 30000 }, async () => {
+    changesApi();
+    const { router } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
+    await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
+    await userEvent.click(screen.getByRole('radio', { name: 'Obsoletos' }));
+    await waitFor(() => expect(router.state.location.search).toContain('status=obsolete'), LONG);
+  });
+
   it('persistent panel at 1700 px shows the selected change', { timeout: 30000 }, async () => {
     changesApi();
     await renderApp({ path: '/admin/riot/changes', width: 1700 });
