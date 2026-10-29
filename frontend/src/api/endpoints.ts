@@ -21,6 +21,8 @@ import type {
   LoginBody,
   MetaConfig,
   Prefs,
+  ProductKind,
+  ProductSummary,
   RegisterBody,
   Session,
   UserPayload,
@@ -133,6 +135,39 @@ export const uploadAdminCardImage = (setId: string, cardId: string, file: File) 
     method: 'POST',
     body: form,
   });
+};
+
+/** `GET /admin/products` item (F14-d): a `ProductSummary` plus the curation fields. */
+export type AdminProduct = ProductSummary & {
+  hidden: boolean;
+  kind_locked: boolean;
+  set_locked: boolean;
+  rbpdt_type: string;
+  updated_at: string | null;
+};
+
+export type AdminProductList = {
+  items: AdminProduct[];
+  meta: { page: number; per_page: number; total: number; pages: number };
+};
+
+/** `kind: null` unlocks the kind; `set_id: null` locks "no set", `'auto'` unlocks the set. */
+export type AdminProductPatch = {
+  hidden?: boolean;
+  kind?: ProductKind | null;
+  set_id?: string | null;
+};
+
+export const listAdminProducts = (query: string, signal?: AbortSignal) =>
+  request<AdminProductList>(`/admin/products${query ? `?${query}` : ''}`, { signal });
+
+export const patchAdminProduct = (id: number, body: AdminProductPatch) =>
+  request<AdminProduct>(`/admin/products/${id}`, { method: 'PATCH', body });
+
+export const uploadAdminProductImage = (id: number, file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  return request<AdminProduct>(`/admin/products/${id}/image`, { method: 'POST', body: form });
 };
 
 export type AdminJob = {

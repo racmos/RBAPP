@@ -5,6 +5,7 @@
     "overview": "Resumen",
     "sets": "Sets",
     "cards": "Cartas",
+    "products": "Productos",
     "riot": "Riot",
     "changes": "Cambios",
     "changesCount": "Cambios ({{count}})"
@@ -121,6 +122,43 @@
     },
     "edit": "Editar {{name}}",
     "delete": "Borrar {{name}}"
+  },
+  "products": {
+    "title": "Productos",
+    "subtitle": "Catálogo de producto sellado de Cardmarket.",
+    "caption": "Productos del catálogo",
+    "filters": {
+      "search": "Buscar por nombre o id",
+      "hidden": "Ocultos",
+      "listed": "En Cardmarket",
+      "noSet": "Sin set",
+      "noImage": "Sin imagen"
+    },
+    "columns": {
+      "image": "Imagen",
+      "name": "Nombre",
+      "kind": "Tipo",
+      "set": "Set",
+      "price": "Precio",
+      "listed": "En Cardmarket",
+      "hidden": "Oculto",
+      "updated": "Actualizado"
+    },
+    "fields": {
+      "kind": "Tipo",
+      "set": "Set",
+      "hidden": "Ocultar a los usuarios"
+    },
+    "kindAuto": "Automático (según la categoría)",
+    "setAuto": "Automático (según la expansión)",
+    "noSet": "Sin set",
+    "locked": "Fijado a mano",
+    "saved": "Producto guardado.",
+    "empty": "Ningún producto coincide con los filtros.",
+    "pickOne": "Elige un producto para editarlo.",
+    "any": "Todos",
+    "yes": "Sí",
+    "no": "No"
   },
   "riot": {
     "title": "Sincronización con Riot",

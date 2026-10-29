@@ -230,6 +230,17 @@ create the page next to `AdminLayout.tsx`, add the child route under `/admin` in
 `admin` namespace. The nav (`NavLink` at ≥ 1240 px, `Select` below) and the mobile hint come
 from `AdminLayout`; the page only renders its `PageHeader` and content.
 
+**Products admin (F14-d).** `/admin/products` (`src/admin/ProductsAdminPage.tsx`, nav entry
+`products`) lists `GET /admin/products` with its filters in the URL (`q`, repeated `kind`,
+`hidden` and `listed` = `yes` | `no`, `no_set`, `no_image`, `per_page`, `page`); the previous
+page stays on screen while the next one loads. ≥ 860 px a table (40 px image or the `gift`
+placeholder, name, kind, set, price, listed, hidden, updated) with a side drawer editor, a
+persistent panel at ≥ 1600 px; below 860 px cards and a bottom sheet. `ProductEditor` sends
+only what changed to `PATCH /admin/products/<id>`: the "automatic" kind is `kind: null`, the
+"automatic" set is `set_id: "auto"`, "no set" is `set_id: null`; a locked kind or set shows
+the "Set by hand" badge. The image goes to `POST .../image` as multipart `file`. Kind labels
+live in the `products` namespace (`products:kind.<kind>`, F14-e adds the rest).
+
 ## Service worker and install
 
 The app is an installable PWA named **Rift Manager**. Nothing about it needs a server change:

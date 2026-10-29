@@ -1,0 +1,37 @@
+@layer components {
+  .form {
+    display: grid;
+    gap: var(--gap);
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .image {
+    display: flex;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .thumb {
+    width: 40px;
+    height: auto;
+    display: block;
+    border-radius: var(--radius-sm);
+  }
+
+  .placeholder {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    color: var(--muted);
+  }
+}

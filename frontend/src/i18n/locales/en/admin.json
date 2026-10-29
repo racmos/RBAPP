@@ -5,6 +5,7 @@
     "overview": "Overview",
     "sets": "Sets",
     "cards": "Cards",
+    "products": "Products",
     "riot": "Riot",
     "changes": "Changes",
     "changesCount": "Changes ({{count}})"
@@ -121,6 +122,43 @@
     },
     "edit": "Edit {{name}}",
     "delete": "Delete {{name}}"
+  },
+  "products": {
+    "title": "Products",
+    "subtitle": "Cardmarket sealed product catalog.",
+    "caption": "Catalog products",
+    "filters": {
+      "search": "Search by name or id",
+      "hidden": "Hidden",
+      "listed": "On Cardmarket",
+      "noSet": "Without set",
+      "noImage": "Without image"
+    },
+    "columns": {
+      "image": "Image",
+      "name": "Name",
+      "kind": "Kind",
+      "set": "Set",
+      "price": "Price",
+      "listed": "On Cardmarket",
+      "hidden": "Hidden",
+      "updated": "Updated"
+    },
+    "fields": {
+      "kind": "Kind",
+      "set": "Set",
+      "hidden": "Hide from users"
+    },
+    "kindAuto": "Automatic (from the category)",
+    "setAuto": "Automatic (from the expansion)",
+    "noSet": "No set",
+    "locked": "Set by hand",
+    "saved": "Product saved.",
+    "empty": "No product matches the filters.",
+    "pickOne": "Pick a product to edit it.",
+    "any": "All",
+    "yes": "Yes",
+    "no": "No"
   },
   "riot": {
     "title": "Riot sync",

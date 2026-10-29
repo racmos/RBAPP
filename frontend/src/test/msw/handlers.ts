@@ -10,6 +10,7 @@ import {
   importResult,
   withCard,
 } from '@/test/fixtures/collection';
+import { adminProductList } from '@/test/fixtures/products';
 
 /** Base of the API as the SPA sees it (same-origin, behind Nginx). */
 export const API = '/riftbound/api/v1';
@@ -191,6 +192,19 @@ export const handlers = [
   http.post(`${API}/collection/import/commit`, async ({ request }) => {
     const body = (await request.json()) as { mode: string };
     return ok(body.mode === 'replace' ? { ...importResult, replaced: 2 } : importResult);
+  }),
+  http.get(`${API}/admin/products`, () => ok(adminProductList)),
+  http.patch(`${API}/admin/products/:id`, async ({ params, request }) => {
+    const product = adminProductList.items.find((item) => String(item.id) === params.id);
+    return product
+      ? ok({ ...product, ...((await request.json()) as object) })
+      : failure(404, { error: 'Not Found' });
+  }),
+  http.post(`${API}/admin/products/:id/image`, ({ params }) => {
+    const product = adminProductList.items.find((item) => String(item.id) === params.id);
+    return product
+      ? ok({ ...product, image_src: `/riftbound/media/products/${product.id}.png` })
+      : failure(404, { error: 'Not Found' });
   }),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {
