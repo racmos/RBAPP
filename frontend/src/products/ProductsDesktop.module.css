@@ -1,0 +1,125 @@
+@layer components {
+  .page {
+    width: 100%;
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--pad);
+    padding-bottom: 32px;
+  }
+
+  @media (min-width: 1600px) {
+    .page {
+      max-width: var(--maxw-wide);
+    }
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .layout[data-wide] {
+    grid-template-columns: 240px minmax(0, 1fr) 380px;
+  }
+
+  .rail,
+  .panel {
+    position: sticky;
+    top: calc(64px + var(--gap));
+    max-height: calc(100dvh - 64px - 2 * var(--gap));
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+  }
+
+  .main {
+    min-width: 0;
+  }
+
+  .railBody {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 14px;
+  }
+
+  .railSearch {
+    width: 100%;
+  }
+
+  .railLabel {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .railField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kinds {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .kinds legend {
+    margin-bottom: 6px;
+    padding: 0;
+  }
+
+  .count {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .empty {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .panelName {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .facts > div {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-3);
+  }
+
+  .facts dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .facts dd {
+    margin: 2px 0 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+}

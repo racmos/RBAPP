@@ -20,7 +20,10 @@
   "filters": {
     "kind": "Kind",
     "set": "Set",
-    "allSets": "All sets"
+    "allSets": "All sets",
+    "title": "Filters",
+    "onlyMine": "Only mine",
+    "pageSize": "Per page"
   },
   "sort": {
     "label": "Sort by",
@@ -54,6 +57,32 @@
     "change30d": "30 days",
     "history": "Price history",
     "yourLines": "Your units"
+  },
+  "table": {
+    "caption": "Cardmarket products",
+    "mineCaption": "Your products",
+    "columns": {
+      "image": "Image",
+      "name": "Name",
+      "kind": "Kind",
+      "set": "Set",
+      "price": "Price",
+      "change7d": "7 d",
+      "change30d": "30 d",
+      "owned": "Owned",
+      "listed": "On Cardmarket",
+      "quantity": "Quantity",
+      "purchase": "Purchase",
+      "value": "Value",
+      "plAbs": "Profit €",
+      "plPct": "Profit %",
+      "note": "Note"
+    },
+    "notListed": "No longer listed"
+  },
+  "panel": {
+    "title": "Product details",
+    "empty": "Pick a product to see its details."
   },
   "empty": {
     "mine": "You have not added any products yet.",

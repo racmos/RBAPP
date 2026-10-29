@@ -1,0 +1,146 @@
+@layer components {
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .pageSize {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .scroll {
+    overflow-x: auto;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .table th {
+    position: sticky;
+    z-index: 1;
+    top: 64px;
+    padding: 8px 6px;
+    background: var(--panel-3);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table td {
+    padding: 6px;
+    border-top: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+
+  .table tbody tr {
+    cursor: pointer;
+  }
+
+  .table tbody tr:hover {
+    background: rgba(120, 205, 228, 0.05);
+  }
+
+  .table tr[data-active] {
+    background: var(--accent-soft);
+  }
+
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .thumb {
+    display: block;
+    width: 40px;
+  }
+
+  .thumb > * {
+    width: 40px;
+    height: 40px;
+  }
+
+  .name,
+  .nameButton {
+    color: var(--text);
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .nameButton {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .name:hover,
+  .nameButton:hover,
+  .nameButton[aria-pressed='true'] {
+    color: var(--accent);
+  }
+
+  .sortButton {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .sortButton:hover {
+    color: var(--text);
+  }
+
+  /* The column header names the stepper: its own label is kept for screen readers only. */
+  .stepper > div > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .stepper button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .stepper input {
+    width: 64px;
+    height: 32px;
+  }
+
+  .money {
+    width: 84px;
+    height: 32px;
+    text-align: right;
+  }
+
+  .note {
+    width: 100%;
+    min-width: 120px;
+    height: 32px;
+  }
+
+  .gain {
+    color: var(--green, #5ad19a);
+  }
+
+  .loss {
+    color: var(--red);
+  }
+}

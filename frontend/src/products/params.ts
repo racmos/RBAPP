@@ -7,6 +7,9 @@ import {
 
 export type ProductsTab = 'mine' | 'catalog';
 
+/** The screen's params: `GET /products` plus `owned=owned` ("solo los míos", F14-f S1). */
+export type ProductsParams = ProductListParams & { owned?: 'owned' };
+
 export const DEFAULT_SORT: ProductListSort = 'name';
 export const DEFAULT_DIR = 'asc' as const;
 export const DEFAULT_PAGE = 1;
@@ -22,8 +25,8 @@ function whole(value: string | null, min: number, max: number): number | undefin
 }
 
 /** The URL search string as normalised `GET /products` params; invalid values are dropped. */
-export function parseProductSearch(search: URLSearchParams): ProductListParams {
-  const params: ProductListParams = {};
+export function parseProductSearch(search: URLSearchParams): ProductsParams {
+  const params: ProductsParams = {};
   const q = search.get('q')?.trim();
   if (q) params.q = q;
   const kind = search.getAll('kind').filter((value): value is ProductKind => KINDS.has(value));
@@ -33,6 +36,7 @@ export function parseProductSearch(search: URLSearchParams): ProductListParams {
     .map((value) => value.trim())
     .filter((value) => value !== '');
   if (set.length > 0) params.set = set;
+  if (search.get('owned') === 'owned') params.owned = 'owned';
   const sort = search.get('sort');
   params.sort =
     sort !== null && SORTS.has(sort as ProductListSort) ? (sort as ProductListSort) : DEFAULT_SORT;
@@ -43,11 +47,12 @@ export function parseProductSearch(search: URLSearchParams): ProductListParams {
 }
 
 /** A deterministic query string that leaves out every default (also the cache key). */
-export function serializeProductParams(params: ProductListParams): string {
+export function serializeProductParams(params: ProductsParams): string {
   const query = new URLSearchParams();
   if (params.q) query.append('q', params.q);
   for (const kind of params.kind ?? []) query.append('kind', kind);
   for (const set of params.set ?? []) query.append('set', set);
+  if (params.owned) query.append('owned', params.owned);
   if (params.sort && params.sort !== DEFAULT_SORT) query.append('sort', params.sort);
   if (params.dir && params.dir !== DEFAULT_DIR) query.append('dir', params.dir);
   if (params.page && params.page !== DEFAULT_PAGE) query.append('page', String(params.page));
@@ -58,19 +63,16 @@ export function serializeProductParams(params: ProductListParams): string {
 }
 
 /** Apply a change; anything but a page change goes back to the first page. */
-export function withChange(
-  params: ProductListParams,
-  patch: Partial<ProductListParams>,
-): ProductListParams {
-  const next: ProductListParams = { ...params, ...patch };
+export function withChange(params: ProductsParams, patch: Partial<ProductsParams>): ProductsParams {
+  const next: ProductsParams = { ...params, ...patch };
   const keys = Object.keys(patch);
   if (!(keys.length === 1 && keys[0] === 'page')) delete next.page;
   return next;
 }
 
-/** How many filters (kinds and sets, not the search) are active. */
-export const activeFilterCount = (params: ProductListParams): number =>
-  (params.kind?.length ?? 0) + (params.set?.length ?? 0);
+/** How many filters (kinds, sets and "solo los míos", not the search) are active. */
+export const activeFilterCount = (params: ProductsParams): number =>
+  (params.kind?.length ?? 0) + (params.set?.length ?? 0) + (params.owned ? 1 : 0);
 
 /** The tab the URL asks for, or `null` (then the default rule decides). */
 export function parseTab(search: URLSearchParams): ProductsTab | null {
@@ -79,7 +81,7 @@ export function parseTab(search: URLSearchParams): ProductsTab | null {
 }
 
 /** The page's search string: the tab first, then the catalog params. */
-export function productsSearch(tab: ProductsTab, params: ProductListParams): string {
+export function productsSearch(tab: ProductsTab, params: ProductsParams): string {
   const rest = serializeProductParams(params);
   return rest ? `tab=${tab}&${rest}` : `tab=${tab}`;
 }

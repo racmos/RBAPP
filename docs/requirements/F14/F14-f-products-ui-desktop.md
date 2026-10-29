@@ -77,3 +77,10 @@ Deploy. Manual (owner, computer): sort the catalog by 30-day change, edit a quan
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): two strings added that the tests need and the spec table lacks: `products:filters.title` (name of the rail) and `products:panel.title` (name of the panel).
+- L2 (implementer): the rail has no "Limpiar filtros" button (the empty catalog already offers one); any rail change switches to the catalog tab because the filters only apply there.
+- L3 (implementer): in the Mine table the stepper's own label is hidden visually (the column header names it); `collection/Stepper` is unchanged.
+- L4 (parent): no screenshots (no browser run); the desktop layout was tested at 1280 and 1700 px with axe.
