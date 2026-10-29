@@ -105,6 +105,18 @@ export function createAppRoutes(
                   }),
                 },
                 {
+                  path: '/products',
+                  lazy: async () => ({
+                    Component: (await import('@/products')).ProductsPage,
+                  }),
+                },
+                {
+                  path: '/products/:id',
+                  lazy: async () => ({
+                    Component: (await import('@/products')).ProductDetail,
+                  }),
+                },
+                {
                   path: '/admin',
                   loader: requireAdmin(queryClient),
                   lazy: async () => ({

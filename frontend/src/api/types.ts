@@ -499,3 +499,85 @@ export type ProductSummary = {
   price: ProductPrice | null;
   owned_qty: number;
 };
+
+// --- Products (F14-b, F14-c) ---
+
+export type ProductListSort = 'name' | 'price' | 'change_7d' | 'change_30d';
+
+/** `GET /products` params (F14-b names). */
+export type ProductListParams = {
+  q?: string;
+  kind?: ProductKind[];
+  set?: string[];
+  sort?: ProductListSort;
+  dir?: 'asc' | 'desc';
+  page?: number;
+  per_page?: number;
+};
+
+/** Disjunctive counts: `kind` in `PRODUCT_KINDS` order, `set` by release order. */
+export type ProductFacets = { kind: Record<string, number>; set: Record<string, number> };
+
+export type ProductListMeta = {
+  page: number;
+  per_page: number;
+  total: number;
+  pages: number;
+  facets: ProductFacets;
+  price_as_of: string | null;
+};
+
+/** An owned line without its product (`GET /products/<id>` `lines`). */
+export type OwnedProductLineBase = {
+  id: number;
+  quantity: number;
+  purchase_price: number | null;
+  note: string | null;
+  value: number | null;
+  pl_abs: number | null;
+  pl_pct: number | null;
+  updated_at: string;
+};
+
+/** `OwnedProductLine` (F14-c). */
+export type OwnedProductLine = OwnedProductLineBase & { product: ProductSummary };
+
+/** `GET /products/<id>`. */
+export type ProductDetail = ProductSummary & {
+  description: string | null;
+  columns: {
+    avg7: number | null;
+    trend: number | null;
+    low: number | null;
+    avg30: number | null;
+  } | null;
+  lines: OwnedProductLineBase[];
+};
+
+export type ProductPricePoint = {
+  date: string;
+  value: number | null;
+  avg7: number | null;
+  trend: number | null;
+  low: number | null;
+};
+
+export type ProductPricesData = { range: string; points: ProductPricePoint[] };
+
+export type MyProductsTotal = { value: number; lines: number; qty: number; unpriced: number };
+
+/** `GET /me/products`. */
+export type MyProducts = { items: OwnedProductLine[]; total: MyProductsTotal };
+
+export type MyProductAddBody = {
+  product_id: number;
+  quantity: number;
+  purchase_price?: number | null;
+  note?: string | null;
+};
+
+export type MyProductPatchBody = Partial<{
+  quantity: number;
+  purchase_price: number | null;
+  note: string | null;
+}>;

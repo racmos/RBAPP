@@ -48,6 +48,10 @@
       "label": "Colección",
       "description": "Lo que tienes y lo que vendes"
     },
+    "products": {
+      "label": "Productos",
+      "description": "Cajas, sobres y accesorios"
+    },
     "decks": {
       "label": "Mazos",
       "description": "Construye y revisa mazos"

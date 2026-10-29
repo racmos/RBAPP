@@ -18,6 +18,7 @@ const FOLDERS = [
   'account',
   'catalog',
   'collection',
+  'products',
   'app',
 ];
 
@@ -88,13 +89,14 @@ export default defineConfig(
       deepOnly: FEATURES.filter((name) => name !== feature),
     }),
   ),
-  // shell, account, catalog and collection: everything below, never app.
+  // shell, account, catalog, collection and products: everything below, never app.
   boundary(
     [
       'src/shell/**/*.{ts,tsx}',
       'src/account/**/*.{ts,tsx}',
       'src/catalog/**/*.{ts,tsx}',
       'src/collection/**/*.{ts,tsx}',
+      'src/products/**/*.{ts,tsx}',
     ],
     ['app'],
   ),

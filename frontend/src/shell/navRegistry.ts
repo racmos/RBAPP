@@ -14,6 +14,7 @@ export type NavId =
   | 'sets'
   | 'cards'
   | 'collection'
+  | 'products'
   | 'decks'
   | 'profile'
   | 'price'
@@ -80,6 +81,13 @@ export const NAV: readonly NavEntry[] = [
     status: 'spa',
     to: '/collection',
     placements: ['top', 'bottom', 'hub', 'more'],
+  },
+  {
+    id: 'products',
+    icon: 'gift',
+    status: 'spa',
+    to: '/products',
+    placements: ['top', 'hub', 'more'],
   },
   {
     id: 'decks',

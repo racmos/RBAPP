@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { API, adminSession, ok, signedInSession } from '@/test/msw/handlers';
@@ -78,8 +78,11 @@ describe('AdminLayout (F13-a S6)', () => {
   it('links the products section (F14-d S5)', async () => {
     adminApi();
     await renderApp({ path: '/admin', width: 1280 });
-    const link = await screen.findByRole('link', { name: 'Productos' }, { timeout: 10000 });
-    expect(link).toHaveAttribute('href', '/riftbound/app/admin/products');
+    const nav = await screen.findByRole('navigation', { name: NAV_LABEL }, { timeout: 10000 });
+    expect(within(nav).getByRole('link', { name: 'Productos' })).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/products',
+    );
   });
 
   it('shows no count when nothing is pending', async () => {

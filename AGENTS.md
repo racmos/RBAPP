@@ -184,6 +184,7 @@ riftbound/
 │       ├── pwa/             # Update toast, install prompt and iOS dialog (the service worker comes from vite-plugin-pwa)
 │       ├── account/         # Interface settings page and its live preview
 │       ├── shell/           # AppShell, Topbar, BottomNav, MoreSheet, HomeHub, nav registry, NotFound
+│       ├── products/        # ProductsPage (mine / catalog tabs), ProductDetail, line sheet, tiles, params ⇄ URL, queries (F14-e)
 │       ├── collection/      # CollectionPage (mobile F3-g, desktop table/bulk/panel F3-h), items, LineSheet, AddSheet, filters, params ⇄ URL, queries
 │       ├── catalog/         # CardsLayout, card detail route/view, queries, outlet context (F2-f); CatalogPage, params, price history (F2-g/h); CardCombobox + topbar card search (F2-k)
 │       ├── components/ui/   # Primitives (Brand, Button, Field, Input, Toast, ...)

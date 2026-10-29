@@ -241,6 +241,38 @@ only what changed to `PATCH /admin/products/<id>`: the "automatic" kind is `kind
 the "Set by hand" badge. The image goes to `POST .../image` as multipart `file`. Kind labels
 live in the `products` namespace (`products:kind.<kind>`, F14-e adds the rest).
 
+## Products (F14-e)
+
+`frontend/src/products/` is the products section (nav entry `products`, `spa`, icon `gift`, after
+`collection`; top, hub and "Más"). The mobile layout is the target; F14-f adds the desktop one.
+
+- `params.ts` — URL ⇄ `GET /products` params (`q`, repeated `kind` and `set`, `sort` =
+  `name|price|change_7d|change_30d`, `dir`, `page`, `per_page` 24-96, default 48; defaults are never
+  written, invalid values are dropped, any change but `page` returns to page 1) plus `tab=mine|catalog`,
+  always written first. `queries.ts` — `useProductList` (`['products', 'list', <query>]`), `useProduct`,
+  `useProductPrices(id, range)`, `useMyProducts` (`['me-products']`) and `useAddProduct`,
+  `usePatchProduct`, `useDeleteProduct`, which refresh `['me-products']` and `['products']`.
+- `ProductsPage` (`/products`) — a `role="tablist"` with "Mis productos" and "Catálogo" (arrow keys,
+  Home/End). Without `?tab=` it opens on the user's products when `GET /me/products` has lines, else on
+  the catalog. "Mis productos" (`MineTab`): the total band (value, lines, unpriced count) with the hint
+  that it is not part of the collection value, and one row per owned line (image or placeholder, name,
+  kind, unit price, line value, quantity stepper → `PATCH /me/products/<id>`); the row opens
+  `ProductLineSheet` (quantity, purchase price, note, delete behind a `ConfirmDialog` with "Deshacer"
+  for 8 s, which posts the deleted line back). "Catálogo" (`CatalogTab`): search, kind chips with the
+  facet counts, set and sort `Select`s, direction, `ProductTile`s (price with the 7-day change, `×N`
+  owned badge) and `Pagination`.
+- `ProductDetail` (`/products/:id`, a page) — image, kind, set, price and 7/30-day changes, the price
+  history (`PriceChart` with 30 d / 90 d / 1 año / Todo; `asChartPoints` maps `{date, value}` to the
+  card chart's `market` series), the owned lines and the "Añadir" form (`POST /me/products`; the toast
+  says whether it merged). An unknown id renders the shell's `NotFound`.
+- `ProductThumb` — the image, or the `gift` icon with the kind label (`data-slot="product-placeholder"`).
+- States: skeletons, empty mine (button to the catalog tab), empty catalog (clear filters), unpriced
+  text, error with retry, offline (cached data stays, edits are disabled with
+  `common:offline.editDisabled`). The quantity stepper and the price field are the collection's
+  `Stepper` and `MoneyField`. A `ConfirmDialog` is rendered next to the sheet, not inside it: the close
+  event of a nested `<dialog>` would close the sheet as well.
+- ESLint: `products` may import everything below `app`, like `collection`.
+
 ## Service worker and install
 
 The app is an installable PWA named **Rift Manager**. Nothing about it needs a server change:

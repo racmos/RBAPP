@@ -1,0 +1,41 @@
+@layer components {
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .offline {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .kind {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .value {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .value dt {
+    color: var(--muted);
+  }
+
+  .value dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}

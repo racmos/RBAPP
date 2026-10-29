@@ -20,8 +20,15 @@ import type {
   KeepPlaysetResult,
   LoginBody,
   MetaConfig,
+  MyProductAddBody,
+  MyProductPatchBody,
+  MyProducts,
+  OwnedProductLine,
   Prefs,
+  ProductDetail,
   ProductKind,
+  ProductListMeta,
+  ProductPricesData,
   ProductSummary,
   RegisterBody,
   Session,
@@ -312,3 +319,30 @@ export const commitCollectionImport = (previewId: string, mode: ImportMode) =>
     method: 'POST',
     body: { preview_id: previewId, mode },
   });
+
+// --- Products (F14-b) and owned products (F14-c) ---
+
+/** `GET /products`; the caller serialises the params with `serializeProductParams`. */
+export const listProducts = (query: string, signal?: AbortSignal) =>
+  requestWithMeta<{ items: ProductSummary[] }, ProductListMeta>(
+    `/products${query ? `?${query}` : ''}`,
+    { signal },
+  );
+
+export const getProduct = (id: number, signal?: AbortSignal) =>
+  request<ProductDetail>(`/products/${id}`, { signal });
+
+export const getProductPrices = (id: number, range: PriceRange, signal?: AbortSignal) =>
+  request<ProductPricesData>(`/products/${id}/prices?range=${range}`, { signal });
+
+export const listMyProducts = (signal?: AbortSignal) =>
+  request<MyProducts>('/me/products', { signal });
+
+export const addMyProduct = (body: MyProductAddBody) =>
+  request<{ line: OwnedProductLine; merged: boolean }>('/me/products', { method: 'POST', body });
+
+export const patchMyProduct = (id: number, body: MyProductPatchBody) =>
+  request<OwnedProductLine>(`/me/products/${id}`, { method: 'PATCH', body });
+
+export const deleteMyProduct = (id: number) =>
+  request<{ deleted: OwnedProductLine }>(`/me/products/${id}`, { method: 'DELETE' });
