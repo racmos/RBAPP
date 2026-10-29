@@ -142,6 +142,33 @@ def _safe_int(value: str) -> Optional[int]:
         return None
 
 
+def normalise_type(card_type: Optional[str]) -> Optional[str]:
+    """The stored type of a gallery type (owner feedback S13).
+
+    Legends have no supertype in the catalog: the gallery's "Champion Legend" is
+    "Legend". Every other supertype + type pair ("Champion Unit", "Signature
+    Spell", "Token Unit", "Basic Rune") is stored as the gallery builds it.
+    """
+    if card_type and card_type.split()[-1] == 'Legend':
+        return 'Legend'
+    return card_type
+
+
+def full_name(name: str, subtitle: Optional[str], supertypes: list[str],
+              card_type: Optional[str]) -> str:
+    """The stored card name (owner feedback S12).
+
+    The gallery sends the printed name in two keys: `name` ("Ahri") and
+    `subtitle` ("Alluring"). Only Legends store the bare name ("Dark Child", the
+    champion is in the tags); every other card stores "Name, Subtitle". Signature
+    cards are the exception the data shows: their subtitle is the champion
+    ("Bullet Time" / "Miss Fortune") and their printed name is the bare name.
+    """
+    if not subtitle or normalise_type(card_type) == 'Legend' or 'Signature' in supertypes:
+        return name
+    return f'{name}, {subtitle}'
+
+
 def _parse_card(card_json: dict) -> Optional[dict]:
     """Parse single card JSON into dict matching RbCard columns."""
     card_id_raw = card_json.get('id', '')
@@ -173,9 +200,9 @@ def _parse_card(card_json: dict) -> Optional[dict]:
 
     # Card type
     ct = card_json.get('cardType', {})
-    types = [t.get('label', '') for t in ct.get('superType', [])]
-    types += [t.get('label', '') for t in ct.get('type', [])]
-    card_type = ' '.join(types)
+    supertypes = [t.get('label', '') for t in ct.get('superType', [])]
+    types = supertypes + [t.get('label', '') for t in ct.get('type', [])]
+    card_type = normalise_type(' '.join(types))
 
     # Tags
     tags = ', '.join(card_json.get('tags', {}).get('tags', []))
@@ -202,7 +229,8 @@ def _parse_card(card_json: dict) -> Optional[dict]:
     return {
         'rbcar_rbset_id': rbset_id,
         'rbcar_id': rbcar_id,
-        'rbcar_name': card_json.get('name', ''),
+        'rbcar_name': full_name(card_json.get('name', ''), card_json.get('subtitle'),
+                                supertypes, card_type),
         'rbcar_domain': domain,
         'rbcar_type': card_type,
         'rbcar_tags': tags,

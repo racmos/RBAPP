@@ -11,7 +11,9 @@ inserted with the column default `'N'`, and updates skip the field.
 """
 import logging
 import os
+import re
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from app import db
@@ -28,6 +30,7 @@ from app.services.riot_scraper import (
     _get_session,
     _parse_card,
     GALLERY_URL,
+    normalise_type,
 )
 from app.utils import clock
 
@@ -134,6 +137,53 @@ def _same(stored, gallery):
     return stored == gallery
 
 
+def card_number(card_id: str | None) -> int | None:
+    """The leading digits of a card id: '69a' -> 69, '189s' -> 189, 't04' -> None."""
+    match = re.match(r'(\d+)', card_id or '')
+    return int(match.group(1)) if match else None
+
+
+def is_legend(card_type: str | None) -> bool:
+    """Whether a stored or gallery type names a Legend card."""
+    return normalise_type(card_type) == 'Legend'
+
+
+def _url_key(url: str) -> tuple:
+    """An image URL without its query string and fragment (S16)."""
+    parts = urlsplit(url)
+    return parts.scheme, parts.netloc, parts.path
+
+
+def gallery_value(field: str, stored, gallery, *, card_id: str, ncard: int | None,
+                  legend: bool):
+    """The gallery value the sync compares with (and writes over) `stored`.
+
+    Owner feedback 2026-10-29; returning `stored` itself means "no change":
+    - S12 name: only Legends have the name split from its tag, so a non-Legend
+      stored "Ahri, Alluring" and a gallery "Ahri" are the same card name.
+    - S13 type: "Champion Legend" is "Legend".
+    - S15 rarity (only when the set has a card count `ncard`): a card numbered
+      above it is Showcase; at or below it a gallery "Showcase" never replaces
+      the stored rarity (a card with no stored rarity keeps the gallery's).
+    - S16 image URL: the query string and the fragment are not a change.
+    `riot_recheck` re-runs the same function over the pending proposals.
+    """
+    if field == 'rbcar_type':
+        return normalise_type(gallery)
+    if field == 'rbcar_name' and not legend and stored and gallery \
+            and stored.startswith(f'{gallery}, '):
+        return stored
+    if field == 'rbcar_rarity' and ncard is not None:
+        number = card_number(card_id)
+        if number is not None and number > ncard:
+            return 'Showcase'
+        if number is not None and gallery == 'Showcase' and stored:
+            return stored
+    if field == 'image_url' and stored and gallery and _url_key(stored) == _url_key(gallery):
+        return stored
+    return gallery
+
+
 def _error_message(error: BaseException) -> str:
     """`<ExceptionClass>: <first line>` (F13-R3, same shape as M-c)."""
     return f'{type(error).__name__}: {str(error).splitlines()[0] if str(error) else ""}'
@@ -202,6 +252,9 @@ def _process_set(set_id, cards, today, session, summary, job_id, moment) -> bool
     """Process one set; returns True when a placeholder set was created."""
     created = False
     rs = RbSet.query.get(set_id)
+    # The S15 rarity rule uses the card count the owner set; a count this run
+    # fills in (placeholder or NULL) is not one.
+    ncard = rs.rbset_ncard if rs is not None else None
     if rs is None:
         rs = RbSet(rbset_id=set_id, rbset_name=set_id,
                    rbset_ncard=len(cards), rbset_outdat=None)
@@ -227,15 +280,18 @@ def _process_set(set_id, cards, today, session, summary, job_id, moment) -> bool
         if card is None:
             card = RbCard(rbcar_rbset_id=set_id, rbcar_id=card_id,
                           rbcar_banned='N')
+            legend = is_legend(parsed['rbcar_type'])
             for field in SYNCED_FIELDS:
-                setattr(card, _column(field), parsed[field])
+                setattr(card, _column(field),
+                        gallery_value(field, None, parsed[field], card_id=card_id,
+                                      ncard=ncard, legend=legend))
             db.session.add(card)
             db.session.flush()
             _fetch_image(session, card.image, card.image_url, set_id, summary)
             summary['inserted'] += 1
             inserted_ids.append(card_id)
             continue
-        diff = _diff(card, parsed)
+        diff = _diff(card, parsed, ncard)
         if not diff:
             summary['unchanged'] += 1
         elif window in ACTIVE_WINDOWS:
@@ -282,12 +338,14 @@ def _fetch_image(session, image, image_url, set_id: str, summary: dict) -> bool:
     return False
 
 
-def _diff(card: RbCard, parsed: dict) -> dict:
-    """`{field: [old, new]}` for every synced field that differs (S5)."""
+def _diff(card: RbCard, parsed: dict, ncard: int | None = None) -> dict:
+    """`{field: [old, new]}` for every synced field that differs (S5, `gallery_value`)."""
     out = {}
+    legend = is_legend(card.rbcar_type) or is_legend(parsed['rbcar_type'])
     for field in SYNCED_FIELDS:
         old = getattr(card, _column(field))
-        new = parsed[field]
+        new = gallery_value(field, old, parsed[field], card_id=card.rbcar_id,
+                            ncard=ncard, legend=legend)
         if _same(old, new):
             continue
         out[field] = [old, new]
@@ -332,6 +390,60 @@ def _propose(card: RbCard, diff: dict, job_id: int | None, moment: datetime) -> 
             rbchg_job_id=job_id, rbchg_detected_at=moment))
         count += 1
     return count
+
+
+NUMERIC_FIELDS = ('rbcar_energy', 'rbcar_power', 'rbcar_might')
+
+
+def _from_text(field: str, text: str | None):
+    """A proposal's stored text back to the value the sync compared (numbers as int)."""
+    if text is None or field not in NUMERIC_FIELDS:
+        return text
+    return int(text) if text.strip() else None
+
+
+def recheck_pending(dry_run: bool = False) -> dict:
+    """Mark the pending proposals the sync rules no longer produce as `obsolete` (S17).
+
+    No network: each pending row's `new_value` goes through `gallery_value` (the
+    rules the sync applies) against the card as it is stored now, with the set's
+    `rbset_ncard`; a row that is no longer a difference becomes `obsolete` with
+    `decided_at` = now and `decided_by` NULL (the system decided), plus one
+    `riot.recheck` audit row. `dry_run` only counts. The caller commits.
+    Returns `{checked, obsolete, pending, by_set_field: {"SET field": n}}`.
+    """
+    rows = (db.session.query(RbCardChange, RbCard, RbSet.rbset_ncard)
+            .join(RbCard, (RbCard.rbcar_rbset_id == RbCardChange.rbchg_rbset_id)
+                  & (RbCard.rbcar_id == RbCardChange.rbchg_rbcar_id))
+            .outerjoin(RbSet, RbSet.rbset_id == RbCardChange.rbchg_rbset_id)
+            .filter(RbCardChange.rbchg_status == 'pending')
+            .order_by(RbCardChange.rbchg_id).all())
+    moment = clock.utcnow()
+    by_set_field: dict[str, int] = {}
+    for change, card, ncard in rows:
+        field = change.rbchg_field
+        stored = getattr(card, _column(field))
+        try:
+            proposed = _from_text(field, change.rbchg_new_value)
+        except ValueError:
+            continue  # not a number: leave it to the admin
+        new = gallery_value(field, stored, proposed, card_id=card.rbcar_id, ncard=ncard,
+                            legend=is_legend(card.rbcar_type))
+        if not _same(stored, new):
+            continue
+        key = f'{change.rbchg_rbset_id} {field}'
+        by_set_field[key] = by_set_field.get(key, 0) + 1
+        if not dry_run:
+            change.rbchg_status = 'obsolete'
+            change.rbchg_decided_at = moment
+            change.rbchg_decided_by = None
+    obsolete = sum(by_set_field.values())
+    result = {'checked': len(rows), 'obsolete': obsolete, 'pending': len(rows) - obsolete,
+              'by_set_field': dict(sorted(by_set_field.items()))}
+    if obsolete and not dry_run:
+        audit_service.record('riot.recheck', 'card_change', None, result,
+                             actor=audit_service.SYSTEM)
+    return result
 
 
 def _column(field: str) -> str:

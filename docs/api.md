@@ -495,16 +495,25 @@ extension inside `PRODUCT_IMAGES_DIR`, cached a week, no `Set-Cookie`; anything 
   card of the set with an image URL (inserted, unchanged, applied, proposed and missing
   from the gallery): a missing file is downloaded, never overwritten. A proposed card keeps
   its stored `image`/`image_url`; only the ones it lacks come from the gallery.
+  Comparison rules (owner feedback 2026-10-29, `riot_sync.gallery_value`): non-Legend,
+  non-Signature names are "Name, Subtitle" (a bare gallery name equal to the start of a stored
+  "Name, Subtitle" is no change); "Champion Legend" is "Legend"; with a set `rbset_ncard`, a card
+  numbered above it is Showcase and at or below it a gallery "Showcase" keeps the stored
+  rarity; image URLs are compared without query string and fragment. A rule that says "same"
+  means no proposal and no write.
 - `GET /admin/jobs` with `kind`, `status`, `limit` (1-100, default 20), newest first →
   `items[]` of `{id, kind, status, requested_by (username|null), requested_at,
   started_at, finished_at, message}`. `GET /admin/jobs/<id>` adds `params` and `result`;
   404 when missing.
 - `GET /admin/riot/changes` with `status` (`pending` default, `approved`, `rejected`,
-  `all`), `set`, `field`, `q` (name substring or card id), `page` ≥ 1, `per_page` ≤ 100
-  (default 50) → `items[]` of `{id, set_id, card_id, card_name, image_src, field,
+  `obsolete`, `all`), `set`, `field`, `q` (name substring or card id), `page` ≥ 1,
+  `per_page` 50, 100 or 200 (default 50; any other value → 400 `validation_error`) →
+  `items[]` of `{id, set_id, card_id, card_name, image_src, field,
   old_value, new_value, status, detected_at, job_id, decided_at, decided_by
   (username|null)}`, newest first; `meta = {page, per_page, total, pages,
-  counts: {pending, approved, rejected}}` (global counts).
+  counts: {pending, approved, rejected, obsolete}}` (global counts).
+  `obsolete` (S17): a pending proposal the sync rules no longer produce, set by
+  `flask riot recheck-pending` (`decided_by` null); it is final, like approved and rejected.
 - `POST /admin/riot/changes/<id>/approve`: pending only (else 409 `change_decided`); the
   card must still hold the old value (else 409 `change_stale`, nothing written). Numbers are
   parsed back to int; an approved `image_url` re-downloads the image over the card's file

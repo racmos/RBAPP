@@ -125,13 +125,20 @@ class AdminChangesQuery(BaseModel):
     field: Optional[str] = None
     q: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    per_page: int = Field(default=50, ge=1, le=100)
+    per_page: Literal[50, 100, 200] = 50
 
     @field_validator('status', mode='after')
     @classmethod
     def _known_status(cls, value: str) -> str:
-        if value not in ('pending', 'approved', 'rejected', 'all'):
-            raise ValueError('status must be pending, approved, rejected or all')
+        if value not in ('pending', 'approved', 'rejected', 'obsolete', 'all'):
+            raise ValueError('status must be pending, approved, rejected, obsolete or all')
+        return value
+
+    @field_validator('page', 'per_page', mode='before')
+    @classmethod
+    def _to_int(cls, value):
+        if isinstance(value, str) and value.lstrip('-').isdigit():
+            return int(value)
         return value
 
 

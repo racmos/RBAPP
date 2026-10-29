@@ -11,7 +11,7 @@ from sqlalchemy import func, or_, select
 
 from app import db
 from app.models.card import RbCard
-from app.models.card_change import RbCardChange as Change
+from app.models.card_change import RbCardChange as Change, STATUSES
 from app.models.user import User
 from app.services import audit as audit_service
 from app.services.card_images import card_image_path
@@ -81,7 +81,7 @@ def pending_counts() -> dict:
     from sqlalchemy import func
     rows = db.session.query(Change.rbchg_status, func.count()).group_by(
         Change.rbchg_status).all()
-    counts = {'pending': 0, 'approved': 0, 'rejected': 0}
+    counts = {status: 0 for status in STATUSES}
     for status, total in rows:
         if status in counts:
             counts[status] = total

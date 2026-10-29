@@ -103,6 +103,8 @@ that file and in its `verify-report.md`.
 
 ## Known issues
 
+- Owner feedback 2026-10-29 (Riot sync rules): pending proposals were mostly noise (745 image URLs differing only in `?accountingTag=RB`, 280 unit names without their subtitle, 4 `Champion Legend` types, VEN alt-arts proposed as Showcase below the set count). The sync now compares URLs without the query, stores `Name, Subtitle` for units (Legends and Signature cards keep the bare name), maps `Champion Legend` to `Legend` and only proposes Showcase above `rbset_ncard`. Migration `0023_card_changes_obsolete` + `flask riot recheck-pending` mark the stale ones obsolete (after the deploy: pg_dump, `--dry-run`, then the real run).
+
 - 2026-10-29 deploy incident (fixed): commit `d3292ea` (#75) tracked `frontend/node_modules` as a symlink (worktree setup links it, and `.gitignore` had `node_modules/`, which matches directories only). `git pull` on the deployed checkout replaced the real directory with that symlink, so the build failed silently (exit 216) and the old dist kept being served. Recovered by removing the symlink, `npm ci`, build, restart; this PR untracks it and ignores `node_modules` in any form.
 
 - Owner feedback 2026-10-29 (after the b8a8584 deploy): `/admin/cards` answered 500 (natural sort mixed int and str; fixed), VEN images were never downloaded because the Riot sync fetched images only for new or applied cards (fixed: every missing image of the synced set), `/admin/sets` "Nuevo set" did nothing at ≥ 1600 px (fixed, plus a filters/sort section), `/admin/riot/changes` too wide (fixed). After the deploy: run a Riot sync of VEN to download its images.

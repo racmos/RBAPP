@@ -223,6 +223,35 @@ as an admin. Each row shows the card, the field and the old vs new value; approv
 (single or in bulk with the checkbox selection). A change whose card no longer matches is reported as
 stale and stays undecided. Approving an `image_url` change re-downloads the image over the card's file.
 
+Comparison rules (owner feedback 2026-10-29): the gallery sends `name` and `subtitle` apart; a
+non-Legend, non-Signature card stores "Name, Subtitle" ("Ahri, Alluring"), Legends keep the bare
+name. The gallery's "Champion Legend" is stored as "Legend". In a set with `rbset_ncard` (the card
+count the owner sets by hand in `rbset`; VEN = 166) a card numbered above it is Showcase, and at or
+below it a gallery "Showcase" never replaces the stored rarity; a set without a count compares the
+rarity as before. Image URLs that differ only in the query string (`?accountingTag=RB`) are the same
+image: no proposal, no write.
+
+Recheck pending proposals after a rule change (S17). Proposals made before the rules above stay
+pending until rechecked; the recheck re-evaluates every pending row against the stored card with the
+same rules (no network) and marks the ones that are no longer a change `obsolete` (`decided_at` =
+now, `decided_by` NULL, one `riot.recheck` audit row); nothing is deleted. Needs migration
+`0023_card_changes_obsolete`. **Take a `pg_dump` first** (owner's go-ahead), then look at the dry run:
+
+```bash
+pg_dump -h <host> -U <user> -d <database> -n riftbound -Fc -f ~/backups/rbapp/riftbound_pre_recheck_$(date +%Y%m%d_%H%M).dump
+venv/bin/flask db upgrade                       # to 0023_card_changes_obsolete, then restart
+venv/bin/flask riot recheck-pending --dry-run   # counts per set and field, changes nothing
+venv/bin/flask riot recheck-pending
+```
+
+Output: `Checked N pending proposals: X obsolete, Y still pending.` then one `  SET field: n` line per
+set and field made obsolete. A second run reports 0 obsolete. Obsolete rows leave the pending list and
+the bulk actions (they answer `decided`), are listed with `?status=obsolete`, and never block a later
+proposal of the same value (only `rejected` does). Undo for one batch: restore the dump, or
+`UPDATE riftbound.rbcardchanges SET rbchg_status = 'pending', rbchg_decided_at = NULL WHERE
+rbchg_status = 'obsolete' AND rbchg_decided_at = '<the run's time>'`. The `0023` downgrade refuses
+while obsolete rows exist (set their status first).
+
 ### Collection value snapshots (F4-c)
 
 The `value_snapshot` job (timeout 900 s, no params) stores, for every user with at least one collection
