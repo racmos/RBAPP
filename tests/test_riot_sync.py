@@ -390,3 +390,142 @@ class TestRobustness:
             run()
         assert RbCard.query.count() == 0
         assert RbAdminAudit.query.count() == 0
+
+
+def _only(monkeypatch, set_id, card_ids=None):
+    """Serve only the gallery cards of `set_id` (optionally only `card_ids`)."""
+    import copy
+    subset = copy.deepcopy(GALLERY)
+    subset['cards'] = [c for c in subset['cards'] if c['rbcar_rbset_id'] == set_id
+                       and (card_ids is None or c['rbcar_id'] in card_ids)]
+    subset['set_codes'] = [set_id]
+    monkeypatch.setattr(riot_sync, 'fetch_gallery', lambda: subset)
+
+
+def _summary(result, set_id):
+    return next(s for s in result['sets'] if s['set_id'] == set_id)
+
+
+class TestMissingImages:
+    """Owner feedback S4: a sync fills every missing image of the synced set."""
+
+    def test_unchanged_card_without_file_is_downloaded(self, app, network, gallery,
+                                                       monkeypatch, card_images_dir):
+        make_set('OGN', ACTIVE_RELEASE)
+        seed_gallery_card('OGN', '1')
+        _only(monkeypatch, 'OGN', ['1'])
+        result = run(set_codes=['OGN'])
+
+        ogn = _summary(result, 'OGN')
+        assert ogn['unchanged'] == 1
+        assert network.urls == ['https://img.test/ogn_1.png']
+        assert ogn['images'] == {'downloaded': 1, 'existing': 0, 'failed': 0}
+        assert (card_images_dir / 'ogn' / 'ogn_1.png').read_bytes() == PNG
+
+        again = run(set_codes=['OGN'])
+        assert network.urls == ['https://img.test/ogn_1.png']
+        assert _summary(again, 'OGN')['images'] == {'downloaded': 0, 'existing': 1,
+                                                     'failed': 0}
+
+    def test_proposed_card_gets_its_stored_image(self, app, network, gallery,
+                                                 monkeypatch, card_images_dir):
+        make_set('OGN', MONTHLY_RELEASE)
+        seed_gallery_card('OGN', '1', rbcar_energy=9,
+                          image_url='https://img.test/old_ogn_1.png')
+        _only(monkeypatch, 'OGN', ['1'])
+        result = run(set_codes=['OGN'])
+
+        ogn = _summary(result, 'OGN')
+        assert ogn['proposed'] == 2
+        card = RbCard.query.filter_by(rbcar_rbset_id='OGN', rbcar_id='1').one()
+        assert (card.rbcar_energy, card.image_url) == (9, 'https://img.test/old_ogn_1.png')
+        assert network.urls == ['https://img.test/old_ogn_1.png']
+        assert ogn['images'] == {'downloaded': 1, 'existing': 0, 'failed': 0}
+        assert (card_images_dir / 'ogn' / 'ogn_1.png').exists()
+
+    def test_proposed_card_without_stored_image_uses_the_gallery(
+            self, app, network, gallery, monkeypatch, card_images_dir):
+        make_set('OGN', MONTHLY_RELEASE)
+        seed_gallery_card('OGN', '1', image=None, image_url=None)
+        _only(monkeypatch, 'OGN', ['1'])
+        result = run(set_codes=['OGN'])
+
+        ogn = _summary(result, 'OGN')
+        assert ogn['proposed'] == 2
+        card = RbCard.query.filter_by(rbcar_rbset_id='OGN', rbcar_id='1').one()
+        assert (card.image, card.image_url) == (None, None)
+        assert network.urls == ['https://img.test/ogn_1.png']
+        assert ogn['images'] == {'downloaded': 1, 'existing': 0, 'failed': 0}
+        assert (card_images_dir / 'ogn' / 'ogn_1.png').exists()
+
+    def test_applied_card_without_file_is_downloaded(self, app, network, gallery,
+                                                     monkeypatch, card_images_dir):
+        make_set('OGN', ACTIVE_RELEASE)
+        seed_gallery_card('OGN', '1', rbcar_energy=9)
+        _only(monkeypatch, 'OGN', ['1'])
+        result = run(set_codes=['OGN'])
+
+        ogn = _summary(result, 'OGN')
+        assert ogn['applied'] == 1
+        assert network.urls == ['https://img.test/ogn_1.png']
+        assert ogn['images'] == {'downloaded': 1, 'existing': 0, 'failed': 0}
+
+    def test_stored_card_missing_from_gallery_gets_its_image(
+            self, app, network, gallery, monkeypatch, card_images_dir):
+        make_set('OGN', ACTIVE_RELEASE)
+        db.session.add(RbCard(rbcar_rbset_id='OGN', rbcar_id='99', rbcar_name='Gone',
+                              image='ogn_99.png', image_url='https://img.test/ogn_99.png'))
+        db.session.add(RbCard(rbcar_rbset_id='OGN', rbcar_id='98', rbcar_name='No URL',
+                              image='ogn_98.png'))
+        db.session.commit()
+        _only(monkeypatch, 'OGN', [])
+        result = run(set_codes=['OGN'])
+
+        ogn = _summary(result, 'OGN')
+        assert ogn['missing_from_gallery'] == 2
+        assert network.urls == ['https://img.test/ogn_99.png']
+        assert ogn['images'] == {'downloaded': 1, 'existing': 0, 'failed': 0}
+
+    def test_failed_download_is_counted(self, app, monkeypatch, gallery, card_images_dir):
+        session = FakeSession(fail={'https://img.test/ogn_1.png'})
+        monkeypatch.setattr(riot_sync, '_get_session', lambda: session)
+        make_set('OGN', ACTIVE_RELEASE)
+        seed_gallery_card('OGN', '1')
+        seed_gallery_card('OGN', '2')
+        _only(monkeypatch, 'OGN')
+        result = run(set_codes=['OGN'])
+
+        assert _summary(result, 'OGN')['images'] == {'downloaded': 1, 'existing': 0,
+                                                      'failed': 1}
+        assert not (card_images_dir / 'ogn' / 'ogn_1.png').exists()
+
+    def test_other_sets_are_not_touched(self, app, network, gallery, monkeypatch):
+        make_set('OGN', ACTIVE_RELEASE)
+        make_set('OGS', ACTIVE_RELEASE)
+        seed_gallery_card('OGN', '1')
+        seed_gallery_card('OGS', '5')
+        result = run(set_codes=['OGN'])
+
+        assert 'https://img.test/ogs_5.png' not in network.urls
+        assert [s['set_id'] for s in result['sets']] == ['OGN']
+
+
+class TestVenImageNames:
+    """Owner feedback S4: VEN cards map to `ven/ven_<id>.png`."""
+
+    def test_parsed_gallery_card_names_the_ven_file(self):
+        from app.services.riot_scraper import _parse_card
+        parsed = _parse_card({'id': 'ven-005-221', 'name': 'Card',
+                              'cardImage': {'url': 'https://img.test/v5.png'}})
+        assert (parsed['rbcar_rbset_id'], parsed['rbcar_id'], parsed['image']) == (
+            'VEN', '5', 'ven_5.png')
+        showcase = _parse_card({'id': 'ven-189-star-221', 'name': 'Card'})
+        assert showcase['image'] == 'ven_189s.png'
+
+    def test_image_src_and_disk_path(self, app, card_images_dir):
+        from app.services.card_images import card_image_path
+        card = RbCard(rbcar_rbset_id='VEN', rbcar_id='5', rbcar_name='Card',
+                      image='ven_5.png')
+        assert card.image_src == '/riftbound/media/cards/ven/ven_5.png'
+        assert card_image_path('ven_5.png', 'VEN') == str(
+            (card_images_dir / 'ven' / 'ven_5.png').resolve())

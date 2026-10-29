@@ -16,10 +16,19 @@ from app.models.set import RbSet
 from app.services.card_images import card_image_url
 
 
+_DIGIT_RUNS = re.compile(r'(\d+)')
+
+
 def _nat(value: str):
-    """Natural sort key: digit runs compare as numbers (`2` < `10` < `10a`)."""
-    return tuple(int(part) if part.isdigit() else part.lower()
-                 for part in re.split(r'(\\d+)', value or ''))
+    """Natural sort key: digit runs compare as numbers (`2` < `10` < `10a`).
+
+    `re.split` with a capturing group alternates text, digits, text, ...
+    (starting with text, maybe empty), so position i holds a `str` in every
+    key when i is even and an `int` when odd: an int never meets a str.
+    """
+    parts = _DIGIT_RUNS.split(value or '')
+    return tuple(int(part) if index % 2 else part.lower()
+                 for index, part in enumerate(parts))
 
 
 def set_item(rs: RbSet, card_count: int = 0, today=None) -> dict:

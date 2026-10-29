@@ -231,20 +231,25 @@ def _process_set(set_id, cards, today, session, summary, job_id, moment) -> bool
                 setattr(card, _column(field), parsed[field])
             db.session.add(card)
             db.session.flush()
-            if _fetch_image(session, card, summary):
-                pass
+            _fetch_image(session, card.image, card.image_url, set_id, summary)
             summary['inserted'] += 1
             inserted_ids.append(card_id)
+            continue
+        diff = _diff(card, parsed)
+        if not diff:
+            summary['unchanged'] += 1
+        elif window in ACTIVE_WINDOWS:
+            _apply(card, diff)
+            summary['applied'] += 1
         else:
-            diff = _diff(card, parsed)
-            if not diff:
-                summary['unchanged'] += 1
-                continue
-            if window in ACTIVE_WINDOWS:
-                _apply(card, diff, session, summary)
-                summary['applied'] += 1
-            else:
-                summary['proposed'] += _propose(card, diff, job_id, moment)
+            summary['proposed'] += _propose(card, diff, job_id, moment)
+        # Pending changes keep the stored values; the gallery fills only what
+        # the card lacks, so a proposed card still gets a file on disk.
+        _fetch_image(session, card.image or parsed.get('image'),
+                     card.image_url or parsed.get('image_url'), set_id, summary)
+    for card_id in sorted(set(stored) - seen):
+        card = stored[card_id]
+        _fetch_image(session, card.image, card.image_url, set_id, summary)
     summary['missing_from_gallery'] = len(set(stored) - seen)
     if inserted_ids:
         audit_service.record('riot.insert', 'set', set_id, {'cards': inserted_ids},
@@ -252,12 +257,17 @@ def _process_set(set_id, cards, today, session, summary, job_id, moment) -> bool
     return created
 
 
-def _fetch_image(session, card: RbCard, summary: dict) -> bool:
-    """Download the card image when missing on disk; count the outcome."""
-    if not card.image_url:
+def _fetch_image(session, image, image_url, set_id: str, summary: dict) -> bool:
+    """Download `image_url` to the card's file when it is missing on disk (S4).
+
+    Every card of a synced set with an URL comes through here once: inserted,
+    unchanged, applied, proposed and missing from the gallery. Counts the
+    outcome in `summary['images']`; a card without an URL counts nothing.
+    """
+    if not image_url:
         return False
     try:
-        dest = card_image_path(card.image, card.rbcar_rbset_id)
+        dest = card_image_path(image, set_id)
     except ValueError:
         summary['images']['failed'] += 1
         return False
@@ -265,7 +275,7 @@ def _fetch_image(session, card: RbCard, summary: dict) -> bool:
         summary['images']['existing'] += 1
         return True
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    if _download_image(session, card.image_url, dest):
+    if _download_image(session, image_url, dest):
         summary['images']['downloaded'] += 1
         return True
     summary['images']['failed'] += 1
@@ -284,24 +294,10 @@ def _diff(card: RbCard, parsed: dict) -> dict:
     return out
 
 
-def _apply(card: RbCard, diff: dict, session, summary: dict):
-    """Apply every difference at once (S5); re-download a changed image (D-F13-8)."""
+def _apply(card: RbCard, diff: dict):
+    """Apply every difference at once (S5); the caller fetches a missing image."""
     for field, (_, new) in diff.items():
         setattr(card, _column(field), new)
-    if 'image_url' in diff or 'image' in diff:
-        try:
-            dest = card_image_path(card.image, card.rbcar_rbset_id)
-        except ValueError:
-            summary['images']['failed'] += 1
-        else:
-            if os.path.exists(dest):
-                summary['images']['existing'] += 1
-            else:
-                os.makedirs(os.path.dirname(dest), exist_ok=True)
-                if _download_image(session, card.image_url, dest):
-                    summary['images']['downloaded'] += 1
-                else:
-                    summary['images']['failed'] += 1
     audit_service.record('riot.apply', 'card',
                          f'{card.rbcar_rbset_id}-{card.rbcar_id}',
                          {'fields': diff}, actor=audit_service.SYSTEM)

@@ -28,6 +28,16 @@
     vertical-align: top;
   }
 
+  /* Long URLs and abilities break anywhere, so the columns fit the screen. */
+  .table td {
+    overflow-wrap: anywhere;
+  }
+
+  .valueCell {
+    min-width: 16ch;
+    width: 50%;
+  }
+
   .thumb {
     width: 40px;
     height: auto;

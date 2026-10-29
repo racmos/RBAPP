@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import { ApiError } from '@/api/errors';
 import {
   createAdminSet,
@@ -10,6 +11,7 @@ import {
   type AdminSet,
 } from '@/api/endpoints';
 import { fieldErrorsFromDetails } from '@/auth/formHelpers';
+import { DebouncedInput } from '@/catalog';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -17,6 +19,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Select } from '@/components/ui/Select';
 import { Sheet } from '@/components/ui/Sheet';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { pushToast } from '@/components/ui/toastStore';
@@ -30,10 +33,15 @@ import { SetEditor, type SetForm } from './SetEditor';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './SetsPage.module.css';
 
-type SortKey = 'id' | 'name' | 'releaseDate';
+const SORT_KEYS = ['id', 'name', 'releaseDate', 'cards'] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+type Dir = 'asc' | 'desc';
 type EditorTarget = { mode: 'create' } | { mode: 'edit'; set: AdminSet };
 
-/** Sets admin (F13-f S4-S6): table on desktop, cards on phones, editor aside. */
+const sortValue = (row: AdminSet, key: SortKey) =>
+  key === 'releaseDate' ? (row.release_date ?? '') : key === 'cards' ? row.card_count : row[key];
+
+/** Sets admin (F13-f S4-S6): filters and sort in the URL, table or cards, editor aside. */
 export function SetsPage() {
   const { t, i18n } = useTranslation('admin');
   const { t: common } = useTranslation('common');
@@ -46,10 +54,11 @@ export function SetsPage() {
     queryKey: ['admin', 'sets'],
     queryFn: ({ signal }) => listAdminSets(signal),
   });
-  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({
-    key: 'id',
-    dir: 'asc',
-  });
+  const [params, setParams] = useSearchParams();
+  const rawSort = params.get('sort');
+  const sortKey: SortKey = SORT_KEYS.includes(rawSort as SortKey) ? (rawSort as SortKey) : 'id';
+  const sortDir: Dir = params.get('dir') === 'desc' ? 'desc' : 'asc';
+  const search = params.get('q') ?? '';
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -58,6 +67,16 @@ export function SetsPage() {
   useDocumentTitle(t('sets.title'));
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin'] });
+  const setParam = (key: string, value: string | null) =>
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        if (value === null || value === '') next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
 
   const save = useMutation({
     mutationFn: async ({ target, form }: { target: EditorTarget; form: SetForm }) => {
@@ -137,22 +156,63 @@ export function SetsPage() {
     );
   }
 
-  const rows = [...query.data];
-  const dir = sort.dir === 'asc' ? 1 : -1;
+  const needle = search.trim().toLowerCase();
+  const rows = query.data.filter(
+    (row) =>
+      needle === '' ||
+      row.id.toLowerCase().includes(needle) ||
+      row.name.toLowerCase().includes(needle),
+  );
+  const dir = sortDir === 'asc' ? 1 : -1;
   rows.sort((a, b) => {
-    const left =
-      sort.key === 'releaseDate' ? (a.release_date ?? '') : a[sort.key === 'id' ? 'id' : 'name'];
-    const right =
-      sort.key === 'releaseDate' ? (b.release_date ?? '') : b[sort.key === 'id' ? 'id' : 'name'];
-    return String(left).localeCompare(String(right)) * dir;
+    const left = sortValue(a, sortKey);
+    const right = sortValue(b, sortKey);
+    const order =
+      typeof left === 'number' && typeof right === 'number'
+        ? left - right
+        : String(left).localeCompare(String(right));
+    return (order || a.id.localeCompare(b.id)) * dir;
   });
+  const ariaSort = (key: SortKey) =>
+    sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined;
 
-  const toggleSort = (key: SortKey) =>
-    setSort((current) =>
-      current.key === key
-        ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' }
-        : { key, dir: 'asc' },
-    );
+  const filters = (
+    <div className={styles.filters}>
+      <label className={styles.filterField}>
+        {t('sets.filters.search')}
+        <DebouncedInput
+          aria-label={t('sets.filters.search')}
+          value={search}
+          onCommit={(next) => setParam('q', next.trim() || null)}
+        />
+      </label>
+      <label className={styles.filterField}>
+        {t('sets.filters.sort')}
+        <Select
+          aria-label={t('sets.filters.sort')}
+          value={sortKey}
+          onChange={(event) => setParam('sort', event.target.value)}
+        >
+          {SORT_KEYS.map((key) => (
+            <option key={key} value={key}>
+              {t(`sets.columns.${key}`)}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <label className={styles.filterField}>
+        {t('sets.filters.dir')}
+        <Select
+          aria-label={t('sets.filters.dir')}
+          value={sortDir}
+          onChange={(event) => setParam('dir', event.target.value)}
+        >
+          <option value="asc">{t('sets.filters.asc')}</option>
+          <option value="desc">{t('sets.filters.desc')}</option>
+        </Select>
+      </label>
+    </div>
+  );
 
   const openEditor = (target: EditorTarget) => {
     setFieldErrors({});
@@ -192,8 +252,12 @@ export function SetsPage() {
   return (
     <>
       <PageHeader title={t('sets.title')} subtitle={t('sets.subtitle')} actions={newButton} />
+      {query.data.length > 0 && filters}
       {rows.length === 0 ? (
-        <EmptyState title={t('sets.title')} body={t('sets.empty')} />
+        <EmptyState
+          title={t('sets.title')}
+          body={query.data.length === 0 ? t('sets.empty') : t('sets.noMatches')}
+        />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
           <TableScroll>
@@ -201,33 +265,11 @@ export function SetsPage() {
               <caption className="sr-only">{t('sets.caption')}</caption>
               <thead>
                 <tr>
-                  {(
-                    [
-                      ['id', t('sets.columns.id')],
-                      ['name', t('sets.columns.name')],
-                      ['releaseDate', t('sets.columns.releaseDate')],
-                    ] as Array<[SortKey, string]>
-                  ).map(([key, label]) => (
-                    <th
-                      key={key}
-                      aria-sort={
-                        sort.key === key
-                          ? sort.dir === 'asc'
-                            ? 'ascending'
-                            : 'descending'
-                          : 'none'
-                      }
-                    >
-                      <button
-                        type="button"
-                        className={styles.sortButton}
-                        onClick={() => toggleSort(key)}
-                      >
-                        {label}
-                      </button>
+                  {(['id', 'name', 'releaseDate', 'cards'] as const).map((key) => (
+                    <th key={key} scope="col" aria-sort={ariaSort(key)}>
+                      {t(`sets.columns.${key}`)}
                     </th>
                   ))}
-                  <th scope="col">{t('sets.columns.cards')}</th>
                   <th scope="col">{t('sets.columns.window')}</th>
                   <th scope="col">{t('sets.columns.nextRun')}</th>
                   <th scope="col">{t('sets.columns.actions')}</th>
@@ -287,9 +329,11 @@ export function SetsPage() {
           </TableScroll>
           {wide && (
             <div className={styles.editorPanel}>
-              {editor?.mode === 'edit' ? (
+              {editor ? (
                 <>
-                  <h2 className={styles.editorTitle}>{editor.set.name}</h2>
+                  <h2 className={styles.editorTitle}>
+                    {editor.mode === 'create' ? t('sets.new') : editor.set.name}
+                  </h2>
                   {editorPane()}
                 </>
               ) : (

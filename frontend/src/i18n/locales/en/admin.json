@@ -61,6 +61,14 @@
     "saved": "Set saved.",
     "pickOne": "Pick a set to edit it.",
     "empty": "There are no sets yet.",
+    "noMatches": "No set matches the search.",
+    "filters": {
+      "search": "Search set",
+      "sort": "Sort by",
+      "dir": "Direction",
+      "asc": "Ascending",
+      "desc": "Descending"
+    },
     "confirmDelete": {
       "title": "Delete set {{id}}?",
       "body": "Only a set without cards can be deleted. This cannot be undone."

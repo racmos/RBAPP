@@ -241,6 +241,18 @@ only what changed to `PATCH /admin/products/<id>`: the "automatic" kind is `kind
 the "Set by hand" badge. The image goes to `POST .../image` as multipart `file`. Kind labels
 live in the `products` namespace (`products:kind.<kind>`, F14-e adds the rest).
 
+**Sets admin.** `/admin/sets` (`src/admin/SetsPage.tsx`) filters and sorts the
+`GET /admin/sets` list in the browser, with the state in the URL: `q` (code or name
+substring), `sort` = `id|name|releaseDate|cards` (default `id`) and `dir` = `asc|desc`
+(default `asc`). The filters section holds the search, the sort `Select` and the direction
+`Select`; the table headers are plain text with `aria-sort` on the sorted column. "Nuevo set"
+opens the editor in the side drawer (bottom sheet below 960 px) and in the persistent panel at
+≥ 1600 px.
+
+**Riot changes.** `/admin/riot/changes` (`src/admin/ChangesPage.tsx`) wraps long values (URLs,
+abilities) so the columns fit; the table sits in a labelled, focusable region (`tabIndex=0`)
+that scrolls horizontally if it still overflows.
+
 ## Products (F14-e)
 
 `frontend/src/products/` is the products section (nav entry `products`, `spa`, icon `gift`, after

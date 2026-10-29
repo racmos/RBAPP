@@ -491,6 +491,10 @@ extension inside `PRODUCT_IMAGES_DIR`, cached a week, no `Set-Cookie`; anything 
   `{"job_id": n}`; the job runs `riot_sync` with `trigger=manual`. Active sync → 409
   `job_running`. Audit `riot.sync_requested`. A scheduled run with nothing due ends
   `success` with `{"message": "nothing due", "sets": []}` and fetches nothing.
+  Each set of the job `result` counts `images: {downloaded, existing, failed}` over every
+  card of the set with an image URL (inserted, unchanged, applied, proposed and missing
+  from the gallery): a missing file is downloaded, never overwritten. A proposed card keeps
+  its stored `image`/`image_url`; only the ones it lacks come from the gallery.
 - `GET /admin/jobs` with `kind`, `status`, `limit` (1-100, default 20), newest first →
   `items[]` of `{id, kind, status, requested_by (username|null), requested_at,
   started_at, finished_at, message}`. `GET /admin/jobs/<id>` adds `params` and `result`;

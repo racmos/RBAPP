@@ -328,7 +328,13 @@ export function ChangesPage() {
         />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          <TableScroll>
+          {/* Long values wrap; anything still wider scrolls here, by keyboard too. */}
+          <TableScroll
+            role="region"
+            aria-label={t('changes.caption')}
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling region must be reachable by keyboard
+            tabIndex={0}
+          >
             <table className={styles.table}>
               <caption className="sr-only">{t('changes.caption')}</caption>
               <thead>
@@ -381,7 +387,7 @@ export function ChangesPage() {
                     <td>
                       {t(`changes.field.${item.field as FieldName}` as 'changes.field.rbcar_name')}
                     </td>
-                    <td>
+                    <td className={styles.valueCell}>
                       <ValueDiff
                         oldValue={item.old_value}
                         newValue={item.new_value}
