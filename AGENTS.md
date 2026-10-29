@@ -72,6 +72,7 @@ riftbound/
 │   │   ├── bans.py          # flask bans list|add|remove (card bans per game mode)
 │   │   ├── images.py        # flask images import-legacy (copy the old card images into CARD_IMAGES_DIR)
 │   │   ├── jobs.py          # flask jobs enqueue|run-pending|list
+│   │   ├── riot.py          # flask riot recheck-pending [--dry-run] (marks stale pending card changes obsolete)
 │   │   ├── schema.py        # flask schema snapshot
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
 │   ├── api/
@@ -88,7 +89,7 @@ riftbound/
 │   │   └── heartbeat.py     # heartbeat: diagnostic kind (60 s)
 │   ├── models/              # SQLAlchemy models (Rb prefix)
 │   │   ├── ban.py           # RbCardBan (rbcardbans): bans by card name and game mode
-│   │   ├── card_change.py   # RbCardChange (rbcardchanges): proposed card changes
+│   │   ├── card_change.py   # RbCardChange (rbcardchanges): proposed card changes (pending, approved, rejected, obsolete)
 │   │   ├── user.py          # User (rbusers)
 │   │   ├── set.py           # RbSet (rbset)
 │   │   ├── card.py          # RbCard (rbcards)

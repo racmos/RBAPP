@@ -3,7 +3,9 @@
 A `monthly` (or `none` window) difference between the gallery and a stored
 card becomes one `pending` row per field; the admin approves or rejects it
 (F13-g). Auto-applied changes never land here. Values are stored as text
-(numbers as decimal strings, NULL as NULL).
+(numbers as decimal strings, NULL as NULL). `obsolete` (owner feedback
+2026-10-29, S17) marks a pending row the sync rules no longer produce
+(`flask riot recheck-pending`); it is never re-opened.
 """
 from sqlalchemy.dialects.postgresql import JSONB  # noqa: F401
 
@@ -15,7 +17,7 @@ from app.utils import clock
 SYNCED_FIELDS = ('rbcar_name', 'rbcar_domain', 'rbcar_type', 'rbcar_tags',
                  'rbcar_energy', 'rbcar_power', 'rbcar_might', 'rbcar_ability',
                  'rbcar_rarity', 'rbcar_artist', 'image_url', 'image')
-STATUSES = ('pending', 'approved', 'rejected')
+STATUSES = ('pending', 'approved', 'rejected', 'obsolete')
 
 _PENDING = "rbchg_status = 'pending'"
 

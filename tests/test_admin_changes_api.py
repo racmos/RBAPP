@@ -48,7 +48,8 @@ class TestList:
     def test_default_is_pending_newest_first(self, admin_client, data):
         body = payload(admin_client.get(URL))
         assert [i['id'] for i in body['data']['items']] == [2, 1]
-        assert body['data']['meta']['counts'] == {'pending': 2, 'approved': 1, 'rejected': 0}
+        assert body['data']['meta']['counts'] == {'pending': 2, 'approved': 1, 'rejected': 0,
+                                                 'obsolete': 0}
         assert body['data']['meta']['total'] == 2
 
     def test_item_shape(self, admin_client, data):
