@@ -301,6 +301,23 @@ labelled `<column>: <product>` and saved with `useProductLineSaver`; the name op
 `ProductLines`, `AddProductForm`, shared with `ProductDetail` through `ProductSections.tsx`); below it a
 row click opens `/products/:id`. Clicks on inline editors never reach the row.
 
+## Shared primitives: tables, dropdowns, checkboxes
+
+- **Tables.** Every data table sits in `components/ui/TableScroll`: the box scrolls both ways,
+  capped at the viewport below the topbar, and its `thead th` stick to the top of the box on the
+  opaque `--table-head` token. A sticky header inside an `overflow` box sticks to that box, never
+  to the page, so a page offset such as `top: 64px` pushed the header over the first rows.
+  `src/test/primitives-guard.test.ts` fails when a `<table>` is not wrapped or a sticky `th` has a
+  `top` other than `0` (the import preview and the chart fallback table keep their own box).
+- **Dropdowns.** Use `components/ui/Select` only; the guard test fails on a raw `<select>`. It
+  drops the platform look (`appearance: none`, its own arrow), uses an opaque dark field with dark
+  options and 16 px text below 860 px (iOS zooms into smaller fields).
+- **Checkboxes.** `components/ui/Checkbox` is a toggle button that lights up when checked (accent
+  fill, dark ink, glow, check mark as the non-colour cue). It is still a native checkbox, stretched
+  over the button and transparent, so `getByRole('checkbox', {name})`, Space and the focus ring
+  behave as before. Same props plus `hideLabel` (the label stays the accessible name; table
+  selection boxes) and `indeterminate`. The guard test fails on a raw `type="checkbox"`.
+
 ## Service worker and install
 
 The app is an installable PWA named **Rift Manager**. Nothing about it needs a server change:

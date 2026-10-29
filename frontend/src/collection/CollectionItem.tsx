@@ -22,6 +22,12 @@ export function CollectionItem({ group, variant, playsetSize, lang, onOpen }: Co
   const forSale = group.sell_qty > 0 && group.lines.some((line) => line.selling);
   const className = [styles[variant], group.playset_short ? styles.short : ''].filter(Boolean);
 
+  const qty = (
+    <span className={styles.qty} data-slot="qty">
+      {t('qtyBadge', { count: group.qty })}
+    </span>
+  );
+
   return (
     <button
       type="button"
@@ -29,9 +35,9 @@ export function CollectionItem({ group, variant, playsetSize, lang, onOpen }: Co
       aria-haspopup="dialog"
       onClick={() => onOpen(group.key)}
     >
-      <span className={styles.art}>
+      <span className={styles.art} data-slot="art">
         <CardImage card={card} size={variant === 'tile' ? 'tile' : 'thumb'} decorative />
-        <span className={styles.qty}>{t('qtyBadge', { count: group.qty })}</span>
+        {variant === 'tile' && qty}
         {group.foil && <span className={styles.foil}>{t('foil')}</span>}
       </span>
       <span className={styles.body}>
@@ -39,15 +45,18 @@ export function CollectionItem({ group, variant, playsetSize, lang, onOpen }: Co
         <span className={styles.meta}>
           {card.set_id} · #{card.card_id}
         </span>
-        {forSale && (
-          <span className={styles.selling}>{t('selling.tag', { count: group.sell_qty })}</span>
-        )}
-        {group.playset_short && (
-          <span className={styles.shortText}>
-            {t('playset.short', { kept: group.kept, size: playsetSize })}
-          </span>
-        )}
+        <span className={styles.status} data-slot="status">
+          {forSale && (
+            <span className={styles.selling}>{t('selling.tag', { count: group.sell_qty })}</span>
+          )}
+          {group.playset_short && (
+            <span className={styles.shortText}>
+              {t('playset.short', { kept: group.kept, size: playsetSize })}
+            </span>
+          )}
+        </span>
       </span>
+      {variant === 'row' && qty}
       <span className={styles.value}>
         {group.value === null ? '—' : formatMoney(group.value, lang)}
       </span>

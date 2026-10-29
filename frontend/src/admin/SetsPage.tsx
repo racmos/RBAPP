@@ -30,6 +30,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { useDocumentTitle } from '@/i18n';
 import { SetEditor, type SetForm } from './SetEditor';
+import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './SetsPage.module.css';
 
 const SORT_KEYS = ['id', 'name', 'releaseDate', 'cards'] as const;
@@ -259,7 +260,7 @@ export function SetsPage() {
         />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          <div className={styles.tableWrap}>
+          <TableScroll>
             <table className={styles.table}>
               <caption className="sr-only">{t('sets.caption')}</caption>
               <thead>
@@ -325,7 +326,7 @@ export function SetsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           {wide && (
             <div className={styles.editorPanel}>
               {editor ? (

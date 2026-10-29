@@ -1,13 +1,42 @@
 @layer components {
+  /* The platform look is dropped so the field matches `Input` on every browser and phone; the
+     arrow is two gradients in currentColor (no image, no extra element). */
   .select {
     width: 100%;
     min-height: 42px;
-    padding: 0 12px;
+    padding: 0 34px 0 12px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    background: rgba(5, 26, 34, 0.6);
+    -webkit-appearance: none;
+    appearance: none;
+    color-scheme: dark;
+    background-color: var(--bg-1);
+    background-image:
+      linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+      calc(100% - 18px) 50%,
+      calc(100% - 13px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
     color: var(--text);
     font-size: 14px;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+
+  /* The open list: opaque and dark, so light text never lands on a white popup. */
+  .select option,
+  .select optgroup {
+    background-color: var(--bg-1);
+    color: var(--text);
+  }
+
+  .select:hover:not(:disabled) {
+    border-color: var(--accent-ring);
   }
 
   .select:focus-visible {
@@ -22,5 +51,12 @@
   .select:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* iOS zooms into a focused field under 16 px. */
+  @media (max-width: 859.98px) {
+    .select {
+      font-size: 16px;
+    }
   }
 }

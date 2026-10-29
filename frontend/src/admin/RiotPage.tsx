@@ -13,6 +13,7 @@ import {
 } from '@/api/endpoints';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Modal } from '@/components/ui/Modal';
@@ -154,21 +155,19 @@ function SyncNow() {
         <legend className="sr-only">{t('riot.pickSets')}</legend>
         {setsQuery.isPending && <Skeleton label={t('riot.pickSets')} />}
         {setsQuery.data?.map((set) => (
-          <label key={set.id}>
-            <input
-              type="checkbox"
-              checked={selected.includes(set.id)}
-              disabled={offline}
-              onChange={(event) =>
-                setSelected(
-                  event.target.checked
-                    ? [...selected, set.id]
-                    : selected.filter((id) => id !== set.id),
-                )
-              }
-            />
-            {set.id}
-          </label>
+          <Checkbox
+            key={set.id}
+            label={set.id}
+            checked={selected.includes(set.id)}
+            disabled={offline}
+            onChange={(event) =>
+              setSelected(
+                event.target.checked
+                  ? [...selected, set.id]
+                  : selected.filter((id) => id !== set.id),
+              )
+            }
+          />
         ))}
       </fieldset>
       {formError && (

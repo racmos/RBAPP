@@ -4,6 +4,7 @@ import type { CardListSort, CardSummary } from '@/api/types';
 import { BanBadge, CardImage, DomainPips, PriceTag, RarityDot } from '@/components/card';
 import { useEnumLabel } from '@/i18n';
 import { formatMoney, type Lang } from '@/lib/format';
+import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './CatalogTable.module.css';
 
 const DESCENDING_SORTS = new Set<CardListSort>(['price', 'trend_7d', 'trend_30d']);
@@ -120,7 +121,7 @@ export function CatalogTable({ items, sort, dir, onSort, isWide }: CatalogTableP
   };
 
   return (
-    <div className={isWide ? styles.tableWrap : styles.scrollWrap}>
+    <TableScroll className={isWide ? undefined : styles.scrollWrap}>
       <table className={styles.table}>
         <caption className="sr-only">{t('catalog.table.caption')}</caption>
         <thead>
@@ -174,6 +175,6 @@ export function CatalogTable({ items, sort, dir, onSort, isWide }: CatalogTableP
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }

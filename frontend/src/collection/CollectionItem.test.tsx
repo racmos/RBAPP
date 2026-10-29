@@ -1,9 +1,11 @@
+import { join } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import { createI18n } from '@/i18n';
+import { SRC_DIR, declsFor, readCss } from '@/test/css';
 import { aylaGroup, emberGroup, runeGroup } from '@/test/fixtures/collection';
 import { CollectionItem } from './CollectionItem';
 
@@ -85,5 +87,52 @@ describe('CollectionItem (F3-g S5)', () => {
   it('has no axe violations', async () => {
     const { container } = await renderItem();
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+const itemCss = readCss(join(SRC_DIR, 'collection/CollectionItem.module.css'));
+const pageCss = readCss(join(SRC_DIR, 'collection/CollectionPage.module.css'));
+const desktopCss = readCss(join(SRC_DIR, 'collection/CollectionDesktop.module.css'));
+const decl = (css: string, selector: string, prop: string) =>
+  declsFor(css, selector).find((item) => item.prop === prop)?.value;
+
+describe('CollectionItem sizes (owner feedback S10)', () => {
+  it('puts the sale and playset notes on one status line', async () => {
+    const { container } = await renderItem(aylaGroup);
+    const status = container.querySelector('[data-slot="status"]');
+    expect(status?.textContent).toContain('En venta: 2');
+    expect(status?.textContent).toContain('Playset incompleto (2/3)');
+  });
+
+  it('gives a list row its own quantity column instead of a badge on the thumbnail', async () => {
+    const { container } = await renderItem(aylaGroup, 'row');
+    const qty = container.querySelector('[data-slot="qty"]');
+    expect(qty?.textContent).toBe('×4');
+    expect(qty?.closest('[data-slot="art"]')).toBeNull();
+  });
+
+  it('keeps the quantity badge on the tile image', async () => {
+    const { container } = await renderItem(aylaGroup, 'tile');
+    expect(container.querySelector('[data-slot="art"] [data-slot="qty"]')?.textContent).toBe('×4');
+  });
+
+  it('makes every grid row the same height and every tile fill its cell', () => {
+    for (const css of [pageCss, desktopCss]) {
+      expect(decl(css, '.grid', 'grid-auto-rows')).toBe('1fr');
+    }
+    expect(decl(itemCss, '.tile', 'height')).toBe('100%');
+    expect(decl(itemCss, '.tile .art', 'width')).toBe('100%');
+  });
+
+  it('lays a list row out in fixed columns: thumbnail, text, quantity, value', () => {
+    expect(decl(itemCss, '.row', 'display')).toBe('grid');
+    expect(decl(itemCss, '.row', 'grid-template-columns')).toBe('44px minmax(0, 1fr) 44px 76px');
+  });
+
+  it('keeps each text line to one line with an ellipsis', () => {
+    for (const selector of ['.name', '.meta', '.status']) {
+      expect(decl(itemCss, selector, 'white-space')).toBe('nowrap');
+      expect(decl(itemCss, selector, 'text-overflow')).toBe('ellipsis');
+    }
   });
 });

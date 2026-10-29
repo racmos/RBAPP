@@ -12,22 +12,15 @@
     font-size: 13px;
   }
 
-  .scroll {
-    overflow-x: auto;
-  }
-
   .table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
   }
 
+  /* Sticky and opaque through TableScroll (components/ui). */
   .table th {
-    position: sticky;
-    z-index: 1;
-    top: 64px;
     padding: 8px 6px;
-    background: var(--panel-3);
     color: var(--muted);
     font-size: 12px;
     font-weight: 700;

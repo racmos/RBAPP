@@ -7,6 +7,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { TableScroll } from '@/components/ui/TableScroll';
 import { formatMoney, type Lang } from '@/lib/format';
 import { DEFAULT_PAGE, DEFAULT_PER_PAGE, activeFilterCount, type ProductsParams } from './params';
 import { ProductThumb } from './ProductThumb';
@@ -139,7 +140,7 @@ export function CatalogTable({
     );
   } else {
     results = (
-      <div className={styles.scroll}>
+      <TableScroll>
         <table className={styles.table} aria-busy={list.isFetching || undefined}>
           <caption className="sr-only">{t('table.caption')}</caption>
           <thead>
@@ -170,7 +171,7 @@ export function CatalogTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     );
   }
 
