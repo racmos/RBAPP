@@ -365,8 +365,9 @@ trend_7d_pct, trend_30d_pct, as_of}|null, bans: {<mode>: bool},
 owned: {total, foil}}` (`market_source` is the `rbprc_*` column the value came from).
 
 `ProductSummary` (F14-b) is a contract for the product screens: additive changes only.
-`ProductSummary` = `{id, name, kind|null, category|null, set_id|null, image_src (null until
-F14-d, then `/riftbound/media/products/<file>`), listed (bool), price: {value|null,
+`ProductSummary` = `{id, name, kind|null, category|null, set_id|null, image_src
+(`/riftbound/media/products/<rbpdt_image>` when the product has an image, else null; F14-d),
+listed (bool), price: {value|null,
 source (avg7|trend|low)|null, change_7d_pct|null, change_30d_pct|null, as_of (ISO)}|null,
 owned_qty}`. `value` is the first of `rbprc_avg7`, `rbprc_trend`, `rbprc_low` of the latest row
 that is not NULL and not 0 (no foil columns; `app/services/product_prices.py`); the changes use
@@ -442,6 +443,46 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   (`params: {"collection_lines": n, "decks": m}`) when a collection line or a deck
   (`rbdck_cards` main/sideboard `{set, id}`) references it. The image file is not deleted.
   Audit `card.delete`.
+
+### Products (F14-d)
+
+`app/api/admin/products.py`, logic in `app/services/product_list.py` (list) and
+`app/services/products.py` (`apply_admin_patch`, `expansion_set`). Only non-singles
+(`rbpdt_type = 'nonsingle'`); hidden ones included. `AdminProduct` = `ProductSummary` +
+`{hidden, kind_locked, set_locked, rbpdt_type, updated_at (UTC "YYYY-MM-DDTHH:MM:SSZ"|null)}`
+(`owned_qty` is the calling admin's copies).
+
+- `GET /admin/products` (`AdminProductQuery`) with `q` (case-insensitive name substring, or
+  an exact product id), `kind` (repeatable, one of the `PRODUCT_KINDS`), `hidden` and
+  `listed` = `any` (default) | `yes` | `no`, `no_set` / `no_image` (`true`: no set / no
+  image), `sort` = `name` (default) | `updated` (`rbpdt_updated_at`, nulls last in both
+  directions, ties by name), `dir` = `asc` (default) | `desc`, `page` ≥ 1, `per_page` ∈
+  {50, 100, 200} (default 50); anything else → 400 `validation_error`. → 200
+  `{items: [AdminProduct], meta: {page, per_page, total, pages}}`. Three SQL statements (plus
+  the session user) whatever the size of the catalog.
+- `PATCH /admin/products/<id>` any of `{hidden (bool), kind, set_id}` (a key that is absent
+  is not touched; other keys → 400). `kind` in `PRODUCT_KINDS` sets it and
+  `kind_locked = true`; `kind: null` unlocks it and recomputes it from the category
+  (`kind_for`). `set_id` = an existing set id or `null` sets it and `set_locked = true`;
+  `"auto"` unlocks it and recomputes it from the expansion of the product's latest
+  non-single `rbcm_products` row (null when unmapped or absent). The daily
+  `products_refresh` never changes a locked kind or set. An unknown set → 400 (`set_id`,
+  `invalid_value`), a bad kind or `hidden` → 400; nothing is changed. A missing id or a
+  product that is not a non-single → 404. `rbpdt_updated_at` moves only on a change. →
+  200 `AdminProduct`. Audit `product.update` with `{field: [old, new]}` of what changed
+  (`hidden`, `kind`, `kind_locked`, `set_id`, `set_locked`); no change, no row.
+- `POST /admin/products/<id>/image` (multipart, field `file`): the card image rules
+  (≤ 2 097 152 bytes, else 400 `out_of_range` with `params.max`; PNG / JPEG / WebP by magic
+  bytes, else 400 `invalid_format`; no `file` → 400 `required`). Written with
+  `product_image_path` as `<id>.<ext>` (the extension follows the bytes; the client file
+  name is never used) in `PRODUCT_IMAGES_DIR`; a previous `<id>.<other ext>` file is
+  deleted, any other name is left. `rbpdt_image` becomes the file name. → 200
+  `AdminProduct`. Audit `product.image` with `{image, bytes}`. Same 404 cases.
+
+Product images are served publicly at `GET /riftbound/media/products/<filename>`
+(`media.product_image`): a plain file name with a `png`, `jpg`, `jpeg` or `webp`
+extension inside `PRODUCT_IMAGES_DIR`, cached a week, no `Set-Cookie`; anything else is a
+404 (same rules as `media.card_image`).
 
 ### Sync, jobs and change review
 

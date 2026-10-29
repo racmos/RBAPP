@@ -1,4 +1,4 @@
-"""Seed helpers for the products API tests (F14-b, F14-c)."""
+"""Seed helpers for the products API tests (F14-b, F14-c, F14-d)."""
 from datetime import date, datetime
 
 from sqlalchemy import event
@@ -17,11 +17,13 @@ def add_sets():
 
 
 def add_product(product_id, name, *, kind='booster', set_id='OGN', category='Boosters',
-                listed=True, hidden=False, type_='nonsingle', description=None):
+                listed=True, hidden=False, type_='nonsingle', description=None, image=None,
+                kind_locked=False, set_locked=False, updated_at=None):
     db.session.add(RbProducts(
         rbpdt_id_product=product_id, rbpdt_name=name, rbpdt_kind=kind, rbpdt_id_set=set_id,
         rbpdt_category=category, rbpdt_listed=listed, rbpdt_hidden=hidden, rbpdt_type=type_,
-        rbpdt_description=description))
+        rbpdt_description=description, rbpdt_image=image, rbpdt_kind_locked=kind_locked,
+        rbpdt_set_locked=set_locked, rbpdt_updated_at=updated_at))
 
 
 def add_price(product_id, day, *, avg7=None, trend=None, low=None, avg30=None, **extra):

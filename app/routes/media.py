@@ -1,11 +1,14 @@
-"""Card images from the data directory (M-d, S4, D-Md-2).
+"""Card and product images from the data directories (M-d, S4, D-Md-2; F14-d S1).
 
   GET /riftbound/media/cards/<folder>/<filename>  -> CARD_IMAGES_DIR/<folder>/<filename>
+  GET /riftbound/media/products/<filename>        -> PRODUCT_IMAGES_DIR/<filename>
 
 Public, like the static files; the URLs come from `RbCard.image_src`
-(`app.services.card_images.card_image_url`). `folder` must be letters and digits
-and `filename` a plain file name; anything else, a missing file, a folder or a
-symlink that resolves outside the root is a 404. Images are cached for a week.
+(`app.services.card_images.card_image_url`) and `ProductSummary.image_src`
+(`app.services.product_images.product_image_url`). `folder` must be letters and
+digits and `filename` a plain file name (product images also need a png, jpg, jpeg
+or webp extension); anything else, a missing file, a folder or a symlink that
+resolves outside the root is a 404. Images are cached for a week.
 
 The route never touches `session` or `current_user`, so no response carries a
 `Set-Cookie`. Its 404 is a minimal answer, not the Jinja error page, because
@@ -14,6 +17,7 @@ The route never touches `session` or `current_user`, so no response carries a
 from flask import Blueprint, make_response, send_from_directory
 
 from app.errors import json_error, wants_json
+from app.services import product_images
 from app.services.card_images import images_root, stored_card_image
 
 media_bp = Blueprint('media', __name__, url_prefix='/riftbound/media')
@@ -35,5 +39,15 @@ def card_image(folder, filename):
     if relative is None:
         return _not_found()
     response = send_from_directory(images_root(), relative, conditional=True)
+    response.headers['Cache-Control'] = CACHE_WEEK
+    return response
+
+
+@media_bp.get('/products/<filename>')
+def product_image(filename):
+    stored = product_images.stored_product_image(filename)
+    if stored is None:
+        return _not_found()
+    response = send_from_directory(product_images.images_root(), stored, conditional=True)
     response.headers['Cache-Control'] = CACHE_WEEK
     return response
