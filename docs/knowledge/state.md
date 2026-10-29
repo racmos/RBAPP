@@ -92,6 +92,7 @@ that file and in its `verify-report.md`.
 ## Follow-ups
 
 - F0 4.31: Nginx `limit_req` on the public proxy (template in `docs/nginx_config`) — owner action, or F12.
+- Storage locations (owner request 2026-10-29): draft spec in `docs/requirements/F16/README.md` (code + description per location, copies of a line spread over locations, user order and locks, deck mounting). Waiting for the owner to confirm its 6 decisions and for the planner to cut the units.
 - F0 5.20: owner review of `README.md` / `AGENTS.md`.
 - Riot fan-content disclaimer: F11. Licensing review (fonts, assets, Riot IP): before F12.
 - `docs/migrations.md` restarts `rbapp` while the repo unit file is `docs/riftbound.service`: align the naming.
