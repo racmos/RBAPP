@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { OwnedProductLine } from '@/api/types';
+import type { MyProducts, OwnedProductLine } from '@/api/types';
 import { Stepper } from '@/collection/Stepper';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -54,10 +54,42 @@ function OwnedLine({
   );
 }
 
+/** The total band, the unpriced count, the hint that it is separate and the offline note. */
+export function MineSummary({
+  total,
+  lang,
+  offline,
+}: {
+  total: MyProducts['total'];
+  lang: Lang;
+  offline: boolean;
+}) {
+  const { t } = useTranslation('products');
+  const { t: tCommon } = useTranslation('common');
+  return (
+    <>
+      <dl className={styles.band}>
+        <div>
+          <dt>{t('total.title')}</dt>
+          <dd>{formatMoney(total.value, lang)}</dd>
+        </div>
+        <div>
+          <dt>{t('total.lines')}</dt>
+          <dd>{total.lines}</dd>
+        </div>
+      </dl>
+      {total.unpriced > 0 && (
+        <p className={styles.note}>{t('total.unpriced', { count: total.unpriced })}</p>
+      )}
+      <p className={styles.note}>{t('total.separate')}</p>
+      {offline && <p className={styles.note}>{tCommon('offline.editDisabled')}</p>}
+    </>
+  );
+}
+
 /** "Mis productos": the total band, the hint that it is separate, the owned lines (F14-e S2). */
 export function MineTab({ offline, onBrowse }: { offline: boolean; onBrowse: () => void }) {
   const { t, i18n } = useTranslation('products');
-  const { t: tCommon } = useTranslation('common');
   const lang = langOf(i18n.language);
   const mine = useMyProducts();
   const [openId, setOpenId] = useState<number | null>(null);
@@ -80,21 +112,7 @@ export function MineTab({ offline, onBrowse }: { offline: boolean; onBrowse: () 
 
   return (
     <>
-      <dl className={styles.band}>
-        <div>
-          <dt>{t('total.title')}</dt>
-          <dd>{formatMoney(total.value, lang)}</dd>
-        </div>
-        <div>
-          <dt>{t('total.lines')}</dt>
-          <dd>{total.lines}</dd>
-        </div>
-      </dl>
-      {total.unpriced > 0 && (
-        <p className={styles.note}>{t('total.unpriced', { count: total.unpriced })}</p>
-      )}
-      <p className={styles.note}>{t('total.separate')}</p>
-      {offline && <p className={styles.note}>{tCommon('offline.editDisabled')}</p>}
+      <MineSummary total={total} lang={lang} offline={offline} />
       <ul className={styles.lines} aria-busy={mine.isFetching || undefined}>
         {items.map((line) => (
           <li key={line.id}>

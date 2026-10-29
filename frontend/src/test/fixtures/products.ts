@@ -110,6 +110,25 @@ export const sleevesSummary: ProductSummary = {
 
 export const productSummaries: ProductSummary[] = [boosterSummary, boxSummary, sleevesSummary];
 
+/** No longer in the Cardmarket file (`listed: false`, F14-f); its price rose. */
+export const unlistedSummary: ProductSummary = {
+  id: 504,
+  name: 'Origins Promo Pack',
+  kind: 'bundle',
+  category: 'Riftbound Bundles',
+  set_id: 'OGN',
+  image_src: null,
+  listed: false,
+  price: {
+    value: 12,
+    source: 'low',
+    change_7d_pct: 0,
+    change_30d_pct: 6.3,
+    as_of: '2026-10-28',
+  },
+  owned_qty: 0,
+};
+
 export const productListMeta: ProductListMeta = {
   page: 1,
   per_page: 48,
@@ -173,6 +192,7 @@ export const productDetails: Record<number, ProductDetail> = {
     lines: [withoutProduct(sleevesLine)],
   },
   503: { ...boosterSummary, description: null, columns: null, lines: [] },
+  504: { ...unlistedSummary, description: null, columns: null, lines: [] },
 };
 
 export const productPricePoints: ProductPricePoint[] = [

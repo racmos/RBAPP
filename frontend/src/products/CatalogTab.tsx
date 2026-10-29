@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { PRODUCT_KINDS, type ProductListParams, type ProductListSort } from '@/api/types';
-import { DebouncedInput, useGameMeta } from '@/catalog';
+import { PRODUCT_KINDS, type ProductListSort } from '@/api/types';
+import { DebouncedInput } from '@/catalog';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -8,8 +8,9 @@ import { ChipGroup, FilterChip } from '@/components/ui/FilterChip';
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { DEFAULT_PAGE, activeFilterCount } from './params';
+import { DEFAULT_PAGE, activeFilterCount, type ProductsParams } from './params';
 import { ProductTile } from './ProductTile';
+import { SetSelect } from './SetSelect';
 import { useProductList } from './queries';
 import styles from './ProductsPage.module.css';
 
@@ -17,27 +18,25 @@ const SORTS: ProductListSort[] = ['name', 'price', 'change_7d', 'change_30d'];
 const SEARCH_DELAY_MS = 300;
 
 type CatalogTabProps = {
-  params: ProductListParams;
-  setParams: (patch: Partial<ProductListParams>, options?: { replace?: boolean }) => void;
+  params: ProductsParams;
+  setParams: (patch: Partial<ProductsParams>, options?: { replace?: boolean }) => void;
 };
 
 /** "Catálogo": search, kind chips, set, sort, the tiles and the pages (F14-e S2). */
 export function CatalogTab({ params, setParams }: CatalogTabProps) {
   const { t } = useTranslation('products');
   const list = useProductList(params);
-  const gameMeta = useGameMeta();
   const meta = list.data?.meta;
   const items = list.data?.data.items ?? [];
   const facets = meta?.facets ?? { kind: {}, set: {} };
   const kinds = params.kind ?? [];
-  const setNames = new Map((gameMeta.data?.sets ?? []).map((set) => [set.id, set.name]));
-  const setIds = [...new Set([...Object.keys(facets.set), ...(params.set ?? [])])];
 
   const toggleKind = (kind: (typeof PRODUCT_KINDS)[number]) =>
     setParams({
       kind: kinds.includes(kind) ? kinds.filter((item) => item !== kind) : [...kinds, kind],
     });
-  const clearFilters = () => setParams({ q: undefined, kind: undefined, set: undefined });
+  const clearFilters = () =>
+    setParams({ q: undefined, kind: undefined, set: undefined, owned: undefined });
 
   let results;
   if (list.isPending) {
@@ -100,20 +99,7 @@ export function CatalogTab({ params, setParams }: CatalogTabProps) {
       <div className={styles.toolbar}>
         <label className={styles.select}>
           <span className={styles.selectLabel}>{t('filters.set')}</span>
-          <Select
-            value={params.set?.[0] ?? ''}
-            onChange={(event) =>
-              setParams({ set: event.target.value ? [event.target.value] : undefined })
-            }
-          >
-            <option value="">{t('filters.allSets')}</option>
-            {setIds.map((id) => (
-              <option key={id} value={id}>
-                {setNames.get(id) ? `${id} · ${setNames.get(id)}` : id}
-                {facets.set[id] !== undefined ? ` (${facets.set[id]})` : ''}
-              </option>
-            ))}
-          </Select>
+          <SetSelect params={params} setParams={setParams} facets={facets} />
         </label>
         <label className={styles.select}>
           <span className={styles.selectLabel}>{t('sort.label')}</span>

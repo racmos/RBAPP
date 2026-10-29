@@ -273,6 +273,22 @@ live in the `products` namespace (`products:kind.<kind>`, F14-e adds the rest).
   event of a nested `<dialog>` would close the sheet as well.
 - ESLint: `products` may import everything below `app`, like `collection`.
 
+Desktop (F14-f). `ProductsPage` picks `ProductsMobile` (the F14-e layout above) below 1240 px
+(`up('xl')`) and `ProductsDesktop` from there; both read `useProductsScreen` (tab, URL params,
+`setParams`, owned lines) and render `ProductTabs`. `params.ts` also carries `owned=owned` ("solo los
+míos", counted as a filter and cleared with the others). `ProductsDesktop`: a sticky 240 px rail
+(`ProductsRail`, `aside` "Filtros": search, kind checkboxes with facet counts, `SetSelect`, the
+`Switch` "Solo los míos"; any rail change shows the catalog tab) and, under the tabs, `CatalogTable`
+(caption "Productos de Cardmarket"; image, name, kind, set, price, 7 d and 30 d signed in the text,
+`×N` owned, "Ya no aparece" badge when `listed` is false; name, price, 7 d and 30 d headers sort with
+`aria-sort`, a new column starts descending except the name; "Por página" 48/96) or `MineTable`
+(caption "Tus productos"; `MineSummary` band, quantity `Stepper`, purchase price and note inline,
+labelled `<column>: <product>` and saved with `useProductLineSaver`; the name opens
+`ProductLineSheet`). From 1600 px (`up('2xl')`) a row click selects the product for the sticky 380 px
+`ProductPanel` (`aside` "Detalle del producto": image, price facts, 90-day `ProductHistory`,
+`ProductLines`, `AddProductForm`, shared with `ProductDetail` through `ProductSections.tsx`); below it a
+row click opens `/products/:id`. Clicks on inline editors never reach the row.
+
 ## Service worker and install
 
 The app is an installable PWA named **Rift Manager**. Nothing about it needs a server change:

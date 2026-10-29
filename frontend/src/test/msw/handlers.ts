@@ -224,6 +224,9 @@ export const handlers = [
     if (q) items = items.filter((product) => product.name.toLowerCase().includes(q));
     if (kinds.length > 0) items = items.filter((product) => kinds.includes(product.kind));
     if (sets.length > 0) items = items.filter((product) => sets.includes(product.set_id ?? ''));
+    if (url.searchParams.get('owned') === 'owned') {
+      items = items.filter((product) => product.owned_qty > 0);
+    }
     return HttpResponse.json({
       success: true,
       data: { items },

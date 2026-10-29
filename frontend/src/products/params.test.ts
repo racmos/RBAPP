@@ -60,6 +60,19 @@ describe('products params (F14-e S2)', () => {
     expect(activeFilterCount(parse('kind=box&kind=booster&set=OGN'))).toBe(3);
   });
 
+  it('reads and writes owned=owned, the only owned value the screens use (F14-f S1)', () => {
+    expect(parse('owned=owned').owned).toBe('owned');
+    expect(parse('owned=missing').owned).toBeUndefined();
+    expect(parse('owned=any').owned).toBeUndefined();
+    expect(serializeProductParams(parse('set=OGN&owned=owned&sort=price'))).toBe(
+      'set=OGN&owned=owned&sort=price',
+    );
+    expect(activeFilterCount(parse('owned=owned'))).toBe(1);
+    expect(
+      serializeProductParams(withChange(parse('owned=owned&page=3'), { owned: undefined })),
+    ).toBe('');
+  });
+
   it('reads the tab and writes it first', () => {
     expect(parseTab(new URLSearchParams('tab=mine'))).toBe('mine');
     expect(parseTab(new URLSearchParams('tab=catalog'))).toBe('catalog');
