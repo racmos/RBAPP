@@ -27,6 +27,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { useDocumentTitle } from '@/i18n';
 import { SetEditor, type SetForm } from './SetEditor';
+import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './SetsPage.module.css';
 
 type SortKey = 'id' | 'name' | 'releaseDate';
@@ -195,7 +196,7 @@ export function SetsPage() {
         <EmptyState title={t('sets.title')} body={t('sets.empty')} />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          <div className={styles.tableWrap}>
+          <TableScroll>
             <table className={styles.table}>
               <caption className="sr-only">{t('sets.caption')}</caption>
               <thead>
@@ -283,7 +284,7 @@ export function SetsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           {wide && (
             <div className={styles.editorPanel}>
               {editor?.mode === 'edit' ? (

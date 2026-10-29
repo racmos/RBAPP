@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { below } from '@/lib/breakpoints';
 import postcss, { type AtRule, type Node, type Rule } from 'postcss';
 
 /** CSS is asserted on its source with postcss, not through getComputedStyle (R7, D26). */
-export const SRC_DIR = fileURLToPath(new URL('../', import.meta.url));
+// Vitest runs from `frontend/`; under jsdom `import.meta.url` is not a file URL.
+export const SRC_DIR = join(process.cwd(), 'src');
 
 export type Decl = { prop: string; value: string };
 export type CssRule = { selectors: string[]; decls: Decl[]; atRules: string[] };

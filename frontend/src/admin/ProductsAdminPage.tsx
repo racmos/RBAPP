@@ -30,6 +30,7 @@ import { formatDateTime, formatMoney, type Lang } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { ProductEditor, ProductThumb } from './ProductEditor';
+import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './ProductsAdminPage.module.css';
 
 const FIELDS = ['kind', 'set_id', 'hidden'] as const;
@@ -236,7 +237,7 @@ export function ProductsAdminPage() {
       ) : !phone ? (
         <div className={wide ? styles.layout : undefined}>
           <div>
-            <div className={styles.tableWrap}>
+            <TableScroll>
               <table className={styles.table}>
                 <caption className="sr-only">{t('products.caption')}</caption>
                 <thead>
@@ -283,7 +284,7 @@ export function ProductsAdminPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             {pagination}
           </div>
           {wide && (

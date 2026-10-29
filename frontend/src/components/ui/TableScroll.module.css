@@ -1,0 +1,16 @@
+@layer components {
+  /* Scrolls both ways; the cap keeps the header and the horizontal scrollbar on screen. */
+  .scroll {
+    overflow: auto;
+    max-height: calc(100dvh - 64px - 2 * var(--gap));
+    overscroll-behavior-x: contain;
+  }
+
+  .scroll thead th {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    background: var(--table-head);
+    box-shadow: inset 0 -1px 0 var(--line);
+  }
+}

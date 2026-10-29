@@ -6,6 +6,7 @@ import { Stepper } from '@/collection/Stepper';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { TableScroll } from '@/components/ui/TableScroll';
 import { formatMoney, type Lang } from '@/lib/format';
 import { MineSummary } from './MineTab';
 import { ProductLineSheet } from './ProductLineSheet';
@@ -152,7 +153,7 @@ export function MineTable({ lang, offline, onBrowse, selected, onActivate }: Min
   return (
     <>
       <MineSummary total={total} lang={lang} offline={offline} />
-      <div className={styles.scroll}>
+      <TableScroll>
         <table className={styles.table} aria-busy={mine.isFetching || undefined}>
           <caption className="sr-only">{t('table.mineCaption')}</caption>
           <thead>
@@ -181,7 +182,7 @@ export function MineTable({ lang, offline, onBrowse, selected, onActivate }: Min
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {open && <ProductLineSheet line={open} onClose={() => setOpenId(null)} offline={offline} />}
     </>
   );

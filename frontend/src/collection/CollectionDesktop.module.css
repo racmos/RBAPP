@@ -104,10 +104,16 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-auto-rows: 1fr;
     gap: 12px;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .grid > li {
+    display: flex;
+    min-width: 0;
   }
 
   .importLink {

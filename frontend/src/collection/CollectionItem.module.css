@@ -2,13 +2,14 @@
   .tile,
   .row {
     position: relative;
-    display: flex;
     min-width: 0;
+    width: 100%;
     padding: 8px;
     border: 2px solid transparent;
     border-radius: var(--radius-sm);
     background: var(--panel-2);
     color: var(--text);
+    font: inherit;
     text-align: left;
     cursor: pointer;
     transition: border-color 0.15s;
@@ -19,12 +20,19 @@
     border-color: var(--accent);
   }
 
+  /* Every tile fills its grid cell (the grid makes the rows equal): same image ratio, a text
+     block of fixed lines and the value pinned to the bottom (owner feedback S10). */
   .tile {
+    display: flex;
     flex-direction: column;
     gap: 6px;
+    height: 100%;
   }
 
+  /* A list row is four fixed columns, so names, quantities and values line up. */
   .row {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 76px;
     align-items: center;
     gap: 12px;
   }
@@ -39,11 +47,15 @@
     flex: none;
   }
 
+  .tile .art {
+    width: 100%;
+  }
+
   .row .art {
     width: 44px;
   }
 
-  .qty,
+  .tile .qty,
   .foil {
     position: absolute;
     padding: 1px 7px;
@@ -54,7 +66,7 @@
     font-weight: 800;
   }
 
-  .qty {
+  .tile .qty {
     right: 4px;
     bottom: 4px;
   }
@@ -65,37 +77,65 @@
     color: var(--cyan-bright);
   }
 
+  .row .qty {
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    text-align: right;
+  }
+
   .body {
     display: flex;
-    flex: 1;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
   }
 
-  .name {
+  .tile .body {
+    flex: 1 1 auto;
+  }
+
+  .name,
+  .meta,
+  .status {
+    display: block;
+    min-width: 0;
     overflow: hidden;
-    font-size: 14px;
-    font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .name {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 18px;
   }
 
   .meta {
     color: var(--muted);
     font-size: 12px;
+    line-height: 16px;
+  }
+
+  /* One line, kept even when empty, so every item has the same text height. */
+  .status {
+    min-height: 16px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+  }
+
+  .status > * + * {
+    margin-left: 6px;
   }
 
   .selling {
     color: var(--accent-bright);
-    font-size: 12px;
-    font-weight: 700;
   }
 
   .shortText {
-    color: var(--red);
-    font-size: 12px;
-    font-weight: 700;
+    color: var(--red-text);
   }
 
   .value {
@@ -103,5 +143,14 @@
     font-size: 13px;
     font-variant-numeric: tabular-nums;
     font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .tile .value {
+    margin-top: auto;
+  }
+
+  .row .value {
+    text-align: right;
   }
 }

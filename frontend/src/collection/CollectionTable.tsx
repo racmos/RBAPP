@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CollectionGroup, CollectionLine, CollectionSort } from '@/api/types';
 import { CardImage } from '@/components/card';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { Icon } from '@/components/ui/Icon';
 import { formatDate, formatMoney, formatPct, type Lang } from '@/lib/format';
 import { LineCells } from './LineCells';
+import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './CollectionTable.module.css';
 
 type Selection = {
@@ -101,15 +103,11 @@ function SelectBox({
   partial?: boolean;
   onChange: (on: boolean) => void;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = Boolean(partial) && !checked;
-  }, [partial, checked]);
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      aria-label={label}
+    <Checkbox
+      label={label}
+      hideLabel
+      indeterminate={Boolean(partial) && !checked}
       checked={checked}
       onChange={(event) => onChange(event.target.checked)}
     />
@@ -146,7 +144,7 @@ export function CollectionTable({
   const selectedOnPage = pageIds.filter(selection.has).length;
 
   return (
-    <div className={styles.scroll}>
+    <TableScroll>
       <table className={styles.table}>
         <caption className="sr-only">{t('table.caption')}</caption>
         <thead>
@@ -341,6 +339,6 @@ export function CollectionTable({
           })}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }

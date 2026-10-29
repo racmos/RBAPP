@@ -11,6 +11,8 @@
     --panel-2: rgba(9, 42, 55, 0.82);
     --panel-3: rgba(7, 34, 45, 0.92);
     --header: rgba(6, 26, 34, 0.78);
+    /* sticky table headers: opaque, so rows never show through (owner feedback S1) */
+    --table-head: #072630;
     --line: rgba(120, 205, 228, 0.16);
     --line-2: rgba(120, 205, 228, 0.1);
     --cyan: #2ec6e6;

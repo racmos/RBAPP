@@ -1,14 +1,6 @@
 @layer components {
-  .scrollWrap {
-    overflow-x: auto;
-  }
-
   .scrollWrap .table {
     min-width: 920px;
-  }
-
-  .tableWrap {
-    overflow-x: auto;
   }
 
   .table {
@@ -17,11 +9,9 @@
     font-size: 13px;
   }
 
+  /* Sticky and opaque through TableScroll (components/ui). */
   .th {
-    position: sticky;
-    top: 64px;
     padding: 10px 8px;
-    background: var(--panel-3);
     border-bottom: 1px solid var(--line);
     font-weight: 600;
     text-align: left;

@@ -40,8 +40,12 @@
   }
 
   .checks {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    margin: 0 0 12px;
+    padding: 0;
+    border: 0;
   }
 
   .job {

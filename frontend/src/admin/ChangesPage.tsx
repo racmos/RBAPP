@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { listAdminSets } from '@/api/endpoints';
 import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -21,6 +22,7 @@ import { down, up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { ValueDiff } from './ValueDiff';
+import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './ChangesPage.module.css';
 
 export type AdminChange = {
@@ -326,16 +328,16 @@ export function ChangesPage() {
         />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          <div className={styles.tableWrap}>
+          <TableScroll>
             <table className={styles.table}>
               <caption className="sr-only">{t('changes.caption')}</caption>
               <thead>
                 <tr>
                   {!phone && (
                     <th scope="col">
-                      <input
-                        type="checkbox"
-                        aria-label={t('changes.selectPage')}
+                      <Checkbox
+                        label={t('changes.selectPage')}
+                        hideLabel
                         checked={allChecked}
                         disabled={offline || pendingOnPage.length === 0}
                         onChange={(event) => togglePage(event.target.checked)}
@@ -355,11 +357,11 @@ export function ChangesPage() {
                     {!phone && (
                       <td>
                         {item.status === 'pending' && (
-                          <input
-                            type="checkbox"
-                            aria-label={t('changes.approveOne', {
+                          <Checkbox
+                            label={t('changes.approveOne', {
                               name: item.card_name ?? item.card_id,
                             })}
+                            hideLabel
                             checked={selected.includes(item.id)}
                             disabled={offline}
                             onChange={(event) => toggle(item.id, event.target.checked)}
@@ -400,7 +402,7 @@ export function ChangesPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           <Pagination
             page={meta.page}
             pages={meta.pages}

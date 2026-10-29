@@ -32,6 +32,7 @@ import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { CardEditor, type CardForm } from './CardEditor';
+import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './CardsAdminPage.module.css';
 
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'];
@@ -322,7 +323,7 @@ export function CardsAdminPage() {
         <EmptyState title={t('cards.title')} body={t('cards.empty')} />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          <div className={styles.tableWrap}>
+          <TableScroll>
             <table className={styles.table}>
               <caption className="sr-only">{t('cards.caption')}</caption>
               <thead>
@@ -380,7 +381,7 @@ export function CardsAdminPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           <Pagination
             page={meta.page}
             pages={meta.pages}
