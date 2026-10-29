@@ -2,7 +2,8 @@
 
 `refresh_products(date)` runs after each daily price load (job `products_refresh`).
 Only `nonsingle` rows are products (D-F14-13); rows of any other type are never
-touched and no row is ever deleted.
+touched and no row is ever deleted. `apply_admin_patch` (F14-d S3) is the admin's
+hand edit: it sets the locks the refresh respects.
 """
 import sqlalchemy as sa
 
@@ -36,6 +37,20 @@ def kind_for(category: str | None) -> str:
         if any(word in haystack for word in words):
             return kind
     return 'other'
+
+
+def expansion_set(product_id: int) -> str | None:
+    """The set `refresh_products` would give the product: the mapped set of the expansion
+    of its latest non-single Cardmarket row, or None (no row, no expansion, or an
+    expansion not mapped yet). One statement."""
+    row = db.session.execute(
+        sa.select(RbcmExpansion.rbexp_rbset_id)
+        .select_from(RbcmProduct)
+        .outerjoin(RbcmExpansion, RbcmExpansion.rbexp_id == RbcmProduct.rbprd_id_expansion)
+        .where(RbcmProduct.rbprd_id_product == product_id,
+               RbcmProduct.rbprd_type == 'nonsingle')
+        .order_by(RbcmProduct.rbprd_date.desc()).limit(1)).first()
+    return row[0] if row else None
 
 
 def refresh_products(date: str) -> dict:
@@ -89,6 +104,39 @@ def refresh_products(date: str) -> dict:
     total = db.session.execute(sa.select(sa.func.count()).select_from(RbProducts).where(
         RbProducts.rbpdt_type == 'nonsingle')).scalar_one()
     return {'date': date, **counts, 'total': total}
+
+
+def apply_admin_patch(product: RbProducts, fields: dict) -> dict:
+    """Apply the admin edit `fields` (any of `hidden`, `kind`, `set_id`; `set_id` is an
+    existing set id, None or `"auto"`) and return `{field: [old, new]}` of what changed.
+
+    A kind locks it; `kind: None` unlocks it and recomputes it from the category. A set id
+    or None locks the set; `"auto"` unlocks it and recomputes it from the expansion.
+    `rbpdt_updated_at` moves only on a change. Does not commit.
+    """
+    changes = {}
+
+    def put(name, attr, value):
+        old = getattr(product, attr)
+        if old != value:
+            changes[name] = [old, value]
+            setattr(product, attr, value)
+
+    if 'hidden' in fields:
+        put('hidden', 'rbpdt_hidden', fields['hidden'])
+    if 'kind' in fields:
+        kind = fields['kind']
+        put('kind', 'rbpdt_kind', kind if kind is not None else kind_for(product.rbpdt_category))
+        put('kind_locked', 'rbpdt_kind_locked', kind is not None)
+    if 'set_id' in fields:
+        set_id = fields['set_id']
+        auto = set_id == 'auto'
+        put('set_id', 'rbpdt_id_set',
+            expansion_set(product.rbpdt_id_product) if auto else set_id)
+        put('set_locked', 'rbpdt_set_locked', not auto)
+    if changes:
+        product.rbpdt_updated_at = clock.utcnow()
+    return changes
 
 
 def _apply(product: RbProducts, values: dict, now) -> bool:

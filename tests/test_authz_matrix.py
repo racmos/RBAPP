@@ -35,6 +35,7 @@ MATRIX = {
     # --- public -----------------------------------------------------------
     'static': 'P',
     'media.card_image': 'P',                # card images from CARD_IMAGES_DIR (M-d)
+    'media.product_image': 'P',             # product images from PRODUCT_IMAGES_DIR (F14-d)
     'landing.*': 'P',                       # landing page, HTMX partials, frames
     'auth.login': 'P',
     'auth.register': 'P',

@@ -1,4 +1,5 @@
-"""GET /riftbound/media/cards/<folder>/<filename> (M-d, S4).
+"""GET /riftbound/media/cards/<folder>/<filename> (M-d, S4) and
+GET /riftbound/media/products/<filename> (F14-d S1).
 
 Files come from a temporary CARD_IMAGES_DIR (`card_images_dir`). `secret.txt`
 sits NEXT TO the images root, so a traversal that worked would hand it out.
@@ -142,3 +143,124 @@ class TestAuthz:
         assert [r.rule for r in rules] == ['/riftbound/media/cards/<folder>/<filename>']
         assert classify(rules[0]) == 'P'
         assert MATRIX['media.card_image'] == 'P'
+
+
+# ---------------------------------------------------------------------------
+# F14-d S1: GET /riftbound/media/products/<filename>
+# ---------------------------------------------------------------------------
+
+PRODUCTS = '/riftbound/media/products'
+JPG = b'\xff\xd8\xff' + b'product-image-bytes' * 8
+
+
+@pytest.fixture
+def product_images(product_images_dir, tmp_path):
+    """The product images root with 42.png, 7.webp, 8.jpg, 9.jpeg and a notes.txt,
+    and a secret beside it."""
+    product_images_dir.mkdir(parents=True)
+    (product_images_dir / '42.png').write_bytes(PNG)
+    (product_images_dir / '7.webp').write_bytes(WEBP)
+    (product_images_dir / '8.jpg').write_bytes(JPG)
+    (product_images_dir / '9.jpeg').write_bytes(JPG)
+    (product_images_dir / 'notes.txt').write_bytes(b'not an image')
+    (tmp_path / 'secret.txt').write_bytes(SECRET)
+    return product_images_dir
+
+
+class TestProductServe:
+    @pytest.mark.parametrize('name, body, mimetype', [
+        ('42.png', PNG, 'image/png'),
+        ('7.webp', WEBP, 'image/webp'),
+        ('8.jpg', JPG, 'image/jpeg'),
+        ('9.jpeg', JPG, 'image/jpeg'),
+    ])
+    def test_a_file_is_served_with_its_type_and_a_week_of_cache(self, product_images, client,
+                                                               name, body, mimetype):
+        resp = client.get(f'{PRODUCTS}/{name}')
+        assert resp.status_code == 200
+        assert resp.data == body
+        assert resp.mimetype == mimetype
+        assert resp.headers['Cache-Control'] == WEEK
+
+    def test_the_endpoint_is_media_product_image(self, app):
+        adapter = app.url_map.bind('localhost')
+        assert adapter.match(f'{PRODUCTS}/42.png') == (
+            'media.product_image', {'filename': '42.png'})
+
+    def test_anonymous_and_signed_in_users_get_it(self, product_images, client,
+                                                  authenticated_client):
+        assert client.get(f'{PRODUCTS}/42.png').status_code == 200
+        assert authenticated_client.get(f'{PRODUCTS}/42.png').status_code == 200
+
+    @pytest.mark.parametrize('name', ['42.png', '404.png', 'notes.txt', '..'])
+    def test_no_response_sets_a_cookie(self, product_images, client, name):
+        assert 'Set-Cookie' not in client.get(f'{PRODUCTS}/{name}').headers
+
+    def test_conditional_requests_answer_304(self, product_images, client):
+        first = client.get(f'{PRODUCTS}/42.png')
+        again = client.get(f'{PRODUCTS}/42.png',
+                           headers={'If-None-Match': first.headers['ETag']})
+        assert again.status_code == 304
+
+    def test_card_images_are_not_served_from_the_product_root(self, product_images, client,
+                                                             card_images_dir):
+        (card_images_dir / 'ogn').mkdir(parents=True)
+        (card_images_dir / 'ogn' / 'ogn_1.png').write_bytes(PNG)
+        _assert_not_found(client.get(f'{PRODUCTS}/ogn_1.png'))
+        _assert_not_found(client.get(f'{PRODUCTS}/ogn/ogn_1.png'))
+
+
+class TestProductNotFound:
+    def test_a_missing_file_is_404(self, product_images, client):
+        _assert_not_found(client.get(f'{PRODUCTS}/404.png'))
+
+    def test_without_the_folder_everything_is_404(self, product_images_dir, client):
+        assert not product_images_dir.exists()
+        _assert_not_found(client.get(f'{PRODUCTS}/42.png'))
+
+    @pytest.mark.parametrize('name', ['notes.txt', 'secret.txt', '42', '42.png.txt',
+                                      '42.svg', '42.html', '42.gif'])
+    def test_an_extension_off_the_allow_list_is_404(self, product_images, client, name):
+        (product_images / '42.svg').write_bytes(b'<svg/>')
+        (product_images / '42.html').write_bytes(b'<script>1</script>')
+        (product_images / '42.gif').write_bytes(b'GIF89a')
+        (product_images / '42').write_bytes(PNG)
+        (product_images / '42.png.txt').write_bytes(PNG)
+        _assert_not_found(client.get(f'{PRODUCTS}/{name}'))
+
+    @pytest.mark.parametrize('suffix', [
+        '..', '%2e%2e', '.',
+        '42.png%00', '42.png%00.png', '%00',
+        '..%5Csecret.txt', '%5C..%5C..%5Csecret.txt',
+        '42.png%0A', '42.png%0D', '42.png%0D%0ASet-Cookie:%20evil=1',
+    ])
+    def test_a_file_name_that_is_not_plain_is_404(self, product_images, client, suffix):
+        resp = client.get(f'{PRODUCTS}/{suffix}')
+        _assert_not_found(resp)
+        assert 'Set-Cookie' not in resp.headers
+
+    @pytest.mark.parametrize('suffix', [
+        '../secret.txt',
+        '%2e%2e/secret.txt',
+        '%2e%2e%2Fsecret.txt',
+        '%2E%2E%2F%2E%2E%2Fsecret.txt',
+    ])
+    def test_traversal_is_404(self, product_images, client, suffix):
+        _assert_not_found(client.get(f'{PRODUCTS}/{suffix}', follow_redirects=True))
+
+    def test_a_symlink_pointing_outside_is_404(self, product_images, client, tmp_path):
+        (tmp_path / 'outside.png').write_bytes(SECRET)
+        (product_images / 'leak.png').symlink_to(tmp_path / 'outside.png')
+        _assert_not_found(client.get(f'{PRODUCTS}/leak.png'))
+
+    def test_a_folder_is_not_a_file(self, product_images, client):
+        (product_images / 'sub.png').mkdir()
+        _assert_not_found(client.get(f'{PRODUCTS}/sub.png'))
+
+
+class TestProductAuthz:
+    def test_the_rule_is_classified_public(self, app):
+        rules = [r for r in app.url_map.iter_rules() if r.endpoint == 'media.product_image']
+        assert [r.rule for r in rules] == ['/riftbound/media/products/<filename>']
+        assert classify(rules[0]) == 'P'
+        assert MATRIX['media.product_image'] == 'P'

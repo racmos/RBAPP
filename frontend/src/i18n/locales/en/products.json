@@ -1,0 +1,12 @@
+{
+  "kind": {
+    "booster": "Booster",
+    "box": "Booster box",
+    "case": "Case",
+    "bundle": "Bundle",
+    "starter": "Starter deck",
+    "sleeves": "Sleeves",
+    "accessory": "Accessory",
+    "other": "Other"
+  }
+}

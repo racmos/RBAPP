@@ -29,6 +29,8 @@ CONFIG_ENV_NAMES = (
     'SPA_CSP',
     # M-d
     'CARD_IMAGES_DIR',
+    # F14-d
+    'PRODUCT_IMAGES_DIR',
 )
 
 
@@ -351,4 +353,12 @@ def card_images_dir(app, tmp_path):
     """`app` whose CARD_IMAGES_DIR is `tmp_path/card-images`. Returns that path."""
     root = tmp_path / 'card-images'
     app.config['CARD_IMAGES_DIR'] = str(root)
+    return root
+
+
+@pytest.fixture
+def product_images_dir(app, tmp_path):
+    """`app` whose PRODUCT_IMAGES_DIR is `tmp_path/product-images` (F14-d). Returns that path."""
+    root = tmp_path / 'product-images'
+    app.config['PRODUCT_IMAGES_DIR'] = str(root)
     return root

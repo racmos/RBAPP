@@ -319,6 +319,26 @@ pages read `/riftbound/static/images/cards/...` again. Images added after the de
 directory: copy them back first (`cp -a <data dir>/. <checkout>/app/static/images/cards/`). Leave the data
 directory in place.
 
+### Product images (F14-d)
+
+Product images follow the card image rules: not in git, not in the code tree. They live in
+`PRODUCT_IMAGES_DIR=<data dir>` in `.env` (absolute path, outside the checkout, owned by the service
+user, a different directory from `CARD_IMAGES_DIR`; the host value is in `ops.local.md`). Unset, the app
+uses `<project>/data/product-images` (git-ignored; dev and tests only); a relative path stops the app
+(`PRODUCT_IMAGES_DIR must be an absolute path`). The files sit directly in the directory as
+`<product id>.<png|jpg|webp>`, written only by the admin upload (`POST /admin/products/<id>/image`);
+Flask serves them at `/riftbound/media/products/<file>` (public, cached a week). No proxy change.
+
+- Install (with the F14-d deploy): create the directory, owned by the service user, set
+  `PRODUCT_IMAGES_DIR` in `.env`, restart. The app creates the directory on the first upload if it is
+  missing, but only with the right owner if the parent allows it, so create it first.
+- Backup and copies: same rules as the card images. Copy the directory with the database backup
+  (`tar -C <data dir> -czf <backup folder>/product-images-<date>.tar.gz .`); when moving it, copy
+  without overwriting (`cp -an <old dir>/. <new dir>/`) and never delete the source. A file copied in by
+  hand is not shown until the product's `rbpdt_image` names it: add new images through the admin upload.
+- Live check: upload an image on a product in the admin; `curl -sI <URL>/riftbound/media/products/<id>.png`
+  → 200 with `Cache-Control: public, max-age=604800`.
+
 ## Never
 
 - Commit or print `.env`, the database URL, passwords or keys. Write IPs, hostnames or domains in a

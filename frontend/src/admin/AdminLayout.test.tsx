@@ -75,6 +75,13 @@ describe('AdminLayout (F13-a S6)', () => {
     ).toBeVisible();
   });
 
+  it('links the products section (F14-d S5)', async () => {
+    adminApi();
+    await renderApp({ path: '/admin', width: 1280 });
+    const link = await screen.findByRole('link', { name: 'Productos' }, { timeout: 10000 });
+    expect(link).toHaveAttribute('href', '/riftbound/app/admin/products');
+  });
+
   it('shows no count when nothing is pending', async () => {
     adminApi();
     await renderApp({ path: '/admin', width: 1280 });

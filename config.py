@@ -52,6 +52,10 @@ DEFAULT_FRONTEND_DIST = str(Path(__file__).resolve().parent / 'frontend' / 'dist
 # (`/data/`). Overridden by CARD_IMAGES_DIR, which must be an absolute path.
 DEFAULT_CARD_IMAGES_DIR = str(Path(__file__).resolve().parent / 'data' / 'card-images')
 
+# Root of the product images (F14-d): plain files `<product id>.<ext>`. Git-ignored
+# (`/data/`). Overridden by PRODUCT_IMAGES_DIR, same rules as CARD_IMAGES_DIR.
+DEFAULT_PRODUCT_IMAGES_DIR = str(Path(__file__).resolve().parent / 'data' / 'product-images')
+
 _TRUE_WORDS = frozenset({'1', 'true', 'yes', 'on'})
 _FALSE_WORDS = frozenset({'0', 'false', 'no', 'off'})
 
@@ -111,15 +115,15 @@ def _spa_csp_setting(environ: Mapping[str, str]) -> str:
     raise ConfigError('SPA_CSP must be report-only or off')
 
 
-def _card_images_dir_setting(environ: Mapping[str, str]) -> str:
-    """CARD_IMAGES_DIR: blank keeps <project>/data/card-images; a relative path stops
-    the app in every environment (it would depend on the working directory). The
-    directory is created on first write, not here."""
-    text = (environ.get('CARD_IMAGES_DIR') or '').strip()
+def _images_dir_setting(environ: Mapping[str, str], name: str, default: str) -> str:
+    """CARD_IMAGES_DIR / PRODUCT_IMAGES_DIR: blank keeps `default` (under <project>/data);
+    a relative path stops the app in every environment (it would depend on the working
+    directory). The directory is created on first write, not here."""
+    text = (environ.get(name) or '').strip()
     if not text:
-        return DEFAULT_CARD_IMAGES_DIR
+        return default
     if not os.path.isabs(text):
-        raise ConfigError('CARD_IMAGES_DIR must be an absolute path')
+        raise ConfigError(f'{name} must be an absolute path')
     return text
 
 
@@ -158,7 +162,10 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
         environ, 'CARDMARKET_ALLOWED_HOSTS', CARDMARKET_ALLOWED_HOSTS)
     settings['FRONTEND_DIST'] = (environ.get('FRONTEND_DIST') or '').strip() or DEFAULT_FRONTEND_DIST
     settings['SPA_CSP'] = _spa_csp_setting(environ)
-    settings['CARD_IMAGES_DIR'] = _card_images_dir_setting(environ)
+    settings['CARD_IMAGES_DIR'] = _images_dir_setting(
+        environ, 'CARD_IMAGES_DIR', DEFAULT_CARD_IMAGES_DIR)
+    settings['PRODUCT_IMAGES_DIR'] = _images_dir_setting(
+        environ, 'PRODUCT_IMAGES_DIR', DEFAULT_PRODUCT_IMAGES_DIR)
     settings.update(_session_settings(env, environ))
     settings.update(_protection_settings(env, environ))
     return settings

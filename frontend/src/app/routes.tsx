@@ -130,6 +130,12 @@ export function createAppRoutes(
                       }),
                     },
                     {
+                      path: 'products',
+                      lazy: async () => ({
+                        Component: (await import('@/admin/ProductsAdminPage')).ProductsAdminPage,
+                      }),
+                    },
+                    {
                       path: 'riot',
                       lazy: async () => ({
                         Component: (await import('@/admin/RiotPage')).RiotPage,

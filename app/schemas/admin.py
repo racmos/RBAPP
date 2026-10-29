@@ -1,4 +1,4 @@
-"""Admin API schemas (F13-b): sets and cards writes, card list query.
+"""Admin API schemas (F13-b): sets and cards writes, card list query; products (F14-d).
 
 Bodies use `validate_json` (extra fields are forbidden everywhere); the card
 list query uses `validate_query` with the same error body.
@@ -6,7 +6,9 @@ list query uses `validate_query` with the same error body.
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
+
+from app.models.cardmarket import PRODUCT_KINDS
 
 STRIPPED = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
@@ -192,4 +194,68 @@ class AdminCardQuery(BaseModel):
                 return True
             if value.lower() == 'false':
                 return False
+        return value
+
+
+def _query_bool(value):
+    """`true` / `false` (any case) of a query string; anything else is left to Pydantic."""
+    if isinstance(value, str) and value.lower() in ('true', 'false'):
+        return value.lower() == 'true'
+    return value
+
+
+class AdminProductQuery(BaseModel):
+    """GET /admin/products query (F14-d S2). `kind` is repeatable."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    q: Optional[str] = Field(default=None, max_length=100)
+    kind: list[Literal[PRODUCT_KINDS]] = Field(default_factory=list)
+    hidden: Literal['any', 'yes', 'no'] = 'any'
+    listed: Literal['any', 'yes', 'no'] = 'any'
+    no_set: bool = False
+    no_image: bool = False
+    sort: Literal['name', 'updated'] = 'name'
+    dir: Literal['asc', 'desc'] = 'asc'
+    page: int = Field(default=1, ge=1)
+    per_page: Literal[50, 100, 200] = 50
+
+    @field_validator('kind', mode='before')
+    @classmethod
+    def _one_or_many(cls, value):
+        if isinstance(value, str):
+            return [value]
+        return value
+
+    @field_validator('page', 'per_page', mode='before')
+    @classmethod
+    def _to_int(cls, value):
+        if isinstance(value, str) and value.lstrip('-').isdigit():
+            return int(value)
+        return value
+
+    @field_validator('no_set', 'no_image', mode='before')
+    @classmethod
+    def _to_bool(cls, value):
+        return _query_bool(value)
+
+
+class AdminProductPatch(BaseModel):
+    """PATCH /admin/products/<id> body (F14-d S3): any of `hidden`, `kind`, `set_id`.
+
+    A key that is absent is not touched (`model_fields_set`). `kind: null` unlocks
+    the kind; `set_id` is a set id, null or `"auto"` (checked in the view).
+    """
+
+    model_config = ConfigDict(extra='forbid')
+
+    hidden: Optional[StrictBool] = None
+    kind: Optional[Literal[PRODUCT_KINDS]] = None
+    set_id: Optional[str] = None
+
+    @field_validator('hidden', mode='before')
+    @classmethod
+    def _hidden_not_null(cls, value):
+        if value is None:
+            raise ValueError('hidden must be true or false')
         return value

@@ -1,0 +1,12 @@
+{
+  "kind": {
+    "booster": "Sobre",
+    "box": "Caja de sobres",
+    "case": "Case",
+    "bundle": "Pack",
+    "starter": "Mazo de inicio",
+    "sleeves": "Fundas",
+    "accessory": "Accesorio",
+    "other": "Otro"
+  }
+}

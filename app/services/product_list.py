@@ -3,7 +3,8 @@
 Reads `rbproducts` (F14-a), `rbset` (facet order), `rbcm_price` and the caller's
 `rbuserproducts` lines (F14-c). Only `nonsingle` rows are products; hidden ones are
 shown only to users who own them. Filtering and ordering run in Python, like
-`card_list`.
+`card_list`. `list_admin_products` (F14-d S2) is the admin list: every non-single,
+hidden ones included.
 """
 import datetime as _datetime
 import math
@@ -15,6 +16,7 @@ from app.models import RbProducts, RbSet, RbUserProduct
 from app.models.cardmarket import PRODUCT_KINDS
 from app.schemas.validators import ProductListQuery
 from app.services import catalog, pricing
+from app.services.product_images import product_image_url
 from app.services.product_prices import (line_numbers, price_rows, product_price,
                                          product_price_summaries, summary_from_rows)
 
@@ -100,7 +102,7 @@ def product_summary(product, *, price, owned_qty) -> dict:
         'kind': product.rbpdt_kind,
         'category': product.rbpdt_category,
         'set_id': product.rbpdt_id_set,
-        'image_src': None,                  # F14-d serves /riftbound/media/products/<file>
+        'image_src': product_image_url(product.rbpdt_image),
         'listed': bool(product.rbpdt_listed),
         'price': price,
         'owned_qty': owned_qty,
@@ -203,6 +205,73 @@ def list_products(query: ProductListQuery, user_id) -> dict:
             'price_as_of': pricing.price_as_of(),
         },
     }
+
+
+def admin_product_item(product, *, price, owned_qty) -> dict:
+    """`ProductSummary` + `{hidden, kind_locked, set_locked, rbpdt_type, updated_at}` (F14-d)."""
+    item = product_summary(product, price=price, owned_qty=owned_qty)
+    item.update({
+        'hidden': bool(product.rbpdt_hidden),
+        'kind_locked': bool(product.rbpdt_kind_locked),
+        'set_locked': bool(product.rbpdt_set_locked),
+        'rbpdt_type': product.rbpdt_type,
+        'updated_at': _iso_utc(product.rbpdt_updated_at),
+    })
+    return item
+
+
+def admin_product(product_id):
+    """The product when it is a non-single (hidden or not), else None."""
+    product = db.session.get(RbProducts, product_id)
+    if product is None or product.rbpdt_type != 'nonsingle':
+        return None
+    return product
+
+
+def admin_item_for(product, user_id) -> dict:
+    """`admin_product_item` of one product with its price and the caller's copies."""
+    price = product_price_summaries([product.rbpdt_id_product])[product.rbpdt_id_product]
+    return admin_product_item(product, price=price,
+                              owned_qty=owned_quantities(user_id).get(product.rbpdt_id_product, 0))
+
+
+def _admin_matches(query, product) -> bool:
+    q = (query.q or '').casefold()
+    if q and q not in (product.rbpdt_name or '').casefold() and \
+            not (q.isdigit() and int(q) == product.rbpdt_id_product):
+        return False
+    if query.kind and product.rbpdt_kind not in query.kind:
+        return False
+    if query.hidden != 'any' and bool(product.rbpdt_hidden) != (query.hidden == 'yes'):
+        return False
+    if query.listed != 'any' and bool(product.rbpdt_listed) != (query.listed == 'yes'):
+        return False
+    if query.no_set and product.rbpdt_id_set is not None:
+        return False
+    if query.no_image and product.rbpdt_image:
+        return False
+    return True
+
+
+def list_admin_products(query, user_id) -> tuple[list[dict], int]:
+    """`(items, total)` of the admin list (`AdminProductQuery`): every non-single, hidden
+    ones included; sort by name, or by `rbpdt_updated_at` with nulls last and ties by name.
+    Three statements whatever the size of the catalog (products, prices, owned copies)."""
+    products = db.session.query(RbProducts).filter(RbProducts.rbpdt_type == 'nonsingle').all()
+    matched = sorted((p for p in products if _admin_matches(query, p)), key=_name_key,
+                     reverse=(query.sort == 'name' and query.dir == 'desc'))
+    if query.sort == 'updated':
+        dated = [p for p in matched if p.rbpdt_updated_at is not None]
+        # Stable sort over the name order: equal times keep the name tiebreak.
+        dated.sort(key=lambda p: p.rbpdt_updated_at, reverse=(query.dir == 'desc'))
+        matched = dated + [p for p in matched if p.rbpdt_updated_at is None]
+    start = (query.page - 1) * query.per_page
+    page = matched[start:start + query.per_page]
+    prices = product_price_summaries(p.rbpdt_id_product for p in page)
+    owned = owned_quantities(user_id)
+    return [admin_product_item(p, price=prices.get(p.rbpdt_id_product),
+                               owned_qty=owned.get(p.rbpdt_id_product, 0))
+            for p in page], len(matched)
 
 
 def get_product(product_id, user_id):

@@ -464,3 +464,38 @@ export type ImportPreview = {
 export type ImportMode = 'add' | 'replace';
 
 export type ImportResult = { created: number; merged: number; replaced: number; skipped: number };
+
+/** Product kinds of `rbproducts` (F14-a), in display order. */
+export const PRODUCT_KINDS = [
+  'booster',
+  'box',
+  'case',
+  'bundle',
+  'starter',
+  'sleeves',
+  'accessory',
+  'other',
+] as const;
+export type ProductKind = (typeof PRODUCT_KINDS)[number];
+
+/** Price of a product: the first non-zero of `avg7`, `trend`, `low` (F14-b). */
+export type ProductPrice = {
+  value: number;
+  source: string;
+  change_7d_pct: number | null;
+  change_30d_pct: number | null;
+  as_of: string;
+};
+
+/** `ProductSummary` (F14-b contract, additive only). */
+export type ProductSummary = {
+  id: number;
+  name: string;
+  kind: ProductKind;
+  category: string | null;
+  set_id: string | null;
+  image_src: string | null;
+  listed: boolean;
+  price: ProductPrice | null;
+  owned_qty: number;
+};

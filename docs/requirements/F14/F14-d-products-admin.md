@@ -101,3 +101,11 @@ Deploy; create `PRODUCT_IMAGES_DIR` on the server and set it in `.env`.
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): no explicit authz-matrix entries for the three admin rules: the existing `api_admin.*` wildcard classifies them as A (a second entry makes `classify()` fail); a test asserts it.
+- L2 (implementer): `AdminProduct` also carries `updated_at` (the S5 column needs it); `q` also matches an exact product id when it is all digits; `set_id` is matched exactly (case-sensitive) and an unknown or `''`/`AUTO` value is a 400; a no-op PATCH answers 200 with no audit row.
+- L3 (implementer): the image upload deletes the previous file only when it is named `<id>.<other ext>`; it does not move `rbpdt_updated_at`.
+- L4 (implementer): extra strings not in the table: `admin:products.filters.search`, `noSet`, `any`, `yes`, `no`; the upload reuses the `admin:cards.image.*` keys and, like `CardEditor`, is inline in `ProductEditor` (not a shared component).
+- L5 (parent): the dev deploy of 2026-10-29 refreshed 115 products; 46 are kind `other` ('Riftbound Riftbound Box Sets', 'RB Set'): with F14-d the admin can fix them one by one (a locked kind survives the refresh), the S3 rules may also be extended.
