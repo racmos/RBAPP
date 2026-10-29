@@ -476,8 +476,18 @@ layout on a desktop.
   numbers wait 500 ms, and a failure (`stale_line` included) shows the translated message and reloads the
   list. "Separar copias" splits, "Eliminar" asks first and then offers "Deshacer" for 8 s (it posts the
   deleted line back). The "keep a playset" checkbox calls `keep-playset`.
-- `AddSheet` — `CardCombobox`, foil (off, with a reason, for a card without a foil version), quantity,
-  condition, language, purchase price, selling; it stays open for the next card.
+- `AddSheet` — set filter (`GET /meta/game` sets; narrows the `CardCombobox` search with `set`),
+  `CardCombobox`, foil, quantity, condition, language, purchase price, selling; the same sheet on
+  mobile and desktop. It stays open for the next card: after an add the search is cleared and
+  focused and every choice stays as it was; the choices are kept for the browser session in
+  `sessionStorage` `rb_quick_add_v1` (`quickAdd.ts`, never in the URL) and restored when the sheet
+  opens again. Enter in the search adds the highlighted card with the current choices
+  (`CardCombobox` `onEnterSelect`). Foil on a card without a foil version shows
+  `errors:code.foil_not_allowed` and posts nothing. "Añadidas en esta sesión" lists the last 10
+  adds (one row per line; repeated adds that merge into it sum up) with "Deshacer": a line the
+  session created is deleted (the toast offers to put it back), copies merged into an existing line
+  are taken off it with a `PATCH` of `qty` guarded by `if_updated_at`. Offline disables adding and
+  undoing.
 - The playset size is set in `/account/interface` (`collection:settings.*`, `PATCH /me/prefs`
   `playset_size`, empty = 3). Condition and language labels live in the `enums` namespace.
 - From 1240 px (F3-h) `CollectionPage` renders `CollectionDesktop` instead of `CollectionMobile`; both use

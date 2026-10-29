@@ -18,4 +18,63 @@
     color: var(--text);
     font-weight: 700;
   }
+
+  /* Quantity, condition, language and price side by side when the sheet is wide enough. */
+  .choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    align-items: end;
+  }
+
+  .session {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 16px 16px;
+  }
+
+  .sessionTitle {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+
+  .rowBody {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rowName {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rowMeta {
+    color: var(--muted);
+    font-size: 13px;
+  }
 }

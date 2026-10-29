@@ -64,6 +64,11 @@ deck is built; locations can be locked so they are skipped. A built deck gets it
   taken in order like any other, **until the deck is deleted or the user presses "devolver cartas"**; both
   move the copies to "sin ubicar" and the deck location disappears. Building the deck again repeats R6. A
   deck can exist without being mounted. (D3)
+- **F16-R4a** Adding cards to the collection (the add sheet, quick add): the sheet has a location field;
+  the location chosen stays for the following adds of the session, so a group of cards gets the same
+  location, until the user changes the field. (Owner, 2026-10-29: "Cuando se añadan a coleccion, la
+  ubicación para un grupo de cartas será misma hasta que el usuario lo cambie en el campo".) The quick add
+  sheet already keeps its other choices in `sessionStorage` (`rb_quick_add_v1`); the location joins them.
 - **F16-R9** Offline: the screens read from cache; every change needs a connection (cross-phase contract).
 
 ## Out of scope

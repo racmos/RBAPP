@@ -189,6 +189,31 @@ describe('CardCombobox keyboard and pointer (F2-k S3)', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
+  it('tells onEnterSelect, after onSelect, when the card was picked with Enter', async () => {
+    recordCards([champion, foilCommon]);
+    const onEnterSelect = vi.fn<(card: CardSummary) => void>();
+    const { user, onSelect } = await renderCombobox({ onEnterSelect });
+    await user.type(input(), 'ay');
+    await screen.findAllByRole('option', {}, LONG);
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(onSelect).toHaveBeenCalledWith(foilCommon);
+    expect(onEnterSelect).toHaveBeenCalledTimes(1);
+    expect(onEnterSelect).toHaveBeenCalledWith(foilCommon);
+    expect(onSelect.mock.invocationCallOrder[0]).toBeLessThan(
+      onEnterSelect.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not call onEnterSelect for a pointer pick', async () => {
+    recordCards([champion, foilCommon]);
+    const onEnterSelect = vi.fn<(card: CardSummary) => void>();
+    const { user, onSelect } = await renderCombobox({ onEnterSelect });
+    await user.type(input(), 'em');
+    fireEvent.pointerDown((await screen.findAllByRole('option', {}, LONG))[1]);
+    expect(onSelect).toHaveBeenCalledWith(foilCommon);
+    expect(onEnterSelect).not.toHaveBeenCalled();
+  });
+
   it('keeps the card name when clearOnSelect is false', async () => {
     recordCards([champion]);
     const { user, onSelect } = await renderCombobox({ clearOnSelect: false });

@@ -106,7 +106,15 @@
     "added": "Added to your collection.",
     "merged": "Added to a line you already had.",
     "chosen": "Chosen card: {{name}}",
-    "chooseFirst": "Choose a card first."
+    "chooseFirst": "Choose a card first.",
+    "set": "Set",
+    "allSets": "All sets",
+    "enterHint": "Enter adds the highlighted card with these choices.",
+    "session": "Added in this session",
+    "copies_one": "{{count}} copy",
+    "copies_other": "{{count}} copies",
+    "undoRow": "Undo: {{name}}",
+    "undone": "Entry undone."
   },
   "empty": {
     "title": "Your collection is empty",
