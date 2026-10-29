@@ -97,7 +97,8 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
           });
         return found;
       };
-      expect(decls('.tableWrap')).toContainEqual({ prop: 'overflow-x', value: 'auto' });
+      // the scrolling itself is the shared TableScroll box (its CSS is pinned in TableScroll.test.tsx)
+      expect(region).toHaveAttribute('data-slot', 'table-scroll');
       expect(decls('.table td')).toContainEqual({ prop: 'overflow-wrap', value: 'anywhere' });
     },
   );
