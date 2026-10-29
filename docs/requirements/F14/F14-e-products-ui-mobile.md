@@ -109,3 +109,12 @@ Deploy. Manual (owner, phone): add a booster box you own, check the separate tot
 ## Open questions
 
 none
+
+## Log
+
+- L1 (implementer): `PriceChart` and `PriceTag` take card shapes, so `asChartPoints` and `asCardPrice` in `products/format.ts` adapt product points and prices (value as market, no foil).
+- L2 (implementer): `Stepper` and `MoneyField` are imported from `@/collection/*` directly (the eslint group allows it); stepper buttons therefore read "Más copias: Cantidad".
+- L3 (implementer): extra strings `products:loading`, `products:error`, `products:sort.direction`; `cards:chart.*`, `common:actions.back` and `nav:notFound` are reused.
+- L4 (implementer): the chart range starts at 90d each time (not saved); the confirm dialog is rendered next to the sheet, not inside it, and the sheet uses `mutateAsync`, because the dialog's close also closed the sheet and the delete/undo toast was lost.
+- L5 (parent): the same pattern exists in the F3-g `LineSheet` (per-call `mutate` callbacks lost when the sheet unmounts after the last line of a group is deleted); to be fixed in its own small PR.
+- L6 (parent): no screenshots (not deployed, no browser run).

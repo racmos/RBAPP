@@ -10,7 +10,15 @@ import {
   importResult,
   withCard,
 } from '@/test/fixtures/collection';
-import { adminProductList } from '@/test/fixtures/products';
+import {
+  adminProductList,
+  boxLine,
+  myProducts,
+  productDetails,
+  productListMeta,
+  productPricePoints,
+  productSummaries,
+} from '@/test/fixtures/products';
 
 /** Base of the API as the SPA sees it (same-origin, behind Nginx). */
 export const API = '/riftbound/api/v1';
@@ -205,6 +213,47 @@ export const handlers = [
     return product
       ? ok({ ...product, image_src: `/riftbound/media/products/${product.id}.png` })
       : failure(404, { error: 'Not Found' });
+  }),
+  // The real `GET /products` envelope carries `meta` next to `data` (F14-b).
+  http.get(`${API}/products`, ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') ?? '').toLowerCase();
+    const kinds = url.searchParams.getAll('kind');
+    const sets = url.searchParams.getAll('set');
+    let items = productSummaries;
+    if (q) items = items.filter((product) => product.name.toLowerCase().includes(q));
+    if (kinds.length > 0) items = items.filter((product) => kinds.includes(product.kind));
+    if (sets.length > 0) items = items.filter((product) => sets.includes(product.set_id ?? ''));
+    return HttpResponse.json({
+      success: true,
+      data: { items },
+      meta: { ...productListMeta, total: items.length, pages: items.length ? 1 : 0 },
+    });
+  }),
+  http.get(`${API}/products/:id`, ({ params }) => {
+    const product = productDetails[Number(params.id)];
+    return product ? ok(product) : failure(404, { error: 'Not Found' });
+  }),
+  http.get(`${API}/products/:id/prices`, ({ request }) =>
+    ok({
+      range: new URL(request.url).searchParams.get('range') ?? '90d',
+      points: productPricePoints,
+    }),
+  ),
+  http.get(`${API}/me/products`, () => ok(myProducts)),
+  http.post(`${API}/me/products`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return ok({ line: { ...boxLine, ...body, id: 9101 }, merged: false }, 201);
+  }),
+  http.patch(`${API}/me/products/:id`, async ({ params, request }) => {
+    const line = myProducts.items.find((item) => String(item.id) === params.id);
+    return line
+      ? ok({ ...line, ...((await request.json()) as object) })
+      : failure(404, { error: 'Not Found' });
+  }),
+  http.delete(`${API}/me/products/:id`, ({ params }) => {
+    const line = myProducts.items.find((item) => String(item.id) === params.id);
+    return line ? ok({ deleted: line }) : failure(404, { error: 'Not Found' });
   }),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {

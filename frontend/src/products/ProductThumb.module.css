@@ -1,0 +1,42 @@
+@layer components {
+  .frame {
+    display: block;
+    flex: none;
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    object-fit: contain;
+  }
+
+  .thumb {
+    width: 52px;
+    height: 52px;
+  }
+
+  .tile {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+
+  .full {
+    width: min(100%, 360px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px dashed var(--line);
+    color: var(--muted);
+  }
+
+  .kind {
+    padding: 0 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+}

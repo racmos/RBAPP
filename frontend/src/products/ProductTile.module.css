@@ -1,0 +1,52 @@
+@layer components {
+  .tile {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    height: 100%;
+    padding: 8px;
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.15s;
+  }
+
+  .tile:hover,
+  .tile:focus-visible {
+    border-color: var(--accent);
+  }
+
+  .art {
+    position: relative;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .owned {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(5, 26, 34, 0.9);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .name {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+  }
+
+  .kind,
+  .unpriced {
+    color: var(--muted);
+    font-size: 12px;
+  }
+}

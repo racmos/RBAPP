@@ -57,8 +57,13 @@ describe('CollectionDesktop at 1280 px (F3-h S1-S3)', () => {
     expect(await table()).toBeVisible();
     // sidebar with group counts
     const sidebar = screen.getByRole('complementary', { name: 'Filtrar colección' });
-    expect(within(sidebar).getByRole('button', { name: /OGN/ })).toHaveTextContent('3');
-    expect(within(sidebar).getByRole('button', { name: /Común/ })).toHaveTextContent('2');
+    // the chips come from /meta/game, which can answer after the table: wait for them
+    expect(await within(sidebar).findByRole('button', { name: /OGN/ }, LONG)).toHaveTextContent(
+      '3',
+    );
+    expect(await within(sidebar).findByRole('button', { name: /Común/ }, LONG)).toHaveTextContent(
+      '2',
+    );
     // toolbar
     expect(screen.getByText('3 cartas')).toBeVisible();
     expect(screen.getByRole('combobox', { name: 'Ordenar por' })).toBeVisible();

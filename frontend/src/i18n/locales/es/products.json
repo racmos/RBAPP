@@ -1,4 +1,67 @@
 {
+  "title": "Productos",
+  "loading": "Cargando productos",
+  "error": "No se pudieron cargar los productos.",
+  "tabs": {
+    "mine": "Mis productos",
+    "catalog": "Catálogo"
+  },
+  "total": {
+    "title": "Valor de tus productos",
+    "lines": "Líneas",
+    "unpriced_one": "{{count}} sin precio",
+    "unpriced_many": "{{count}} sin precio",
+    "unpriced_other": "{{count}} sin precio",
+    "separate": "Este total no se suma al valor de tu colección de cartas."
+  },
+  "search": {
+    "label": "Buscar productos",
+    "placeholder": "Nombre del producto"
+  },
+  "filters": {
+    "kind": "Tipo",
+    "set": "Set",
+    "allSets": "Todos los sets"
+  },
+  "sort": {
+    "label": "Ordenar por",
+    "direction": "Cambiar sentido del orden",
+    "name": "Nombre",
+    "price": "Precio",
+    "change_7d": "Cambio 7 d",
+    "change_30d": "Cambio 30 d"
+  },
+  "owned": "Tienes {{count}}",
+  "unpriced": "Sin precio",
+  "line": {
+    "quantity": "Cantidad",
+    "purchasePrice": "Precio de compra (unidad)",
+    "note": "Nota",
+    "value": "Valor",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar esta línea?",
+    "deleted": "Línea eliminada.",
+    "undo": "Deshacer"
+  },
+  "add": {
+    "title": "Añadir a mis productos",
+    "submit": "Añadir",
+    "added": "Añadido a tus productos.",
+    "merged": "Sumado a una línea que ya tenías."
+  },
+  "detail": {
+    "price": "Precio",
+    "change7d": "7 días",
+    "change30d": "30 días",
+    "history": "Evolución del precio",
+    "yourLines": "Tus unidades"
+  },
+  "empty": {
+    "mine": "Todavía no has añadido productos.",
+    "goCatalog": "Ver el catálogo",
+    "catalog": "Ningún producto coincide con los filtros."
+  },
+  "clearFilters": "Limpiar filtros",
   "kind": {
     "booster": "Sobre",
     "box": "Caja de sobres",

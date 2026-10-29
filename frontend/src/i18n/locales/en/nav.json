@@ -48,6 +48,10 @@
       "label": "Collection",
       "description": "What you own and what you sell"
     },
+    "products": {
+      "label": "Products",
+      "description": "Boxes, boosters and accessories"
+    },
     "decks": {
       "label": "Decks",
       "description": "Build and review decks"
