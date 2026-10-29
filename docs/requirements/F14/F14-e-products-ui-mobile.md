@@ -118,3 +118,4 @@ none
 - L4 (implementer): the chart range starts at 90d each time (not saved); the confirm dialog is rendered next to the sheet, not inside it, and the sheet uses `mutateAsync`, because the dialog's close also closed the sheet and the delete/undo toast was lost.
 - L5 (parent): the same pattern exists in the F3-g `LineSheet` (per-call `mutate` callbacks lost when the sheet unmounts after the last line of a group is deleted); to be fixed in its own small PR.
 - L6 (parent): no screenshots (not deployed, no browser run).
+- L7 (parent): L5 confirmed and fixed in its own PR: `LineSheet` deleted with per-call `mutate` callbacks, lost when the group disappears; now `mutateAsync` (test in `CollectionPage.test.tsx`).

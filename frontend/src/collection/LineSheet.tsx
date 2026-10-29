@@ -133,18 +133,21 @@ function LineEditor({
       .then(() => pushToast({ kind: 'success', message: t('line.restored') }))
       .catch((error) => pushToast({ kind: 'error', message: translateError(error, i18n) }));
 
+  // `mutateAsync`, not per-call callbacks: when this was the last line of the group the
+  // sheet unmounts as soon as the list refreshes, and callbacks would never run.
   const confirmDelete = () => {
     setConfirming(false);
-    remove.mutate(line.id, {
-      onSuccess: ({ deleted }) =>
+    remove
+      .mutateAsync(line.id)
+      .then(({ deleted }) =>
         pushToast({
           kind: 'success',
           message: t('line.deleted'),
           duration: 8000,
           action: { label: t('line.undo'), onAction: () => void undo(deleted) },
         }),
-      onError: (error) => pushToast({ kind: 'error', message: translateError(error, i18n) }),
-    });
+      )
+      .catch((error) => pushToast({ kind: 'error', message: translateError(error, i18n) }));
   };
 
   return (
