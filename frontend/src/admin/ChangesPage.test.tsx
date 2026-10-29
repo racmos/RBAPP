@@ -5,6 +5,8 @@ import { axe } from 'vitest-axe';
 import { describe, expect, it } from 'vitest';
 import { API, adminSession, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
+import { readFileSync } from 'node:fs';
+import postcss from 'postcss';
 import { renderApp } from '@/test/renderApp';
 
 const CHANGES = [
@@ -60,6 +62,46 @@ function changesApi() {
 }
 
 describe('ChangesPage (F13-g S1-S7, S10)', () => {
+  it(
+    'wide values wrap inside a labelled, keyboard-scrollable wrapper (owner feedback S8)',
+    { timeout: 30000 },
+    async () => {
+      const url = `https://cdn.example.test/${'a'.repeat(160)}.png`;
+      server.use(
+        http.get(`${API}/auth/session`, () => adminSession()),
+        http.get(`${API}/admin/sets`, () => ok([])),
+        http.get(`${API}/admin/riot/changes`, () =>
+          ok({
+            ...PAGE,
+            items: [{ ...CHANGES[0], field: 'image_url', old_value: null, new_value: url }],
+          }),
+        ),
+      );
+      const { container } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
+      const region = await screen.findByRole('region', { name: 'Cambios detectados' }, LONG);
+      expect(region).toHaveAttribute('tabindex', '0');
+      expect(within(region).getByRole('table', { name: 'Cambios detectados' })).toBeVisible();
+      expect(within(region).getByText(url)).toBeVisible();
+      expect(await axe(container)).toHaveNoViolations();
+
+      // CSS is asserted on its source (jsdom has no layout); vitest runs from frontend/.
+      const decls = (selector: string) => {
+        const found: Array<{ prop: string; value: string }> = [];
+        postcss
+          .parse(readFileSync('src/admin/ChangesPage.module.css', 'utf8'))
+          .walkRules((rule) => {
+            if (!rule.selectors.map((item) => item.trim()).includes(selector)) return;
+            rule.walkDecls((decl) => {
+              found.push({ prop: decl.prop, value: decl.value });
+            });
+          });
+        return found;
+      };
+      expect(decls('.tableWrap')).toContainEqual({ prop: 'overflow-x', value: 'auto' });
+      expect(decls('.table td')).toContainEqual({ prop: 'overflow-wrap', value: 'anywhere' });
+    },
+  );
+
   it(
     'table at 1280 px with selection, bulk confirm and filters in the URL',
     { timeout: 30000 },

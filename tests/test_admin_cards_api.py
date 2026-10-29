@@ -88,6 +88,23 @@ class TestList:
         assert body['data']['meta'] == {'page': 2, 'per_page': 50, 'total': 4, 'pages': 1}
         assert ids(body) == []
 
+    def test_mixed_ids_sort_naturally(self, admin_client, app):
+        """Owner feedback S6: ids mixing digits and text never 500 (int vs str)."""
+        db.session.add(RbSet(rbset_id='VEN', rbset_name='Vendetta', rbset_ncard=7))
+        for card_id in ('P01', '10a', 'OGN-001', '2', '257s', '10', '1'):
+            db.session.add(RbCard(rbcar_rbset_id='VEN', rbcar_id=card_id,
+                                  rbcar_name=f'Card {card_id}'))
+        db.session.commit()
+        resp = admin_client.get(URL)
+        assert resp.status_code == 200
+        expected = ['1', '2', '10', '10a', '257s', 'OGN-001', 'P01']
+        assert [c for _, c in ids(payload(resp))] == expected
+        body = payload(admin_client.get(f'{URL}?dir=desc'))
+        assert [c for _, c in ids(body)] == expected[::-1]
+        same_name = payload(admin_client.get(f'{URL}?sort=name'))
+        assert [c for _, c in ids(same_name)] == [
+            '1', '10', '10a', '2', '257s', 'OGN-001', 'P01']
+
     def test_bad_params_are_400(self, admin_client):
         for query in ('sort=bogus', 'dir=sideways', 'page=0', 'per_page=7',
                       'missing_image=maybe', 'unknown_param=1'):
