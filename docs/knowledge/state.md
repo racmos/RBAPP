@@ -103,6 +103,8 @@ that file and in its `verify-report.md`.
 
 ## Known issues
 
+- 2026-10-29 deploy incident (fixed): commit `d3292ea` (#75) tracked `frontend/node_modules` as a symlink (worktree setup links it, and `.gitignore` had `node_modules/`, which matches directories only). `git pull` on the deployed checkout replaced the real directory with that symlink, so the build failed silently (exit 216) and the old dist kept being served. Recovered by removing the symlink, `npm ci`, build, restart; this PR untracks it and ignores `node_modules` in any form.
+
 - Owner feedback 2026-10-29 (after the b8a8584 deploy): `/admin/cards` answered 500 (natural sort mixed int and str; fixed), VEN images were never downloaded because the Riot sync fetched images only for new or applied cards (fixed: every missing image of the synced set), `/admin/sets` "Nuevo set" did nothing at ≥ 1600 px (fixed, plus a filters/sort section), `/admin/riot/changes` too wide (fixed). After the deploy: run a Riot sync of VEN to download its images.
 
 - `frontend/src/assets/brand/mark.svg` and `wordmark.svg` are not byte-reproducible from

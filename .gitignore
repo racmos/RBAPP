@@ -28,7 +28,7 @@ instance/
 legacy_tables_*.sql
 
 # Frontend (F1): dependencies and build output
-node_modules/
+node_modules
 frontend/dist/
 .vite/
 # Host-specific ops values (docs/knowledge/ops-runbook.md); never commit
