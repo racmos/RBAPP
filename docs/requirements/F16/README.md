@@ -1,6 +1,6 @@
 # F16: Storage locations and mounted decks — phase spec (DRAFT)
 
-Status: **draft written by the implementing agent from the owner's request (2026-10-29); the planner reviews it before any unit is cut** · Depends on: F3 (collection), F5-c/F5-d (decks v2 tables and API) for the deck part · Source: owner message of 2026-10-29 (quoted in the Log) · Phase IDs are identifiers, not order.
+Status: **draft written by the implementing agent from the owner's request (2026-10-29); the owner answered the 6 decisions the same day; the planner reviews it before any unit is cut** · Depends on: F3 (collection), F5-c/F5-d (decks v2 tables and API) for the deck part · Source: owner message of 2026-10-29 (quoted in the Log) · Phase IDs are identifiers, not order.
 
 ## Goal
 
@@ -29,6 +29,11 @@ deck is built; locations can be locked so they are skipped. A built deck gets it
 
 ## Requirements
 
+- **F16-R1a** Suggested code for a new collection location: `B001-F001-P0001` (B = bloque, F = fila,
+  P = paquete). The next code is the previous one with the **rightmost changed part incremented**; the user
+  chooses which part starts a new one reading left to right (a new block resets F and P to 001/0001, a new
+  row resets P). The code stays free text under the R1 rules; the suggestion never overrides what the user
+  types. (D6)
 - **F16-R1** CRUD of locations (code, description). A code cannot be repeated (409 `already_exists`); it
   can be renamed at any time (it is only a label). Deleting a location is allowed when it
   is empty or the user confirms; its copies go back to "sin ubicar". A deck location cannot be deleted
@@ -56,7 +61,9 @@ deck is built; locations can be locked so they are skipped. A built deck gets it
   refused (409) and the message says which location holds the rest.
 - **F16-R8** **Unlocking** the deck location (from the deck or from Locations) ends the "mounted" state of
   the deck. The copies stay in that location, which becomes an ordinary one (same code, same position) and is
-  taken in order like any other. Building the deck again repeats R6. A deck can exist without being mounted.
+  taken in order like any other, **until the deck is deleted or the user presses "devolver cartas"**; both
+  move the copies to "sin ubicar" and the deck location disappears. Building the deck again repeats R6. A
+  deck can exist without being mounted. (D3)
 - **F16-R9** Offline: the screens read from cache; every change needs a connection (cross-phase contract).
 
 ## Out of scope
@@ -64,16 +71,18 @@ deck is built; locations can be locked so they are skipped. A built deck gets it
 Barcode/QR labels; moving cards between users; location per product (F14); CSV import/export of
 locations (a `location` column can be added later); hand simulator.
 
-## Decisions to confirm (owner) — recommended default first
+## Decisions (owner, 2026-10-29)
 
-1. **Where do copies with no location rank?** Default: always last, never lockable, shown as "Sin ubicar".
-2. **Which printing is taken when the deck names a card but not a printing?** Default: the printing the deck
-   stores if it has one; otherwise the lines are taken in location order, whatever the printing/foil/condition.
-3. **R8:** copies of an unlocked ex-deck stay where they are (default) **or** go back to the locations they
-   came from (needs a record of the origin).
-4. **R7:** do sales and removals follow the same order (default), or does the user pick the location?
-5. **Reorder rule:** a position is a single number per user (default), or one order per kind of location.
-6. Code generation for decks: `DECK-001`… (default) or the user types it when mounting.
+1. Copies with no location rank last, are never lockable and show as "Sin ubicar". **Accepted.**
+2. A deck card without a printing takes the copies by location order, whatever the printing. **Accepted.**
+3. Unlocking keeps the copies in the ex-deck location until the deck is deleted or the user presses
+   "devolver cartas" (then "sin ubicar"). **Accepted, with that addition.**
+4. Sales and removals follow the same order and skip locked locations. **Accepted.**
+5. The order is one per user: each user orders their own locations. Locations belong to a user; the same
+   user can keep the same card in several locations. **Accepted.**
+6. Deck locations: generated code `DECK-001`… **Accepted.** Collection locations: suggested code
+   `B001-F001-P0001` (bloque, fila, paquete), consecutive, with the user choosing from left to right which
+   part is new (R1a).
 
 ## Units (proposal)
 
@@ -98,3 +107,7 @@ locations (a `location` column can be added later); hand simulator.
 - L2 (agent): "descontar de la colección" is read as "take them out of the free locations into the deck's
   locked location": the line total stays the same until a sale. If the owner meant the total to drop, the
   deck would not count as owned; say so and R6 changes.
+- L3 (owner, 2026-10-29): answers to the six decisions: 1, 2, 4 accepted; 3 accepted "hasta que el deck se
+  borre o se pulse para devolver cartas a copias sin ubicación"; 5 each user orders their own locations;
+  6 `DECK-…` for decks and `B001-F001-P0001` (B bloque, F fila, P paquete) for the collection, consecutive,
+  "manda de izquierda a derecha para indicar uno nuevo". "Descontar" read correctly (L2).
