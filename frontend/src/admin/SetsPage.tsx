@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import { useSearchNavigation } from '@/catalog';
 import { ApiError } from '@/api/errors';
 import {
   createAdminSet,
@@ -54,7 +55,9 @@ export function SetsPage() {
     queryKey: ['admin', 'sets'],
     queryFn: ({ signal }) => listAdminSets(signal),
   });
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
+  // latest search asked for, not the rendered one: quick changes in a row must all stay (L6)
+  const { setSearchParams: setParams } = useSearchNavigation();
   const rawSort = params.get('sort');
   const sortKey: SortKey = SORT_KEYS.includes(rawSort as SortKey) ? (rawSort as SortKey) : 'id';
   const sortDir: Dir = params.get('dir') === 'desc' ? 'desc' : 'asc';

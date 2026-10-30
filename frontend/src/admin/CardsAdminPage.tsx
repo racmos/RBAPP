@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import { useSearchNavigation } from '@/catalog';
 import { ApiError } from '@/api/errors';
 import {
   createAdminCard,
@@ -60,7 +61,9 @@ export function CardsAdminPage() {
   const desktop = useMediaQuery(up('lg'));
   const wide = useMediaQuery(up('2xl'));
   const queryClient = useQueryClient();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
+  // latest search asked for, not the rendered one: quick changes in a row must all stay (L6)
+  const { setSearchParams: setParams } = useSearchNavigation();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});

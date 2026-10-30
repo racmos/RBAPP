@@ -72,3 +72,41 @@ describe('useSearchNavigation (L6)', () => {
     await waitFor(() => expect(where()).toBe('/collection?sort=name&per_page=100'), LONG);
   }, 20000);
 });
+
+/** `setSearchParams` with react-router's functional signature, as the admin lists use it. */
+function SetterProbe() {
+  const { setSearchParams } = useSearchNavigation();
+  const add = (key: string) =>
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.set(key, '1');
+        return next;
+      },
+      { replace: true },
+    );
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        add('a');
+        add('b');
+      }}
+    >
+      both
+    </button>
+  );
+}
+
+describe('useSearchNavigation setSearchParams (admin lists)', () => {
+  it('builds each change on the latest search asked for', async () => {
+    const router = createMemoryRouter([{ path: '/', element: <SetterProbe /> }], {
+      initialEntries: ['/?q=x'],
+    });
+    render(<RouterProvider router={router} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'both' }));
+    });
+    await waitFor(() => expect(router.state.location.search).toBe('?q=x&a=1&b=1'), LONG);
+  });
+});
