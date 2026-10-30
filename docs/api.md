@@ -45,7 +45,10 @@ supertypes and domains are base values, never the stored compounds: `rbcar_type`
 `Token`, and `rbcar_domain` "Body Chaos" gives `Body` and `Chaos`
 (`catalog.type_facets` / `catalog.parse_domains`), so only a truly unknown word (type
 "Creature", domain "Weird") is appended;
-`sets` are every `rbset` row ordered by release date (NULLs last), then id, each with
+`sets` are every `rbset` row ordered newest first: release date descending, sets without a
+date last, then id (owner feedback S19; every set dropdown and set button group of the app
+uses this order, `sortSetsNewestFirst` in `frontend/src/lib/sets.ts` for lists that do not come
+from here), each with
 `{id, name, released_on (ISO|null), card_count}`; `price` is
 `{provider: "cardmarket", currency: "EUR", updated_on (ISO|null)}` where `updated_on`
 is the newest `rbcm_price` date; `rules` is `{}` (reserved for F15); `conditions` is
@@ -364,7 +367,7 @@ retyped or removed without a new unit.
 
 `GameMeta` = the `data` object of `GET /meta/game`:
 `{modes: [str], domains: [str], types: [str], supertypes: [str], rarities: [str],
-sets: [{id, name, released_on (ISO|null), card_count}],
+sets: [{id, name, released_on (ISO|null), card_count}] (newest first, undated last),
 price: {provider, currency, updated_on (ISO|null)}, rules: {},
 conditions: [str], languages: [str]}`.
 

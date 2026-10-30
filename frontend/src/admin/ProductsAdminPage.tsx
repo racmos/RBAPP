@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/Switch';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError, useDocumentTitle } from '@/i18n';
 import { down, up } from '@/lib/breakpoints';
+import { sortSetsNewestFirst } from '@/lib/sets';
 import { formatDateTime, formatMoney, type Lang } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
@@ -130,7 +131,7 @@ export function ProductsAdminPage() {
   }
 
   const { items, meta } = query.data;
-  const sets = gameMeta.data?.sets ?? [];
+  const sets = sortSetsNewestFirst(gameMeta.data?.sets ?? [], (set) => set.released_on);
   const yesNo = (value: boolean) => (value ? t('products.yes') : t('products.no'));
   const price = (product: AdminProduct) =>
     product.price ? formatMoney(product.price.value, lang) : '—';

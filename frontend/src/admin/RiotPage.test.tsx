@@ -163,3 +163,29 @@ describe('RiotPage (F13-f S9)', () => {
     expect(await screen.findByText('Ningún set está cerca de su salida.')).toBeVisible();
   });
 });
+
+describe('RiotPage set order (owner feedback S19)', () => {
+  it('the set buttons go newest first and the undated ones last', async () => {
+    const base = SETS[0]!;
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/overview`, () => ok(OVERVIEW)),
+      http.get(`${API}/admin/sets`, () =>
+        ok([
+          { ...base, id: 'NOD', release_date: null },
+          { ...base, id: 'OGN', release_date: '2025-10-31' },
+          { ...base, id: 'VEN', release_date: '2026-08-01' },
+        ]),
+      ),
+      http.get(`${API}/admin/jobs`, () => ok({ items: [] })),
+    );
+    await renderApp({ path: '/admin/riot', width: 1280 });
+    await screen.findByRole('checkbox', { name: 'VEN' }, { timeout: 10000 });
+    const group = screen.getByRole('group', { name: 'Sets a sincronizar' });
+    expect(
+      within(group)
+        .getAllByRole('checkbox')
+        .map((box) => box.getAttribute('aria-label') ?? box.closest('label')?.textContent),
+    ).toEqual(['VEN', 'OGN', 'NOD']);
+  });
+});

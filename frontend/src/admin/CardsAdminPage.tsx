@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -30,6 +31,7 @@ import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { useDocumentTitle } from '@/i18n';
 import { up } from '@/lib/breakpoints';
+import { sortSetsNewestFirst } from '@/lib/sets';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { CardEditor, type CardForm } from './CardEditor';
@@ -53,7 +55,10 @@ const FIELDS = [
 
 type EditorTarget = { mode: 'create' } | { mode: 'edit'; card: AdminCard };
 
-/** Cards admin (F13-f S7, S8): filters in the URL, table or list, drawer editor. */
+/**
+ * Cards admin (F13-f S7, S8): filters in the URL, table or list; the editor is a side dialog
+ * below 1600 px and a column next to the table from 1600 px (owner feedback S20).
+ */
 export function CardsAdminPage() {
   const { t, i18n } = useTranslation('admin');
   const { t: common } = useTranslation('common');
@@ -69,7 +74,6 @@ export function CardsAdminPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<AdminCard | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   useDocumentTitle(t('cards.title'));
 
   useEffect(() => {
@@ -162,14 +166,23 @@ export function CardsAdminPage() {
     },
   });
 
+  const editing = (card: AdminCard) => editor?.mode === 'edit' && editor.card.key === card.key;
+
+  // The question closes either way; the outcome is a toast, never text hidden behind a dialog.
   const remove = useMutation({
     mutationFn: (card: AdminCard) => deleteAdminCard(card.set_id, card.card_id),
-    onSuccess: () => {
+    onSuccess: (_data, card) => {
       setDeleting(null);
-      setDeleteError(null);
+      if (editing(card)) setEditor(null);
+      pushToast({ kind: 'success', message: t('cards.deleted') });
       void refresh();
     },
-    onError: (error: unknown) => setDeleteError(translateError(error, i18n)),
+    onError: (error: unknown, card) => {
+      setDeleting(null);
+      const reason = translateError(error, i18n);
+      if (editing(card)) setFormError(reason);
+      pushToast({ kind: 'error', message: t('cards.deleteFailed', { name: card.name, reason }) });
+    },
   });
 
   const setParam = (key: string, value: string | null) =>
@@ -203,8 +216,9 @@ export function CardsAdminPage() {
   }
 
   const { items, meta } = query.data;
-  const sets = setsQuery.data ?? [];
+  const sets = sortSetsNewestFirst(setsQuery.data ?? [], (set) => set.release_date);
   const editorKey = editor?.mode === 'edit' ? editor.card.key : 'new';
+  const editorTitle = editor?.mode === 'edit' ? editor.card.name : t('cards.new');
 
   const openEditor = (target: EditorTarget) => {
     setFieldErrors({});
@@ -224,11 +238,16 @@ export function CardsAdminPage() {
       onSave={(form) => save.mutate({ target: editor, form })}
       onCancel={() => setEditor(null)}
       onDelete={() => {
-        if (editor.mode === 'edit') {
-          setDeleteError(null);
-          setDeleting(editor.card);
-        }
+        if (editor.mode === 'edit') setDeleting(editor.card);
       }}
+    />
+  );
+
+  const pagination = (
+    <Pagination
+      page={meta.page}
+      pages={meta.pages}
+      onChange={(page) => setParam('page', String(page))}
     />
   );
 
@@ -326,74 +345,89 @@ export function CardsAdminPage() {
         <EmptyState title={t('cards.title')} body={t('cards.empty')} />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          <TableScroll>
-            <table className={styles.table}>
-              <caption className="sr-only">{t('cards.caption')}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{t('cards.columns.image')}</th>
-                  <th scope="col">{t('cards.columns.set')}</th>
-                  <th scope="col">{t('cards.columns.number')}</th>
-                  <th scope="col">{t('cards.columns.name')}</th>
-                  <th scope="col">{t('cards.columns.type')}</th>
-                  <th scope="col">{t('cards.columns.rarity')}</th>
-                  <th scope="col">{t('sets.columns.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.key}>
-                    <td>
-                      {item.image ? (
-                        <img src={item.image_src ?? ''} alt="" className={styles.thumb} />
-                      ) : (
-                        <Badge>{t('cards.noImage')}</Badge>
-                      )}
-                    </td>
-                    <td>{item.set_id}</td>
-                    <td>{item.card_id}</td>
-                    <td>{item.name}</td>
-                    <td>{item.type}</td>
-                    <td>{item.rarity}</td>
-                    <td>
-                      <span className={styles.actions}>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          aria-label={t('cards.edit', { name: item.name })}
-                          disabled={offline}
-                          onClick={() => openEditor({ mode: 'edit', card: item })}
-                        >
-                          ✎<span className="sr-only">{t('cards.edit', { name: item.name })}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          aria-label={t('cards.delete', { name: item.name })}
-                          disabled={offline}
-                          onClick={() => {
-                            setDeleteError(null);
-                            setDeleting(item);
-                          }}
-                        >
-                          🗑<span className="sr-only">{t('cards.delete', { name: item.name })}</span>
-                        </button>
-                      </span>
-                    </td>
+          <div className={styles.main}>
+            <TableScroll>
+              <table className={styles.table}>
+                <caption className="sr-only">{t('cards.caption')}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('cards.columns.image')}</th>
+                    <th scope="col">{t('cards.columns.set')}</th>
+                    <th scope="col">{t('cards.columns.number')}</th>
+                    <th scope="col">{t('cards.columns.name')}</th>
+                    <th scope="col">{t('cards.columns.type')}</th>
+                    <th scope="col">{t('cards.columns.rarity')}</th>
+                    <th scope="col">{t('sets.columns.actions')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
-          <Pagination
-            page={meta.page}
-            pages={meta.pages}
-            onChange={(page) => setParam('page', String(page))}
-          />
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.key}>
+                      <td>
+                        {item.image ? (
+                          <img src={item.image_src ?? ''} alt="" className={styles.thumb} />
+                        ) : (
+                          <Badge>{t('cards.noImage')}</Badge>
+                        )}
+                      </td>
+                      <td>{item.set_id}</td>
+                      <td>{item.card_id}</td>
+                      <td>{item.name}</td>
+                      <td>{item.type}</td>
+                      <td>{item.rarity}</td>
+                      <td>
+                        <span className={styles.rowActions}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t('cards.edit', { name: item.name })}
+                            title={
+                              offline
+                                ? common('offline.editDisabled')
+                                : t('cards.edit', { name: item.name })
+                            }
+                            disabled={offline}
+                            onClick={() => openEditor({ mode: 'edit', card: item })}
+                          >
+                            <Icon name="edit" size={16} />
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            aria-label={t('cards.delete', { name: item.name })}
+                            title={
+                              offline
+                                ? common('offline.editDisabled')
+                                : t('cards.delete', { name: item.name })
+                            }
+                            disabled={offline}
+                            onClick={() => setDeleting(item)}
+                          >
+                            <Icon name="trash" size={16} />
+                          </Button>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
+            {pagination}
+          </div>
           {wide && (
-            <div className={styles.editorPanel}>
-              {editor?.mode === 'edit' ? editorPane : <p>{t('sets.pickOne')}</p>}
-            </div>
+            <aside
+              className={styles.editorPanel}
+              aria-label={editor ? editorTitle : t('cards.pickOne')}
+            >
+              {editor ? (
+                <>
+                  <h2 className={styles.editorTitle}>{editorTitle}</h2>
+                  {editorPane}
+                </>
+              ) : (
+                <p>{t('cards.pickOne')}</p>
+              )}
+            </aside>
           )}
         </div>
       ) : (
@@ -416,19 +450,11 @@ export function CardsAdminPage() {
               </span>
             </button>
           ))}
-          <Pagination
-            page={meta.page}
-            pages={meta.pages}
-            onChange={(page) => setParam('page', String(page))}
-          />
+          {pagination}
         </div>
       )}
       {!wide && editor && (
-        <EditorDialog
-          phone={!desktop}
-          title={editor.mode === 'edit' ? editor.card.name : t('cards.new')}
-          onClose={() => setEditor(null)}
-        >
+        <EditorDialog phone={!desktop} title={editorTitle} onClose={() => setEditor(null)}>
           {editorPane}
         </EditorDialog>
       )}
@@ -442,16 +468,8 @@ export function CardsAdminPage() {
         onConfirm={() => {
           if (deleting) remove.mutate(deleting);
         }}
-        onCancel={() => {
-          setDeleting(null);
-          setDeleteError(null);
-        }}
+        onCancel={() => setDeleting(null)}
       />
-      {deleteError && (
-        <p role="alert" className={styles.formError}>
-          {deleteError}
-        </p>
-      )}
     </>
   );
 }
