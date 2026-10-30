@@ -28,14 +28,22 @@
     vertical-align: top;
   }
 
-  /* Long URLs and abilities break anywhere, so the columns fit the screen. */
+  /* Names and labels wrap only between words (a word longer than its cell still breaks). */
   .table td {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
-  .valueCell {
+  /* `anywhere` also lowers the column's minimum width, so names never break mid-word. */
+  .table .cardCell {
+    min-width: 18ch;
+  }
+
+  /* Long URLs and abilities break anywhere, so the columns fit the screen (two classes, so it
+     outranks `.table td`). */
+  .table .valueCell {
     min-width: 16ch;
     width: 50%;
+    overflow-wrap: anywhere;
   }
 
   .thumb {

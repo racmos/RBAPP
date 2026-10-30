@@ -32,8 +32,10 @@
     height: 30px;
   }
 
+  /* Never shrinks: links that do not fit would be drawn under the search (owner feedback S18 f).
+     Its width is kept small instead, by showing the link texts only from 2xl. */
   .nav {
-    min-width: 0;
+    flex: none;
     margin-left: 6px;
   }
 
@@ -50,7 +52,9 @@
     position: relative;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    min-width: 40px;
     min-height: 40px;
     padding: 0 10px;
     border-radius: 10px;
@@ -85,12 +89,24 @@
   }
 
   .icon {
-    display: none;
+    flex: none;
     opacity: 0.8;
+  }
+
+  /* Visually hidden (still the link's name; the title shows it on hover) until 2xl. */
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .right {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 10px;
     margin-left: auto;
@@ -102,6 +118,11 @@
     flex: 0 1 280px;
     min-width: 160px;
     margin-left: auto;
+  }
+
+  /* Room for the "/" hint, so a long placeholder never runs under it. */
+  .search input {
+    padding-right: 36px;
   }
 
   .search + .right {
@@ -137,6 +158,7 @@
     border-radius: 999px;
     background: rgba(120, 205, 228, 0.05);
     color: var(--text);
+    white-space: nowrap;
     transition:
       border-color 0.15s,
       background 0.15s;
@@ -189,6 +211,7 @@
     color: var(--on-red);
     font-size: 13.5px;
     font-weight: 700;
+    white-space: nowrap;
   }
 
   .logout:hover:not(:disabled) {
@@ -206,43 +229,24 @@
     }
   }
 
+  /* The install entry is an icon (its name and tooltip come from InstallItem): the room it would
+     take at 2xl goes to the link texts. */
   .name,
-  .logoutText,
   .installText {
     display: none;
   }
 
-  @media (min-width: 960px) {
-    .link {
-      padding: 0 12px;
-    }
-  }
-
-  /* Room for the icons, the name and the logout text once the links have space. */
+  /* Room for the name next to the icon links and the search. */
   @media (min-width: 1240px) {
     .bar {
       gap: 18px;
-    }
-
-    .link {
-      padding: 0 14px;
-    }
-
-    .icon {
-      display: block;
     }
 
     .name {
       display: inline;
     }
 
-    .logoutText {
-      display: inline;
-    }
-
     .link[aria-current='page']::after {
-      right: 14px;
-      left: 14px;
       bottom: -12px;
     }
   }
@@ -253,10 +257,13 @@
       max-width: var(--maxw-wide);
     }
 
-    /* The install entry is an icon until the bar has room for its text. */
-    .installText {
-      display: inline;
-      white-space: nowrap;
+    .label {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip-path: none;
     }
   }
 }

@@ -392,7 +392,7 @@ export function ChangesPage() {
                         )}
                       </td>
                     )}
-                    <td>
+                    <td className={styles.cardCell}>
                       {item.image_src && (
                         <img src={item.image_src} alt="" className={styles.thumb} />
                       )}

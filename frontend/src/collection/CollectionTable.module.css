@@ -41,6 +41,7 @@
   .numeric {
     font-variant-numeric: tabular-nums;
     text-align: right;
+    white-space: nowrap;
   }
 
   .thumb {
@@ -100,8 +101,12 @@
     text-align: right;
   }
 
-  .select {
-    max-width: 150px;
+  /* Wide enough for "Sin especificar" and "Near Mint": a select at 100 % of an auto column is
+     squeezed to the column's minimum (owner feedback S18 i). Two classes, so it outranks the
+     Select primitive's `width: 100%` whatever the CSS order. */
+  .table .select {
+    width: 168px;
+    min-width: 168px;
     height: 32px;
   }
 

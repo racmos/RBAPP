@@ -56,10 +56,15 @@
     background: rgba(120, 205, 228, 0.12);
   }
 
+  /* A link, boxed like the buttons next to it so it lines up with them (owner feedback S18 m). */
   .classic {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
     color: var(--muted);
     font-size: 13px;
     text-decoration: underline;
+    white-space: nowrap;
   }
 
   .toolbar {

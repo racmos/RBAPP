@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
@@ -10,6 +11,7 @@ import {
   collectionMeta,
   emberGroup,
 } from '@/test/fixtures/collection';
+import { SRC_DIR, declsFor, readCss } from '@/test/css';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 
@@ -244,4 +246,48 @@ describe('CollectionPage states (F3-g S9)', () => {
     expect((await screen.findAllByText('Línea eliminada.', {}, LONG))[0]).toBeVisible();
     expect(screen.getByRole('button', { name: 'Deshacer' })).toBeVisible();
   }, 30000);
+});
+
+const pageCss = readCss(join(SRC_DIR, 'collection/CollectionPage.module.css'));
+const desktopCss = readCss(join(SRC_DIR, 'collection/CollectionDesktop.module.css'));
+const headerCss = readCss(join(SRC_DIR, 'components/ui/PageHeader.module.css'));
+const value = (css: string, selector: string, prop: string) =>
+  declsFor(css, selector).find((decl) => decl.prop === prop)?.value;
+
+describe('CollectionPage layout (owner feedback S18 a, e, m)', () => {
+  it('docks the add button after the content, so the last rows scroll clear of it', async () => {
+    signedIn();
+    const { container } = await renderApp({ path: '/collection', width: 390 });
+    await screen.findByRole('button', { name: /Ayla/ }, LONG);
+    const dock = container.querySelector('[data-slot="fab-dock"]');
+    expect(dock).not.toBeNull();
+    expect(within(dock as HTMLElement).getByRole('button', { name: 'Añadir carta' })).toBeEnabled();
+    // in the flow, after the results: sticky, never fixed over them
+    const results = screen.getByRole('region', { name: 'Colección' });
+    expect(
+      results.compareDocumentPosition(dock as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(value(pageCss, '.fabDock', 'position')).toBe('sticky');
+    expect(value(pageCss, '.fabDock', 'bottom')).toBe('calc(76px + var(--safe-bottom, 0px))');
+    expect(value(pageCss, '.fab', 'position')).not.toBe('fixed');
+  }, 15000);
+
+  it('an empty collection shows no floating button over the empty state (its own button adds)', async () => {
+    signedIn();
+    list([], { totals: { ...collectionMeta.totals, lines: 0, qty: 0, unique: 0, value: 0 } });
+    const { container } = await renderApp({ path: '/collection', width: 390 });
+    expect(await screen.findByText('Tu colección está vacía', {}, LONG)).toBeVisible();
+    expect(container.querySelector('[data-slot="fab-dock"]')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Añadir carta' })).toHaveLength(1);
+  }, 15000);
+
+  it('lines the classic link up with the header buttons', () => {
+    expect(value(headerCss, '.actions', 'align-items')).toBe('center');
+    for (const css of [pageCss, desktopCss]) {
+      expect(value(css, '.classic', 'display')).toBe('inline-flex');
+      expect(value(css, '.classic', 'align-items')).toBe('center');
+      expect(value(css, '.classic', 'min-height')).toBe(value(css, '.tool', 'min-height'));
+      expect(value(css, '.classic', 'white-space')).toBe('nowrap');
+    }
+  });
 });
