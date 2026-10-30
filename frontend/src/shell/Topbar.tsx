@@ -23,8 +23,10 @@ function isEditable(target: EventTarget | null): boolean {
 
 /**
  * The sticky header (SHELL-2). From `md` it carries the wordmark, the navigation, the ES/EN
- * toggle, the avatar and logout; below it the mark alone, the avatar and an icon-only logout
- * (the language toggle moves to the "Más" sheet).
+ * toggle, the avatar and logout; below it the mark alone and the avatar (the language toggle
+ * moves to the "Más" sheet). Logout and the install entry are icons with a name and a tooltip at
+ * every width. The navigation is icons only (text read and shown as a tooltip) until `2xl`, where
+ * the bar has room for every label (owner feedback S18 f).
  */
 export function Topbar({ desktop }: { desktop: boolean }) {
   const { t } = useTranslation('nav');
@@ -64,14 +66,19 @@ export function Topbar({ desktop }: { desktop: boolean }) {
         {desktop && (
           <nav aria-label={t('primary')} className={styles.nav}>
             <ul className={styles.list}>
-              {entries.map((entry) => (
-                <li key={entry.id}>
-                  <NavItem entry={entry} className={styles.link}>
-                    <Icon name={entry.icon} size={17} className={styles.icon} />
-                    {t(`items.${entry.id}.label`)}
-                  </NavItem>
-                </li>
-              ))}
+              {entries.map((entry) => {
+                const label = t(`items.${entry.id}.label`);
+                return (
+                  <li key={entry.id}>
+                    <NavItem entry={entry} className={styles.link} title={label}>
+                      <Icon name={entry.icon} size={17} className={styles.icon} />
+                      <span data-slot="label" className={styles.label}>
+                        {label}
+                      </span>
+                    </NavItem>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         )}
@@ -108,12 +115,12 @@ export function Topbar({ desktop }: { desktop: boolean }) {
             type="button"
             className={styles.logout}
             aria-label={t('logout')}
+            title={t('logout')}
             aria-busy={pending || undefined}
             disabled={pending || offline}
             onClick={logout}
           >
             <Icon name="logout" size={16} />
-            {desktop && <span className={styles.logoutText}>{t('logout')}</span>}
           </button>
         </div>
       </div>

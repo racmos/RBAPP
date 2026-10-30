@@ -1,8 +1,11 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { join } from 'node:path';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
+import { BREAKPOINTS, up } from '@/lib/breakpoints';
+import { SRC_DIR, declsFor, readCss, rules } from '@/test/css';
 import { API, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
@@ -78,5 +81,78 @@ describe('Topbar global card search (F2-k S6)', () => {
     await renderSignedIn('/', 1280);
     await screen.findByRole('combobox', { name: 'Buscar cartas' }, LONG);
     expect(await axe(screen.getByRole('banner'))).toHaveNoViolations();
+  });
+});
+
+const css = readCss(join(SRC_DIR, 'shell/Topbar.module.css'));
+const base = (selector: string, prop: string) =>
+  rules(css)
+    .filter(
+      (rule) =>
+        rule.selectors.includes(selector) && !rule.atRules.some((at) => at.startsWith('media')),
+    )
+    .flatMap((rule) => rule.decls)
+    .filter((decl) => decl.prop === prop)
+    .at(-1)?.value;
+const inMedia = (media: string, selector: string, prop: string) =>
+  rules(css)
+    .filter((rule) => rule.selectors.includes(selector) && rule.atRules.includes(`media ${media}`))
+    .flatMap((rule) => rule.decls)
+    .find((decl) => decl.prop === prop)?.value;
+
+describe('Topbar fits from the desktop breakpoint up (owner feedback S18 f)', () => {
+  it.each([1000, 1440])(
+    'at %i px each link keeps its text as name and shows it as a tooltip',
+    async (width) => {
+      await renderSignedIn('/', width);
+      const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
+      const link = within(nav).getByRole('link', { name: 'Colección' });
+      expect(link).toHaveAttribute('title', 'Colección');
+      expect(link.querySelector('svg')).not.toBeNull();
+      expect(link.querySelector('[data-slot="label"]')).toHaveTextContent('Colección');
+    },
+  );
+
+  it('shows the icons from md and the link texts only from 2xl', () => {
+    expect(declsFor(css, '.icon')).not.toContainEqual({ prop: 'display', value: 'none' });
+    // visually hidden (still read) below 2xl, laid out again from 2xl
+    expect(base('.label', 'position')).toBe('absolute');
+    expect(base('.label', 'clip-path')).toBe('inset(50%)');
+    expect(BREAKPOINTS['2xl']).toBe(1600);
+    expect(inMedia(up('2xl'), '.label', 'position')).toBe('static');
+    expect(inMedia(up('2xl'), '.label', 'clip-path')).toBe('none');
+  });
+
+  it('never shrinks the navigation or the account area, and never wraps logout', () => {
+    expect(declsFor(css, '.nav')).toContainEqual({ prop: 'flex', value: 'none' });
+    expect(declsFor(css, '.right')).toContainEqual({ prop: 'flex', value: 'none' });
+    expect(declsFor(css, '.logout')).toContainEqual({ prop: 'white-space', value: 'nowrap' });
+    expect(declsFor(css, '.account')).toContainEqual({ prop: 'white-space', value: 'nowrap' });
+  });
+
+  it.each([1440, 1920])(
+    'at %i px logout is an icon with its name and a tooltip (no text to wrap)',
+    async (width) => {
+      await renderSignedIn('/', width);
+      const logout = screen.getByRole('button', { name: 'Cerrar sesión' });
+      expect(logout).toHaveAttribute('title', 'Cerrar sesión');
+      expect(logout.querySelector('svg')).not.toBeNull();
+      expect(logout).toHaveTextContent('');
+    },
+  );
+
+  it('keeps the 2xl room for the link texts: same link padding, install entry an icon', () => {
+    // the labels take the room at 2xl, so nothing else grows there
+    expect(inMedia(up('2xl'), '.link', 'padding')).toBeUndefined();
+    expect(
+      rules(css)
+        .filter((rule) => rule.selectors.includes('.installText'))
+        .flatMap((rule) => rule.decls)
+        .filter((decl) => decl.prop === 'display'),
+    ).toEqual([{ prop: 'display', value: 'none' }]);
+  });
+
+  it('keeps the placeholder clear of the "/" hint', () => {
+    expect(declsFor(css, '.search input')).toContainEqual({ prop: 'padding-right', value: '36px' });
   });
 });

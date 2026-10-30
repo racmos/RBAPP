@@ -5,12 +5,11 @@
     gap: 6px;
   }
 
+  /* The one form label look, shared by the card picker and the stepper (owner feedback S18 c). */
   .label {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--cyan);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
   }
 
   .hint {

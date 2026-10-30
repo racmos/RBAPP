@@ -284,16 +284,20 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
         />
       )}
 
-      <button
-        type="button"
-        className={styles.fab}
-        disabled={offline}
-        title={offline ? undefined : t('add.open')}
-        aria-label={t('add.open')}
-        onClick={() => setAddOpen(true)}
-      >
-        <Icon name="plus" size={22} />
-      </button>
+      {!noCollection && (
+        <div data-slot="fab-dock" className={styles.fabDock}>
+          <button
+            type="button"
+            className={styles.fab}
+            disabled={offline}
+            title={offline ? undefined : t('add.open')}
+            aria-label={t('add.open')}
+            onClick={() => setAddOpen(true)}
+          >
+            <Icon name="plus" size={22} />
+          </button>
+        </div>
+      )}
 
       <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title={t('filters.title')}>
         <CollectionFilters

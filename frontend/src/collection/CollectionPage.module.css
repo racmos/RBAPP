@@ -4,7 +4,6 @@
     max-width: var(--maxw);
     margin: 0 auto;
     padding: var(--pad);
-    padding-bottom: 96px;
   }
 
   .tool {
@@ -26,10 +25,15 @@
     background: rgba(120, 205, 228, 0.12);
   }
 
+  /* A link, boxed like the buttons next to it so it lines up with them (owner feedback S18 m). */
   .classic {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
     color: var(--muted);
     font-size: 13px;
     text-decoration: underline;
+    white-space: nowrap;
   }
 
   .classic:hover {
@@ -132,11 +136,20 @@
     text-align: center;
   }
 
-  .fab {
-    position: fixed;
+  /* The add button floats over the list above the bottom navigation, but it lives in the flow
+     after the results: at the end of the page the last rows scroll clear of it, and a short
+     page never puts it over its text (owner feedback S18 a, e). */
+  .fabDock {
+    position: sticky;
     z-index: var(--z-popover);
-    right: calc(16px + var(--safe-right, 0px));
     bottom: calc(76px + var(--safe-bottom, 0px));
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--gap);
+    pointer-events: none;
+  }
+
+  .fab {
     display: grid;
     place-items: center;
     width: 56px;
@@ -147,6 +160,7 @@
     box-shadow: var(--shadow-pop);
     color: var(--accent-ink);
     cursor: pointer;
+    pointer-events: auto;
   }
 
   .fab:disabled {
@@ -155,7 +169,7 @@
   }
 
   @media (min-width: 860px) {
-    .fab {
+    .fabDock {
       bottom: 24px;
     }
   }

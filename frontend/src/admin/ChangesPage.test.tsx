@@ -100,7 +100,34 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
       };
       // the wrapper is the shared TableScroll in fit mode (its CSS is pinned in TableScroll.test.tsx)
       expect(region).toHaveAttribute('data-slot', 'table-scroll');
-      expect(decls('.table td')).toContainEqual({ prop: 'overflow-wrap', value: 'anywhere' });
+      // URLs and abilities break anywhere; the other cells only between words (S18 n)
+      // `.table .valueCell` outranks `.table td` (a bare `.valueCell` would lose to it)
+      expect(decls('.table .valueCell')).toContainEqual({
+        prop: 'overflow-wrap',
+        value: 'anywhere',
+      });
+      expect(decls('.table td')).toContainEqual({ prop: 'overflow-wrap', value: 'break-word' });
+    },
+  );
+
+  it(
+    'the card column is wide enough for a name, which wraps only between words (owner feedback S18 n)',
+    { timeout: 30000 },
+    async () => {
+      changesApi();
+      await renderApp({ path: '/admin/riot/changes', width: 1280 });
+      const table = await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
+      const cell = within(table).getByText('Alpha Unit').closest('td');
+      expect(cell?.className).toMatch(/cardCell/);
+      const card: Array<{ prop: string; value: string }> = [];
+      postcss.parse(readFileSync('src/admin/ChangesPage.module.css', 'utf8')).walkRules((rule) => {
+        if (!rule.selectors.map((item) => item.trim()).includes('.table .cardCell')) return;
+        rule.walkDecls((decl) => {
+          card.push({ prop: decl.prop, value: decl.value });
+        });
+      });
+      expect(card).toContainEqual({ prop: 'min-width', value: '18ch' });
+      expect(card).not.toContainEqual({ prop: 'overflow-wrap', value: 'anywhere' });
     },
   );
 

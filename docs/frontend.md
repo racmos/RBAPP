@@ -184,6 +184,13 @@ Pages sit under a pathless route with `ShellError` as its `errorElement`, so a p
 throws keeps the topbar; its retry resets the failed queries and renders the page again.
 Unknown paths render `NotFound` inside the shell.
 
+**Topbar widths.** From `md` the topbar navigation shows icons only, each link keeping its text
+as its accessible name (visually hidden) and as a `title` tooltip; the texts appear from `2xl`.
+Logout and the install entry are icons with a name and a tooltip at every width; the username
+appears from `xl`, next to the global card search. The navigation and the account area never
+shrink (`flex: none`), only the search does, so nothing overlaps or wraps at 1240, 1440 or
+1920 px (owner feedback S18 f).
+
 **Navigation registry.** `src/shell/navRegistry.ts` is the one list behind the topbar, the
 bottom navigation, the sheet and the home hub. Every entry has a `status`:
 `spa` (a router link, `to` is a path under the basename), `legacy` (a plain `<a href>` to a
@@ -513,9 +520,11 @@ layout on a desktop.
 - `CollectionPage` — header with the summary line, summary strip (copies, unique, value), search
   (`DebouncedInput`, writes `q`), toolbar (filters sheet with the count of active ones, sort, direction,
   grid/list; the start view comes from the `collection_view` preference, `table` meaning the list,
-  Auto the grid), removable chips, `Pagination`, and a floating "Añadir carta" button. States: skeleton,
-  empty collection, empty filters, error with retry, offline (the button and every edit control are
-  disabled with `common:offline.editDisabled`).
+  Auto the grid), removable chips, `Pagination`, and a floating "Añadir carta" button (sticky in a
+  dock after the results, so the last rows scroll clear of it; not shown over an empty collection,
+  whose empty state has its own add button). States: skeleton, empty collection, empty filters, error
+  with retry, offline (the button and every edit control are disabled with
+  `common:offline.editDisabled`).
 - `CollectionItem` — tile or row. A group whose `playset_short` is true gets an outline **and** the text
   "Playset incompleto (kept/size)"; `kept` comes from the API (`CollectionGroup.kept`).
 - `LineSheet` — the lines of a group: quantity stepper, condition and language selects, purchase price,
