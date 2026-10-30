@@ -52,14 +52,19 @@ export function useSearchNavigation() {
 
   /**
    * `useSearchParams`' setter, built on `current()` instead of the rendered search: its function
-   * form gets the latest search asked for, so two quick changes both stay.
+   * form gets the latest search asked for, so two quick changes both stay. A change that leaves
+   * the search as it is navigates nowhere.
    */
   const setSearchParams = useCallback(
     (
       nextInit: URLSearchParams | ((previous: URLSearchParams) => URLSearchParams),
       options: { replace?: boolean } = {},
     ) => {
-      const next = typeof nextInit === 'function' ? nextInit(current()) : nextInit;
+      const previous = current();
+      const next =
+        typeof nextInit === 'function' ? nextInit(new URLSearchParams(previous)) : nextInit;
+      // a navigation to the same search still remounts the route and drops open dialogs
+      if (next.toString() === previous.toString()) return;
       go(next.toString(), options);
     },
     [current, go],

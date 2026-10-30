@@ -110,3 +110,32 @@ describe('useSearchNavigation setSearchParams (admin lists)', () => {
     await waitFor(() => expect(router.state.location.search).toBe('?q=x&a=1&b=1'), LONG);
   });
 });
+
+/** Returns the search it was given: a no-op change, as the admin search effects send. */
+function NoOpProbe() {
+  const { setSearchParams } = useSearchNavigation();
+  return (
+    <button
+      type="button"
+      onClick={() => setSearchParams((previous) => previous, { replace: true })}
+    >
+      same
+    </button>
+  );
+}
+
+describe('useSearchNavigation no-op changes', () => {
+  it('does not navigate when the search does not change (a navigation remounts the page)', async () => {
+    const router = createMemoryRouter([{ path: '/', element: <NoOpProbe /> }], {
+      initialEntries: ['/?q=x'],
+    });
+    render(<RouterProvider router={router} />);
+    const key = router.state.location.key;
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'same' }));
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(router.state.location.key).toBe(key);
+    expect(router.state.location.search).toBe('?q=x');
+  });
+});
