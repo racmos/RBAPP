@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import type { CollectionGroup, CollectionParams } from '@/api/types';
-import { useGameMeta } from '@/catalog';
+import { useGameMeta, useSearchNavigation } from '@/catalog';
 import { useOffline } from '@/auth';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
 import type { Lang } from '@/lib/format';
@@ -16,19 +16,14 @@ import {
 import { useCollectionList } from './queries';
 
 function useCollectionParams() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { current, go } = useSearchNavigation();
   const params = useMemo(() => parseCollectionSearch(searchParams), [searchParams]);
+  // From the latest URL asked for, which the page may not have rendered yet (L6).
   const setParams = useCallback(
-    (patch: Partial<CollectionParams>, options: { replace?: boolean } = {}) => {
-      const query = serializeCollectionParams(withChange(params, patch));
-      navigate(
-        { pathname: location.pathname, search: query ? `?${query}` : '' },
-        { replace: options.replace },
-      );
-    },
-    [params, navigate, location.pathname],
+    (patch: Partial<CollectionParams>, options: { replace?: boolean } = {}) =>
+      go(serializeCollectionParams(withChange(parseCollectionSearch(current()), patch)), options),
+    [current, go],
   );
   return [params, setParams] as const;
 }

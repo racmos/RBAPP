@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -109,6 +109,20 @@ describe('ProductsDesktop rail at 1280 px (F14-f S1)', () => {
     await userEvent.click(within(rail()).getByRole('switch', { name: 'Solo los míos' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&q=box&kind=box&set=OGN'), LONG);
   }, 30000);
+
+  it('keeps a filter change that the page has not rendered yet (L6)', async () => {
+    signedIn();
+    const { where } = await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
+    await catalogTable();
+    const box = within(rail()).getByRole('checkbox', { name: 'Caja de sobres (1)' });
+    const mine = within(rail()).getByRole('switch', { name: 'Solo los míos' });
+    // the router applies a navigation in a transition: the second change comes before the render
+    act(() => {
+      fireEvent.click(box);
+      fireEvent.click(mine);
+    });
+    await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box&owned=owned'), LONG);
+  }, 20000);
 
   it('"solo los míos" asks the API for the owned products only', async () => {
     signedIn();

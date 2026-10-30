@@ -31,6 +31,7 @@ import {
 } from './params';
 import { useCardList, useGameMeta } from './queries';
 import { DebouncedInput } from './DebouncedInput';
+import { useSearchNavigation } from './useSearchNavigation';
 import styles from './CatalogPage.module.css';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -52,28 +53,19 @@ function scrollKey(search: string): string {
 }
 
 function useCatalogParams() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { current, go } = useSearchNavigation();
 
   const params = useMemo(() => parseCatalogSearch(searchParams), [searchParams]);
 
+  // From the latest URL asked for, which the page may not have rendered yet (L6).
   const setParams = useCallback(
-    (patch: Partial<CardListParams>, opts: { replace?: boolean } = {}) => {
-      const next = withChange(params, patch);
-      const query = serializeCatalogParams(next);
-      navigate(
-        {
-          pathname: location.pathname,
-          search: query ? `?${query}` : '',
-        },
-        { replace: opts.replace },
-      );
-    },
-    [params, navigate, location.pathname],
+    (patch: Partial<CardListParams>, opts: { replace?: boolean } = {}) =>
+      go(serializeCatalogParams(withChange(parseCatalogSearch(current()), patch)), opts),
+    [current, go],
   );
 
-  return [params, setParams] as const;
+  return [params, setParams, current, go] as const;
 }
 
 export function CatalogPage() {
@@ -82,12 +74,12 @@ export function CatalogPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { setId } = useParams<{ setId?: string; cardId?: string }>();
   const isMd = useMediaQuery(up('md'));
   const isXl = useMediaQuery(up('xl'));
   const isWide = useMediaQuery(up('2xl'));
-  const [params, setParams] = useCatalogParams();
+  const [params, setParams, currentSearch, goSearch] = useCatalogParams();
   const metaQuery = useGameMeta();
   const listQuery = useCardList(params);
   const resultsRef = useRef<HTMLHeadingElement>(null);
@@ -210,16 +202,11 @@ export function CatalogPage() {
 
   const handleSelectCard = useCallback(
     (card: CardSummary) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set('selected', card.key);
-          return next;
-        },
-        { replace: true },
-      );
+      const next = currentSearch();
+      next.set('selected', card.key);
+      goSearch(next.toString(), { replace: true });
     },
-    [setSearchParams],
+    [currentSearch, goSearch],
   );
 
   const showCatalog = !setId || isMd;

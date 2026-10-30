@@ -45,7 +45,9 @@
     overflow-y: auto;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    background: var(--panel-3);
+    /* the panel tone over an opaque base: the content below never shows through (S18 b) */
+    background-color: var(--bg-0);
+    background-image: linear-gradient(var(--panel-3), var(--panel-3));
     box-shadow: var(--shadow-pop);
   }
 

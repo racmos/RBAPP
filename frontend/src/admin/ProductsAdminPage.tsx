@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import { useSearchNavigation } from '@/catalog';
 import { ApiError } from '@/api/errors';
 import {
   listAdminProducts,
@@ -46,7 +47,9 @@ export function ProductsAdminPage() {
   const phone = useMediaQuery(down('md'));
   const wide = useMediaQuery(up('2xl'));
   const queryClient = useQueryClient();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
+  // latest search asked for, not the rendered one: quick changes in a row must all stay (L6)
+  const { setSearchParams: setParams } = useSearchNavigation();
   const [editor, setEditor] = useState<AdminProduct | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<(typeof FIELDS)[number], string>>>(
     {},
@@ -100,7 +103,8 @@ export function ProductsAdminPage() {
   const kinds = params.getAll('kind');
   const toggleKind = (kind: string) =>
     update((next) => {
-      const chosen = kinds.includes(kind) ? kinds.filter((k) => k !== kind) : [...kinds, kind];
+      const now = next.getAll('kind');
+      const chosen = now.includes(kind) ? now.filter((k) => k !== kind) : [...now, kind];
       next.delete('kind');
       for (const value of PRODUCT_KINDS) if (chosen.includes(value)) next.append('kind', value);
     });
