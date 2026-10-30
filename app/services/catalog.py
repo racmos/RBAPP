@@ -112,6 +112,14 @@ def set_order(sets):
     return {s.rbset_id: rank for rank, s in enumerate(ordered)}
 
 
+def sets_newest_first(sets):
+    """Sets by release date descending, undated last, then set id (owner feedback S19)."""
+    ordered = sorted(sets, key=lambda s: (s.rbset_id or ''))
+    dated = sorted((s for s in ordered if s.rbset_outdat is not None),
+                   key=lambda s: s.rbset_outdat, reverse=True)
+    return dated + [s for s in ordered if s.rbset_outdat is None]
+
+
 def natural_key(set_rank, card_id):
     """Sort key: set rank, then numeric card id (`2` before `10`, `t01` last)."""
     number = card_number(card_id)

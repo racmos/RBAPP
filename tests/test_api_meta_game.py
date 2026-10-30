@@ -48,13 +48,28 @@ def test_shape_order_and_extras(app, client):
     assert data['supertypes'] == ['Champion', 'Signature', 'Token', 'Basic']
     assert data['rarities'] == ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase', 'Mythic']
     assert data['sets'] == [
-        {'id': 'ZZZ', 'name': 'Empty', 'released_on': '2025-01-01', 'card_count': 0},
         {'id': 'OGN', 'name': 'Origins', 'released_on': '2025-10-31', 'card_count': 2},
+        {'id': 'ZZZ', 'name': 'Empty', 'released_on': '2025-01-01', 'card_count': 0},
         {'id': 'SFD', 'name': 'Spiritforged', 'released_on': None, 'card_count': 1},
     ]
     assert data['price'] == {'provider': 'cardmarket', 'currency': 'EUR',
                              'updated_on': '2026-10-20'}
     assert data['rules'] == {}
+
+
+def test_sets_newest_first_undated_last(app, client):
+    """Owner feedback S19: every set list is newest first, sets without a date last."""
+    db.session.add_all([
+        RbSet(rbset_id='AAA', rbset_name='Old', rbset_outdat=date(2024, 3, 1)),
+        RbSet(rbset_id='NOD', rbset_name='No date'),
+        RbSet(rbset_id='NEW', rbset_name='Newest', rbset_outdat=date(2026, 9, 1)),
+        RbSet(rbset_id='MID', rbset_name='Middle', rbset_outdat=date(2025, 6, 1)),
+        RbSet(rbset_id='BBB', rbset_name='No date either'),
+    ])
+    db.session.commit()
+    ids = [row['id'] for row in client.get('/riftbound/api/v1/meta/game').get_json()['data']['sets']]
+    assert ids[:3] == ['NEW', 'MID', 'AAA']
+    assert sorted(ids[3:]) == ['BBB', 'NOD']
 
 
 def test_conditions_best_to_worst_and_languages(app, client):

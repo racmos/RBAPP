@@ -93,6 +93,18 @@
     }
   }
 
+  /* The table and its pagination: one column of the layout, so the editor sits beside them. */
+  .main {
+    display: grid;
+    gap: var(--gap);
+    min-width: 0;
+  }
+
+  .rowActions {
+    display: flex;
+    gap: 8px;
+  }
+
   .editorPanel {
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -100,15 +112,14 @@
     padding: var(--pad);
   }
 
+  .editorTitle {
+    margin: 0 0 12px;
+    font-size: 18px;
+  }
+
   .form {
     display: grid;
     gap: var(--gap);
-  }
-
-  .formError {
-    margin: 0;
-    color: var(--red-text);
-    font-size: 14px;
   }
 
   .actions {

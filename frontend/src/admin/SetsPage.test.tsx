@@ -180,3 +180,18 @@ describe('SetsPage (F13-f S4-S6)', () => {
     expect(await screen.findByText('¿Borrar el set OGN?')).toBeVisible();
   });
 });
+
+describe('SetsPage row actions (owner feedback S20)', () => {
+  it('are the shared Button with an icon, like the cards table', async () => {
+    setsApi();
+    await renderApp({ path: '/admin/sets', width: 1280 });
+    const edit = await screen.findByRole('button', { name: 'Editar OGN' });
+    const remove = screen.getByRole('button', { name: 'Borrar OGN' });
+    const buttonClass = screen.getByRole('button', { name: 'Nuevo set' }).classList[0]!;
+    for (const action of [edit, remove]) {
+      expect(action).toHaveClass(buttonClass);
+      expect(action.querySelector('svg')).not.toBeNull();
+      expect(action.textContent).toBe('');
+    }
+  });
+});

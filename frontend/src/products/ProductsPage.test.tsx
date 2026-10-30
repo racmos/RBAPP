@@ -326,3 +326,38 @@ describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
     expect(await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG)).toBeVisible();
   }, 20000);
 });
+
+describe('ProductsPage set order (owner feedback S19)', () => {
+  it('the set select lists the sets newest first and the undated or unknown ones last', async () => {
+    signedIn();
+    catalog({ facets: { kind: { box: 1 }, set: { OGN: 2, NOD: 1, VEN: 3 } } });
+    server.use(
+      http.get(`${API}/meta/game`, () =>
+        ok({
+          modes: ['1v1', '2v2'],
+          domains: ['Fury'],
+          types: ['Unit'],
+          supertypes: ['Champion'],
+          rarities: ['Common'],
+          sets: [
+            { id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 },
+            { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
+          ],
+          price: { provider: 'cardmarket', currency: 'EUR', updated_on: null },
+          rules: {},
+          conditions: ['NM'],
+          languages: ['English'],
+        }),
+      ),
+    );
+    await renderApp({ path: '/products?tab=catalog', width: WIDTH });
+    await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG);
+    const set = screen.getByRole('combobox', { name: 'Set' });
+    await within(set).findByRole('option', { name: /Vendetta/ }, LONG);
+    expect(
+      within(set)
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('value')),
+    ).toEqual(['', 'VEN', 'OGN', 'NOD']);
+  }, 20000);
+});

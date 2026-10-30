@@ -256,6 +256,20 @@ substring), `sort` = `id|name|releaseDate|cards` (default `id`) and `dir` = `asc
 opens the editor in the side drawer (bottom sheet below 960 px) and in the persistent panel at
 ≥ 1600 px.
 
+**Cards admin.** `/admin/cards` (`src/admin/CardsAdminPage.tsx`): "Nueva carta" and the row
+"Editar" open `CardEditor` in the side drawer below 1600 px (bottom sheet below 960 px) and in
+the `aside` panel next to the table at ≥ 1600 px (the table and its pagination are one column).
+"Borrar" asks with a `ConfirmDialog`; the question closes on the answer and a toast says the
+outcome (`card_in_use` 409 translated, otherwise the API message). Row actions in the sets and
+cards tables are icon-only `Button`s (`ghost` edit, `danger` delete) with the action and the
+name as accessible name.
+
+**Set order.** Every set dropdown and set button group lists sets newest first by release date,
+undated last (owner feedback S19). `GET /meta/game` sends `sets` in that order; every screen
+still passes its list through `sortSetsNewestFirst` / `sortSetIdsNewestFirst` (`src/lib/sets.ts`),
+which is what orders the lists fed by other endpoints (`GET /admin/sets`, product facet keys).
+The `/admin/sets` table keeps its own sort.
+
 **Riot changes.** `/admin/riot/changes` (`src/admin/ChangesPage.tsx`) wraps long values (URLs,
 abilities) so the columns fit; the table sits in a labelled region, `TableScroll fit`, so the page
 is the only scroll (no box inside the page) and the header sticks below the topbar. With rows

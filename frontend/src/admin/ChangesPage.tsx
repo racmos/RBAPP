@@ -20,6 +20,7 @@ import { useDocumentTitle, translateError } from '@/i18n';
 
 import { formatDate, type Lang } from '@/lib/format';
 import { down, up } from '@/lib/breakpoints';
+import { sortSetsNewestFirst } from '@/lib/sets';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { ValueDiff } from './ValueDiff';
@@ -289,7 +290,7 @@ export function ChangesPage() {
             onChange={(event) => setParam('set', event.target.value || null)}
           >
             <option value="">{t('cards.filters.allSets')}</option>
-            {(setsQuery.data ?? []).map((set) => (
+            {sortSetsNewestFirst(setsQuery.data ?? [], (set) => set.release_date).map((set) => (
               <option key={set.id} value={set.id}>
                 {set.id}
               </option>

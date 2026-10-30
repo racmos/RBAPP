@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { axe } from 'vitest-axe';
@@ -129,21 +129,232 @@ describe('CardsAdminPage (F13-f S7, S8)', () => {
     expect((await screen.findAllByText('Imagen actualizada.')).length).toBeGreaterThan(0);
     expect(uploaded).toBe(true);
   });
+});
 
-  it('delete with card_in_use shows the translated error', async () => {
+const NEW_CARD = { ...CARDS.items[1]!, card_id: '9', key: 'OGN-9', name: 'New Card' };
+
+/** Admin API with a mutable card list, so a write shows up on the next GET. */
+function writableApi() {
+  const state = { items: [...CARDS.items], posted: [] as unknown[], patched: [] as unknown[] };
+  const list = () =>
+    ok({ ...CARDS, items: state.items, meta: { ...CARDS.meta, total: state.items.length } });
+  server.use(
+    http.get(`${API}/auth/session`, () => adminSession()),
+    http.get(`${API}/admin/cards`, list),
+    http.get(`${API}/admin/sets`, () => ok(SETS)),
+    http.post(`${API}/admin/cards`, async ({ request }) => {
+      state.posted.push(await request.json());
+      state.items = [...state.items, NEW_CARD];
+      return ok(NEW_CARD, 201);
+    }),
+    http.patch(`${API}/admin/cards/OGN/1`, async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      state.patched.push(body);
+      state.items = state.items.map((item) =>
+        item.key === 'OGN-1' ? { ...item, name: String(body.name) } : item,
+      );
+      return ok(state.items[0]);
+    }),
+  );
+  return state;
+}
+
+/** The editor: a side dialog below 1600 px, the persistent panel at 1600 px and up. */
+const editorRole = (width: number) => (width >= 1600 ? 'complementary' : 'dialog');
+
+describe('CardsAdminPage editor and row actions (owner feedback S20)', () => {
+  it.each([1280, 1700])(
+    '"Nueva carta" opens the editor and creates the card at %i px',
+    async (width) => {
+      const state = writableApi();
+      await renderApp({ path: '/admin/cards', width });
+      await userEvent.click(await screen.findByRole('button', { name: 'Nueva carta' }));
+      const editor = await screen.findByRole(editorRole(width), { name: 'Nueva carta' });
+      await userEvent.type(within(editor).getByLabelText('Set'), 'OGN');
+      await userEvent.type(within(editor).getByLabelText('Número'), '9');
+      await userEvent.type(within(editor).getByLabelText('Nombre'), 'New Card');
+      await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
+      expect((await screen.findAllByText('Carta guardada.')).length).toBeGreaterThan(0);
+      expect(state.posted).toEqual([
+        expect.objectContaining({ set_id: 'OGN', card_id: '9', name: 'New Card' }),
+      ]);
+      expect(await screen.findByRole('cell', { name: 'New Card' })).toBeVisible();
+      await waitFor(() => expect(screen.queryByLabelText('Número')).not.toBeInTheDocument());
+    },
+  );
+
+  it.each([1280, 1700])(
+    '"Editar" opens the card in the editor and saves it at %i px',
+    async (width) => {
+      const state = writableApi();
+      await renderApp({ path: '/admin/cards', width });
+      await userEvent.click(await screen.findByRole('button', { name: 'Editar Alpha Unit' }));
+      const editor = await screen.findByRole(editorRole(width), { name: 'Alpha Unit' });
+      const name = within(editor).getByLabelText('Nombre');
+      expect(name).toHaveValue('Alpha Unit');
+      await userEvent.clear(name);
+      await userEvent.type(name, 'Alpha Prime');
+      await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
+      expect((await screen.findAllByText('Carta guardada.')).length).toBeGreaterThan(0);
+      expect(state.patched).toEqual([expect.objectContaining({ name: 'Alpha Prime' })]);
+      expect(await screen.findByRole('cell', { name: 'Alpha Prime' })).toBeVisible();
+    },
+  );
+
+  it('at 1600 px and up the editor is a column next to the table, not below it', async () => {
+    writableApi();
+    await renderApp({ path: '/admin/cards', width: 1700 });
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Alpha Unit' }));
+    const panel = await screen.findByRole('complementary', { name: 'Alpha Unit' });
+    // Two columns: the table with its pagination, then the editor.
+    expect(panel.parentElement!.children).toHaveLength(2);
+    const main = panel.previousElementSibling as HTMLElement;
+    expect(main).toContainElement(screen.getByRole('table', { name: 'Cartas del catálogo' }));
+    expect(main).toContainElement(screen.getByRole('navigation', { name: 'Paginación' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it.each([1280, 1700])(
+    '"Borrar" asks first, then deletes and refreshes at %i px',
+    async (width) => {
+      const state = writableApi();
+      let deleted = 0;
+      server.use(
+        http.delete(`${API}/admin/cards/OGN/1`, () => {
+          deleted += 1;
+          state.items = state.items.filter((item) => item.key !== 'OGN-1');
+          return ok({ deleted: 'OGN-1' });
+        }),
+      );
+      await renderApp({ path: '/admin/cards', width });
+      await userEvent.click(await screen.findByRole('button', { name: 'Borrar Alpha Unit' }));
+      const confirm = await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' });
+      expect(deleted).toBe(0);
+      await userEvent.click(within(confirm).getByRole('button', { name: 'Borrar' }));
+      expect((await screen.findAllByText('Carta borrada.')).length).toBeGreaterThan(0);
+      expect(deleted).toBe(1);
+      await waitFor(() =>
+        expect(screen.queryByRole('cell', { name: 'Alpha Unit' })).not.toBeInTheDocument(),
+      );
+      expect(screen.queryByRole('dialog', { name: '¿Borrar Alpha Unit?' })).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([1280, 1700])(
+    'a card in use: the question closes and a toast says why, translated, at %i px',
+    async (width) => {
+      writableApi();
+      server.use(
+        http.delete(`${API}/admin/cards/OGN/1`, () =>
+          failure(409, {
+            error: 'Conflict',
+            message: "Card 'OGN-1' is used and cannot be deleted.",
+            code: 'card_in_use',
+            params: { collection_lines: 2, decks: 0 },
+          }),
+        ),
+      );
+      await renderApp({ path: '/admin/cards', width });
+      await userEvent.click(await screen.findByRole('button', { name: 'Borrar Alpha Unit' }));
+      const confirm = await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' });
+      await userEvent.click(within(confirm).getByRole('button', { name: 'Borrar' }));
+      expect(
+        (
+          await screen.findAllByText(
+            'No se pudo borrar Alpha Unit: La carta está en colecciones o mazos; no se puede borrar.',
+          )
+        ).length,
+      ).toBeGreaterThan(0);
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: '¿Borrar Alpha Unit?' }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByRole('cell', { name: 'Alpha Unit' })).toBeVisible();
+    },
+  );
+
+  it('an error without a known code shows the message of the API', async () => {
+    writableApi();
     server.use(
-      http.get(`${API}/auth/session`, () => adminSession()),
-      http.get(`${API}/admin/cards`, () => ok(CARDS)),
-      http.get(`${API}/admin/sets`, () => ok(SETS)),
       http.delete(`${API}/admin/cards/OGN/1`, () =>
-        failure(409, { message: 'used', code: 'card_in_use' }),
+        failure(409, { error: 'Conflict', message: "Card 'OGN-1' is used and cannot be deleted." }),
       ),
     );
     await renderApp({ path: '/admin/cards', width: 1280 });
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Borrar Alpha Unit' }))[0]);
-    await userEvent.click(screen.getByRole('button', { name: 'Borrar' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Borrar Alpha Unit' }));
+    await userEvent.click(
+      within(await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' })).getByRole(
+        'button',
+        { name: 'Borrar' },
+      ),
+    );
     expect(
-      await screen.findByText('La carta está en colecciones o mazos; no se puede borrar.'),
-    ).toBeVisible();
+      (
+        await screen.findAllByText(
+          "No se pudo borrar Alpha Unit: Card 'OGN-1' is used and cannot be deleted.",
+        )
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it.each([1280, 1700])(
+    '"Borrar" inside the editor deletes the card and closes the editor at %i px',
+    async (width) => {
+      const state = writableApi();
+      server.use(
+        http.delete(`${API}/admin/cards/OGN/1`, () => {
+          state.items = state.items.filter((item) => item.key !== 'OGN-1');
+          return ok({ deleted: 'OGN-1' });
+        }),
+      );
+      await renderApp({ path: '/admin/cards', width });
+      await userEvent.click(await screen.findByRole('button', { name: 'Editar Alpha Unit' }));
+      const editor = await screen.findByRole(editorRole(width), { name: 'Alpha Unit' });
+      await userEvent.click(within(editor).getByRole('button', { name: 'Borrar' }));
+      const confirm = await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' });
+      await userEvent.click(within(confirm).getByRole('button', { name: 'Borrar' }));
+      expect((await screen.findAllByText('Carta borrada.')).length).toBeGreaterThan(0);
+      await waitFor(() => expect(screen.queryByLabelText('Nombre')).not.toBeInTheDocument());
+    },
+  );
+
+  it('row actions are the shared Button with an icon, like the header button', async () => {
+    writableApi();
+    await renderApp({ path: '/admin/cards', width: 1280 });
+    const edit = await screen.findByRole('button', { name: 'Editar Alpha Unit' });
+    const remove = screen.getByRole('button', { name: 'Borrar Alpha Unit' });
+    const buttonClass = screen.getByRole('button', { name: 'Nueva carta' }).classList[0]!;
+    for (const action of [edit, remove]) {
+      expect(action).toHaveClass(buttonClass);
+      expect(action.querySelector('svg')).not.toBeNull();
+      expect(action.textContent).toBe('');
+    }
+  });
+});
+
+describe('CardsAdminPage set order (owner feedback S19)', () => {
+  it('the set filter lists the sets newest first and the undated ones last', async () => {
+    const base = SETS[0]!;
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/cards`, () => ok(CARDS)),
+      http.get(`${API}/admin/sets`, () =>
+        ok([
+          { ...base, id: 'NOD', release_date: null },
+          { ...base, id: 'VEN', release_date: '2026-08-01' },
+          { ...base, id: 'OGN', release_date: '2025-10-31' },
+          { ...base, id: 'OGS', release_date: '2025-11-07' },
+        ]),
+      ),
+    );
+    await renderApp({ path: '/admin/cards', width: 1280 });
+    const select = await screen.findByRole('combobox', { name: 'Todos los sets' });
+    await within(select).findByRole('option', { name: 'VEN' });
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('value')),
+    ).toEqual(['', 'VEN', 'OGS', 'OGN', 'NOD']);
   });
 });

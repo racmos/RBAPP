@@ -119,6 +119,9 @@
     },
     "keyLocked": "The set and number cannot change.",
     "saved": "Card saved.",
+    "deleted": "Card deleted.",
+    "deleteFailed": "Could not delete {{name}}: {{reason}}",
+    "pickOne": "Pick a card to edit it.",
     "image": {
       "upload": "Upload image",
       "hint": "PNG, JPG or WebP up to 2 MB.",

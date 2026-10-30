@@ -21,6 +21,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle, translateError } from '@/i18n';
 import { useOnline } from '@/lib/useOnline';
+import { sortSetsNewestFirst } from '@/lib/sets';
 import styles from './RiotPage.module.css';
 
 type RiotSet = {
@@ -154,7 +155,7 @@ function SyncNow() {
       <fieldset className={styles.checks}>
         <legend className="sr-only">{t('riot.pickSets')}</legend>
         {setsQuery.isPending && <Skeleton label={t('riot.pickSets')} />}
-        {setsQuery.data?.map((set) => (
+        {sortSetsNewestFirst(setsQuery.data ?? [], (set) => set.release_date).map((set) => (
           <Checkbox
             key={set.id}
             label={set.id}

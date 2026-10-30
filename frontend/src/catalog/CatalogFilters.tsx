@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import { useEnumLabel } from '@/i18n';
 import { domainColor, rarityColor } from '@/lib/domains';
+import { sortSetsNewestFirst } from '@/lib/sets';
 import { readStorage, writeStorage } from '@/lib/storage';
 import { DebouncedInput } from './DebouncedInput';
 import styles from './CatalogFilters.module.css';
@@ -117,13 +118,15 @@ export function CatalogFilters({
     [],
   );
 
+  const sets = sortSetsNewestFirst(meta?.sets ?? [], (set) => set.released_on);
+
   const renderSet = (variant: 'sheet' | 'sidebar') => (
     <div className={styles.group}>
       {variant === 'sheet' ? (
         <fieldset className={styles.fieldset}>
           <legend className={styles.legend}>{t('catalog.facet.set')}</legend>
           <div className={styles.checkList}>
-            {meta?.sets.map((set) => (
+            {sets.map((set) => (
               <Checkbox
                 key={set.id}
                 label={`${set.name} (${showCount(facets.set, set.id) ?? 0})`}
@@ -135,7 +138,7 @@ export function CatalogFilters({
         </fieldset>
       ) : (
         <div className={styles.checkList}>
-          {meta?.sets.map((set) => (
+          {sets.map((set) => (
             <Checkbox
               key={set.id}
               label={`${set.name} (${showCount(facets.set, set.id) ?? 0})`}

@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
+import type { GameMeta } from '@/api/types';
 import { ToastStack } from '@/components/ui/Toast';
 import { clearToasts } from '@/components/ui/toastStore';
 import { createI18n } from '@/i18n';
@@ -15,7 +16,7 @@ import { server } from '@/test/msw/server';
 import { AddSheet } from './AddSheet';
 import { QUICK_ADD_KEY } from './quickAdd';
 
-const META = {
+const META: Pick<GameMeta, 'conditions' | 'languages' | 'sets'> = {
   conditions: ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'],
   languages: ['English', 'French', 'German', 'Spanish', 'Italian'],
   sets: [
@@ -24,13 +25,13 @@ const META = {
   ],
 };
 
-async function open({ offline = false } = {}) {
+async function open({ offline = false, meta = META } = {}) {
   const i18n = await createI18n('es');
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={client}>
-        <AddSheet open onClose={() => undefined} meta={META} offline={offline} />
+        <AddSheet open onClose={() => undefined} meta={meta} offline={offline} />
         <ToastStack />
       </QueryClientProvider>
     </I18nextProvider>,
@@ -451,5 +452,29 @@ describe('AddSheet in English', () => {
     const set = screen.getByRole('combobox', { name: 'Set' });
     expect(within(set).getByRole('option', { name: 'All sets' })).toBeInTheDocument();
     expect(screen.getByText('Enter adds the highlighted card with these choices.')).toBeVisible();
+  });
+});
+
+describe('AddSheet set order (owner feedback S19)', () => {
+  it('lists the sets newest first and the sets without a date last', async () => {
+    await open({
+      meta: {
+        ...META,
+        sets: [
+          { id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 },
+          { id: 'NOD', name: 'Sin fecha', released_on: null, card_count: 0 },
+          { id: 'OGS', name: 'Proving Grounds', released_on: '2024-03-01', card_count: 24 },
+          { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
+        ],
+      },
+    });
+    const options = within(screen.getByRole('combobox', { name: 'Set' })).getAllByRole('option');
+    expect(options.map((option) => option.getAttribute('value'))).toEqual([
+      '',
+      'VEN',
+      'OGS',
+      'OGN',
+      'NOD',
+    ]);
   });
 });

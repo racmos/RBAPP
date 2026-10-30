@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { API, signedInSession } from '@/test/msw/handlers';
+import { API, ok, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 
@@ -164,4 +164,41 @@ describe('CatalogFilters numeric ranges', () => {
     await waitFor(() => expect(where()).toBe('/cards?energy_min=12'), LONG);
     expect(min).toHaveValue(12);
   }, 15000);
+});
+
+describe('CatalogFilters set order (owner feedback S19)', () => {
+  it('lists the sets newest first and the sets without a date last', async () => {
+    signedInApi();
+    server.use(
+      http.get(`${API}/meta/game`, () =>
+        ok({
+          modes: ['1v1', '2v2'],
+          domains: ['Fury'],
+          types: ['Unit'],
+          supertypes: ['Champion'],
+          rarities: ['Common'],
+          sets: [
+            { id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 },
+            { id: 'NOD', name: 'Sin fecha', released_on: null, card_count: 0 },
+            { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
+            { id: 'OGS', name: 'Proving Grounds', released_on: '2024-03-01', card_count: 24 },
+          ],
+          price: { provider: 'cardmarket', currency: 'EUR', updated_on: null },
+          rules: {},
+          conditions: ['NM'],
+          languages: ['English'],
+        }),
+      ),
+    );
+    const { container } = await renderApp({ path: '/cards', width: 1280 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    const sidebar = container.querySelector<HTMLElement>('[data-testid="catalog-sidebar"]')!;
+    await within(sidebar).findByRole('checkbox', { name: /Vendetta/ }, LONG);
+    const names = within(sidebar)
+      .getAllByRole('checkbox')
+      .map((box) => box.getAttribute('aria-label') ?? box.closest('label')?.textContent ?? '')
+      .filter((name) => /Origen|Sin fecha|Vendetta|Proving/.test(name))
+      .map((name) => name.replace(/ \(.*\)$/, ''));
+    expect(names).toEqual(['Vendetta', 'Proving Grounds', 'Origen', 'Sin fecha']);
+  });
 });

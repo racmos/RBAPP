@@ -12,7 +12,7 @@ from app.api.v1 import api_v1
 from app.schemas.game_domain import (CARD_TYPES, CONDITIONS, DOMAINS, GAME_MODES, LANGUAGES,
                                      RARITIES, SUPERTYPES)
 from app.services.captcha import get_captcha_provider
-from app.services.catalog import parse_domains, set_order, type_facets
+from app.services.catalog import parse_domains, sets_newest_first, type_facets
 
 
 @api_v1.get('/health')
@@ -77,10 +77,10 @@ def meta_game():
                for domain in parse_domains(raw)}
 
     sets = db.session.query(RbSet).all()
-    order = set_order(sets)
     counts = dict(db.session.query(RbCard.rbcar_rbset_id, func.count())
                   .group_by(RbCard.rbcar_rbset_id).all())
-    ordered_sets = sorted(sets, key=lambda row: (order[row.rbset_id], row.rbset_id))
+    # Newest first, undated last: every set dropdown and button group follows it (S19).
+    ordered_sets = sets_newest_first(sets)
 
     latest = db.session.query(func.max(RbcmPrice.rbprc_date)).scalar()
     body = ok({
