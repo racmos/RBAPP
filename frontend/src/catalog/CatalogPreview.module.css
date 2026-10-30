@@ -1,5 +1,6 @@
 @layer components {
   .preview {
+    width: 380px;
     position: sticky;
     top: calc(64px + var(--gap));
     max-height: calc(100dvh - 64px - 2 * var(--gap));

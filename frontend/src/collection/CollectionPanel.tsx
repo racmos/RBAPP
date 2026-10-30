@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { CollectionGroup } from '@/api/types';
 import { useCardDetail, useCardPrices } from '@/catalog';
 import { CardImage } from '@/components/card';
 import { PriceChart } from '@/components/charts';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatMoney, type Lang } from '@/lib/format';
 import styles from './CollectionPanel.module.css';
@@ -17,9 +19,9 @@ export function CollectionPanel({ group, lang }: { group: CollectionGroup | null
 
   if (!group || !card) {
     return (
-      <aside className={styles.panel} aria-label={t('panel.title')}>
+      <DetailPanel label={t('panel.title')}>
         <p className={styles.empty}>{t('panel.empty')}</p>
-      </aside>
+      </DetailPanel>
     );
   }
 
@@ -27,7 +29,7 @@ export function CollectionPanel({ group, lang }: { group: CollectionGroup | null
   const decks = detail.data?.in_decks ?? [];
 
   return (
-    <aside className={styles.panel} aria-label={t('panel.title')}>
+    <DetailPanel label={t('panel.title')}>
       <div className={styles.art}>
         <CardImage card={card} size="full" decorative />
       </div>
@@ -81,6 +83,22 @@ export function CollectionPanel({ group, lang }: { group: CollectionGroup | null
       <Link className={styles.open} to={`/cards/${card.set_id}/${card.card_id}`}>
         {t('panel.openDetail')}
       </Link>
-    </aside>
+    </DetailPanel>
+  );
+}
+
+/** The third column folds away like the filters (owner feedback S23). */
+function DetailPanel({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <SidePanel
+      id="collection-detail"
+      kind="detail"
+      side="end"
+      label={label}
+      className={styles.panel}
+      contentClassName={styles.body}
+    >
+      {children}
+    </SidePanel>
   );
 }

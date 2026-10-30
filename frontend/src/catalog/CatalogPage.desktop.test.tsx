@@ -7,6 +7,7 @@ import { API, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { cardList } from '@/test/fixtures/cards';
 import { renderApp } from '@/test/renderApp';
+import { expectCollapsible } from '@/test/sidePanel';
 
 const LONG = { timeout: 10000 };
 
@@ -115,5 +116,41 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
     const { container } = await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('table', {}, LONG);
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe('CatalogPage side panels (owner feedback S23)', () => {
+  it('folds the filter sidebar away and remembers it', async () => {
+    signedInApi();
+    await renderApp({ path: '/cards', width: 1280 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    await expectCollapsible(
+      screen.getByTestId('catalog-sidebar'),
+      { hide: 'Ocultar filtros', show: 'Mostrar filtros' },
+      'rb_panel_cards-filters_v1',
+    );
+  });
+
+  it('opens with the sidebar folded when it was left folded', async () => {
+    localStorage.setItem('rb_panel_cards-filters_v1', 'collapsed');
+    signedInApi();
+    await renderApp({ path: '/cards', width: 1280 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    expect(screen.getByRole('button', { name: 'Mostrar filtros' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.getByTestId('catalog-sidebar')).toHaveAttribute('data-collapsed');
+  });
+
+  it('folds the wide preview away', async () => {
+    signedInApi();
+    await renderApp({ path: '/cards', width: 1700 });
+    await screen.findByRole('button', { name: /Ayla/ }, LONG);
+    await expectCollapsible(
+      screen.getByRole('complementary', { name: 'Vista previa' }),
+      { hide: 'Ocultar vista previa', show: 'Mostrar vista previa' },
+      'rb_panel_cards-preview_v1',
+    );
   });
 });

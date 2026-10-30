@@ -7,7 +7,7 @@ import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import type { CardSummary } from '@/api/types';
-import { SRC_DIR, declsFor, readCss } from '@/test/css';
+import { SRC_DIR, declsFor, readCss, rules } from '@/test/css';
 import { createI18n, type Lang } from '@/i18n';
 import { cardList, champion, foilCommon, noPrice } from '@/test/fixtures/cards';
 import { API } from '@/test/msw/handlers';
@@ -364,6 +364,28 @@ describe('CardCombobox popup surface (owner feedback S18 b)', () => {
   it('stacks above the content that follows it', () => {
     expect(value('position')).toBe('absolute');
     expect(value('z-index')).toBe('var(--z-popover)');
+  });
+});
+
+describe('CardCombobox popup width (owner feedback S24 p)', () => {
+  const css = readCss(join(SRC_DIR, 'catalog/CardCombobox.module.css'));
+  const all = rules(css).filter((rule) => rule.selectors.includes('.popup'));
+  const width = (media: string | null) =>
+    all
+      .filter((rule) =>
+        media === null
+          ? !rule.atRules.some((at) => at.startsWith('media'))
+          : rule.atRules.includes(media),
+      )
+      .flatMap((rule) => rule.decls)
+      .findLast((decl) => decl.prop === 'width')?.value;
+
+  it('below 860 px it is as wide as its field, never past the sheet edge', () => {
+    expect(width('media (max-width: 859.98px)')).toBe('100%');
+  });
+
+  it('from 860 px it may grow past a narrow field (the topbar search)', () => {
+    expect(width(null)).toMatch(/^max\(100%/);
   });
 });
 

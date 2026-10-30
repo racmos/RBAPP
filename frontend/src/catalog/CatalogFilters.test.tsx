@@ -54,17 +54,20 @@ describe('CatalogFilters (F2-i S1)', () => {
     expect(screen.getByRole('button', { name: 'Set' })).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('shows "Limpiar filtros" at the top of the sidebar when filters are active', async () => {
+  it('shows one "Limpiar filtros", in the active filters row, not in the sidebar (S24 r)', async () => {
     signedInApi();
     const { where, container } = await renderApp({ path: '/cards?domain=Fury', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     const sidebar = container.querySelector('[data-testid="catalog-sidebar"]')!;
-    const clear = screen
-      .getAllByRole('button', { name: 'Limpiar filtros' })
-      .find((b) => sidebar.contains(b));
-    expect(clear).toBeDefined();
-    await userEvent.click(clear!);
+    const clear = screen.getByRole('button', { name: 'Limpiar filtros' });
+    expect(sidebar.contains(clear)).toBe(false);
+    expect(screen.getByRole('list', { name: /filtros? activos?/ })).toBeInTheDocument();
+    await userEvent.click(clear);
     await waitFor(() => expect(where()).toBe('/cards'), LONG);
+    await waitFor(
+      () => expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).toBeNull(),
+      LONG,
+    );
   });
 
   it('keeps facet counts readable while a request is in flight (aria-busy)', async () => {
@@ -93,6 +96,14 @@ describe('CatalogFilters (F2-i S1)', () => {
     await waitFor(() => expect(sidebar).not.toHaveAttribute('aria-busy'), LONG);
   });
 });
+
+/** The group is named by an element on screen, not by an `aria-label` alone. */
+function expectVisibleLabel(group: HTMLElement) {
+  const label = document.getElementById(group.getAttribute('aria-labelledby') ?? '');
+  expect(label).not.toBeNull();
+  expect(label!.closest('.sr-only')).toBeNull();
+  expect(label).toBeVisible();
+}
 
 /** The elements that show `text` on screen (an `sr-only` copy only names a control). */
 function shown(container: HTMLElement, text: string): HTMLElement[] {
@@ -133,6 +144,19 @@ describe('CatalogFilters headings (owner feedback S18 g)', () => {
     expect(within(sidebar).getByRole('combobox', { name: 'Baneos' })).toBeInTheDocument();
     expect(within(sidebar).getByRole('searchbox', { name: 'Texto de la carta' })).toBeVisible();
     expect(within(sidebar).getByRole('switch', { name: 'Solo versión base' })).toBeVisible();
+    // the heading names the owned tri-state; the domain match shows its own label (S24)
+    expect(within(sidebar).getByRole('radiogroup', { name: 'Colección' })).toBeVisible();
+    expectVisibleLabel(within(sidebar).getByRole('radiogroup', { name: 'Coincidencia' }));
+  });
+
+  it('shows what each tri-state of the sheet filters (owner feedback S24)', async () => {
+    signedInApi();
+    await renderApp({ path: '/cards', width: 390 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Filtros' }, LONG);
+    expectVisibleLabel(within(dialog).getByRole('radiogroup', { name: 'Colección' }));
+    expectVisibleLabel(within(dialog).getByRole('radiogroup', { name: 'Coincidencia' }));
   });
 
   it('names each sheet group once and translates the base types', async () => {

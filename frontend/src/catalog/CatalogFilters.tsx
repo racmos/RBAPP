@@ -1,12 +1,12 @@
 import { useCallback, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CardFacets, CardListParams, GameMeta } from '@/api/types';
-import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { ChipGroup, FilterChip } from '@/components/ui/FilterChip';
 import { Field } from '@/components/ui/Field';
 import { Icon } from '@/components/ui/Icon';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import { useEnumLabel } from '@/i18n';
@@ -45,10 +45,8 @@ export type CatalogFiltersProps = {
   meta: GameMeta | undefined;
   facets: CardFacets;
   total: number;
-  activeCount: number;
   resultsRef?: React.RefObject<HTMLElement | null>;
   onClose?: () => void;
-  onClear: () => void;
   isBusy?: boolean;
 };
 
@@ -75,8 +73,6 @@ export function CatalogFilters({
   setParams,
   meta,
   facets,
-  activeCount,
-  onClear,
   isBusy,
 }: CatalogFiltersProps) {
   const { t } = useTranslation('cards');
@@ -172,6 +168,7 @@ export function CatalogFilters({
       <div className={styles.matchControl}>
         <SegmentedControl
           label={t('catalog.facet.domainMatch')}
+          showLabel
           options={[
             { value: 'any', label: t('catalog.facet.any') },
             { value: 'all', label: t('catalog.facet.all') },
@@ -271,8 +268,11 @@ export function CatalogFilters({
     />
   );
 
+  // The sidebar heading already shows "Colección"; the sheet has no heading (S24).
   const renderOwned = () => (
     <SegmentedControl
+      label={t('catalog.facet.owned')}
+      showLabel={!inSidebar}
       options={[
         { value: 'any', label: t('catalog.facet.ownedAny') },
         { value: 'owned', label: t('catalog.facet.ownedOwned') },
@@ -384,19 +384,16 @@ export function CatalogFilters({
   }
 
   return (
-    <aside
+    // Folds away to its toggle (S23). No "Limpiar filtros" here: the active filters row above the
+    // results has the only one (S24 r).
+    <SidePanel
+      id="cards-filters"
+      kind="filters"
+      label={t('catalog.filters.title')}
       className={styles.sidebar}
       data-testid="catalog-sidebar"
-      aria-label={t('catalog.filters.title')}
       aria-busy={isBusy || undefined}
     >
-      {activeCount > 0 && (
-        <div className={styles.sidebarHeader}>
-          <Button variant="ghost" size="sm" onClick={onClear}>
-            {t('catalog.filters.clearAll')}
-          </Button>
-        </div>
-      )}
       <div className={styles.sidebarBody}>
         {groups.map((group) =>
           // A switch is named by its own label: wrapping it in a collapsible would repeat it.
@@ -414,7 +411,7 @@ export function CatalogFilters({
           ),
         )}
       </div>
-    </aside>
+    </SidePanel>
   );
 }
 

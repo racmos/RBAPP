@@ -2,15 +2,19 @@
   .panel {
     position: sticky;
     top: calc(64px + var(--gap));
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    width: 380px;
     max-height: calc(100dvh - 64px - 2 * var(--gap));
     padding: 14px;
     overflow-y: auto;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--panel-2);
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .empty,

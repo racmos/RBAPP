@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { CatalogTable } from './CatalogTable';
@@ -27,9 +28,14 @@ export function ProductsDesktop({ s }: { s: ProductsScreen }) {
   return (
     <div className={styles.page}>
       <div className={styles.layout} data-wide={wide || undefined}>
-        <aside className={styles.rail} aria-label={t('filters.title')}>
+        <SidePanel
+          id="products-filters"
+          kind="filters"
+          label={t('filters.title')}
+          className={styles.rail}
+        >
           <ProductsRail params={params} setParams={setParams} />
-        </aside>
+        </SidePanel>
 
         <div className={styles.main}>
           <PageHeader title={t('title')} />

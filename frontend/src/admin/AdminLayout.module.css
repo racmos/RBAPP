@@ -6,6 +6,7 @@
   }
 
   .nav {
+    width: 220px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--panel);
@@ -36,7 +37,8 @@
 
   @media (min-width: 1240px) {
     .layout {
-      grid-template-columns: 220px minmax(0, 1fr);
+      /* As wide as the nav (220 px): folded, it gives its width to the page (S23). */
+      grid-template-columns: auto minmax(0, 1fr);
     }
   }
 }

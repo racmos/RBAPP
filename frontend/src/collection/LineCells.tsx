@@ -82,6 +82,29 @@ function Euro({
   );
 }
 
+/** Cardmarket language names (the API values) as the short codes the table shows. */
+const LANGUAGE_CODES: Record<string, string> = {
+  English: 'EN',
+  French: 'FR',
+  German: 'DE',
+  Spanish: 'ES',
+  Italian: 'IT',
+  'Simplified Chinese': 'ZH',
+  'Traditional Chinese': 'ZH-TW',
+  Japanese: 'JA',
+  Portuguese: 'PT',
+  Russian: 'RU',
+  Korean: 'KO',
+};
+
+const codeOf = (kind: 'condition' | 'language', value: string) =>
+  kind === 'condition' ? value : (LANGUAGE_CODES[value] ?? value.slice(0, 2).toUpperCase());
+
+/**
+ * Compact for the table (owner feedback S24 q): the empty value shows "—", a condition its code
+ * ("NM") and a language its code ("FR"); the full names stay in the option text (the accessible
+ * name) and in the `title` tooltip.
+ */
 function Choice({
   kind,
   label,
@@ -102,15 +125,23 @@ function Choice({
   const listed = value !== null && !options.includes(value) ? [value, ...options] : options;
   return (
     <Select
-      className={styles.select}
+      className={styles.code}
+      title={value === null ? t('line.noValue') : enumLabel(kind, value)}
       aria-label={label}
       value={value ?? ''}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value === '' ? null : event.target.value)}
     >
-      <option value="">{t('line.noValue')}</option>
+      <option value="" label="—" title={t('line.noValue')}>
+        {t('line.noValue')}
+      </option>
       {listed.map((option) => (
-        <option key={option} value={option}>
+        <option
+          key={option}
+          value={option}
+          label={codeOf(kind, option)}
+          title={enumLabel(kind, option)}
+        >
           {enumLabel(kind, option)}
         </option>
       ))}

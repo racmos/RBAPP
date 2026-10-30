@@ -89,7 +89,8 @@
 
   @media (min-width: 1600px) {
     .layout {
-      grid-template-columns: minmax(0, 1fr) 420px;
+      /* As wide as the editor (420 px): folded, it gives its width to the table (S23). */
+      grid-template-columns: minmax(0, 1fr) auto;
     }
   }
 
@@ -106,6 +107,7 @@
   }
 
   .editorPanel {
+    width: 420px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--panel);

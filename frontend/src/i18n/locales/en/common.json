@@ -44,5 +44,21 @@
     "prev": "Previous",
     "next": "Next",
     "page": "Page {{page}} of {{pages}}"
+  },
+  "sidePanel": {
+    "hide": {
+      "filters": "Hide filters",
+      "detail": "Hide details",
+      "editor": "Hide editor",
+      "menu": "Hide menu",
+      "preview": "Hide preview"
+    },
+    "show": {
+      "filters": "Show filters",
+      "detail": "Show details",
+      "editor": "Show editor",
+      "menu": "Show menu",
+      "preview": "Show preview"
+    }
   }
 }

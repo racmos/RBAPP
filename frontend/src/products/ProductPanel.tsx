@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Lang } from '@/lib/format';
 import { AddProductForm, PriceFacts, ProductHistory, ProductLines } from './ProductSections';
@@ -39,12 +40,20 @@ export function ProductPanel({
 }) {
   const { t } = useTranslation('products');
   return (
-    <aside className={styles.panel} aria-label={t('panel.title')}>
+    // Folds away like the rail (owner feedback S23).
+    <SidePanel
+      id="products-detail"
+      kind="detail"
+      side="end"
+      label={t('panel.title')}
+      className={styles.panel}
+      contentClassName={styles.panelBody}
+    >
       {id === null ? (
         <p className={styles.empty}>{t('panel.empty')}</p>
       ) : (
         <PanelBody key={id} id={id} lang={lang} offline={offline} />
       )}
-    </aside>
+    </SidePanel>
   );
 }

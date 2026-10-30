@@ -6,21 +6,36 @@
     padding: var(--pad);
   }
 
+  /* The table uses the room a wide screen has (owner feedback S22); the grid from 1600 px. */
+  @media (min-width: 1240px) {
+    .page[data-view='table'] {
+      max-width: var(--maxw-wide);
+    }
+  }
+
+  @media (min-width: 1600px) {
+    .page {
+      max-width: var(--maxw-wide);
+    }
+  }
+
   .layout {
     display: grid;
     gap: var(--gap);
   }
 
+  /* The side columns are as wide as their panels (280 and 380 px), so a folded panel gives its
+     width to the results (owner feedback S23). */
   @media (min-width: 1240px) {
     .layout {
-      grid-template-columns: 280px minmax(0, 1fr);
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: start;
     }
   }
 
   @media (min-width: 1600px) {
     .layout[data-wide='true'] {
-      grid-template-columns: 280px minmax(0, 1fr) 380px;
+      grid-template-columns: auto minmax(0, 1fr) auto;
     }
   }
 

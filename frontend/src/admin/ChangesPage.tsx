@@ -24,6 +24,7 @@ import { sortSetsNewestFirst } from '@/lib/sets';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { ValueDiff } from './ValueDiff';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './ChangesPage.module.css';
 
@@ -276,15 +277,16 @@ export function ChangesPage() {
       <PageHeader title={t('changes.title')} subtitle={t('changes.subtitle')} />
       <div className={styles.toolbar}>
         <SegmentedControl
-          label={t('changes.status.pending')}
+          label={t('changes.statusLabel')}
+          showLabel
           options={statusOptions}
           value={params.get('status') ?? 'pending'}
           onChange={(status) => setParam('status', status)}
         />
         <label className={styles.filterField}>
-          {t('cards.filters.allSets')}
+          {t('cards.columns.set')}
           <Select
-            aria-label={t('cards.filters.allSets')}
+            aria-label={t('cards.columns.set')}
             value={params.get('set') ?? ''}
             disabled={offline}
             onChange={(event) => setParam('set', event.target.value || null)}
@@ -298,9 +300,9 @@ export function ChangesPage() {
           </Select>
         </label>
         <label className={styles.filterField}>
-          {t('changes.allFields')}
+          {t('changes.columns.field')}
           <Select
-            aria-label={t('changes.allFields')}
+            aria-label={t('changes.columns.field')}
             value={params.get('field') ?? ''}
             disabled={offline}
             onChange={(event) => setParam('field', event.target.value || null)}
@@ -354,91 +356,101 @@ export function ChangesPage() {
         />
       ) : desktop ? (
         <div className={wide ? styles.layout : undefined}>
-          {/* Long values wrap to the width, so the table scrolls with the page (one scroll). */}
-          <TableScroll fit role="region" aria-label={t('changes.caption')}>
-            <table className={styles.table}>
-              <caption className="sr-only">{t('changes.caption')}</caption>
-              <thead>
-                <tr>
-                  {!phone && (
-                    <th scope="col">
-                      <Checkbox
-                        label={t('changes.selectPage')}
-                        hideLabel
-                        checked={allChecked}
-                        disabled={offline || pendingOnPage.length === 0}
-                        onChange={(event) => togglePage(event.target.checked)}
-                      />
-                    </th>
-                  )}
-                  <th scope="col">{t('changes.columns.card')}</th>
-                  <th scope="col">{t('changes.columns.field')}</th>
-                  <th scope="col">{t('changes.columns.change')}</th>
-                  <th scope="col">{t('changes.columns.detected')}</th>
-                  <th scope="col">{t('changes.columns.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
+          <div className={styles.main}>
+            {/* Long values wrap to the width, so the table scrolls with the page (one scroll). */}
+            <TableScroll fit role="region" aria-label={t('changes.caption')}>
+              <table className={styles.table}>
+                <caption className="sr-only">{t('changes.caption')}</caption>
+                <thead>
+                  <tr>
                     {!phone && (
+                      <th scope="col">
+                        <Checkbox
+                          label={t('changes.selectPage')}
+                          hideLabel
+                          checked={allChecked}
+                          disabled={offline || pendingOnPage.length === 0}
+                          onChange={(event) => togglePage(event.target.checked)}
+                        />
+                      </th>
+                    )}
+                    <th scope="col">{t('changes.columns.card')}</th>
+                    <th scope="col">{t('changes.columns.field')}</th>
+                    <th scope="col">{t('changes.columns.change')}</th>
+                    <th scope="col">{t('changes.columns.detected')}</th>
+                    <th scope="col">{t('changes.columns.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id}>
+                      {!phone && (
+                        <td>
+                          {item.status === 'pending' && (
+                            <Checkbox
+                              label={t('changes.approveOne', {
+                                name: item.card_name ?? item.card_id,
+                              })}
+                              hideLabel
+                              checked={selected.includes(item.id)}
+                              disabled={offline}
+                              onChange={(event) => toggle(item.id, event.target.checked)}
+                            />
+                          )}
+                        </td>
+                      )}
+                      <td className={styles.cardCell}>
+                        {item.image_src && (
+                          <img src={item.image_src} alt="" className={styles.thumb} />
+                        )}
+                        <div>{item.card_name}</div>
+                        <div>
+                          {item.set_id} · #{item.card_id}
+                        </div>
+                      </td>
                       <td>
-                        {item.status === 'pending' && (
-                          <Checkbox
-                            label={t('changes.approveOne', {
-                              name: item.card_name ?? item.card_id,
-                            })}
-                            hideLabel
-                            checked={selected.includes(item.id)}
-                            disabled={offline}
-                            onChange={(event) => toggle(item.id, event.target.checked)}
-                          />
+                        {t(
+                          `changes.field.${item.field as FieldName}` as 'changes.field.rbcar_name',
                         )}
                       </td>
-                    )}
-                    <td className={styles.cardCell}>
-                      {item.image_src && (
-                        <img src={item.image_src} alt="" className={styles.thumb} />
-                      )}
-                      <div>{item.card_name}</div>
-                      <div>
-                        {item.set_id} · #{item.card_id}
-                      </div>
-                    </td>
-                    <td>
-                      {t(`changes.field.${item.field as FieldName}` as 'changes.field.rbcar_name')}
-                    </td>
-                    <td className={styles.valueCell}>
-                      <ValueDiff
-                        oldValue={item.old_value}
-                        newValue={item.new_value}
-                        layout="inline"
-                      />
-                    </td>
-                    <td>{item.detected_at ? formatDate(item.detected_at, lang) : '—'}</td>
-                    <td>
-                      <span className={styles.actions}>
-                        <RowActions
-                          item={item}
-                          disabled={offline}
-                          onDecide={(id, action) => decide.mutate({ id, action })}
+                      <td className={styles.valueCell}>
+                        <ValueDiff
+                          oldValue={item.old_value}
+                          newValue={item.new_value}
+                          layout="inline"
                         />
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
-          <Pagination
-            page={meta.page}
-            pages={meta.pages}
-            onChange={(page) => setParam('page', String(page))}
-          />
+                      </td>
+                      <td>{item.detected_at ? formatDate(item.detected_at, lang) : '—'}</td>
+                      <td>
+                        <span className={styles.actions}>
+                          <RowActions
+                            item={item}
+                            disabled={offline}
+                            onDecide={(id, action) => decide.mutate({ id, action })}
+                          />
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
+            <Pagination
+              page={meta.page}
+              pages={meta.pages}
+              onChange={(page) => setParam('page', String(page))}
+            />
+          </div>
           {wide && (
-            <div className={styles.editorPanel}>
+            <SidePanel
+              id="admin-changes-detail"
+              kind="detail"
+              side="end"
+              label={t('panels.detail')}
+              className={styles.editorPanel}
+            >
               {detail ? <ChangeDetail item={detail} /> : <p>{t('sets.pickOne')}</p>}
-            </div>
+            </SidePanel>
           )}
         </div>
       ) : (

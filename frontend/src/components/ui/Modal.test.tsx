@@ -1,5 +1,7 @@
+import { join } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { SRC_DIR, declsFor, readCss } from '@/test/css';
 import { createI18n } from '@/i18n';
 import { Modal } from './Modal';
 import styles from './Modal.module.css';
@@ -41,5 +43,24 @@ describe('Modal (F2-f S10)', () => {
     await renderModal({ size: 'xl' });
     expect(screen.getByRole('heading', { name: 'Test modal' })).toBeVisible();
     expect(screen.getByText('Content')).toBeVisible();
+  });
+});
+
+describe('Modal surface (owner feedback S24 o)', () => {
+  const css = readCss(join(SRC_DIR, 'components/ui/Modal.module.css'));
+  const last = (selector: string, prop: string) =>
+    declsFor(css, selector).findLast((decl) => decl.prop === prop)?.value;
+
+  it('is opaque: the page behind a sheet or a dialog never shows through', () => {
+    // the panel tone over an opaque base, like the combobox popup
+    expect(last('.surface', 'background-color')).toBe('var(--bg-0)');
+    expect(last('.surface', 'background-image')).toBe(
+      'linear-gradient(var(--panel-3), var(--panel-3))',
+    );
+    expect(declsFor(css, '.surface').some((decl) => decl.prop === 'background')).toBe(false);
+  });
+
+  it('keeps the backdrop dim and translucent', () => {
+    expect(last('.dialog::backdrop', 'background')).toBe('rgba(3, 14, 19, 0.72)');
   });
 });

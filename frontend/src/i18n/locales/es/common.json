@@ -44,5 +44,21 @@
     "prev": "Anterior",
     "next": "Siguiente",
     "page": "Página {{page}} de {{pages}}"
+  },
+  "sidePanel": {
+    "hide": {
+      "filters": "Ocultar filtros",
+      "detail": "Ocultar detalle",
+      "editor": "Ocultar editor",
+      "menu": "Ocultar menú",
+      "preview": "Ocultar vista previa"
+    },
+    "show": {
+      "filters": "Mostrar filtros",
+      "detail": "Mostrar detalle",
+      "editor": "Mostrar editor",
+      "menu": "Mostrar menú",
+      "preview": "Mostrar vista previa"
+    }
   }
 }
