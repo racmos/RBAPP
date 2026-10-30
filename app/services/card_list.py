@@ -24,7 +24,11 @@ def _price_as_of() -> str | None:
 
 
 def parse_card(card: RbCard, set_rank: dict[str, int]) -> dict:
-    parsed_type, supertype = catalog.parse_type(card.rbcar_type)
+    """A card as the filters and facets see it: `type`/`supertypes` and `domains` are base
+    values ("Champion Unit" is type Unit and supertype Champion, "Body Chaos" is Body and
+    Chaos, a bare "Token" has supertype Token and no type)."""
+    parsed_type, _ = catalog.parse_type(card.rbcar_type)
+    facet_type, supertypes = catalog.type_facets(card.rbcar_type)
     domains = catalog.parse_domains(card.rbcar_domain)
     tags = catalog.parse_tags(card.rbcar_tags)
     return {
@@ -32,10 +36,10 @@ def parse_card(card: RbCard, set_rank: dict[str, int]) -> dict:
         'set_id_lower': (card.rbcar_rbset_id or '').casefold(),
         'name_lower': (card.rbcar_name or '').casefold(),
         'ability_lower': (card.rbcar_ability or '').casefold(),
-        'type': parsed_type,
-        'type_lower': (parsed_type or '').casefold(),
-        'supertype': supertype,
-        'supertype_lower': (supertype or '').casefold(),
+        'type': facet_type,
+        'type_lower': (facet_type or '').casefold(),
+        'supertypes': supertypes,
+        'supertypes_lower': {s.casefold() for s in supertypes},
         'domains': domains,
         'domains_lower': {d.casefold() for d in domains},
         'tags': tags,
@@ -108,12 +112,12 @@ def _matches(query: CardListQuery, p: dict, prices: dict, bans: dict,
 
     if query.supertype:
         wanted = {s.casefold() for s in query.supertype}
-        if p['supertype_lower'] not in wanted:
+        if not wanted & p['supertypes_lower']:
             return False
 
     if query.exclude_supertype:
         unwanted = {s.casefold() for s in query.exclude_supertype}
-        if p['supertype'] is not None and p['supertype_lower'] in unwanted:
+        if unwanted & p['supertypes_lower']:
             return False
 
     if query.tag:
@@ -258,8 +262,8 @@ def _count_values(facet: str, parsed: list[dict]) -> dict:
                 counts[p['type']] = counts.get(p['type'], 0) + 1
     elif facet == 'supertype':
         for p in parsed:
-            if p['supertype'] is not None:
-                counts[p['supertype']] = counts.get(p['supertype'], 0) + 1
+            for supertype in p['supertypes']:
+                counts[supertype] = counts.get(supertype, 0) + 1
     elif facet == 'rarity':
         for p in parsed:
             if p['card'].rbcar_rarity is not None:

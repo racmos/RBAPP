@@ -12,7 +12,7 @@ from app.api.v1 import api_v1
 from app.schemas.game_domain import (CARD_TYPES, CONDITIONS, DOMAINS, GAME_MODES, LANGUAGES,
                                      RARITIES, SUPERTYPES)
 from app.services.captcha import get_captcha_provider
-from app.services.catalog import parse_type, set_order
+from app.services.catalog import parse_domains, set_order, type_facets
 
 
 @api_v1.get('/health')
@@ -65,11 +65,16 @@ def meta_game():
     from app.models.cardmarket import RbcmPrice
     from app.models.set import RbSet
 
-    supertypes = set()
+    # Base values only (owner feedback S18): "Champion Unit" is type Unit and supertype
+    # Champion, "Body Chaos" is Body and Chaos, a bare "Token" is supertype Token.
+    types, supertypes = set(), set()
     for raw in _distinct(RbCard.rbcar_type):
-        _, supertype = parse_type(raw)
-        if supertype:
-            supertypes.add(supertype)
+        card_type, words = type_facets(raw)
+        if card_type:
+            types.add(card_type)
+        supertypes.update(words)
+    domains = {domain for raw in _distinct(RbCard.rbcar_domain)
+               for domain in parse_domains(raw)}
 
     sets = db.session.query(RbSet).all()
     order = set_order(sets)
@@ -80,9 +85,9 @@ def meta_game():
     latest = db.session.query(func.max(RbcmPrice.rbprc_date)).scalar()
     body = ok({
         'modes': list(GAME_MODES),
-        'domains': _extra_known(_distinct(RbCard.rbcar_domain), DOMAINS),
-        'types': _extra_known(_distinct(RbCard.rbcar_type), CARD_TYPES),
-        'supertypes': _extra_known(sorted(supertypes), SUPERTYPES),
+        'domains': _extra_known(domains, DOMAINS),
+        'types': _extra_known(types, CARD_TYPES),
+        'supertypes': _extra_known(supertypes, SUPERTYPES),
         'rarities': _extra_known(_distinct(RbCard.rbcar_rarity), RARITIES),
         'sets': [{'id': row.rbset_id, 'name': row.rbset_name,
                   'released_on': row.rbset_outdat.isoformat() if row.rbset_outdat else None,

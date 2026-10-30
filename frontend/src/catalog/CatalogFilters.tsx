@@ -80,6 +80,9 @@ export function CatalogFilters({
 }: CatalogFiltersProps) {
   const { t } = useTranslation('cards');
   const { label } = useEnumLabel();
+  // The sidebar names each group with its collapsible heading, so the group's own legend or
+  // label is kept for assistive technology only (one visible heading per group, S18 g).
+  const inSidebar = mode === 'sidebar';
 
   const [openGroups, setOpenGroups] = useState<GroupId[]>(() => readOpenGroups());
 
@@ -147,7 +150,7 @@ export function CatalogFilters({
 
   const renderDomain = () => (
     <>
-      <ChipGroup legend={t('catalog.facet.domain')}>
+      <ChipGroup legend={t('catalog.facet.domain')} hideLegend={inSidebar}>
         {meta?.domains.map((domain) => {
           const selected = params.domain?.includes(domain) ?? false;
           const count = showCount(facets.domain, domain);
@@ -179,7 +182,7 @@ export function CatalogFilters({
   );
 
   const renderType = () => (
-    <ChipGroup legend={t('catalog.facet.type')}>
+    <ChipGroup legend={t('catalog.facet.type')} hideLegend={inSidebar}>
       {meta?.types.map((type) => {
         const selected = params.type?.includes(type) ?? false;
         return (
@@ -196,7 +199,7 @@ export function CatalogFilters({
   );
 
   const renderSupertype = () => (
-    <ChipGroup legend={t('catalog.facet.supertype')}>
+    <ChipGroup legend={t('catalog.facet.supertype')} hideLegend={inSidebar}>
       {meta?.supertypes.map((supertype) => {
         const selected = params.supertype?.includes(supertype) ?? false;
         return (
@@ -213,7 +216,7 @@ export function CatalogFilters({
   );
 
   const renderRarity = () => (
-    <ChipGroup legend={t('catalog.facet.rarity')}>
+    <ChipGroup legend={t('catalog.facet.rarity')} hideLegend={inSidebar}>
       {meta?.rarities.map((rarity) => {
         const selected = params.rarity?.includes(rarity) ?? false;
         return (
@@ -231,7 +234,7 @@ export function CatalogFilters({
   );
 
   const renderTags = () => (
-    <ChipGroup legend={t('catalog.facet.tags')}>
+    <ChipGroup legend={t('catalog.facet.tags')} hideLegend={inSidebar}>
       {facets.tag?.map(({ tag, count }) => {
         const selected = params.tag?.includes(tag) ?? false;
         return (
@@ -260,6 +263,7 @@ export function CatalogFilters({
       min={params[minKey]}
       max={params[maxKey]}
       step={step}
+      hideLegend={inSidebar}
       onChange={setParams}
     />
   );
@@ -276,28 +280,29 @@ export function CatalogFilters({
     />
   );
 
-  const renderBanned = () => (
-    <Field label={t('catalog.facet.banned')}>
-      {(props) => (
-        <Select
-          {...props}
-          value={params.banned_in ?? ''}
-          onChange={(event) =>
-            setParams({
-              banned_in: event.target.value
-                ? (event.target.value as '1v1' | '2v2' | 'any')
-                : undefined,
-            })
-          }
-        >
-          <option value="">{t('catalog.facet.bannedNone')}</option>
-          <option value="1v1">{t('catalog.facet.banned1v1')}</option>
-          <option value="2v2">{t('catalog.facet.banned2v2')}</option>
-          <option value="any">{t('catalog.facet.bannedAny')}</option>
-        </Select>
-      )}
-    </Field>
+  const bannedSelect = (props: { id?: string; 'aria-label'?: string }) => (
+    <Select
+      {...props}
+      value={params.banned_in ?? ''}
+      onChange={(event) =>
+        setParams({
+          banned_in: event.target.value ? (event.target.value as '1v1' | '2v2' | 'any') : undefined,
+        })
+      }
+    >
+      <option value="">{t('catalog.facet.bannedNone')}</option>
+      <option value="1v1">{t('catalog.facet.banned1v1')}</option>
+      <option value="2v2">{t('catalog.facet.banned2v2')}</option>
+      <option value="any">{t('catalog.facet.bannedAny')}</option>
+    </Select>
   );
+
+  const renderBanned = () =>
+    inSidebar ? (
+      bannedSelect({ 'aria-label': t('catalog.facet.banned') })
+    ) : (
+      <Field label={t('catalog.facet.banned')}>{(props) => bannedSelect(props)}</Field>
+    );
 
   const renderBase = () => (
     <Switch
@@ -307,19 +312,22 @@ export function CatalogFilters({
     />
   );
 
-  const renderText = () => (
-    <Field label={t('catalog.facet.text')}>
-      {(props) => (
-        <DebouncedInput
-          {...props}
-          type="search"
-          value={params.text ?? ''}
-          delay={INPUT_DEBOUNCE_MS}
-          onCommit={(next) => setParams({ text: next || undefined })}
-        />
-      )}
-    </Field>
+  const textInput = (props: { id?: string; 'aria-label'?: string }) => (
+    <DebouncedInput
+      {...props}
+      type="search"
+      value={params.text ?? ''}
+      delay={INPUT_DEBOUNCE_MS}
+      onCommit={(next) => setParams({ text: next || undefined })}
+    />
   );
+
+  const renderText = () =>
+    inSidebar ? (
+      textInput({ 'aria-label': t('catalog.facet.text') })
+    ) : (
+      <Field label={t('catalog.facet.text')}>{(props) => textInput(props)}</Field>
+    );
 
   const groups: {
     id: GroupId;
@@ -387,16 +395,21 @@ export function CatalogFilters({
         </div>
       )}
       <div className={styles.sidebarBody}>
-        {groups.map((group) => (
-          <Collapsible
-            key={group.id}
-            title={group.title}
-            open={openGroups.includes(group.id)}
-            onToggle={() => toggleGroup(group.id)}
-          >
-            {group.render('sidebar')}
-          </Collapsible>
-        ))}
+        {groups.map((group) =>
+          // A switch is named by its own label: wrapping it in a collapsible would repeat it.
+          group.id === 'base' ? (
+            <div key={group.id}>{group.render('sidebar')}</div>
+          ) : (
+            <Collapsible
+              key={group.id}
+              title={group.title}
+              open={openGroups.includes(group.id)}
+              onToggle={() => toggleGroup(group.id)}
+            >
+              {group.render('sidebar')}
+            </Collapsible>
+          ),
+        )}
       </div>
     </aside>
   );
@@ -442,15 +455,26 @@ type RangeGroupProps = {
   min: number | undefined;
   max: number | undefined;
   step?: number;
+  /** Keeps the legend for assistive technology only (the sidebar heading shows it). */
+  hideLegend?: boolean;
   onChange: (patch: Partial<CardListParams>) => void;
 };
 
-function RangeGroup({ label, minKey, maxKey, min, max, step, onChange }: RangeGroupProps) {
+function RangeGroup({
+  label,
+  minKey,
+  maxKey,
+  min,
+  max,
+  step,
+  hideLegend,
+  onChange,
+}: RangeGroupProps) {
   const { t } = useTranslation('cards');
 
   return (
     <fieldset className={styles.fieldset}>
-      <legend className={styles.legend}>{label}</legend>
+      <legend className={hideLegend ? 'sr-only' : styles.legend}>{label}</legend>
       <div className={styles.range}>
         <Field label={t('catalog.facet.min')}>
           {(props) => (
