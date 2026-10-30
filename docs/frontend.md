@@ -440,7 +440,9 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
 
 - `CatalogPage` — the `/cards` layout: toolbar (search, sort, direction, view, page size from
   1240 px), filters (`CatalogFilters`: sheet below 1240, sticky collapsible sidebar at
-  ≥ 1240 with `aria-expanded` groups remembered in `rb_cards_facets`), active chips, grid/list
+  ≥ 1240 with `aria-expanded` groups remembered in `rb_cards_facets`; one visible heading per
+  group: in the sidebar the group's own legend or label is `sr-only` (`ChipGroup hideLegend`) and
+  the "Solo versión base" switch is not collapsible), active chips, grid/list
   results, pagination and states. URL parameters mirror the API names (`params.ts`:
   parse/serialize/round-trip; text search debounced with `replace`, other changes push; scroll
   restored per search string). The detail opens as a modal over the catalog at ≥ 860 px and as

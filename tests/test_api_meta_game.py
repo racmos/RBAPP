@@ -41,9 +41,10 @@ def test_shape_order_and_extras(app, client):
     assert data['modes'] == ['1v1', '2v2']
     assert data['domains'][:7] == ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order',
                                    'Colorless']
-    assert data['domains'][7:] == ['Fury Chaos', 'Weird']
+    # Base values only (owner feedback S18): "Fury Chaos" and "Champion Unit" are split.
+    assert data['domains'][7:] == ['Weird']
     assert data['types'][:6] == ['Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield']
-    assert data['types'][6:] == ['Champion Unit', 'Creature']
+    assert data['types'][6:] == ['Creature']
     assert data['supertypes'] == ['Champion', 'Signature', 'Token', 'Basic']
     assert data['rarities'] == ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase', 'Mythic']
     assert data['sets'] == [

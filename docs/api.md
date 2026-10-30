@@ -39,7 +39,12 @@ Public endpoints under `/riftbound/api/v1/` (auth and preferences live in
 Anonymous and signed-in callers get 200; `Cache-Control: no-cache`. Response `data`
 is a `GameMeta` (see "Data shapes"): `modes` from `GAME_MODES`; `domains`, `types`,
 `supertypes`, `rarities` are the S1 tuples of `app/schemas/game_domain.py` followed by
-any other distinct non-empty value found in the data (sorted case-insensitively);
+any other distinct non-empty value found in the data (sorted case-insensitively). Types,
+supertypes and domains are base values, never the stored compounds: `rbcar_type`
+"Champion Unit" gives type `Unit` and supertype `Champion`, a bare "Token" only supertype
+`Token`, and `rbcar_domain` "Body Chaos" gives `Body` and `Chaos`
+(`catalog.type_facets` / `catalog.parse_domains`), so only a truly unknown word (type
+"Creature", domain "Weird") is appended;
 `sets` are every `rbset` row ordered by release date (NULLs last), then id, each with
 `{id, name, released_on (ISO|null), card_count}`; `price` is
 `{provider: "cardmarket", currency: "EUR", updated_on (ISO|null)}` where `updated_on`
@@ -89,8 +94,14 @@ and yields an empty result):
 Filter rules (case-insensitive; OR inside a parameter, AND across parameters):
 `q` matches name/tag substring, `card_id`, `key` (`OGN-79a`), or the card `number`
 when `q` is digits-only; `text` matches the ability; `set`/`rarity`/parsed
-`type`/`supertype` match their lists; `exclude_supertype` drops listed supertypes
-(cards without supertype stay); `tag` needs one listed tag; `domain_match` = `any`
+`type`/`supertype` match their lists; `exclude_supertype` drops cards with a listed
+supertype (cards without supertype stay). Types, supertypes and domains are base values
+(`catalog.type_facets`, `catalog.parse_domains`): "Champion Unit" is type `Unit` and
+supertype `Champion`, "Token Battlefield" type `Battlefield` and supertype `Token`, a bare
+"Token" supertype `Token` with no type, "Body Chaos" domains `Body` and `Chaos`; a card
+counts in the facets under each of its base values and `type=Unit` / `domain=Body` /
+`supertype=Token` match it the same way. `CardSummary.type`/`supertype`/`type_raw` are
+unchanged (a bare "Token" is still `type: "Token"`, `supertype: null` there); `tag` needs one listed tag; `domain_match` = `any`
 shares a domain, `all` requires every listed domain, `subset` requires every card
 domain to be listed (a card without domains matches); ranges are inclusive and
 exclude null-valued cards once bounded; price bounds apply to `price.market` and
@@ -144,7 +155,8 @@ substring, card id, key `SET-ID` or tag), repeated `set`, `domain`, `type`, `rar
 `has_purchase=any|yes|no`; `sort=number|name|price|qty|value|pl|trend_7d|updated|rarity`
 (`number` default; nulls last in both directions; ties by catalog order, non-foil first),
 `dir=asc|desc`, `page`, `per_page` 25-200 (default 50). Card filters (`q`, `set`, `domain`,
-`type`, `rarity`) drop groups; line filters (`foil`, `selling`, `condition`, `language`,
+`type`, `rarity`) drop groups; `type` and `domain` match base values as in `GET /cards`
+(`type=Unit` keeps "Champion Unit", `domain=Body` keeps "Body Chaos"); line filters (`foil`, `selling`, `condition`, `language`,
 `has_purchase`) drop lines, and a group lists and adds up only its matching lines.
 `data.items` are `CollectionGroup`s; `meta` is `{page, per_page, total_groups, pages,
 totals, facets, price_as_of, playset_size}`. `totals` cover every matching line, not only

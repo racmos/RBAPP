@@ -64,15 +64,17 @@ export function FilterChip({ label, pressed, count, color, onClick, onRemove }: 
 
 type ChipGroupProps = {
   legend: ReactNode;
+  /** Keeps the legend for assistive technology only (a heading above already shows it). */
+  hideLegend?: boolean;
   children: ReactNode;
 };
 
 /** A group of chips named by its legend (F2-h S11). */
-export function ChipGroup({ legend, children }: ChipGroupProps) {
+export function ChipGroup({ legend, hideLegend, children }: ChipGroupProps) {
   const legendId = useId();
   return (
     <div role="group" aria-labelledby={legendId} className={styles.group}>
-      <div id={legendId} className={styles.legend}>
+      <div id={legendId} className={hideLegend ? 'sr-only' : styles.legend}>
         {legend}
       </div>
       <div className={styles.items}>{children}</div>

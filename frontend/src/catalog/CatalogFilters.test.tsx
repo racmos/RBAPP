@@ -94,6 +94,62 @@ describe('CatalogFilters (F2-i S1)', () => {
   });
 });
 
+/** The elements that show `text` on screen (an `sr-only` copy only names a control). */
+function shown(container: HTMLElement, text: string): HTMLElement[] {
+  return within(container)
+    .queryAllByText(text, { exact: true })
+    .filter((element) => !element.closest('.sr-only'));
+}
+
+const GROUP_TITLES = [
+  'Set',
+  'Dominio',
+  'Tipo',
+  'Supertipo',
+  'Rareza',
+  'Coste de energía',
+  'Poder',
+  'Fuerza',
+  'Precio (€)',
+  'Colección',
+  'Baneos',
+  'Solo versión base',
+  'Texto de la carta',
+  'Etiquetas',
+];
+
+describe('CatalogFilters headings (owner feedback S18 g)', () => {
+  it('shows one heading per sidebar group and keeps every control named', async () => {
+    signedInApi();
+    await renderApp({ path: '/cards', width: 1280 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    const sidebar = screen.getByTestId('catalog-sidebar');
+    for (const title of GROUP_TITLES) {
+      expect(shown(sidebar, title), title).toHaveLength(1);
+    }
+    for (const name of ['Dominio', 'Tipo', 'Supertipo', 'Rareza', 'Coste de energía']) {
+      expect(within(sidebar).getByRole('group', { name })).toBeInTheDocument();
+    }
+    expect(within(sidebar).getByRole('combobox', { name: 'Baneos' })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('searchbox', { name: 'Texto de la carta' })).toBeVisible();
+    expect(within(sidebar).getByRole('switch', { name: 'Solo versión base' })).toBeVisible();
+  });
+
+  it('names each sheet group once and translates the base types', async () => {
+    signedInApi();
+    await renderApp({ path: '/cards', width: 390 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Filtros' }, LONG);
+    for (const title of ['Dominio', 'Tipo', 'Supertipo', 'Rareza']) {
+      expect(shown(dialog, title), title).toHaveLength(1);
+    }
+    const types = within(dialog).getByRole('group', { name: 'Tipo' });
+    expect(within(types).getByRole('button', { name: /^Unidad/ })).toBeInTheDocument();
+    expect(within(types).queryByText(/Champion|Unit$/)).not.toBeInTheDocument();
+  });
+});
+
 describe('CatalogFilters numeric ranges', () => {
   it('keeps the digits typed while the URL waits for the debounce', async () => {
     signedInApi();

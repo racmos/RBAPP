@@ -54,6 +54,30 @@ def parse_type(text):
     return text.strip(), None
 
 
+def type_facets(text):
+    """`(type, [supertypes])` of `rbcar_type` for facets and filters (owner feedback S18).
+
+    Like `parse_type`, but the supertypes come one per word and a type made only of
+    supertypes (a bare "Token") has no base type. Unknown words stay as written.
+    """
+    if not text or not text.strip():
+        return None, []
+    words = [_canonical(word, SUPERTYPES) for word in text.split()]
+    known_type = _canonical(words[-1], CARD_TYPES)
+    if known_type in CARD_TYPES:
+        return known_type, list(dict.fromkeys(words[:-1]))
+    if all(word in SUPERTYPES for word in words):
+        return None, list(dict.fromkeys(words))
+    return text.strip(), []
+
+
+def _canonical(word, known):
+    for value in known:
+        if word.lower() == value.lower():
+            return value
+    return word
+
+
 def parse_tags(text):
     """Comma-separated tags, stripped, no empties, order kept."""
     if not text:
