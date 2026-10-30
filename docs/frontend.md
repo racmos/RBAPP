@@ -184,6 +184,11 @@ Pages sit under a pathless route with `ShellError` as its `errorElement`, so a p
 throws keeps the topbar; its retry resets the failed queries and renders the page again.
 Unknown paths render `NotFound` inside the shell.
 
+**Content width.** `main` caps the content at `--maxw` (1280 px) and at `--maxw-wide` from `2xl`.
+A page whose table needs the room marks its root `data-width="wide"` and gets `--maxw-wide` from
+`xl` (1240 px) through `.content:has([data-width='wide'])`; the topbar bar follows it so the edges
+line up. The collection desktop page and the card table view do (owner feedback S22, S24 q).
+
 **Topbar widths.** From `md` the topbar navigation shows icons only, each link keeping its text
 as its accessible name (visually hidden) and as a `title` tooltip; the texts appear from `2xl`.
 Logout and the install entry are icons with a name and a tooltip at every width; the username
@@ -235,7 +240,11 @@ English.
 create the page next to `AdminLayout.tsx`, add the child route under `/admin` in
 `src/app/routes.tsx` (inside the shell, guarded by `requireAdmin`), and put its strings in the
 `admin` namespace. The nav (`NavLink` at ≥ 1240 px, `Select` below) and the mobile hint come
-from `AdminLayout`; the page only renders its `PageHeader` and content.
+from `AdminLayout`; the page only renders its `PageHeader` and content. The desktop nav is a
+`SidePanel` (`admin-nav`, "Ocultar menú"); the persistent editor or detail panels of sets, products
+and Riot changes at ≥ 1600 px are `SidePanel`s too (`admin-sets-editor`, `admin-products-editor`,
+`admin-changes-detail`), in a grid column sized `auto`. The Riot changes status filter shows its
+label ("Estado") and the set and field selects are labelled "Set" and "Campo" (S24).
 
 **Products admin (F14-d).** `/admin/products` (`src/admin/ProductsAdminPage.tsx`, nav entry
 `products`) lists `GET /admin/products` with its filters in the URL (`q`, repeated `kind`,
@@ -299,7 +308,7 @@ Desktop (F14-f). `ProductsPage` picks `ProductsMobile` (the F14-e layout above) 
 (`up('xl')`) and `ProductsDesktop` from there; both read `useProductsScreen` (tab, URL params,
 `setParams`, owned lines) and render `ProductTabs`. `params.ts` also carries `owned=owned` ("solo los
 míos", counted as a filter and cleared with the others). `ProductsDesktop`: a sticky 240 px rail
-(`ProductsRail`, `aside` "Filtros": search, kind checkboxes with facet counts, `SetSelect`, the
+(`ProductsRail` in a `SidePanel` `products-filters`, "Filtros": search, kind checkboxes with facet counts, `SetSelect`, the
 `Switch` "Solo los míos"; any rail change shows the catalog tab) and, under the tabs, `CatalogTable`
 (caption "Productos de Cardmarket"; image, name, kind, set, price, 7 d and 30 d signed in the text,
 `×N` owned, "Ya no aparece" badge when `listed` is false; name, price, 7 d and 30 d headers sort with
@@ -307,7 +316,7 @@ míos", counted as a filter and cleared with the others). `ProductsDesktop`: a s
 (caption "Tus productos"; `MineSummary` band, quantity `Stepper`, purchase price and note inline,
 labelled `<column>: <product>` and saved with `useProductLineSaver`; the name opens
 `ProductLineSheet`). From 1600 px (`up('2xl')`) a row click selects the product for the sticky 380 px
-`ProductPanel` (`aside` "Detalle del producto": image, price facts, 90-day `ProductHistory`,
+`ProductPanel` (`SidePanel` `products-detail`, "Detalle del producto": image, price facts, 90-day `ProductHistory`,
 `ProductLines`, `AddProductForm`, shared with `ProductDetail` through `ProductSections.tsx`); below it a
 row click opens `/products/:id`. Clicks on inline editors never reach the row.
 
@@ -326,6 +335,21 @@ row click opens `/products/:id`. Clicks on inline editors never reach the row.
 - **Dropdowns.** Use `components/ui/Select` only; the guard test fails on a raw `<select>`. It
   drops the platform look (`appearance: none`, its own arrow), uses an opaque dark field with dark
   options and 16 px text below 860 px (iOS zooms into smaller fields).
+- **Side panels.** Every filter, detail, editor or preview column at a side of a page (and the
+  admin nav) is a `components/ui/SidePanel` (owner feedback S23): `id` (the collapsed state is
+  remembered in `localStorage` `rb_panel_<id>_v1`, `collapsed` | `expanded`), `kind`
+  (`filters` | `detail` | `editor` | `menu` | `preview`, which names the toggle "Ocultar filtros" /
+  "Mostrar filtros"… from `common:sidePanel`), `label` (the region name), `side`, `as` (`aside` or
+  `nav`), `className` (look and width) and `contentClassName` (layout of the content); other
+  attributes reach the region. The toggle has `aria-expanded` and `aria-controls`; the content stays
+  mounted and is `hidden` while collapsed. Collapsed, the panel shrinks to its toggle: give the
+  panel its width in its own class and the grid column `auto`, so the main column takes the freed
+  width. Phone sheets are unchanged.
+- **Segmented controls.** A filter must say what it filters (S24): `SegmentedControl showLabel`
+  shows `label` above the options and names the group with it (`aria-labelledby`). Without it the
+  label is only the accessible name (view toggles, chart ranges).
+- **Dialogs and sheets.** The `Modal` surface is opaque (`--bg-0` under the `--panel-3` tone); only
+  the backdrop dims the page (S24 o).
 - **Checkboxes.** `components/ui/Checkbox` is a toggle button that lights up when checked (accent
   fill, dark ink, glow, check mark as the non-colour cue). It is still a native checkbox, stretched
   over the button and transparent, so `getByRole('checkbox', {name})`, Space and the focus ring
@@ -446,19 +470,27 @@ folders. The boundary is enforced by `frontend/eslint.config.js` and tested in
 Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen, like `account/`):
 
 - `CatalogPage` — the `/cards` layout: toolbar (search, sort, direction, view, page size from
-  1240 px), filters (`CatalogFilters`: sheet below 1240, sticky collapsible sidebar at
-  ≥ 1240 with `aria-expanded` groups remembered in `rb_cards_facets`; one visible heading per
-  group: in the sidebar the group's own legend or label is `sr-only` (`ChipGroup hideLegend`) and
-  the "Solo versión base" switch is not collapsible), active chips, grid/list
-  results, pagination and states. URL parameters mirror the API names (`params.ts`:
+  1240 px), filters (`CatalogFilters`: sheet below 1240, a `SidePanel` sidebar at ≥ 1240
+  (`cards-filters`, folds away) with `aria-expanded` groups remembered in `rb_cards_facets`; one
+  visible heading per group: in the sidebar the group's own legend or label is `sr-only`
+  (`ChipGroup hideLegend`) and the "Solo versión base" switch is not collapsible; the "Coincidencia"
+  and, in the sheet, "Colección" tri-states show their label), active chips, grid/list results,
+  pagination and states. "Limpiar filtros" appears once, at the end of the active filters row
+  (every active filter has a chip there); the sidebar has none (S24 r). The sheet keeps its footer
+  "Limpiar". URL parameters mirror the API names (`params.ts`:
   parse/serialize/round-trip; text search debounced with `replace`, other changes push; scroll
   restored per search string). The detail opens as a modal over the catalog at ≥ 860 px and as
   a page below; `navRegistry` entry `cards` is `spa` (the classic Jinja page stays linked as
   "Versión clásica").
-- `CatalogTable` — the table view (860 px and up, optional): 13 columns below 1240 (scroll
-  wrapper), 16 with tags/foil/30 d at ≥ 1240 (sticky header); sortable headers with `aria-sort`
-  (price and trends start descending). Numbers use `tabular-nums`.
-- `CatalogPreview` — the ≥ 1600 px third column: art, prices + foil, 30-day `Sparkline`
+- `CatalogTable` — the table view (860 px and up, optional): 13 columns below 1240 in a horizontal
+  scroll box (`min-width: 920px`); 16 with tags/foil/30 d at ≥ 1240 in `TableScroll fit`, so the page
+  is the only vertical scroll and the header sticks below the topbar (owner feedback S22). Fitted, the
+  cells are tighter, names and types wrap between words, a price stacks over its trend chip, and the
+  box is a size container: below 1100 px the tags, foil and 30 d columns are hidden (the sidebar open
+  at 1240–1440 px), so nothing is clipped. In table view the page asks for the wide width
+  (`data-width="wide"`). Sortable headers with `aria-sort` (price and trends start descending).
+  Numbers use `tabular-nums`.
+- `CatalogPreview` — the ≥ 1600 px third column (a `SidePanel`, `cards-preview`): art, prices + foil, 30-day `Sparkline`
   (`useCardPrices(…, '30d')`), owned and a link opening the modal; tiles become `aria-pressed`
   buttons selecting via the `selected` URL param (default: first result); empty results show
   `preview.empty`.
@@ -485,7 +517,8 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   component, so it also works inside a `Modal` (`--z-popover`). The topbar uses it at ≥ 1240 px as
   the global "Buscar cartas" box; `/` focuses it from anywhere except an editable field, and
   choosing a card navigates to `/cards/<set>/<id>` with state `{ fromCatalog: true }` (a modal
-  over the catalog at ≥ 860 px).
+  over the catalog at ≥ 860 px). Below 860 px the popup is as wide as its field (it ran past the
+  sheet's edge, S24 p); from 860 px it may grow to 420 px past a narrow field.
 - `useSearchNavigation()` — `{ current, go }` for the screens whose filters live in the URL
   (catalog, collection, products). The router applies a navigation inside a React transition, so the
   rendered `useSearchParams` can lag behind it; `current()` is the search of the last `go()` until the
@@ -497,7 +530,8 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   envelope carries `meta` next to `data`).
 
 Device storage keys: `rb_cards_view` (`grid` | `list` | `table`), `rb_cards_facets` (open filter
-  groups), `rb_price_range` (chart range), `rb_cards_scroll` (scroll per search string) — all
+  groups), `rb_price_range` (chart range), `rb_cards_scroll` (scroll per search string),
+  `rb_panel_<id>_v1` (folded side panels, see "Shared primitives") — all
   through `lib/storage.ts`, invalid values fall back to defaults.
 - `context.ts` — the outlet context type (`presentation`, `siblings`, `onClose`).
 
@@ -548,12 +582,19 @@ layout on a desktop.
 - The playset size is set in `/account/interface` (`collection:settings.*`, `PATCH /me/prefs`
   `playset_size`, empty = 3). Condition and language labels live in the `enums` namespace.
 - From 1240 px (F3-h) `CollectionPage` renders `CollectionDesktop` instead of `CollectionMobile`; both use
-  `useCollectionScreen` (URL params, the list, the open sheets). Desktop: sticky facet sidebar
-  (`CollectionFilters variant="sidebar"`), `SummaryBand` (value, cost, profit in € and % with a written
+  `useCollectionScreen` (URL params, the list, the open sheets). Desktop (`data-width="wide"`): sticky
+  facet sidebar (`CollectionFilters variant="sidebar"` in a `SidePanel`, `collection-filters`; Foil,
+  En venta and Con precio de compra show their label, S24), `SummaryBand` (value, cost, profit in € and % with a written
   sign, lines, unique, on sale, % foil), toolbar (count, sort, direction, page size 25/50/100/200,
   grid/table; table is the default when the preference is Auto), and `CollectionTable`.
 - `CollectionTable` — one row per card and foil with its lines folded below (expand button with
-  `aria-expanded`); single-line cards are edited in their own row. `LineCells` holds the seven editable
+  `aria-expanded`); single-line cards are edited in their own row. It fits the content column at
+  1440 px with the filters open and at 1280 px with them folded (S24 q): no fixed minimum width,
+  4 px cells, 32 px thumbnails, 48/64 px number and money inputs, condition and language selects of
+  68 px that show codes ("NM", "FR"; `label` attribute; the full name is the option text and the
+  `title`) and "—" for no value, and abbreviated headers ("A vend.", "Venta", "P. venta",
+  "Gan. €", "Gan. %", "Modif."; `collection:table.short`) with the full name in `title` and
+  `sr-only`, so the column header keeps its full accessible name. `LineCells` holds the seven editable
   cells (copies, to sell, on sale, sale price, condition, language, purchase) and saves like the line
   sheet. Sortable headers carry `aria-sort`: number, name, copies, market, profit €, 7 d, updated.
 - Selection (`useSelection`, forgotten when the filters change): a box per line, per card (indeterminate
@@ -562,7 +603,7 @@ layout on a desktop.
   while something is selected): condition, language, on sale, copies-to-sell rule (all / none / keep N),
   prices; apply and delete go through a `ConfirmDialog`, delete offers "Deshacer" for 8 s (it posts
   the deleted lines back).
-- From 1600 px `CollectionPanel` (380 px) shows the clicked row's card: image, totals, 30-day `PriceChart`
+- From 1600 px `CollectionPanel` (380 px, a `SidePanel`, `collection-detail`) shows the clicked row's card: image, totals, 30-day `PriceChart`
   (foil series for a foil group), lines, the decks using the card (`in_decks`) and a link to the card page.
 - Import and export (F3-i): "Exportar" (toolbar on the desktop, header on a phone; off offline) opens
   `ExportDialog`: format RBAPP or Cardmarket (Cardmarket forces "only what is on sale"), scope all / the

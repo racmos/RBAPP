@@ -51,6 +51,14 @@
     box-shadow: var(--shadow-pop);
   }
 
+  /* On a phone the field is as wide as the sheet allows: a wider popup ran past its right edge
+     (owner feedback S24 p). */
+  @media (max-width: 859.98px) {
+    .popup {
+      width: 100%;
+    }
+  }
+
   .list {
     margin: 0;
     padding: 4px;

@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Pagination } from '@/components/ui/Pagination';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Select } from '@/components/ui/Select';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
@@ -200,9 +201,14 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
   ];
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-width="wide">
       <div className={styles.layout} data-wide={wide || undefined}>
-        <aside className={styles.sidebar} aria-label={t('filters.title')}>
+        <SidePanel
+          id="collection-filters"
+          kind="filters"
+          label={t('filters.title')}
+          className={styles.sidebar}
+        >
           <CollectionFilters
             variant="sidebar"
             params={params}
@@ -212,7 +218,7 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
             total={meta?.total_groups ?? 0}
             onClear={() => clearFilters()}
           />
-        </aside>
+        </SidePanel>
 
         <div className={styles.main}>
           <PageHeader

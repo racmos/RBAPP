@@ -20,6 +20,13 @@
     margin: 0 auto;
   }
 
+  /* Lined up with a page that asks for the wide width (AppShell `data-width="wide"`). */
+  @media (min-width: 1240px) {
+    :global(body:has([data-width='wide'])) .bar {
+      max-width: var(--maxw-wide);
+    }
+  }
+
   .brand {
     display: flex;
     flex: none;

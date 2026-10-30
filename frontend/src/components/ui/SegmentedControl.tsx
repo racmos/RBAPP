@@ -15,6 +15,8 @@ type SegmentedControlProps<T extends string> = {
   label?: string;
   /** ...or the id of a visible element that names it. */
   labelledBy?: string;
+  /** Show `label` above the options: a filter must say what it filters (owner feedback S24). */
+  showLabel?: boolean;
   disabled?: boolean;
 };
 
@@ -28,14 +30,17 @@ export function SegmentedControl<T extends string>({
   onChange,
   label,
   labelledBy,
+  showLabel = false,
   disabled,
 }: SegmentedControlProps<T>) {
   const name = useId();
-  return (
+  const labelId = useId();
+  const visible = showLabel && label !== undefined && !labelledBy;
+  const group = (
     <div
       role="radiogroup"
-      aria-label={labelledBy ? undefined : label}
-      aria-labelledby={labelledBy}
+      aria-label={labelledBy || visible ? undefined : label}
+      aria-labelledby={visible ? labelId : labelledBy}
       className={styles.group}
     >
       {options.map((option) => (
@@ -51,6 +56,15 @@ export function SegmentedControl<T extends string>({
           <span className={styles.text}>{option.label}</span>
         </label>
       ))}
+    </div>
+  );
+  if (!visible) return group;
+  return (
+    <div className={styles.field}>
+      <span id={labelId} className={styles.label}>
+        {label}
+      </span>
+      {group}
     </div>
   );
 }

@@ -31,6 +31,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { useDocumentTitle } from '@/i18n';
 import { SetEditor, type SetForm } from './SetEditor';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './SetsPage.module.css';
 
@@ -331,7 +332,13 @@ export function SetsPage() {
             </table>
           </TableScroll>
           {wide && (
-            <div className={styles.editorPanel}>
+            <SidePanel
+              id="admin-sets-editor"
+              kind="editor"
+              side="end"
+              label={t('panels.editor')}
+              className={styles.editorPanel}
+            >
               {editor ? (
                 <>
                   <h2 className={styles.editorTitle}>
@@ -342,7 +349,7 @@ export function SetsPage() {
               ) : (
                 <p>{t('sets.pickOne')}</p>
               )}
-            </div>
+            </SidePanel>
           )}
         </div>
       ) : (

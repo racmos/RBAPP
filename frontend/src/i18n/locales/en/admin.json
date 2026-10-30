@@ -196,6 +196,7 @@
   "changes": {
     "title": "Riot changes",
     "subtitle": "Changes found by the monthly gallery check.",
+    "statusLabel": "Status",
     "caption": "Detected changes",
     "status": {
       "pending": "Pending",
@@ -251,5 +252,9 @@
     "imageWarning": "Change applied, but the new image could not be downloaded.",
     "emptyPending": "There are no pending changes.",
     "emptyOther": "No changes match these filters."
+  },
+  "panels": {
+    "editor": "Editor",
+    "detail": "Details"
   }
 }

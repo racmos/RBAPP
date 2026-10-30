@@ -196,6 +196,7 @@
   "changes": {
     "title": "Cambios de Riot",
     "subtitle": "Cambios detectados en la revisión mensual de la galería.",
+    "statusLabel": "Estado",
     "caption": "Cambios detectados",
     "status": {
       "pending": "Pendientes",
@@ -254,5 +255,9 @@
     "emptyPending": "No hay cambios pendientes.",
     "emptyOther": "No hay cambios con estos filtros.",
     "selected_many": "{{count}} cambios seleccionados"
+  },
+  "panels": {
+    "editor": "Editor",
+    "detail": "Detalle"
   }
 }

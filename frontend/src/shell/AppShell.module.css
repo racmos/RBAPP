@@ -36,6 +36,14 @@
     margin: 0 auto;
   }
 
+  /* A page whose table needs the room opts in with `data-width="wide"` (the collection, the card
+     table): owner feedback S22, S24 q. */
+  @media (min-width: 1240px) {
+    .content:has([data-width='wide']) {
+      max-width: var(--maxw-wide);
+    }
+  }
+
   @media (min-width: 1600px) {
     .content {
       max-width: var(--maxw-wide);

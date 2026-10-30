@@ -1,14 +1,15 @@
 @layer components {
+  /* No fixed minimum: compact cells and inputs and abbreviated headers make every column fit the
+     content column at 1440 px with the filters open and at 1280 px with them folded (S24 q). */
   .table {
     width: 100%;
-    min-width: 1280px;
     border-collapse: collapse;
     font-size: 13px;
   }
 
   /* Sticky and opaque through TableScroll (components/ui). */
   .table th {
-    padding: 8px 6px;
+    padding: 8px 4px;
     color: var(--muted);
     font-size: 12px;
     font-weight: 700;
@@ -17,7 +18,7 @@
   }
 
   .table td {
-    padding: 6px;
+    padding: 4px;
     border-top: 1px solid var(--line-2);
     vertical-align: middle;
   }
@@ -46,7 +47,7 @@
 
   .thumb {
     display: block;
-    width: 40px;
+    width: 32px;
   }
 
   .nameCell {
@@ -90,24 +91,33 @@
   }
 
   .number {
-    width: 64px;
+    width: 48px;
     height: 32px;
+    padding-inline: 6px;
     text-align: right;
   }
 
   .money {
-    width: 84px;
+    width: 64px;
     height: 32px;
+    padding-inline: 6px;
     text-align: right;
   }
 
-  /* Wide enough for "Sin especificar" and "Near Mint": a select at 100 % of an auto column is
-     squeezed to the column's minimum (owner feedback S18 i). Two classes, so it outranks the
-     Select primitive's `width: 100%` whatever the CSS order. */
-  .table .select {
-    width: 168px;
-    min-width: 168px;
+  /* A select at 100 % of an auto column is squeezed to the column's minimum (owner feedback
+     S18 i), so the condition and language selects have a fixed width; they show codes ("NM",
+     "FR") and "—" for no value (S24 q). Two classes, so they outrank the Select primitive's
+     `width: 100%` and padding whatever the CSS order. */
+  .table .code {
+    width: 68px;
+    min-width: 68px;
+    min-height: 32px;
     height: 32px;
+    padding: 0 24px 0 8px;
+    background-position:
+      calc(100% - 14px) 50%,
+      calc(100% - 9px) 50%;
+    font-size: 13px;
   }
 
   .switch {

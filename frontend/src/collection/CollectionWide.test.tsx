@@ -8,6 +8,7 @@ import { collectionMeta } from '@/test/fixtures/collection';
 import { API, NO_PREFS, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
+import { expectCollapsible } from '@/test/sidePanel';
 
 const LONG = { timeout: 10000 };
 
@@ -89,4 +90,22 @@ describe('grid view on the desktop (F3-h S7)', () => {
       await screen.findByRole('dialog', { name: "Copias de Ayla, Fury's Champion" }),
     ).toBeVisible();
   }, 20000);
+});
+
+describe('collection side panels (owner feedback S23)', () => {
+  it('folds the filters and the detail panel away', async () => {
+    await renderApp({ path: '/collection', width: 1700 });
+    const aside = await panel();
+    await within(aside).findByRole('heading', { name: "Ayla, Fury's Champion" }, LONG);
+    await expectCollapsible(
+      screen.getByRole('complementary', { name: 'Filtrar colección' }),
+      { hide: 'Ocultar filtros', show: 'Mostrar filtros' },
+      'rb_panel_collection-filters_v1',
+    );
+    await expectCollapsible(
+      aside,
+      { hide: 'Ocultar detalle', show: 'Mostrar detalle' },
+      'rb_panel_collection-detail_v1',
+    );
+  }, 25000);
 });

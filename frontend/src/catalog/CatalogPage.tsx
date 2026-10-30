@@ -216,7 +216,11 @@ export function CatalogPage() {
   return (
     <>
       {showCatalog && (
-        <div className={styles.page}>
+        <div
+          className={styles.page}
+          data-view={effectiveView}
+          data-width={effectiveView === 'table' ? 'wide' : undefined}
+        >
           <PageHeader
             title={t('catalog.title')}
             subtitle={
@@ -243,8 +247,6 @@ export function CatalogPage() {
                 meta={meta}
                 facets={facets}
                 total={total}
-                activeCount={activeCount}
-                onClear={handleClearFilters}
                 isBusy={sidebarBusy}
               />
             )}
@@ -366,8 +368,6 @@ export function CatalogPage() {
                 meta={meta}
                 facets={facets}
                 total={total}
-                activeCount={activeCount}
-                onClear={handleClearFilters}
                 resultsRef={resultsRef}
                 onClose={() => setFilterOpen(false)}
               />

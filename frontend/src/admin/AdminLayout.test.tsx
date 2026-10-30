@@ -5,6 +5,7 @@ import { API, adminSession, ok, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 import { NAV } from '@/shell/navRegistry';
+import { expectCollapsible } from '@/test/sidePanel';
 
 const CATALOG = { sets: 3, sets_without_release_date: 2, cards: 4, cards_without_image: 1 };
 
@@ -27,6 +28,28 @@ describe('AdminLayout (F13-a S6)', () => {
     expect(link).toHaveAttribute('href', '/riftbound/app/admin');
     expect(link).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByRole('combobox', { name: NAV_LABEL })).toBeNull();
+  });
+
+  it('≥1240 px: the navigation folds away (owner feedback S23)', async () => {
+    adminApi();
+    // the whole overview, so the page renders (a bare catalog makes OverviewPage throw)
+    server.use(
+      http.get(`${API}/admin/overview`, () =>
+        ok({
+          catalog: CATALOG,
+          riot: { pending_changes: 0, active_sets: [], last_sync: null, placeholder_sets: [] },
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin', width: 1280 });
+    await screen.findByRole('heading', { name: 'Resumen' }, { timeout: 10000 });
+    const nav = screen.getByRole('navigation', { name: NAV_LABEL });
+    await expectCollapsible(
+      nav,
+      { hide: 'Ocultar menú', show: 'Mostrar menú' },
+      'rb_panel_admin-nav_v1',
+    );
+    expect(screen.getByRole('navigation', { name: NAV_LABEL })).toBe(nav);
   });
 
   it('<1240 px: the sections are a select', async () => {

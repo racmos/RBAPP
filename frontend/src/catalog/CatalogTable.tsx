@@ -14,7 +14,11 @@ type ColumnDef = {
   labelKey: string;
   sortKey?: CardListSort;
   align?: 'left' | 'right';
+  /** Hidden while the results column is too narrow for all 16 (owner feedback S22). */
+  optional?: boolean;
 };
+
+const PRICE_COLUMNS = new Set(['price', 'trend7', 'trend30', 'foil']);
 
 const NARROW_COLUMNS: ColumnDef[] = [
   { key: 'image', labelKey: 'catalog.table.image' },
@@ -34,9 +38,15 @@ const NARROW_COLUMNS: ColumnDef[] = [
 
 const WIDE_COLUMNS: ColumnDef[] = [
   ...NARROW_COLUMNS,
-  { key: 'tags', labelKey: 'catalog.table.tags' },
-  { key: 'foil', labelKey: 'catalog.table.foil', align: 'right' },
-  { key: 'trend30', labelKey: 'catalog.table.trend30', sortKey: 'trend_30d', align: 'right' },
+  { key: 'tags', labelKey: 'catalog.table.tags', optional: true },
+  { key: 'foil', labelKey: 'catalog.table.foil', align: 'right', optional: true },
+  {
+    key: 'trend30',
+    labelKey: 'catalog.table.trend30',
+    sortKey: 'trend_30d',
+    align: 'right',
+    optional: true,
+  },
 ];
 
 export type CatalogTableProps = {
@@ -121,7 +131,9 @@ export function CatalogTable({ items, sort, dir, onSort, isWide }: CatalogTableP
   };
 
   return (
-    <TableScroll className={isWide ? undefined : styles.scrollWrap}>
+    // From 1240 px the columns wrap to the results column and the page is the only scroll (S22);
+    // below, the 13 columns keep their horizontal scroll box.
+    <TableScroll fit={isWide} className={isWide ? styles.fit : styles.scrollWrap}>
       <table className={styles.table}>
         <caption className="sr-only">{t('catalog.table.caption')}</caption>
         <thead>
@@ -132,7 +144,11 @@ export function CatalogTable({ items, sort, dir, onSort, isWide }: CatalogTableP
                 <th
                   key={column.key}
                   scope="col"
-                  className={[styles.th, column.align === 'right' && styles.right]
+                  className={[
+                    styles.th,
+                    column.align === 'right' && styles.right,
+                    column.optional && styles.optional,
+                  ]
                     .filter(Boolean)
                     .join(' ')}
                   aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : undefined}
@@ -164,6 +180,8 @@ export function CatalogTable({ items, sort, dir, onSort, isWide }: CatalogTableP
                     styles.td,
                     column.align === 'right' && styles.right,
                     column.key === 'image' && styles.imageCell,
+                    PRICE_COLUMNS.has(column.key) && styles.priceCell,
+                    column.optional && styles.optional,
                   ]
                     .filter(Boolean)
                     .join(' ')}

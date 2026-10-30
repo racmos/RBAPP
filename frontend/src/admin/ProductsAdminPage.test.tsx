@@ -7,6 +7,7 @@ import { adminProductList, sleeves } from '@/test/fixtures/products';
 import { API, adminSession, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
+import { expectCollapsible } from '@/test/sidePanel';
 
 const TABLE = 'Productos del catálogo';
 
@@ -82,6 +83,28 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     await userEvent.click(card);
     const sheet = await screen.findByRole('dialog', { name: 'Riftbound Sleeves' });
     expect(within(sheet).getByRole('combobox', { name: /Tipo/ })).toBeVisible();
+  }, 30000);
+
+  it('the yes/no filters say what they filter (owner feedback S24)', async () => {
+    productsApi();
+    await renderApp({ path: '/admin/products', width: 1280 });
+    await screen.findByRole('table', { name: TABLE }, { timeout: 10000 });
+    for (const name of ['Ocultos', 'En Cardmarket']) {
+      const select = screen.getByRole('combobox', { name });
+      expect(select.closest('label')).toHaveTextContent(name);
+      expect(within(select).getByRole('option', { name: 'Todos' })).toHaveValue('');
+    }
+  }, 30000);
+
+  it('≥ 1600 px: the editor panel folds away (owner feedback S23)', async () => {
+    productsApi();
+    await renderApp({ path: '/admin/products', width: 1700 });
+    await screen.findByText('Elige un producto para editarlo.', undefined, { timeout: 10000 });
+    await expectCollapsible(
+      screen.getByRole('complementary', { name: 'Editor' }),
+      { hide: 'Ocultar editor', show: 'Mostrar editor' },
+      'rb_panel_admin-products-editor_v1',
+    );
   }, 30000);
 
   it('≥ 1600 px: a persistent panel edits the picked product and saves the kind', async () => {

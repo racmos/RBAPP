@@ -29,6 +29,9 @@ type CollectionTableProps = {
   offline: boolean;
 };
 
+/** Headers wider than their cells: an abbreviation on screen, the full name for everyone (S24 q). */
+const SHORT = ['sellQty', 'selling', 'sellPrice', 'plAbs', 'plPct', 'updated'] as const;
+
 const SORTABLE: Array<[string, CollectionSort]> = [
   ['number', 'number'],
   ['name', 'name'],
@@ -69,23 +72,44 @@ function Signed({
 function HeaderCell({
   id,
   label,
+  short,
   sort,
   dir,
   onSort,
 }: {
   id: string;
   label: string;
+  short?: string;
   sort: CollectionSort;
   dir: 'asc' | 'desc';
   onSort: (sort: CollectionSort) => void;
 }) {
   const key = SORTABLE.find(([column]) => column === id)?.[1];
-  if (!key) return <th scope="col">{label}</th>;
+  const abbreviated = short !== undefined && short !== label;
+  const text = abbreviated ? (
+    <>
+      <span aria-hidden="true">{short}</span>
+      <span className="sr-only">{label}</span>
+    </>
+  ) : (
+    label
+  );
+  const title = abbreviated ? label : undefined;
+  if (!key)
+    return (
+      <th scope="col" title={title}>
+        {text}
+      </th>
+    );
   const active = sort === key;
   return (
-    <th scope="col" aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+    <th
+      scope="col"
+      title={title}
+      aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
       <button type="button" className={styles.sortButton} onClick={() => onSort(key)}>
-        {label}
+        {text}
         {active && <span aria-hidden="true">{dir === 'asc' ? ' ↑' : ' ↓'}</span>}
       </button>
     </th>
@@ -132,6 +156,10 @@ export function CollectionTable({
   const { t } = useTranslation('collection');
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const column = (key: string) => t(`table.columns.${key}` as 'table.columns.qty');
+  const shortOf = (key: string) =>
+    (SHORT as readonly string[]).includes(key)
+      ? t(`table.short.${key}` as 'table.short.plAbs')
+      : undefined;
 
   const toggleExpanded = (key: string) =>
     setExpanded((current) => {
@@ -172,6 +200,7 @@ export function CollectionTable({
                 key={id}
                 id={id}
                 label={column(id)}
+                short={shortOf(id)}
                 sort={sort}
                 dir={dir}
                 onSort={onSort}
@@ -191,6 +220,7 @@ export function CollectionTable({
                 key={id}
                 id={id}
                 label={column(id)}
+                short={shortOf(id)}
                 sort={sort}
                 dir={dir}
                 onSort={onSort}

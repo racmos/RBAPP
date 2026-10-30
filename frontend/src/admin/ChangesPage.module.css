@@ -105,8 +105,27 @@
 
   @media (min-width: 1600px) {
     .layout {
-      grid-template-columns: minmax(0, 1fr) 420px;
+      /* As wide as the detail (420 px): folded, it gives its width to the table (S23). */
+      grid-template-columns: minmax(0, 1fr) auto;
     }
+  }
+
+  /* The table and its pagination stay in the first column. */
+  .main {
+    min-width: 0;
+  }
+
+  /* The detail at >= 1600 px (it had no rule: it was unstyled). */
+  .editorPanel {
+    position: sticky;
+    top: calc(64px + var(--gap));
+    width: 420px;
+    max-height: calc(100dvh - 64px - 2 * var(--gap));
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: var(--pad);
   }
 
   .detail {

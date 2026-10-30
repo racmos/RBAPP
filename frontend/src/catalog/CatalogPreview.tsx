@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { CardSummary } from '@/api/types';
 import { BanBadge, CardImage, DomainPips, PriceTag, RarityDot } from '@/components/card';
 import { Sparkline } from '@/components/charts/Sparkline';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { useEnumLabel } from '@/i18n';
 import { useCardPrices } from './queries';
 import styles from './CatalogPreview.module.css';
@@ -23,9 +25,9 @@ export function CatalogPreview({ card, items, search }: CatalogPreviewProps) {
 
   if (items.length === 0) {
     return (
-      <aside aria-label={t('catalog.preview.title')} className={styles.preview}>
+      <PreviewPanel label={t('catalog.preview.title')}>
         <p className={styles.empty}>{t('catalog.preview.empty')}</p>
-      </aside>
+      </PreviewPanel>
     );
   }
 
@@ -38,11 +40,7 @@ export function CatalogPreview({ card, items, search }: CatalogPreviewProps) {
   const showFoil = card.foilable && price?.market_foil != null;
 
   return (
-    <aside
-      data-testid="catalog-preview"
-      aria-label={t('catalog.preview.title')}
-      className={styles.preview}
-    >
+    <PreviewPanel label={t('catalog.preview.title')} data-testid="catalog-preview">
       <div className={styles.image}>
         <CardImage card={card} size="full" decorative />
       </div>
@@ -90,6 +88,30 @@ export function CatalogPreview({ card, items, search }: CatalogPreviewProps) {
       >
         {t('catalog.preview.open')}
       </Link>
-    </aside>
+    </PreviewPanel>
+  );
+}
+
+/** The third column folds away like the filters (owner feedback S23). */
+function PreviewPanel({
+  label,
+  children,
+  ...rest
+}: {
+  label: string;
+  children: ReactNode;
+  'data-testid'?: string;
+}) {
+  return (
+    <SidePanel
+      {...rest}
+      id="cards-preview"
+      kind="preview"
+      side="end"
+      label={label}
+      className={styles.preview}
+    >
+      {children}
+    </SidePanel>
   );
 }

@@ -1,4 +1,19 @@
 @layer components {
+  /* A visible label above the options, styled like a chip group legend. */
+  .field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .label {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
   .group {
     display: inline-flex;
     max-width: 100%;

@@ -31,6 +31,7 @@ import { formatDateTime, formatMoney, type Lang } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { ProductEditor, ProductThumb } from './ProductEditor';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './ProductsAdminPage.module.css';
 
@@ -292,7 +293,15 @@ export function ProductsAdminPage() {
             {pagination}
           </div>
           {wide && (
-            <div className={styles.editorPanel}>{editorPane ?? <p>{t('products.pickOne')}</p>}</div>
+            <SidePanel
+              id="admin-products-editor"
+              kind="editor"
+              side="end"
+              label={t('panels.editor')}
+              className={styles.editorPanel}
+            >
+              {editorPane ?? <p>{t('products.pickOne')}</p>}
+            </SidePanel>
           )}
         </div>
       ) : (

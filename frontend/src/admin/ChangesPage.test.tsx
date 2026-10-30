@@ -8,6 +8,7 @@ import { server } from '@/test/msw/server';
 import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
 import { renderApp } from '@/test/renderApp';
+import { expectCollapsible } from '@/test/sidePanel';
 
 const CHANGES = [
   {
@@ -263,6 +264,30 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     await waitFor(() => expect(router.state.location.search).toContain('status=approved'), LONG);
   });
 
+  it(
+    'the status filter says what it filters (owner feedback S24)',
+    { timeout: 30000 },
+    async () => {
+      changesApi();
+      await renderApp({ path: '/admin/riot/changes', width: 1280 });
+      await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
+      const group = screen.getByRole('radiogroup', { name: 'Estado' });
+      const label = document.getElementById(group.getAttribute('aria-labelledby') ?? '');
+      expect(label).toHaveTextContent('Estado');
+      expect(label).toBeVisible();
+      expect(within(group).getByRole('radio', { name: 'Pendientes' })).toBeChecked();
+      // the selects are named after what they filter, "all" is their empty option
+      for (const [name, empty] of [
+        ['Set', 'Todos los sets'],
+        ['Campo', 'Todos los campos'],
+      ]) {
+        const select = screen.getByRole('combobox', { name });
+        expect(select.closest('label')).toHaveTextContent(name);
+        expect(within(select).getByRole('option', { name: empty })).toHaveValue('');
+      }
+    },
+  );
+
   it('lists the obsolete proposals (owner feedback S17)', { timeout: 30000 }, async () => {
     changesApi();
     const { router } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
@@ -278,6 +303,16 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
       (await screen.findAllByRole('checkbox', { name: /Aprobar el cambio/ }, LONG))[0],
     );
     expect(await screen.findAllByText('Alpha Unit', undefined, LONG)).toHaveLength(2);
+    await expectCollapsible(
+      screen.getByRole('complementary', { name: 'Detalle' }),
+      { hide: 'Ocultar detalle', show: 'Mostrar detalle' },
+      'rb_panel_admin-changes-detail_v1',
+    );
+    // the pagination stays under the table, not in the side column
+    const panel = screen.getByRole('complementary', { name: 'Detalle' });
+    expect(panel.parentElement).toBe(
+      screen.getByRole('region', { name: 'Cambios detectados' }).parentElement!.parentElement,
+    );
   });
 
   it('cards at 390 px have no bulk selection', { timeout: 30000 }, async () => {

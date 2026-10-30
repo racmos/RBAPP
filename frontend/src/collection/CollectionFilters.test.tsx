@@ -42,6 +42,22 @@ describe('CollectionFilters (owner feedback S18 g)', () => {
     }
   });
 
+  it('shows what every tri-state filter filters (owner feedback S24)', async () => {
+    await renderSidebar();
+    for (const [name, option] of [
+      ['Foil', 'Solo foil'],
+      ['En venta', 'Da igual'],
+      ['Con precio de compra', 'Da igual'],
+    ]) {
+      const group = screen.getByRole('radiogroup', { name });
+      const label = document.getElementById(group.getAttribute('aria-labelledby')!);
+      expect(label, name).toHaveTextContent(name);
+      expect(label, name).toBeVisible();
+      expect(label!.closest('.sr-only'), name).toBeNull();
+      expect(within(group).getByRole('radio', { name: option })).toBeInTheDocument();
+    }
+  });
+
   it('translates every base type and domain', async () => {
     await renderSidebar();
     const types = screen.getByRole('group', { name: 'Tipo' });

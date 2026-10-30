@@ -7,6 +7,7 @@ import { API, signedInSession } from '@/test/msw/handlers';
 import { productListMeta, productSummaries, unlistedSummary } from '@/test/fixtures/products';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
+import { expectCollapsible } from '@/test/sidePanel';
 
 const LONG = { timeout: 10000 };
 const DESKTOP = 1280;
@@ -491,5 +492,23 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
     await within(aside).findByRole('region', { name: 'Tus unidades' }, LONG);
     await within(aside).findByRole('button', { name: 'Ver como tabla' }, LONG);
     expect(await axe(container)).toHaveNoViolations();
+  }, 30000);
+});
+
+describe('ProductsDesktop side panels (owner feedback S23)', () => {
+  it('folds the filter rail and the detail panel away', async () => {
+    signedIn();
+    await renderApp({ path: '/products?tab=catalog', width: WIDE });
+    await catalogTable();
+    await expectCollapsible(
+      rail(),
+      { hide: 'Ocultar filtros', show: 'Mostrar filtros' },
+      'rb_panel_products-filters_v1',
+    );
+    await expectCollapsible(
+      await screen.findByRole('complementary', { name: 'Detalle del producto' }, LONG),
+      { hide: 'Ocultar detalle', show: 'Mostrar detalle' },
+      'rb_panel_products-detail_v1',
+    );
   }, 30000);
 });

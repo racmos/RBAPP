@@ -6,6 +6,7 @@ import { http } from 'msw';
 import { API, adminSession, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
+import { expectCollapsible } from '@/test/sidePanel';
 
 const SETS = [
   {
@@ -149,6 +150,11 @@ describe('SetsPage (F13-f S4-S6)', () => {
     setsApi();
     await renderApp({ path: '/admin/sets', width: 1700 });
     expect(await screen.findByText('Elige un set para editarlo.')).toBeVisible();
+    await expectCollapsible(
+      screen.getByRole('complementary', { name: 'Editor' }),
+      { hide: 'Ocultar editor', show: 'Mostrar editor' },
+      'rb_panel_admin-sets-editor_v1',
+    );
   });
 
   it('create flow shows the API error per field', async () => {

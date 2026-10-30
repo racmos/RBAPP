@@ -13,15 +13,21 @@
     }
   }
 
+  /* The side columns are as wide as their panels (240 and 380 px), so a folded panel gives its
+     width to the table (owner feedback S23). */
   .layout {
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--gap);
     align-items: start;
   }
 
   .layout[data-wide] {
-    grid-template-columns: 240px minmax(0, 1fr) 380px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .rail {
+    width: 240px;
   }
 
   .rail,
@@ -82,10 +88,14 @@
   }
 
   .panel {
+    width: 380px;
+    padding: 14px;
+  }
+
+  .panelBody {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    padding: 14px;
   }
 
   .empty {

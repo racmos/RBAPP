@@ -210,3 +210,59 @@ describe('the table (F3-h S3)', () => {
     await waitFor(() => expect(where()).toBe('/collection?per_page=100'), LONG);
   }, 20000);
 });
+
+describe('CollectionTable fits the screen (owner feedback S24 q)', () => {
+  it('asks the shell for the wide width', async () => {
+    signedIn();
+    list();
+    const { container } = await renderApp({ path: '/collection', width: 1440 });
+    await screen.findByRole('table', {}, LONG);
+    expect(container.querySelector('[data-width="wide"]')).toContainElement(
+      screen.getByRole('table'),
+    );
+  }, 20000);
+
+  it('abbreviates the long headers and keeps their full names', async () => {
+    signedIn();
+    list();
+    await renderApp({ path: '/collection', width: 1440 });
+    await screen.findByRole('table', {}, LONG);
+    for (const [full, short] of [
+      ['A vender', 'A vend.'],
+      ['En venta', 'Venta'],
+      ['Precio venta', 'P. venta'],
+      ['Ganancia €', 'Gan. €'],
+      ['Ganancia %', 'Gan. %'],
+      ['Modificada', 'Modif.'],
+    ]) {
+      const header = screen.getByRole('columnheader', { name: new RegExp(`^${full}`) });
+      expect(header, full).toHaveAttribute('title', full);
+      const visible = within(header).getByText(short);
+      expect(visible).toHaveAttribute('aria-hidden', 'true');
+      expect(within(header).getByText(full)).toHaveClass('sr-only');
+    }
+    // short enough already: shown whole
+    expect(screen.getByRole('columnheader', { name: 'Idioma' })).not.toHaveAttribute('title');
+  }, 20000);
+
+  it('the condition select shows the code, the empty value a dash, full names on hover', async () => {
+    signedIn();
+    list();
+    await renderApp({ path: '/collection', width: 1440 });
+    const select = await screen.findByRole('combobox', { name: 'Estado: Ember Wisp' }, LONG);
+    // `label` is what the closed select and the list show; the text stays the full name
+    const near = within(select).getByRole('option', { name: 'Casi nueva (NM)' });
+    expect(near).toHaveValue('NM');
+    expect(near).toHaveAttribute('label', 'NM');
+    expect(near).toHaveAttribute('title', 'Casi nueva (NM)');
+    const empty = select.querySelector('option[value=""]')!;
+    expect(empty).toHaveAttribute('label', '—');
+    expect(empty).toHaveAttribute('title', 'Sin especificar');
+    const language = screen.getByRole('combobox', { name: 'Idioma: Ember Wisp' });
+    expect(language.querySelector('option[value=""]')).toHaveAttribute('label', '—');
+    // a language shows its code too: "Chino simplificado" made the column too wide
+    const french = within(language).getByRole('option', { name: 'Francés' });
+    expect(french).toHaveAttribute('label', 'FR');
+    expect(french).toHaveAttribute('title', 'Francés');
+  }, 20000);
+});

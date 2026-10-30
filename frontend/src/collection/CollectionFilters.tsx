@@ -21,7 +21,10 @@ type CollectionFiltersProps = {
   variant?: 'sheet' | 'sidebar';
 };
 
-/** The body of the filter sheet (F3-g S4): chips with group counts and three yes/no switches. */
+/**
+ * The body of the filter sheet (F3-g S4): chips with group counts and three tri-states, each
+ * with a visible label saying what it filters (owner feedback S24).
+ */
 export function CollectionFilters({
   params,
   setParams,
@@ -66,6 +69,7 @@ export function CollectionFilters({
   const tri = (key: 'selling' | 'has_purchase', legend: string) => (
     <SegmentedControl
       label={legend}
+      showLabel
       options={[
         { value: 'any', label: t('filters.any') },
         { value: 'yes', label: t('filters.yes') },
@@ -92,6 +96,7 @@ export function CollectionFilters({
       )}
       <SegmentedControl
         label={t('filters.foil')}
+        showLabel
         options={[
           { value: 'any', label: t('filters.foilAny') },
           { value: 'foil', label: t('filters.foilOnly') },

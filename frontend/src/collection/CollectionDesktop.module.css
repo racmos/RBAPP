@@ -6,25 +6,29 @@
     padding: var(--pad);
   }
 
-  @media (min-width: 1600px) {
+  /* The table takes the room a wide screen has (owner feedback S24 q). */
+  @media (min-width: 1240px) {
     .page {
       max-width: var(--maxw-wide);
     }
   }
 
+  /* The side columns are as wide as their panels (280 and 380 px), so a folded panel gives its
+     width to the table (owner feedback S23). */
   .layout {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--gap);
     align-items: start;
   }
 
   .layout[data-wide] {
-    grid-template-columns: 280px minmax(0, 1fr) 380px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .sidebar {
     position: sticky;
+    width: 280px;
     top: calc(64px + var(--gap));
     max-height: calc(100dvh - 64px - 2 * var(--gap));
     overflow-y: auto;

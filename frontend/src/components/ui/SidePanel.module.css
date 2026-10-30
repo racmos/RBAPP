@@ -1,0 +1,67 @@
+@layer components {
+  .root {
+    min-width: 0;
+  }
+
+  /* Two classes: whatever width and padding the caller's class gives the panel, collapsed it
+     is only as wide as its toggle and the main column takes the rest. */
+  .root[data-collapsed] {
+    width: auto;
+    min-width: 0;
+    padding: 6px;
+  }
+
+  .bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 6px 0;
+  }
+
+  .root[data-side='end'] .bar {
+    justify-content: flex-start;
+  }
+
+  .root[data-collapsed] .bar {
+    padding: 0;
+  }
+
+  .toggle {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: rgba(120, 205, 228, 0.05);
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .toggle:hover {
+    color: var(--text);
+    background: rgba(120, 205, 228, 0.12);
+  }
+
+  /* The arrow points right: open, it points the way the panel folds; collapsed, the other. */
+  .root[data-side='start'] .chevron {
+    transform: rotate(180deg);
+  }
+
+  .root[data-side='start'][data-collapsed] .chevron,
+  .root[data-side='end'] .chevron {
+    transform: none;
+  }
+
+  .root[data-side='end'][data-collapsed] .chevron {
+    transform: rotate(180deg);
+  }
+
+  .content {
+    min-width: 0;
+  }
+
+  .content[hidden] {
+    display: none;
+  }
+}

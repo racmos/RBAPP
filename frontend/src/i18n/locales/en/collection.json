@@ -173,6 +173,14 @@
       "plPct": "Profit %",
       "trend7d": "7 d",
       "updated": "Updated"
+    },
+    "short": {
+      "sellQty": "To sell",
+      "selling": "Sale",
+      "sellPrice": "Sale pr.",
+      "plAbs": "P/L €",
+      "plPct": "P/L %",
+      "updated": "Upd."
     }
   },
   "bulk": {

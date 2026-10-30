@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { getAdminOverview } from '@/api/endpoints';
 import { Select } from '@/components/ui/Select';
+import { SidePanel } from '@/components/ui/SidePanel';
 import { down, up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { ADMIN_NAV, changesLabelKey, type AdminNavEntry } from './adminNav';
@@ -28,13 +29,20 @@ export function AdminLayout() {
   return (
     <div className={styles.layout}>
       {desktop ? (
-        <nav aria-label={t('nav.label')} className={styles.nav}>
+        // Folds away to its toggle, the page takes the width (owner feedback S23).
+        <SidePanel
+          as="nav"
+          id="admin-nav"
+          kind="menu"
+          label={t('nav.label')}
+          className={styles.nav}
+        >
           {ADMIN_NAV.map((entry) => (
             <NavLink key={entry.id} to={entry.to} end className={styles.link}>
               {labelOf(entry)}
             </NavLink>
           ))}
-        </nav>
+        </SidePanel>
       ) : (
         <Select
           aria-label={t('nav.label')}
