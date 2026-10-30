@@ -181,6 +181,42 @@ describe('SetsPage (F13-f S4-S6)', () => {
   });
 });
 
+describe('SetsPage delete outcome (owner feedback S20)', () => {
+  it('closes the question and shows why a set in use cannot be deleted', async () => {
+    setsApi();
+    server.use(
+      http.delete(`${API}/admin/sets/OGN`, () =>
+        failure(409, {
+          error: 'Conflict',
+          message: 'Set in use',
+          code: 'set_in_use',
+          params: { cards: 3 },
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin/sets', width: 1280 });
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Borrar OGN' }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: '¿Borrar el set OGN?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Borrar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      (
+        await screen.findAllByText(/El set tiene cartas; no se puede cambiar su código ni borrarlo/)
+      )[0],
+    ).toBeVisible();
+  }, 20000);
+
+  it('confirms a deleted set with a toast', async () => {
+    setsApi();
+    server.use(http.delete(`${API}/admin/sets/OGN`, () => ok({ deleted: 'OGN' })));
+    await renderApp({ path: '/admin/sets', width: 1280 });
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Borrar OGN' }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: '¿Borrar el set OGN?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Borrar' }));
+    expect((await screen.findAllByText('Set borrado.'))[0]).toBeVisible();
+  }, 20000);
+});
+
 describe('SetsPage row actions (owner feedback S20)', () => {
   it('are the shared Button with an icon, like the cards table', async () => {
     setsApi();

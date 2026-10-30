@@ -132,14 +132,21 @@ export function SetsPage() {
     },
   });
 
+  // The question closes either way; the outcome is a toast, never text hidden behind a dialog.
   const remove = useMutation({
     mutationFn: (id: string) => deleteAdminSet(id),
     onSuccess: () => {
       setDeleting(null);
       setDeleteError(null);
+      pushToast({ kind: 'success', message: t('sets.deleted') });
       void refresh();
     },
-    onError: (error: unknown) => setDeleteError(translateError(error, i18n)),
+    onError: (error: unknown, id) => {
+      setDeleting(null);
+      const reason = translateError(error, i18n);
+      setDeleteError(reason);
+      pushToast({ kind: 'error', message: t('sets.deleteFailed', { id, reason }) });
+    },
   });
 
   if (query.isPending) {

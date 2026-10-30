@@ -72,7 +72,9 @@
     "confirmDelete": {
       "title": "Delete set {{id}}?",
       "body": "Only a set without cards can be deleted. This cannot be undone."
-    }
+    },
+    "deleted": "Set deleted.",
+    "deleteFailed": "Could not delete {{id}}: {{reason}}"
   },
   "cards": {
     "title": "Cards",
