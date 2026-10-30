@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { Icon } from '@/components/ui/Icon';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Select } from '@/components/ui/Select';
@@ -132,14 +133,21 @@ export function SetsPage() {
     },
   });
 
+  // The question closes either way; the outcome is a toast, never text hidden behind a dialog.
   const remove = useMutation({
     mutationFn: (id: string) => deleteAdminSet(id),
     onSuccess: () => {
       setDeleting(null);
       setDeleteError(null);
+      pushToast({ kind: 'success', message: t('sets.deleted') });
       void refresh();
     },
-    onError: (error: unknown) => setDeleteError(translateError(error, i18n)),
+    onError: (error: unknown, id) => {
+      setDeleting(null);
+      const reason = translateError(error, i18n);
+      setDeleteError(reason);
+      pushToast({ kind: 'error', message: t('sets.deleteFailed', { id, reason }) });
+    },
   });
 
   if (query.isPending) {
@@ -301,29 +309,37 @@ export function SetsPage() {
                     <td>{row.next_run_at ? formatDateTime(row.next_run_at, lang as Lang) : '—'}</td>
                     <td>
                       <span className={styles.actions}>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           aria-label={t('sets.edit', { id: row.id })}
                           disabled={offline}
-                          title={offline ? common('offline.editDisabled') : undefined}
+                          title={
+                            offline
+                              ? common('offline.editDisabled')
+                              : t('sets.edit', { id: row.id })
+                          }
                           onClick={() => openEditor({ mode: 'edit', set: row })}
                         >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
+                          <Icon name="edit" size={16} />
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
                           aria-label={t('sets.delete', { id: row.id })}
                           disabled={offline}
-                          title={offline ? common('offline.editDisabled') : undefined}
+                          title={
+                            offline
+                              ? common('offline.editDisabled')
+                              : t('sets.delete', { id: row.id })
+                          }
                           onClick={() => {
                             setDeleteError(null);
                             setDeleting(row);
                           }}
                         >
-                          🗑
-                        </button>
+                          <Icon name="trash" size={16} />
+                        </Button>
                       </span>
                     </td>
                   </tr>
@@ -368,18 +384,18 @@ export function SetsPage() {
               <details className={styles.menu}>
                 <summary>{t('sets.columns.actions')}</summary>
                 <div className={styles.actions}>
-                  <button
-                    type="button"
-                    className={styles.iconButton}
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     aria-label={t('sets.edit', { id: row.id })}
                     disabled={offline}
                     onClick={() => openEditor({ mode: 'edit', set: row })}
                   >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.iconButton}
+                    <Icon name="edit" size={16} />
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
                     aria-label={t('sets.delete', { id: row.id })}
                     disabled={offline}
                     onClick={() => {
@@ -387,8 +403,8 @@ export function SetsPage() {
                       setDeleting(row);
                     }}
                   >
-                    🗑
-                  </button>
+                    <Icon name="trash" size={16} />
+                  </Button>
                 </div>
               </details>
             </article>

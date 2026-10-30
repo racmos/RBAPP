@@ -18,13 +18,13 @@ const META: GameMeta = {
   languages: ['English'],
 };
 
-function renderSidebar(lang: 'es' | 'en' = 'es') {
+function renderSidebar(lang: 'es' | 'en' = 'es', meta: GameMeta = META) {
   return renderWithI18n(
     <CollectionFilters
       variant="sidebar"
       params={{}}
       setParams={() => undefined}
-      meta={META}
+      meta={meta}
       facets={{}}
       total={0}
       onClear={() => undefined}
@@ -68,5 +68,25 @@ describe('CollectionFilters (owner feedback S18 g)', () => {
     for (const name of ['Furia', 'Calma', 'Mente', 'Cuerpo', 'Caos', 'Orden', 'Incoloro']) {
       expect(within(domains).getByRole('button', { name })).toBeInTheDocument();
     }
+  });
+});
+
+describe('CollectionFilters set order (owner feedback S19)', () => {
+  it('lists the set chips newest first and the sets without a date last', async () => {
+    await renderSidebar('es', {
+      ...META,
+      sets: [
+        { id: 'OLD', name: 'Old', released_on: '2024-01-15', card_count: 1 },
+        { id: 'NOD', name: 'No date', released_on: null, card_count: 1 },
+        { id: 'NEW', name: 'New', released_on: '2026-09-01', card_count: 1 },
+        { id: 'MID', name: 'Mid', released_on: '2025-06-01', card_count: 1 },
+      ],
+    });
+    const sets = screen.getByRole('group', { name: 'Set' });
+    expect(
+      within(sets)
+        .getAllByRole('button')
+        .map((chip) => chip.textContent),
+    ).toEqual(['NEW', 'MID', 'OLD', 'NOD']);
   });
 });

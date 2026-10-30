@@ -262,3 +262,39 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     expect(screen.getByRole('button', { name: /Reintentar/ })).toBeVisible();
   }, 30000);
 });
+
+describe('ProductsAdminPage set order (owner feedback S19)', () => {
+  it('the editor lists the sets newest first and the undated ones last', async () => {
+    productsApi();
+    server.use(
+      http.get(`${API}/meta/game`, () =>
+        ok({
+          modes: ['1v1', '2v2'],
+          domains: ['Fury'],
+          types: ['Unit'],
+          supertypes: ['Champion'],
+          rarities: ['Common'],
+          sets: [
+            { id: 'OGN', name: 'Origen', released_on: '2025-10-31', card_count: 6 },
+            { id: 'NOD', name: 'Sin fecha', released_on: null, card_count: 0 },
+            { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
+          ],
+          price: { provider: 'cardmarket', currency: 'EUR', updated_on: null },
+          rules: {},
+          conditions: ['NM'],
+          languages: ['English'],
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin/products', width: 1280 });
+    const dialog = await openEditor('Riftbound Sleeves');
+    const select = within(dialog).getByRole('combobox', { name: /^Set/ });
+    await within(select).findByRole('option', { name: /Vendetta/ });
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('value'))
+        .filter((value) => !value!.startsWith('__')),
+    ).toEqual(['VEN', 'OGN', 'NOD']);
+  }, 30000);
+});

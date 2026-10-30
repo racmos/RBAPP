@@ -72,7 +72,9 @@
     "confirmDelete": {
       "title": "¿Borrar el set {{id}}?",
       "body": "Solo se puede borrar un set sin cartas. Esta acción no se puede deshacer."
-    }
+    },
+    "deleted": "Set borrado.",
+    "deleteFailed": "No se pudo borrar {{id}}: {{reason}}"
   },
   "cards": {
     "title": "Cartas",
@@ -119,6 +121,9 @@
     },
     "keyLocked": "El set y el número no se pueden cambiar.",
     "saved": "Carta guardada.",
+    "deleted": "Carta borrada.",
+    "deleteFailed": "No se pudo borrar {{name}}: {{reason}}",
+    "pickOne": "Elige una carta para editarla.",
     "image": {
       "upload": "Subir imagen",
       "hint": "PNG, JPG o WebP de hasta 2 MB.",

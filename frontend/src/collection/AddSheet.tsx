@@ -9,6 +9,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Switch } from '@/components/ui/Switch';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
+import { sortSetsNewestFirst } from '@/lib/sets';
 import { MoneyField } from './MoneyField';
 import { OptionSelect } from './OptionSelect';
 import { useAddLine, useDeleteLine, usePatchLine } from './queries';
@@ -62,7 +63,7 @@ export function AddSheet({ open, onClose, meta, offline }: AddSheetProps) {
     if (open) search.current?.focus();
   }, [open]);
 
-  const sets = meta?.sets ?? [];
+  const sets = sortSetsNewestFirst(meta?.sets ?? [], (set) => set.released_on);
   const setId =
     choices.set !== null && (!meta || sets.some((set) => set.id === choices.set))
       ? choices.set

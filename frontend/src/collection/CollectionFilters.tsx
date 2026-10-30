@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { ChipGroup, FilterChip } from '@/components/ui/FilterChip';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useEnumLabel } from '@/i18n';
+import { sortSetsNewestFirst } from '@/lib/sets';
 import { activeFilterCount } from './params';
 import styles from './CollectionFilters.module.css';
 
@@ -84,7 +85,13 @@ export function CollectionFilters({
 
   return (
     <div className={styles.body}>
-      {chips('set', t('filters.set'), meta?.sets.map((set) => set.id) ?? [], (v) => v, facets.set)}
+      {chips(
+        'set',
+        t('filters.set'),
+        sortSetsNewestFirst(meta?.sets ?? [], (set) => set.released_on).map((set) => set.id),
+        (v) => v,
+        facets.set,
+      )}
       {chips('domain', t('filters.domain'), meta?.domains ?? [], (v) => label('domain', v))}
       {chips('type', t('filters.type'), meta?.types ?? [], (v) => label('type', v))}
       {chips(

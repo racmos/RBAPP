@@ -372,3 +372,34 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     ).not.toHaveLength(0);
   });
 });
+
+describe('ChangesPage set order (owner feedback S19)', () => {
+  it('the set filter lists the sets newest first and the undated ones last', async () => {
+    const base = {
+      name: 'Set',
+      card_count: 1,
+      declared_count: 1,
+      window: 'monthly',
+      next_run_at: null,
+    };
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/sets`, () =>
+        ok([
+          { ...base, id: 'NOD', release_date: null },
+          { ...base, id: 'OGN', release_date: '2025-10-31' },
+          { ...base, id: 'VEN', release_date: '2026-08-01' },
+        ]),
+      ),
+      http.get(`${API}/admin/riot/changes`, () => ok(PAGE)),
+    );
+    await renderApp({ path: '/admin/riot/changes', width: 1280 });
+    const select = await screen.findByRole('combobox', { name: 'Todos los sets' }, LONG);
+    await within(select).findByRole('option', { name: 'VEN' }, LONG);
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('value')),
+    ).toEqual(['', 'VEN', 'OGN', 'NOD']);
+  });
+});
