@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -41,6 +41,20 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
     await userEvent.selectOptions(await screen.findByLabelText('Por página'), '96');
     await waitFor(() => expect(where()).toBe('/cards?per_page=96'), LONG);
   });
+
+  it('keeps a change that the page has not rendered yet (L6)', async () => {
+    signedInApi();
+    const { where } = await renderApp({ path: '/cards', width: 1280 });
+    await screen.findByRole('link', { name: /Ayla/ }, LONG);
+    const perPage = screen.getByLabelText('Por página');
+    const dir = screen.getByRole('button', { name: 'Orden descendente' });
+    // the router applies a navigation in a transition: the second change comes before the render
+    act(() => {
+      fireEvent.change(perPage, { target: { value: '96' } });
+      fireEvent.click(dir);
+    });
+    await waitFor(() => expect(where()).toBe('/cards?dir=desc&per_page=96'), LONG);
+  }, 20000);
 
   it('switches to table view and persists it in localStorage', async () => {
     signedInApi();

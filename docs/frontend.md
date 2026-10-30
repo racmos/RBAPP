@@ -465,6 +465,11 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   cached by `useCardSearch`). Props: `label` (+ `hideLabel`), `onSelect(card)`, `filters` (any
   `GET /cards` param, e.g. `{ base_only: true, exclude_supertype: ['Token'] }` for F3/F5 pickers),
   `placeholder`, `autoFocus`, `clearOnSelect` (default `true`), `id`, `className`, `inputRef`.
+  The search also matches ability text and tags, so the options are ranked by name: exact name,
+  then names that start with the query, then names that contain it, then the rest (case and accents
+  ignored, API order kept inside each group); Enter takes the first, so a text-only match never wins
+  over a name match. The popup has an opaque background (`--bg-0` under the panel tone) and stacks
+  above what follows it (`--z-popover`).
   Keys: ↓/↑ (wrapping), Home/End, Enter, Esc (closes, a second Esc clears), Tab. Loading, empty,
   error and offline states (no request while offline unless cached) are announced through a polite
   live region together with the result count and the active card. The popup stays inside the
@@ -472,6 +477,11 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   the global "Buscar cartas" box; `/` focuses it from anywhere except an editable field, and
   choosing a card navigates to `/cards/<set>/<id>` with state `{ fromCatalog: true }` (a modal
   over the catalog at ≥ 860 px).
+- `useSearchNavigation()` — `{ current, go }` for the screens whose filters live in the URL
+  (catalog, collection, products). The router applies a navigation inside a React transition, so the
+  rendered `useSearchParams` can lag behind it; `current()` is the search of the last `go()` until the
+  rendered location changes again, and every params helper builds its next search from it, so a
+  change made before the page rendered the previous one never drops it.
 - `queries.ts` — `useCardDetail(setId, cardId)` (key `['cards', 'detail', …]`, 5-minute stale,
   no retry on 404); `useGameMeta()` (1-hour stale) and `useCardList(params)` (`keepPreviousData`,
   5-minute stale) for the catalog. List endpoints keep `meta` via `requestWithMeta` (the F2-c

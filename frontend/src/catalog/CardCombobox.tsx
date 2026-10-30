@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CardListParams, CardSummary } from '@/api/types';
 import { useOffline } from '@/auth';
@@ -30,6 +30,29 @@ export type CardComboboxProps = {
 };
 
 const NO_FILTERS: Partial<CardListParams> = {};
+
+const fold = (value: string) =>
+  value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase().trim();
+
+/**
+ * The search also matches ability text and tags, so a card can come first without its name
+ * matching (owner feedback S18 d). Exact names first, then names that start with the query, then
+ * names that contain it, then the rest; each group keeps the API order.
+ */
+function rankByName(items: readonly CardSummary[], query: string): CardSummary[] {
+  const needle = fold(query);
+  if (!needle) return [...items];
+  const rank = (card: CardSummary) => {
+    const name = fold(card.name);
+    if (name === needle) return 0;
+    if (name.startsWith(needle)) return 1;
+    return name.includes(needle) ? 2 : 3;
+  };
+  return items
+    .map((card, index) => ({ card, index, rank: rank(card) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(({ card }) => card);
+}
 
 /**
  * Card picker that searches the server as you type (F2-k). ARIA 1.2 editable combobox with list
@@ -77,7 +100,11 @@ export function CardCombobox({
   const settled = debounced.trim();
   const search = useCardSearch(filters, settled, ready && settled.length >= MIN_CHARS && !offline);
 
-  const items = ready ? (search.data?.data.items ?? []) : [];
+  const found = search.data?.data.items;
+  const items = useMemo(
+    () => (ready && found ? rankByName(found, settled) : []),
+    [ready, found, settled],
+  );
   const total = search.data?.meta?.total ?? items.length;
   const visible = open && ready;
   const listed = visible && items.length > 0;

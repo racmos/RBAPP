@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +7,7 @@ import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import type { CardSummary } from '@/api/types';
+import { SRC_DIR, declsFor, readCss } from '@/test/css';
 import { createI18n, type Lang } from '@/i18n';
 import { cardList, champion, foilCommon, noPrice } from '@/test/fixtures/cards';
 import { API } from '@/test/msw/handlers';
@@ -208,7 +210,7 @@ describe('CardCombobox keyboard and pointer (F2-k S3)', () => {
     recordCards([champion, foilCommon]);
     const onEnterSelect = vi.fn<(card: CardSummary) => void>();
     const { user, onSelect } = await renderCombobox({ onEnterSelect });
-    await user.type(input(), 'em');
+    await user.type(input(), 'ay');
     fireEvent.pointerDown((await screen.findAllByRole('option', {}, LONG))[1]);
     expect(onSelect).toHaveBeenCalledWith(foilCommon);
     expect(onEnterSelect).not.toHaveBeenCalled();
@@ -274,6 +276,94 @@ describe('CardCombobox keyboard and pointer (F2-k S3)', () => {
     await user.keyboard('{Escape}');
     await user.keyboard('{ArrowDown}');
     expect(await screen.findByRole('listbox')).toBeVisible();
+  });
+});
+
+/** A card named `name`; the search may match it on its ability text or tags only. */
+const named = (name: string, cardId: string): CardSummary => ({
+  ...foilCommon,
+  card_id: cardId,
+  key: `OGN-${cardId}`,
+  number: cardId,
+  name,
+});
+
+describe('CardCombobox name ranking (owner feedback S18 d)', () => {
+  const storm = named('Relentless Storm', '1'); // matches "garen" on its text only
+  const vanguard = named('Vanguard of Garen', '2');
+  const gauntlet = named("Garen's Gauntlet", '3');
+  const garen = named('Garen', '4');
+  const strike = named('Decisive Strike', '5'); // text only
+  const rugged = named('Garen, Rugged', '6');
+  const demacia = named('Demacian Garen', '7');
+
+  it('lists exact names, then names that start with the query, then names that contain it, then the rest', async () => {
+    recordCards([storm, vanguard, gauntlet, garen, strike, rugged, demacia]);
+    const { user } = await renderCombobox();
+    await user.type(input(), 'Garen');
+    await screen.findAllByRole('option', {}, LONG);
+    // each option reads "<name>OGN · #<number>…": the set follows the name
+    const texts = screen.getAllByRole('option').map((option) => option.textContent);
+    expect(texts).toEqual(
+      [
+        'Garen',
+        "Garen's Gauntlet",
+        'Garen, Rugged',
+        'Vanguard of Garen',
+        'Demacian Garen',
+        'Relentless Storm',
+        'Decisive Strike',
+      ].map((name) => expect.stringMatching(new RegExp(`^${name}OGN`))),
+    );
+  });
+
+  it('ignores case, accents and surrounding spaces', async () => {
+    recordCards([storm, named('Gárën, Rugged', '8')]);
+    const { user } = await renderCombobox();
+    await user.type(input(), ' GAREN ');
+    await screen.findAllByRole('option', {}, LONG);
+    expect(screen.getAllByRole('option')[0]).toHaveTextContent('Gárën, Rugged');
+  });
+
+  it('Enter picks the first name match when the API lists a text-only match first', async () => {
+    recordCards([storm, garen]);
+    const onEnterSelect = vi.fn<(card: CardSummary) => void>();
+    const { user, onSelect } = await renderCombobox({ onEnterSelect });
+    await user.type(input(), 'garen');
+    await screen.findAllByRole('option', {}, LONG);
+    expect(status()).toHaveTextContent('Garen');
+    await user.keyboard('{Enter}');
+    expect(onSelect).toHaveBeenCalledWith(garen);
+    expect(onEnterSelect).toHaveBeenCalledWith(garen);
+  });
+
+  it('keeps the API order when no name matches', async () => {
+    recordCards([storm, strike]);
+    const { user, onSelect } = await renderCombobox();
+    await user.type(input(), 'garen');
+    await screen.findAllByRole('option', {}, LONG);
+    await user.keyboard('{Enter}');
+    expect(onSelect).toHaveBeenCalledWith(storm);
+  });
+});
+
+describe('CardCombobox popup surface (owner feedback S18 b)', () => {
+  const css = readCss(join(SRC_DIR, 'catalog/CardCombobox.module.css'));
+  const popup = declsFor(css, '.popup');
+  const value = (prop: string) => popup.findLast((decl) => decl.prop === prop)?.value;
+
+  it('is opaque, so the content below never shows through', () => {
+    expect(value('background-color')).toBe('var(--bg-0)');
+    expect(popup.some((decl) => decl.prop === 'background')).toBe(false); // would reset the colour
+    const tokens = readCss(join(SRC_DIR, 'styles/tokens.css'));
+    expect(declsFor(tokens, ':root').find((decl) => decl.prop === '--bg-0')?.value).toMatch(
+      /^#[0-9a-f]{6}$/i,
+    );
+  });
+
+  it('stacks above the content that follows it', () => {
+    expect(value('position')).toBe('absolute');
+    expect(value('z-index')).toBe('var(--z-popover)');
   });
 });
 

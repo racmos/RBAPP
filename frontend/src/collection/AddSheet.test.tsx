@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -9,7 +9,7 @@ import { ToastStack } from '@/components/ui/Toast';
 import { clearToasts } from '@/components/ui/toastStore';
 import { createI18n } from '@/i18n';
 import { aylaLines, withCard } from '@/test/fixtures/collection';
-import { foilCommon } from '@/test/fixtures/cards';
+import { cardList, foilCommon } from '@/test/fixtures/cards';
 import { API, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { AddSheet } from './AddSheet';
@@ -184,6 +184,28 @@ describe('AddSheet quick add (owner feedback S9)', () => {
     expect(await screen.findByText('Añadida a tu colección.')).toBeVisible();
     expect(search()).toHaveValue('');
     await waitFor(() => expect(search()).toHaveFocus());
+  });
+
+  it('Enter adds the name match, not a card the search found only by its text', async () => {
+    const storm = { ...foilCommon, card_id: '1', key: 'OGN-1', name: 'Relentless Storm' };
+    const garen = { ...foilCommon, card_id: '4', key: 'OGN-4', name: 'Garen, Rugged' };
+    server.use(
+      http.get(`${API}/cards`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [storm, garen] },
+          meta: { ...cardList.meta, per_page: 20, total: 2, pages: 1 },
+        }),
+      ),
+    );
+    await open();
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Set' }), 'Origen (OGN)');
+    await userEvent.type(search(), 'Garen');
+    await screen.findByRole('option', { name: /Garen, Rugged/ });
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    expect(posts()[0]).toMatchObject({ set_id: 'OGN', card_id: '4' });
   });
 
   it('keeps set, foil, quantity, condition and language for the next card', async () => {

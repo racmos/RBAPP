@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { useOffline } from '@/auth';
+import { useSearchNavigation } from '@/catalog';
 import { useDocumentTitle } from '@/i18n';
 import { langOf } from './format';
 import {
@@ -24,9 +25,8 @@ export function useProductsScreen() {
   useDocumentTitle(t('title'));
   const lang = langOf(i18n.language);
   const offline = useOffline();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { current, go: navigateSearch } = useSearchNavigation();
   const params = useMemo(() => parseProductSearch(searchParams), [searchParams]);
   const mine = useMyProducts();
 
@@ -40,22 +40,20 @@ export function useProductsScreen() {
       : null;
   const tab = asked ?? fallback;
 
-  const go = useCallback(
-    (next: ProductsTab, nextParams: ProductsParams, options: { replace?: boolean } = {}) =>
-      navigate(
-        { pathname: location.pathname, search: `?${productsSearch(next, nextParams)}` },
-        { replace: options.replace },
-      ),
-    [navigate, location.pathname],
-  );
-  /** A filter, sort or page change; it always shows the catalog, which it applies to. */
+  /**
+   * A filter, sort or page change; it always shows the catalog, which it applies to. It starts
+   * from the latest URL asked for, which the page may not have rendered yet (L6).
+   */
   const setParams = useCallback(
     (patch: Partial<ProductsParams>, options: { replace?: boolean } = {}) =>
-      go('catalog', withChange(params, patch), options),
-    [go, params],
+      navigateSearch(
+        productsSearch('catalog', withChange(parseProductSearch(current()), patch)),
+        options,
+      ),
+    [navigateSearch, current],
   );
   const choose = (next: ProductsTab) => {
-    if (next !== tab) void go(next, params);
+    if (next !== tab) navigateSearch(productsSearch(next, parseProductSearch(current())));
   };
 
   return { t, lang, offline, params, setParams, tab, choose, mine };
