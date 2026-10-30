@@ -394,7 +394,7 @@ describe('ChangesPage set order (owner feedback S19)', () => {
       http.get(`${API}/admin/riot/changes`, () => ok(PAGE)),
     );
     await renderApp({ path: '/admin/riot/changes', width: 1280 });
-    const select = await screen.findByRole('combobox', { name: 'Todos los sets' }, LONG);
+    const select = await screen.findByRole('combobox', { name: 'Set' }, LONG);
     await within(select).findByRole('option', { name: 'VEN' }, LONG);
     expect(
       within(select)
