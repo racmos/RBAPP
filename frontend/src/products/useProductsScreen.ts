@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router';
 import { useOffline } from '@/auth';
 import { useSearchNavigation } from '@/catalog';
 import { useDocumentTitle } from '@/i18n';
-import { langOf } from './format';
 import {
   parseProductSearch,
   parseTab,
@@ -21,9 +20,8 @@ import { useMyProducts } from './queries';
  * any, else on the catalog (F14-e S2).
  */
 export function useProductsScreen() {
-  const { t, i18n } = useTranslation('products');
+  const { t } = useTranslation('products');
   useDocumentTitle(t('title'));
-  const lang = langOf(i18n.language);
   const offline = useOffline();
   const [searchParams] = useSearchParams();
   const { current, go: navigateSearch } = useSearchNavigation();
@@ -56,7 +54,7 @@ export function useProductsScreen() {
     if (next !== tab) navigateSearch(productsSearch(next, parseProductSearch(current())));
   };
 
-  return { t, lang, offline, params, setParams, tab, choose, mine };
+  return { t, offline, params, setParams, tab, choose, mine };
 }
 
 export type ProductsScreen = ReturnType<typeof useProductsScreen>;

@@ -79,10 +79,10 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
         ),
       );
       const { container } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
-      const region = await screen.findByRole('region', { name: 'Cambios detectados' }, LONG);
+      const region = await screen.findByRole('region', { name: 'Detected changes' }, LONG);
       // The table scrolls with the page (S11), so the wrapper is no extra tab stop.
       expect(region).not.toHaveAttribute('tabindex');
-      expect(within(region).getByRole('table', { name: 'Cambios detectados' })).toBeVisible();
+      expect(within(region).getByRole('table', { name: 'Detected changes' })).toBeVisible();
       expect(within(region).getByText(url)).toBeVisible();
       expect(await axe(container)).toHaveNoViolations();
 
@@ -117,7 +117,7 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     async () => {
       changesApi();
       await renderApp({ path: '/admin/riot/changes', width: 1280 });
-      const table = await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
+      const table = await screen.findByRole('table', { name: 'Detected changes' }, LONG);
       const cell = within(table).getByText('Alpha Unit').closest('td');
       expect(cell?.className).toMatch(/cardCell/);
       const card: Array<{ prop: string; value: string }> = [];
@@ -138,7 +138,7 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     async () => {
       changesApi();
       await renderApp({ path: '/admin/riot/changes', width: 1280 });
-      const region = await screen.findByRole('region', { name: 'Cambios detectados' }, LONG);
+      const region = await screen.findByRole('region', { name: 'Detected changes' }, LONG);
       expect(region).toHaveAttribute('data-fit');
       const tableCss = readFileSync('src/components/ui/TableScroll.module.css', 'utf8');
       const fit: Array<{ prop: string; value: string }> = [];
@@ -160,11 +160,11 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     async () => {
       changesApi();
       await renderApp({ path: '/admin/riot/changes', width: 1280 });
-      const region = await screen.findByRole('region', { name: 'Cambios detectados' }, LONG);
-      expect(screen.queryByRole('region', { name: /seleccionados?$/ })).toBeNull();
-      await userEvent.click(screen.getAllByRole('checkbox', { name: /Aprobar el cambio/ })[0]);
-      const bar = await screen.findByRole('region', { name: /seleccionados?$/ }, LONG);
-      expect(within(bar).getByText('1 cambio seleccionado')).toBeVisible();
+      const region = await screen.findByRole('region', { name: 'Detected changes' }, LONG);
+      expect(screen.queryByRole('region', { name: /selected$/ })).toBeNull();
+      await userEvent.click(screen.getAllByRole('checkbox', { name: /Approve the change/ })[0]);
+      const bar = await screen.findByRole('region', { name: /selected$/ }, LONG);
+      expect(within(bar).getByText('1 change selected')).toBeVisible();
       expect(region.contains(bar)).toBe(false);
 
       const bulk: Array<{ prop: string; value: string }> = [];
@@ -196,8 +196,8 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
         }),
       );
       const { router } = await renderApp({ path: '/admin/riot/changes?page=2', width: 1280 });
-      await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
-      const size = screen.getByRole('combobox', { name: 'Por página' });
+      await screen.findByRole('table', { name: 'Detected changes' }, LONG);
+      const size = screen.getByRole('combobox', { name: 'Per page' });
       expect(size).toHaveValue('50');
       expect(
         within(size)
@@ -213,7 +213,7 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
       await waitFor(() => expect(last().get('per_page')).toBe('200'), LONG);
       expect(last().get('page')).toBeNull();
 
-      await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Por página' }), '50');
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Per page' }), '50');
       await waitFor(() => expect(router.state.location.search).toBe(''), LONG);
       await waitFor(() => expect(last().get('per_page')).toBe('50'), LONG);
     },
@@ -240,17 +240,17 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
         }),
       );
       const { container, router } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
-      expect(await screen.findByRole('table', { name: 'Cambios detectados' }, LONG)).toBeVisible();
+      expect(await screen.findByRole('table', { name: 'Detected changes' }, LONG)).toBeVisible();
       expect(await axe(container)).toHaveNoViolations();
 
       await userEvent.click(
-        screen.getByRole('checkbox', { name: 'Seleccionar los pendientes de esta página' }),
+        screen.getByRole('checkbox', { name: 'Select the pending ones on this page' }),
       );
-      await userEvent.click(screen.getByRole('button', { name: 'Aprobar seleccionados' }));
-      expect(await screen.findByText('¿Aplicar 2 cambios?', undefined, LONG)).toBeVisible();
+      await userEvent.click(screen.getByRole('button', { name: 'Approve selected' }));
+      expect(await screen.findByText('Apply 2 changes?', undefined, LONG)).toBeVisible();
       const dialog = await screen.findByRole('dialog', undefined, LONG);
-      await userEvent.click(within(dialog).getByRole('button', { name: 'Aprobar seleccionados' }));
-      expect(await screen.findAllByText(/Aprobados: 2/, undefined, LONG)).not.toHaveLength(0);
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Approve selected' }));
+      expect(await screen.findAllByText(/Approved: 2/, undefined, LONG)).not.toHaveLength(0);
       expect(posted).toMatchObject({ ids: [1, 2], action: 'approve' });
       expect(router.state.location.search).toBe('');
     },
@@ -259,8 +259,8 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
   it('status filter and search land in the URL', { timeout: 30000 }, async () => {
     changesApi();
     const { router } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
-    await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
-    await userEvent.click(screen.getByRole('radio', { name: 'Aprobados' }));
+    await screen.findByRole('table', { name: 'Detected changes' }, LONG);
+    await userEvent.click(screen.getByRole('radio', { name: 'Approved' }));
     await waitFor(() => expect(router.state.location.search).toContain('status=approved'), LONG);
   });
 
@@ -270,16 +270,16 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     async () => {
       changesApi();
       await renderApp({ path: '/admin/riot/changes', width: 1280 });
-      await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
-      const group = screen.getByRole('radiogroup', { name: 'Estado' });
+      await screen.findByRole('table', { name: 'Detected changes' }, LONG);
+      const group = screen.getByRole('radiogroup', { name: 'Status' });
       const label = document.getElementById(group.getAttribute('aria-labelledby') ?? '');
-      expect(label).toHaveTextContent('Estado');
+      expect(label).toHaveTextContent('Status');
       expect(label).toBeVisible();
-      expect(within(group).getByRole('radio', { name: 'Pendientes' })).toBeChecked();
+      expect(within(group).getByRole('radio', { name: 'Pending' })).toBeChecked();
       // the selects are named after what they filter, "all" is their empty option
       for (const [name, empty] of [
-        ['Set', 'Todos los sets'],
-        ['Campo', 'Todos los campos'],
+        ['Set', 'All sets'],
+        ['Field', 'All fields'],
       ]) {
         const select = screen.getByRole('combobox', { name });
         expect(select.closest('label')).toHaveTextContent(name);
@@ -291,8 +291,8 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
   it('lists the obsolete proposals (owner feedback S17)', { timeout: 30000 }, async () => {
     changesApi();
     const { router } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
-    await screen.findByRole('table', { name: 'Cambios detectados' }, LONG);
-    await userEvent.click(screen.getByRole('radio', { name: 'Obsoletos' }));
+    await screen.findByRole('table', { name: 'Detected changes' }, LONG);
+    await userEvent.click(screen.getByRole('radio', { name: 'Obsolete' }));
     await waitFor(() => expect(router.state.location.search).toContain('status=obsolete'), LONG);
   });
 
@@ -300,18 +300,18 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     changesApi();
     await renderApp({ path: '/admin/riot/changes', width: 1700 });
     await userEvent.click(
-      (await screen.findAllByRole('checkbox', { name: /Aprobar el cambio/ }, LONG))[0],
+      (await screen.findAllByRole('checkbox', { name: /Approve the change/ }, LONG))[0],
     );
     expect(await screen.findAllByText('Alpha Unit', undefined, LONG)).toHaveLength(2);
     await expectCollapsible(
-      screen.getByRole('complementary', { name: 'Detalle' }),
-      { hide: 'Ocultar detalle', show: 'Mostrar detalle' },
+      screen.getByRole('complementary', { name: 'Details' }),
+      { hide: 'Hide details', show: 'Show details' },
       'rb_panel_admin-changes-detail_v1',
     );
     // the pagination stays under the table, not in the side column
-    const panel = screen.getByRole('complementary', { name: 'Detalle' });
+    const panel = screen.getByRole('complementary', { name: 'Details' });
     expect(panel.parentElement).toBe(
-      screen.getByRole('region', { name: 'Cambios detectados' }).parentElement!.parentElement,
+      screen.getByRole('region', { name: 'Detected changes' }).parentElement!.parentElement,
     );
   });
 
@@ -319,9 +319,9 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
     changesApi();
     await renderApp({ path: '/admin/riot/changes', width: 390 });
     await screen.findByText('Alpha Unit', {}, LONG);
-    expect(screen.queryByRole('checkbox', { name: /Seleccionar/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /Select/ })).toBeNull();
     await waitFor(() => {
-      const approve = screen.getAllByRole('button', { name: /Aprobar el cambio/ });
+      const approve = screen.getAllByRole('button', { name: /Approve the change/ });
       expect(approve).toHaveLength(2);
       approve.forEach((button) => expect(button).toBeVisible());
     }, LONG);
@@ -340,11 +340,11 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
       ),
     );
     await renderApp({ path: '/admin/riot/changes', width: 1280 });
-    const approves = await screen.findAllByRole('button', { name: /Aprobar el cambio/ }, LONG);
+    const approves = await screen.findAllByRole('button', { name: /Approve the change/ }, LONG);
     await userEvent.click(approves[0]);
     expect(
       await screen.findAllByText(
-        'La carta ha cambiado desde que se detectó este cambio. Revisa la carta.',
+        'The card changed after this change was detected. Check the card.',
         undefined,
         LONG,
       ),
@@ -361,11 +361,11 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
       ),
     );
     await renderApp({ path: '/admin/riot/changes', width: 1280 });
-    const approves = await screen.findAllByRole('button', { name: /Aprobar el cambio/ }, LONG);
+    const approves = await screen.findAllByRole('button', { name: /Approve the change/ }, LONG);
     await userEvent.click(approves[0]);
     expect(
       await screen.findAllByText(
-        'Cambio aplicado, pero la imagen nueva no se pudo descargar.',
+        'Change applied, but the new image could not be downloaded.',
         undefined,
         LONG,
       ),

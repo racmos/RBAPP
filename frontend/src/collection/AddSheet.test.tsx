@@ -20,13 +20,13 @@ const META: Pick<GameMeta, 'conditions' | 'languages' | 'sets'> = {
   conditions: ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'],
   languages: ['English', 'French', 'German', 'Spanish', 'Italian'],
   sets: [
-    { id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 },
+    { id: 'OGN', name: 'Origins', released_on: '2024-01-15', card_count: 6 },
     { id: 'OGS', name: 'Proving Grounds', released_on: '2024-03-01', card_count: 24 },
   ],
 };
 
 async function open({ offline = false, meta = META } = {}) {
-  const i18n = await createI18n('es');
+  const i18n = await createI18n();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <I18nextProvider i18n={i18n}>
@@ -56,9 +56,9 @@ beforeEach(() => {
 });
 afterEach(() => server.events.removeAllListeners());
 
-const search = () => screen.getByRole('combobox', { name: 'Carta' });
+const search = () => screen.getByRole('combobox', { name: 'Card' });
 const foilSwitch = () => screen.getByRole('switch', { name: 'Foil' });
-const addButton = () => screen.getByRole('button', { name: 'Añadir' });
+const addButton = () => screen.getByRole('button', { name: 'Add' });
 
 async function choose(name: RegExp, text = 'em') {
   await userEvent.type(search(), text);
@@ -68,9 +68,9 @@ async function choose(name: RegExp, text = 'em') {
 describe('AddSheet (F3-g S7)', () => {
   it('cannot add until a card is chosen', async () => {
     await open();
-    expect(screen.getByRole('dialog', { name: 'Añadir a la colección' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Add to collection' })).toBeVisible();
     expect(addButton()).toBeDisabled();
-    expect(screen.getByText('Elige primero una carta.')).toBeVisible();
+    expect(screen.getByText('Choose a card first.')).toBeVisible();
   });
 
   it('adds a foil copy with the typed values and stays open for the next card', async () => {
@@ -78,12 +78,12 @@ describe('AddSheet (F3-g S7)', () => {
     await choose(/Ember Wisp/);
     expect(foilSwitch()).toBeEnabled();
     await userEvent.click(foilSwitch());
-    await userEvent.click(screen.getByRole('button', { name: 'Más copias: Copias' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More copies: Copies' }));
     await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Estado' }),
-      'Excelente (EX)',
+      screen.getByRole('combobox', { name: 'Condition' }),
+      'Excellent (EX)',
     );
-    await userEvent.click(screen.getByRole('switch', { name: 'En venta' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'On sale' }));
     await userEvent.click(addButton());
 
     await waitFor(() => expect(posts()).toHaveLength(1));
@@ -95,12 +95,12 @@ describe('AddSheet (F3-g S7)', () => {
       condition: 'EX',
       selling: true,
     });
-    expect(await screen.findByText('Añadida a tu colección.')).toBeVisible();
+    expect(await screen.findByText('Added to your collection.')).toBeVisible();
     // the sheet is still there, the card search is clear and focused
-    expect(screen.getByRole('dialog', { name: 'Añadir a la colección' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Add to collection' })).toBeVisible();
     expect(search()).toHaveValue('');
     await waitFor(() => expect(search()).toHaveFocus());
-    expect(screen.getByText('Elige primero una carta.')).toBeVisible();
+    expect(screen.getByText('Choose a card first.')).toBeVisible();
     expect(addButton()).toBeDisabled();
   });
 
@@ -113,7 +113,7 @@ describe('AddSheet (F3-g S7)', () => {
     await open();
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    expect(await screen.findByText('Sumada a una línea que ya tenías.')).toBeVisible();
+    expect(await screen.findByText('Added to a line you already had.')).toBeVisible();
   });
 
   it('shows the server error translated and keeps the card chosen', async () => {
@@ -125,15 +125,15 @@ describe('AddSheet (F3-g S7)', () => {
     await open();
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    expect(await screen.findByText('Esta carta no existe en versión foil.')).toBeVisible();
-    expect(screen.getByText('Carta elegida: Ember Wisp')).toBeVisible();
+    expect(await screen.findByText('This card has no foil version.')).toBeVisible();
+    expect(screen.getByText('Chosen card: Ember Wisp')).toBeVisible();
     expect(addButton()).toBeEnabled();
   });
 
   it('disables everything offline and says why', async () => {
     await open({ offline: true });
-    expect(screen.getByText('Necesitas conexión para hacer cambios.')).toBeVisible();
-    expect(screen.getByRole('combobox', { name: 'Estado' })).toBeDisabled();
+    expect(screen.getByText('You need a connection to make changes.')).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Condition' })).toBeDisabled();
     expect(foilSwitch()).toBeDisabled();
     expect(addButton()).toBeDisabled();
   });
@@ -149,7 +149,7 @@ describe('AddSheet quick add (owner feedback S9)', () => {
     await open();
     const set = screen.getByRole('combobox', { name: 'Set' });
     expect(set).toHaveValue('');
-    expect(within(set).getByRole('option', { name: 'Todos los sets' })).toBeInTheDocument();
+    expect(within(set).getByRole('option', { name: 'All sets' })).toBeInTheDocument();
     await userEvent.selectOptions(set, 'Proving Grounds (OGS)');
     await userEvent.type(search(), 'em');
     await waitFor(() => expect(sent.some((r) => r.path === `${API}/cards`)).toBe(true));
@@ -168,8 +168,8 @@ describe('AddSheet quick add (owner feedback S9)', () => {
 
   it('Enter in the search adds the highlighted card with the current choices', async () => {
     await open();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Idioma' }), 'Español');
-    await userEvent.click(screen.getByRole('button', { name: 'Más copias: Copias' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Language' }), 'Spanish');
+    await userEvent.click(screen.getByRole('button', { name: 'More copies: Copies' }));
     await userEvent.type(search(), 'em');
     await screen.findByRole('option', { name: /Ember Wisp/ });
     await userEvent.keyboard('{Enter}');
@@ -182,7 +182,7 @@ describe('AddSheet quick add (owner feedback S9)', () => {
       qty: 2,
       language: 'Spanish',
     });
-    expect(await screen.findByText('Añadida a tu colección.')).toBeVisible();
+    expect(await screen.findByText('Added to your collection.')).toBeVisible();
     expect(search()).toHaveValue('');
     await waitFor(() => expect(search()).toHaveFocus());
   });
@@ -200,7 +200,7 @@ describe('AddSheet quick add (owner feedback S9)', () => {
       ),
     );
     await open();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Set' }), 'Origen (OGN)');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Set' }), 'Origins (OGN)');
     await userEvent.type(search(), 'Garen');
     await screen.findByRole('option', { name: /Garen, Rugged/ });
     await userEvent.keyboard('{Enter}');
@@ -211,32 +211,32 @@ describe('AddSheet quick add (owner feedback S9)', () => {
 
   it('keeps set, foil, quantity, condition and language for the next card', async () => {
     await open();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Set' }), 'Origen (OGN)');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Set' }), 'Origins (OGN)');
     await userEvent.click(foilSwitch());
-    await userEvent.click(screen.getByRole('button', { name: 'Más copias: Copias' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More copies: Copies' }));
     await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Estado' }),
-      'Casi nueva (NM)',
+      screen.getByRole('combobox', { name: 'Condition' }),
+      'Near Mint (NM)',
     );
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Idioma' }), 'Francés');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Language' }), 'French');
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    await screen.findByText('Añadida a tu colección.');
+    await screen.findByText('Added to your collection.');
 
     expect(screen.getByRole('combobox', { name: 'Set' })).toHaveValue('OGN');
     expect(foilSwitch()).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('spinbutton', { name: 'Copias' })).toHaveValue(2);
-    expect(screen.getByRole('combobox', { name: 'Estado' })).toHaveValue('NM');
-    expect(screen.getByRole('combobox', { name: 'Idioma' })).toHaveValue('French');
+    expect(screen.getByRole('spinbutton', { name: 'Copies' })).toHaveValue(2);
+    expect(screen.getByRole('combobox', { name: 'Condition' })).toHaveValue('NM');
+    expect(screen.getByRole('combobox', { name: 'Language' })).toHaveValue('French');
   });
 
   it('remembers the choices for the session and restores them when it opens again', async () => {
     const first = await open();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Set' }), 'Origen (OGN)');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Set' }), 'Origins (OGN)');
     await userEvent.click(foilSwitch());
     await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Estado' }),
-      'Excelente (EX)',
+      screen.getByRole('combobox', { name: 'Condition' }),
+      'Excellent (EX)',
     );
     await waitFor(() =>
       expect(JSON.parse(sessionStorage.getItem(QUICK_ADD_KEY) ?? '{}')).toMatchObject({
@@ -253,14 +253,14 @@ describe('AddSheet quick add (owner feedback S9)', () => {
     await open();
     expect(screen.getByRole('combobox', { name: 'Set' })).toHaveValue('OGN');
     expect(foilSwitch()).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('combobox', { name: 'Estado' })).toHaveValue('EX');
+    expect(screen.getByRole('combobox', { name: 'Condition' })).toHaveValue('EX');
   });
 
   it('ignores a stored value it cannot read', async () => {
     sessionStorage.setItem(QUICK_ADD_KEY, '{"set": 3, "qty": -4, "foil": "yes"');
     await open();
     expect(screen.getByRole('combobox', { name: 'Set' })).toHaveValue('');
-    expect(screen.getByRole('spinbutton', { name: 'Copias' })).toHaveValue(1);
+    expect(screen.getByRole('spinbutton', { name: 'Copies' })).toHaveValue(1);
     expect(foilSwitch()).toHaveAttribute('aria-checked', 'false');
   });
 
@@ -271,20 +271,23 @@ describe('AddSheet quick add (owner feedback S9)', () => {
     );
     await open();
     expect(screen.getByRole('combobox', { name: 'Set' })).toHaveValue('OGS');
-    expect(screen.getByRole('spinbutton', { name: 'Copias' })).toHaveValue(1);
+    expect(screen.getByRole('spinbutton', { name: 'Copies' })).toHaveValue(1);
     expect(foilSwitch()).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('combobox', { name: 'Estado' })).toHaveValue('');
-    expect(screen.getByRole('combobox', { name: 'Idioma' })).toHaveValue('Spanish');
+    expect(screen.getByRole('combobox', { name: 'Condition' })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: 'Language' })).toHaveValue('Spanish');
   });
 
   it('does not post a foil copy of a card without a foil version, and stays usable', async () => {
     await open();
     await userEvent.click(foilSwitch());
     await choose(/Fury Rune/, 'rune');
-    expect(screen.getByText('Carta elegida: Fury Rune')).toBeVisible();
-    expect(screen.getByText('Esta carta no tiene versión foil.')).toBeVisible();
+    expect(screen.getByText('Chosen card: Fury Rune')).toBeVisible();
+    expect(screen.getByText('This card has no foil version.')).toBeVisible();
     await userEvent.click(addButton());
-    expect(await screen.findByText('Esta carta no existe en versión foil.')).toBeVisible();
+    // the hint under the switch and the refusal of the add, both in English
+    await waitFor(() =>
+      expect(screen.getAllByText('This card has no foil version.')).toHaveLength(2),
+    );
     expect(posts()).toHaveLength(0);
 
     // turning foil off adds it
@@ -304,42 +307,42 @@ describe('AddSheet quick add (owner feedback S9)', () => {
       }),
     );
     await open();
-    expect(screen.queryByRole('list', { name: 'Añadidas en esta sesión' })).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Added in this session' })).toBeNull();
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    await screen.findByText('Añadida a tu colección.');
+    await screen.findByText('Added to your collection.');
     await choose(/Ayla/, 'ay');
-    await userEvent.click(screen.getByRole('button', { name: 'Más copias: Copias' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More copies: Copies' }));
     await userEvent.click(addButton());
 
-    const session = await screen.findByRole('list', { name: 'Añadidas en esta sesión' });
+    const session = await screen.findByRole('list', { name: 'Added in this session' });
     await waitFor(() => expect(within(session).getAllByRole('listitem')).toHaveLength(2));
     const [newest, oldest] = within(session).getAllByRole('listitem');
     expect(newest).toHaveTextContent("Ayla, Fury's Champion");
     expect(newest).toHaveTextContent('OGN #79');
-    expect(newest).toHaveTextContent('2 copias');
+    expect(newest).toHaveTextContent('2 copies');
     expect(oldest).toHaveTextContent('Ember Wisp');
-    expect(oldest).toHaveTextContent('1 copia');
+    expect(oldest).toHaveTextContent('1 copy');
   });
 
   it('undoes a new line with DELETE and offers to put it back', async () => {
     await open();
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    await userEvent.click(await screen.findByRole('button', { name: 'Deshacer: Ember Wisp' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Undo: Ember Wisp' }));
 
     await waitFor(() =>
       expect(sent.some((r) => r.method === 'DELETE' && r.path === `${API}/collection/9001`)).toBe(
         true,
       ),
     );
-    expect(await screen.findByText('Entrada deshecha.')).toBeVisible();
-    expect(screen.queryByRole('list', { name: 'Añadidas en esta sesión' })).toBeNull();
+    expect(await screen.findByText('Entry undone.')).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Added in this session' })).toBeNull();
 
     // the toast puts the deleted line back
-    await userEvent.click(screen.getByRole('button', { name: 'Deshacer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(posts()).toHaveLength(2));
-    expect(await screen.findByText('Línea restaurada.')).toBeVisible();
+    expect(await screen.findByText('Line restored.')).toBeVisible();
   });
 
   it('undoes copies merged into an existing line by lowering its quantity', async () => {
@@ -363,16 +366,16 @@ describe('AddSheet quick add (owner feedback S9)', () => {
     );
     await open();
     await choose(/Ember Wisp/);
-    await userEvent.click(screen.getByRole('button', { name: 'Más copias: Copias' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More copies: Copies' }));
     await userEvent.click(addButton());
-    await userEvent.click(await screen.findByRole('button', { name: 'Deshacer: Ember Wisp' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Undo: Ember Wisp' }));
 
     await waitFor(() => expect(sent.some((r) => r.method === 'PATCH')).toBe(true));
     const patch = sent.find((r) => r.method === 'PATCH')!;
     expect(patch.path).toBe(`${API}/collection/1201`);
     expect(patch.body).toEqual({ qty: 3, if_updated_at: '2026-10-29T10:00:00Z' });
     expect(sent.some((r) => r.method === 'DELETE')).toBe(false);
-    expect(await screen.findByText('Entrada deshecha.')).toBeVisible();
+    expect(await screen.findByText('Entry undone.')).toBeVisible();
   });
 
   it('sums repeated adds that merge into a line of this session into one row', async () => {
@@ -393,17 +396,17 @@ describe('AddSheet quick add (owner feedback S9)', () => {
     await open();
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    await screen.findByText('Añadida a tu colección.');
+    await screen.findByText('Added to your collection.');
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    await screen.findByText('Sumada a una línea que ya tenías.');
+    await screen.findByText('Added to a line you already had.');
 
-    const session = screen.getByRole('list', { name: 'Añadidas en esta sesión' });
+    const session = screen.getByRole('list', { name: 'Added in this session' });
     await waitFor(() =>
-      expect(within(session).getByRole('listitem')).toHaveTextContent('2 copias'),
+      expect(within(session).getByRole('listitem')).toHaveTextContent('2 copies'),
     );
     // the line was created in this session, so undo deletes it
-    await userEvent.click(screen.getByRole('button', { name: 'Deshacer: Ember Wisp' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Undo: Ember Wisp' }));
     await waitFor(() =>
       expect(sent.some((r) => r.method === 'DELETE' && r.path === `${API}/collection/9001`)).toBe(
         true,
@@ -420,27 +423,25 @@ describe('AddSheet quick add (owner feedback S9)', () => {
     await open();
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    await userEvent.click(await screen.findByRole('button', { name: 'Deshacer: Ember Wisp' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Undo: Ember Wisp' }));
     expect(
-      await screen.findByText(
-        'Esta línea ha cambiado en otra ventana. Recarga y vuelve a intentarlo.',
-      ),
+      await screen.findByText('This line changed in another window. Reload and try again.'),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Deshacer: Ember Wisp' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Undo: Ember Wisp' })).toBeVisible();
   });
 
   it('has no axe violations with cards added in this session', async () => {
     await open();
     await choose(/Ember Wisp/);
     await userEvent.click(addButton());
-    await screen.findByRole('list', { name: 'Añadidas en esta sesión' });
+    await screen.findByRole('list', { name: 'Added in this session' });
     expect(await axe(document.body)).toHaveNoViolations();
   });
 });
 
-describe('AddSheet in English', () => {
+describe('AddSheet texts', () => {
   it('names the set filter and the session list', async () => {
-    const i18n = await createI18n('en');
+    const i18n = await createI18n();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <I18nextProvider i18n={i18n}>
@@ -461,8 +462,8 @@ describe('AddSheet set order (owner feedback S19)', () => {
       meta: {
         ...META,
         sets: [
-          { id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 },
-          { id: 'NOD', name: 'Sin fecha', released_on: null, card_count: 0 },
+          { id: 'OGN', name: 'Origins', released_on: '2024-01-15', card_count: 6 },
+          { id: 'NOD', name: 'No date', released_on: null, card_count: 0 },
           { id: 'OGS', name: 'Proving Grounds', released_on: '2024-03-01', card_count: 24 },
           { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
         ],

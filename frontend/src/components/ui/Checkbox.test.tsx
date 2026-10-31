@@ -38,14 +38,14 @@ describe('Checkbox as a toggle button (owner feedback S3, S7)', () => {
   });
 
   it('can hide its label and keep it as the accessible name', () => {
-    render(<Checkbox label="Seleccionar la página" hideLabel />);
-    expect(screen.getByRole('checkbox', { name: 'Seleccionar la página' })).toBeInTheDocument();
-    expect(screen.getByText('Seleccionar la página')).toHaveClass('sr-only');
+    render(<Checkbox label="Select the page" hideLabel />);
+    expect(screen.getByRole('checkbox', { name: 'Select the page' })).toBeInTheDocument();
+    expect(screen.getByText('Select the page')).toHaveClass('sr-only');
   });
 
   it('shows the mixed state', () => {
-    render(<Checkbox label="Todo" indeterminate />);
-    expect((screen.getByRole('checkbox', { name: 'Todo' }) as HTMLInputElement).indeterminate).toBe(
+    render(<Checkbox label="All" indeterminate />);
+    expect((screen.getByRole('checkbox', { name: 'All' }) as HTMLInputElement).indeterminate).toBe(
       true,
     );
   });

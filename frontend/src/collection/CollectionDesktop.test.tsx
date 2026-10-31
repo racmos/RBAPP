@@ -47,7 +47,7 @@ function list(items = collectionGroups, meta: Record<string, unknown> = {}) {
   );
 }
 
-const table = () => screen.findByRole('table', { name: 'Tu colección agrupada por carta' }, LONG);
+const table = () => screen.findByRole('table', { name: 'Your collection grouped by card' }, LONG);
 const row = (name: RegExp) => screen.getByRole('row', { name });
 
 describe('CollectionDesktop at 1280 px (F3-h S1-S3)', () => {
@@ -56,28 +56,28 @@ describe('CollectionDesktop at 1280 px (F3-h S1-S3)', () => {
     await renderApp({ path: '/collection', width: 1280 });
     expect(await table()).toBeVisible();
     // sidebar with group counts
-    const sidebar = screen.getByRole('complementary', { name: 'Filtrar colección' });
+    const sidebar = screen.getByRole('complementary', { name: 'Filter collection' });
     // the chips come from /meta/game, which can answer after the table: wait for them
     expect(await within(sidebar).findByRole('button', { name: /OGN/ }, LONG)).toHaveTextContent(
       '3',
     );
-    expect(await within(sidebar).findByRole('button', { name: /Común/ }, LONG)).toHaveTextContent(
+    expect(await within(sidebar).findByRole('button', { name: /Common/ }, LONG)).toHaveTextContent(
       '2',
     );
     // toolbar
-    expect(screen.getByText('3 cartas')).toBeVisible();
-    expect(screen.getByRole('combobox', { name: 'Ordenar por' })).toBeVisible();
-    expect(screen.getByRole('combobox', { name: 'Por página' })).toBeVisible();
-    expect(screen.getByRole('radio', { name: 'Tabla' })).toBeChecked();
+    expect(screen.getByText('3 cards')).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Sort by' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Per page' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'Table' })).toBeChecked();
     // summary band
-    const band = screen.getByText('Coste', { selector: 'dt' }).closest('dl')!;
-    expect(within(band).getByText('9,84 €')).toBeVisible();
-    expect(within(band).getByText('2,40 €')).toBeVisible();
-    expect(within(band).getByText(/^\+1,23 €/)).toBeVisible();
-    expect(within(band).getByText('1,30 €')).toBeVisible();
-    expect(within(band).getByText('12,5 %')).toBeVisible();
+    const band = screen.getByText('Cost', { selector: 'dt' }).closest('dl')!;
+    expect(within(band).getByText('9.84 €')).toBeVisible();
+    expect(within(band).getByText('2.40 €')).toBeVisible();
+    expect(within(band).getByText(/^\+1.23 €/)).toBeVisible();
+    expect(within(band).getByText('1.30 €')).toBeVisible();
+    expect(within(band).getByText('12.5%')).toBeVisible();
     // the mobile layout is not there
-    expect(screen.queryByRole('button', { name: 'Filtros' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Filters' })).toBeNull();
   }, 20000);
 
   it('starts in the grid when the preference says so', async () => {
@@ -85,8 +85,8 @@ describe('CollectionDesktop at 1280 px (F3-h S1-S3)', () => {
     await renderApp({ path: '/collection', width: 1280 });
     await screen.findByRole('button', { name: /Ayla/ }, LONG);
     expect(screen.queryByRole('table')).toBeNull();
-    expect(screen.getByRole('radio', { name: 'Cuadrícula' })).toBeChecked();
-    await userEvent.click(screen.getByRole('radio', { name: 'Tabla' }));
+    expect(screen.getByRole('radio', { name: 'Grid' })).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: 'Table' }));
     expect(await table()).toBeVisible();
   }, 20000);
 
@@ -95,8 +95,8 @@ describe('CollectionDesktop at 1280 px (F3-h S1-S3)', () => {
     list(collectionGroups, { totals: { ...collectionMeta.totals, pl: -2, cost: 10 } });
     await renderApp({ path: '/collection', width: 1280 });
     await table();
-    const band = screen.getByText('Coste', { selector: 'dt' }).closest('dl')!;
-    expect(within(band).getByText(/^−2,00 €/)).toBeVisible();
+    const band = screen.getByText('Cost', { selector: 'dt' }).closest('dl')!;
+    expect(within(band).getByText(/^−2.00 €/)).toBeVisible();
   }, 20000);
 
   it('is axe clean', async () => {
@@ -113,7 +113,7 @@ describe('the table (F3-h S3)', () => {
     await renderApp({ path: '/collection', width: 1280 });
     await table();
     const ayla = row(/Ayla/);
-    expect(within(ayla).getByText('Playset incompleto (2/3)')).toBeVisible();
+    expect(within(ayla).getByText('Playset incomplete (2/3)')).toBeVisible();
     expect(within(ayla).getByText('4')).toBeVisible(); // copies, summed over its two lines
     expect(within(ayla).getByText('OGN')).toBeVisible();
     // the foil card shows its foil mark and no warning
@@ -125,17 +125,17 @@ describe('the table (F3-h S3)', () => {
     signedIn();
     await renderApp({ path: '/collection', width: 1280 });
     await table();
-    expect(screen.queryByRole('checkbox', { name: /línea 1/ })).toBeNull();
-    const expand = screen.getByRole('button', { name: "Ver las líneas de Ayla, Fury's Champion" });
+    expect(screen.queryByRole('checkbox', { name: /line 1/ })).toBeNull();
+    const expand = screen.getByRole('button', { name: "Show the lines of Ayla, Fury's Champion" });
     expect(expand).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(expand);
     expect(expand).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('checkbox', { name: /Seleccionar .*línea 1/ })).toBeVisible();
-    expect(screen.getByRole('checkbox', { name: /Seleccionar .*línea 2/ })).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: /Select .*line 1/ })).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: /Select .*line 2/ })).toBeVisible();
     await userEvent.click(expand);
-    expect(screen.queryByRole('checkbox', { name: /línea 1/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /line 1/ })).toBeNull();
     // a single-line card has nothing to unfold
-    expect(screen.queryByRole('button', { name: /Ver las líneas de Ember Wisp/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Show the lines of Ember Wisp/ })).toBeNull();
   }, 20000);
 
   it('edits a single-line card in its own row', async () => {
@@ -143,8 +143,8 @@ describe('the table (F3-h S3)', () => {
     await renderApp({ path: '/collection', width: 1280 });
     await table();
     await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Estado: Ember Wisp' }),
-      'Excelente (EX)',
+      screen.getByRole('combobox', { name: 'Condition: Ember Wisp' }),
+      'Excellent (EX)',
     );
     await waitFor(() => expect(sent.some((r) => r.method === 'PATCH')).toBe(true), LONG);
     expect(sent.find((r) => r.method === 'PATCH')).toMatchObject({
@@ -158,10 +158,10 @@ describe('the table (F3-h S3)', () => {
     await renderApp({ path: '/collection', width: 1280 });
     await table();
     await userEvent.click(
-      screen.getByRole('button', { name: "Ver las líneas de Ayla, Fury's Champion" }),
+      screen.getByRole('button', { name: "Show the lines of Ayla, Fury's Champion" }),
     );
     const switchOn = screen.getByRole('switch', {
-      name: /En venta: .*línea 2/,
+      name: /On sale: .*line 2/,
     });
     await userEvent.click(switchOn);
     await waitFor(() => expect(sent.some((r) => r.method === 'PATCH')).toBe(true), LONG);
@@ -175,27 +175,27 @@ describe('the table (F3-h S3)', () => {
     signedIn();
     const { where } = await renderApp({ path: '/collection', width: 1280 });
     await table();
-    const nameHeader = screen.getByRole('columnheader', { name: 'Nombre' });
+    const nameHeader = screen.getByRole('columnheader', { name: 'Name' });
     expect(nameHeader).toHaveAttribute('aria-sort', 'none');
-    expect(screen.getByRole('columnheader', { name: /Nº/ })).toHaveAttribute(
+    expect(screen.getByRole('columnheader', { name: /No\./ })).toHaveAttribute(
       'aria-sort',
       'ascending',
     );
     await userEvent.click(within(nameHeader).getByRole('button'));
     await waitFor(() => expect(where()).toBe('/collection?sort=name'), LONG);
     await waitFor(() =>
-      expect(screen.getByRole('columnheader', { name: /Nombre/ })).toHaveAttribute(
+      expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute(
         'aria-sort',
         'ascending',
       ),
     );
     await userEvent.click(
-      within(screen.getByRole('columnheader', { name: /Nombre/ })).getByRole('button'),
+      within(screen.getByRole('columnheader', { name: /Name/ })).getByRole('button'),
     );
     await waitFor(() => expect(where()).toBe('/collection?sort=name&dir=desc'), LONG);
     // a column that cannot be sorted has no button
     expect(
-      within(screen.getByRole('columnheader', { name: 'Idioma' })).queryByRole('button'),
+      within(screen.getByRole('columnheader', { name: 'Language' })).queryByRole('button'),
     ).toBeNull();
   }, 30000);
 
@@ -204,8 +204,8 @@ describe('the table (F3-h S3)', () => {
     const { where } = await renderApp({ path: '/collection', width: 1280 });
     await table();
     await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Por página' }),
-      'Por página: 100',
+      screen.getByRole('combobox', { name: 'Per page' }),
+      'Per page: 100',
     );
     await waitFor(() => expect(where()).toBe('/collection?per_page=100'), LONG);
   }, 20000);
@@ -228,12 +228,11 @@ describe('CollectionTable fits the screen (owner feedback S24 q)', () => {
     await renderApp({ path: '/collection', width: 1440 });
     await screen.findByRole('table', {}, LONG);
     for (const [full, short] of [
-      ['A vender', 'A vend.'],
-      ['En venta', 'Venta'],
-      ['Precio venta', 'P. venta'],
-      ['Ganancia €', 'Gan. €'],
-      ['Ganancia %', 'Gan. %'],
-      ['Modificada', 'Modif.'],
+      ['On sale', 'Sale'],
+      ['Sale price', 'Sale pr.'],
+      ['Profit €', 'P/L €'],
+      ['Profit %', 'P/L %'],
+      ['Updated', 'Upd.'],
     ]) {
       const header = screen.getByRole('columnheader', { name: new RegExp(`^${full}`) });
       expect(header, full).toHaveAttribute('title', full);
@@ -242,27 +241,28 @@ describe('CollectionTable fits the screen (owner feedback S24 q)', () => {
       expect(within(header).getByText(full)).toHaveClass('sr-only');
     }
     // short enough already: shown whole
-    expect(screen.getByRole('columnheader', { name: 'Idioma' })).not.toHaveAttribute('title');
+    expect(screen.getByRole('columnheader', { name: 'Language' })).not.toHaveAttribute('title');
+    expect(screen.getByRole('columnheader', { name: 'To sell' })).not.toHaveAttribute('title');
   }, 20000);
 
   it('the condition select shows the code, the empty value a dash, full names on hover', async () => {
     signedIn();
     list();
     await renderApp({ path: '/collection', width: 1440 });
-    const select = await screen.findByRole('combobox', { name: 'Estado: Ember Wisp' }, LONG);
+    const select = await screen.findByRole('combobox', { name: 'Condition: Ember Wisp' }, LONG);
     // `label` is what the closed select and the list show; the text stays the full name
-    const near = within(select).getByRole('option', { name: 'Casi nueva (NM)' });
+    const near = within(select).getByRole('option', { name: 'Near Mint (NM)' });
     expect(near).toHaveValue('NM');
     expect(near).toHaveAttribute('label', 'NM');
-    expect(near).toHaveAttribute('title', 'Casi nueva (NM)');
+    expect(near).toHaveAttribute('title', 'Near Mint (NM)');
     const empty = select.querySelector('option[value=""]')!;
     expect(empty).toHaveAttribute('label', '—');
-    expect(empty).toHaveAttribute('title', 'Sin especificar');
-    const language = screen.getByRole('combobox', { name: 'Idioma: Ember Wisp' });
+    expect(empty).toHaveAttribute('title', 'Not set');
+    const language = screen.getByRole('combobox', { name: 'Language: Ember Wisp' });
     expect(language.querySelector('option[value=""]')).toHaveAttribute('label', '—');
-    // a language shows its code too: "Chino simplificado" made the column too wide
-    const french = within(language).getByRole('option', { name: 'Francés' });
+    // a language shows its code too: "Simplified Chinese" made the column too wide
+    const french = within(language).getByRole('option', { name: 'French' });
     expect(french).toHaveAttribute('label', 'FR');
-    expect(french).toHaveAttribute('title', 'Francés');
+    expect(french).toHaveAttribute('title', 'French');
   }, 20000);
 });

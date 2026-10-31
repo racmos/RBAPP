@@ -16,14 +16,11 @@ const points: PricePoint[] = [
   { date: '2026-10-20', market: 1.21, low: 1.15, avg7: 1.19, avg30: 1.2, market_foil: 2.5 },
 ];
 
-async function renderChart(
-  props: Omit<React.ComponentProps<typeof PriceChart>, 'lang'>,
-  lang: 'es' | 'en' = 'es',
-) {
-  const i18n = await createI18n(lang);
+async function renderChart(props: React.ComponentProps<typeof PriceChart>) {
+  const i18n = await createI18n();
   return render(
     <I18nextProvider i18n={i18n}>
-      <PriceChart {...props} lang={lang} />
+      <PriceChart {...props} />
     </I18nextProvider>,
   );
 }
@@ -37,11 +34,11 @@ describe('PriceChart (F2-g S3-S5)', () => {
   });
 
   it('gives two charts different gradient ids', async () => {
-    const i18n = await createI18n('es');
+    const i18n = await createI18n();
     const { container } = render(
       <I18nextProvider i18n={i18n}>
-        <PriceChart points={points} series={['market']} title="A" lang="es" />
-        <PriceChart points={points} series={['market']} title="B" lang="es" />
+        <PriceChart points={points} series={['market']} title="A" />
+        <PriceChart points={points} series={['market']} title="B" />
       </I18nextProvider>,
     );
     const fills = Array.from(container.querySelectorAll('linearGradient'));
@@ -63,7 +60,7 @@ describe('PriceChart (F2-g S3-S5)', () => {
 
   it('renders an empty state for zero points', async () => {
     await renderChart({ points: [], series: ['market'], title: 'Price' });
-    expect(screen.getByText('Sin historial de precios todavía.')).toBeVisible();
+    expect(screen.getByText('No price history yet.')).toBeVisible();
   });
 
   it('renders the foil series with a dashed stroke', async () => {
@@ -75,11 +72,11 @@ describe('PriceChart (F2-g S3-S5)', () => {
 
   it('toggles the table and shows a caption', async () => {
     await renderChart({ points, series: ['market'], title: 'Ayla' });
-    const button = screen.getByRole('button', { name: 'Ver como tabla' });
+    const button = screen.getByRole('button', { name: 'Show as table' });
     await userEvent.click(button);
     expect(screen.getByRole('table')).toBeVisible();
-    expect(screen.getByText('Precios diarios de Ayla')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Ocultar tabla' })).toBeVisible();
+    expect(screen.getByText('Daily prices of Ayla')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Hide table' })).toBeVisible();
   });
 
   it('writes the active point to the live region on keyboard navigation', async () => {
@@ -89,26 +86,18 @@ describe('PriceChart (F2-g S3-S5)', () => {
     await userEvent.keyboard('{Home}');
     await userEvent.keyboard('{ArrowRight}');
     const live = screen.getByRole('status');
-    expect(live).toHaveTextContent('1 ago 2026');
+    expect(live).toHaveTextContent('1 Aug 2026');
     await userEvent.keyboard('{End}');
-    expect(live).toHaveTextContent('20 oct 2026');
+    expect(live).toHaveTextContent('20 Oct 2026');
     await userEvent.keyboard('{Escape}');
     expect(live).toHaveTextContent('');
   });
 
-  it('has a Spanish summary accessible name', async () => {
+  it('has an English summary accessible name with English dates and amounts', async () => {
     await renderChart({ points, series: ['market'], title: 'Price' });
     const plot = screen.getByRole('group');
-    expect(plot).toHaveAccessibleName(/Precio de mercado del/);
-    expect(plot).toHaveAccessibleName(/1,04\s€/);
-    expect(plot).toHaveAccessibleName(/1,21\s€/);
-  });
-
-  it('has an English summary accessible name', async () => {
-    await renderChart({ points, series: ['market'], title: 'Price' }, 'en');
-    const plot = screen.getByRole('group');
-    expect(plot).toHaveAccessibleName(/Market price from/);
-    expect(plot).toHaveAccessibleName(/€1.04/);
-    expect(plot).toHaveAccessibleName(/€1.21/);
+    expect(plot).toHaveAccessibleName(
+      'Market price from 22 Jul 2026 to 20 Oct 2026: 1.04 € to 1.21 € (low 1.04 €, high 1.21 €).',
+    );
   });
 });

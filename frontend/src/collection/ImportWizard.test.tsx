@@ -33,21 +33,21 @@ afterEach(() => {
 
 async function openWizard(width = 1280) {
   const rendered = await renderApp({ path: '/collection/import', width });
-  expect(await screen.findByRole('heading', { name: 'Importar colección' }, LONG)).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Import collection' }, LONG)).toBeVisible();
   return rendered;
 }
 
 const current = () =>
-  within(screen.getByRole('list', { name: 'Importar colección' }))
+  within(screen.getByRole('list', { name: 'Import collection' }))
     .getAllByRole('listitem')
     .find((item) => item.getAttribute('aria-current') === 'step');
 
 async function pasteAndReview(text = exportCsv) {
-  await userEvent.click(screen.getByRole('textbox', { name: 'O pega aquí el contenido' }));
+  await userEvent.click(screen.getByRole('textbox', { name: 'Or paste the content here' }));
   await userEvent.paste(text);
-  await userEvent.click(screen.getByRole('button', { name: 'Revisar' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Review' }));
   await screen.findByText(
-    'Correctas: 1 · Con avisos: 1 · Con errores: 1 · Cartas distintas: 2',
+    'OK: 1 · With warnings: 1 · With errors: 1 · Distinct cards: 2',
     {},
     LONG,
   );
@@ -55,26 +55,21 @@ async function pasteAndReview(text = exportCsv) {
 
 async function toModeStep() {
   await pasteAndReview();
-  await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
-  await screen.findByRole('group', { name: 'Modo' });
+  await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+  await screen.findByRole('group', { name: 'Mode' });
 }
 
 describe('ImportWizard step 1 (F3-i S2)', () => {
   it('has four steps, the first one current, and the RBAPP hint', async () => {
     await openWizard();
-    const steps = within(screen.getByRole('list', { name: 'Importar colección' })).getAllByRole(
+    const steps = within(screen.getByRole('list', { name: 'Import collection' })).getAllByRole(
       'listitem',
     );
-    expect(steps.map((step) => step.textContent)).toEqual([
-      '1Fichero',
-      '2Revisión',
-      '3Modo',
-      '4Resultado',
-    ]);
-    expect(current()).toHaveTextContent('Fichero');
-    expect(screen.getByLabelText('Fichero CSV en formato RBAPP')).toHaveAttribute('accept', '.csv');
+    expect(steps.map((step) => step.textContent)).toEqual(['1File', '2Review', '3Mode', '4Result']);
+    expect(current()).toHaveTextContent('File');
+    expect(screen.getByLabelText('CSV file in RBAPP format')).toHaveAttribute('accept', '.csv');
     expect(
-      screen.getByText('Por ahora solo se admite el formato RBAPP (el que genera «Exportar»).'),
+      screen.getByText('For now only the RBAPP format is supported (the one "Export" creates).'),
     ).toBeVisible();
   }, 15000);
 
@@ -82,31 +77,31 @@ describe('ImportWizard step 1 (F3-i S2)', () => {
     await openWizard();
     await pasteAndReview();
     expect(sent).toEqual([{ path: '/collection/import/preview', body: { text: exportCsv } }]);
-    expect(current()).toHaveTextContent('Revisión');
+    expect(current()).toHaveTextContent('Review');
   }, 20000);
 
   it('reads a chosen file as text and sends it', async () => {
     await openWizard();
     const file = new File([exportCsv], 'mine.csv', { type: 'text/csv' });
-    await userEvent.upload(screen.getByLabelText('Fichero CSV en formato RBAPP'), file);
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }));
-    await screen.findByText(/Correctas: 1/, {}, LONG);
+    await userEvent.upload(screen.getByLabelText('CSV file in RBAPP format'), file);
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    await screen.findByText(/OK: 1/, {}, LONG);
     expect(sent).toEqual([{ path: '/collection/import/preview', body: { text: exportCsv } }]);
   }, 20000);
 
   it('checks for nothing to send and for a file over 2 MB before asking the server', async () => {
     await openWizard();
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Elige un fichero o pega el contenido.',
+      'Choose a file or paste the content.',
     );
     const big = new File(['x'], 'big.csv', { type: 'text/csv' });
     Object.defineProperty(big, 'size', { value: MB2 + 1 });
-    await userEvent.upload(screen.getByLabelText('Fichero CSV en formato RBAPP'), big);
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('El fichero supera 2 MB.');
+    await userEvent.upload(screen.getByLabelText('CSV file in RBAPP format'), big);
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The file is larger than 2 MB.');
     expect(sent).toEqual([]);
-    expect(current()).toHaveTextContent('Fichero');
+    expect(current()).toHaveTextContent('File');
   }, 20000);
 
   it('shows import_format_unknown on the first step', async () => {
@@ -116,13 +111,13 @@ describe('ImportWizard step 1 (F3-i S2)', () => {
       ),
     );
     await openWizard();
-    await userEvent.click(screen.getByRole('textbox', { name: 'O pega aquí el contenido' }));
+    await userEvent.click(screen.getByRole('textbox', { name: 'Or paste the content here' }));
     await userEvent.paste('name;qty\nAyla;1');
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
     expect(await screen.findByRole('alert', {}, LONG)).toHaveTextContent(
-      'No se reconoce el formato del fichero. Usa el formato RBAPP (exportación de la app).',
+      "The file format is not recognised. Use the RBAPP format (the app's export).",
     );
-    expect(current()).toHaveTextContent('Fichero');
+    expect(current()).toHaveTextContent('File');
   }, 20000);
 });
 
@@ -130,50 +125,50 @@ describe('ImportWizard review (F3-i S2)', () => {
   it('lists every row with its status, card and joined reasons', async () => {
     await openWizard();
     await pasteAndReview();
-    expect(screen.getByText('Las filas con error no se importarán.')).toBeVisible();
-    const table = screen.getByRole('table', { name: 'Revisión' });
+    expect(screen.getByText('Rows with errors will not be imported.')).toBeVisible();
+    const table = screen.getByRole('table', { name: 'Review' });
     const headers = within(table)
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
-    expect(headers).toEqual(expect.arrayContaining(['Línea', 'Estado', 'Carta', 'Motivos']));
+    expect(headers).toEqual(expect.arrayContaining(['Line', 'Status', 'Card', 'Reasons']));
     const ayla = within(table).getByRole('row', { name: /Ayla/ });
-    expect(within(ayla).getByText('Correcta')).toBeVisible();
+    expect(within(ayla).getByText('OK')).toBeVisible();
     expect(within(ayla).getByText('OGN · #79')).toBeVisible();
-    expect(within(ayla).getByText('0,80 €')).toBeVisible();
+    expect(within(ayla).getByText('0.80 €')).toBeVisible();
     const ember = within(table).getByRole('row', { name: /Ember Wisp/ });
-    expect(within(ember).getByText('Aviso')).toBeVisible();
+    expect(within(ember).getByText('Warning')).toBeVisible();
     expect(
       within(ember).getByText(
-        'El nombre no coincide; se usa el del catálogo. Estado desconocido; se importa sin estado.',
+        'The name does not match; the catalog name is used. Unknown condition; imported without one.',
       ),
     ).toBeVisible();
     const missing = within(table).getByRole('row', { name: /XXX · #999/ });
     expect(within(missing).getByText('Error')).toBeVisible();
-    expect(within(missing).getByText('La carta no existe en el catálogo.')).toBeVisible();
+    expect(within(missing).getByText('The card is not in the catalog.')).toBeVisible();
   }, 20000);
 
   it('filters the rows by status', async () => {
     await openWizard();
     await pasteAndReview();
-    const table = screen.getByRole('table', { name: 'Revisión' });
+    const table = screen.getByRole('table', { name: 'Review' });
     await userEvent.click(screen.getByRole('radio', { name: 'Error' }));
     expect(within(table).queryByRole('row', { name: /Ayla/ })).toBeNull();
     expect(within(table).getByRole('row', { name: /XXX · #999/ })).toBeVisible();
-    await userEvent.click(screen.getByRole('radio', { name: 'Aviso' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Warning' }));
     expect(within(table).getByRole('row', { name: /Ember Wisp/ })).toBeVisible();
     expect(within(table).queryByRole('row', { name: /XXX/ })).toBeNull();
-    await userEvent.click(screen.getByRole('radio', { name: 'Todas' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'All' }));
     expect(within(table).getAllByRole('row')).toHaveLength(4);
   }, 20000);
 
   it('goes back to the first step keeping the text', async () => {
     await openWizard();
     await pasteAndReview();
-    await userEvent.click(screen.getByRole('button', { name: 'Atrás' }));
-    expect(screen.getByRole('textbox', { name: 'O pega aquí el contenido' })).toHaveValue(
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('textbox', { name: 'Or paste the content here' })).toHaveValue(
       exportCsv,
     );
-    expect(current()).toHaveTextContent('Fichero');
+    expect(current()).toHaveTextContent('File');
   }, 20000);
 });
 
@@ -182,18 +177,14 @@ describe('ImportWizard commit (F3-i S2, S4)', () => {
     const { queryClient, where } = await openWizard();
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
     await toModeStep();
-    expect(current()).toHaveTextContent('Modo');
-    expect(screen.getByRole('radio', { name: 'Añadir a mi colección' })).toBeChecked();
-    expect(screen.getByText('Suma las copias; las líneas iguales se juntan.')).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Importar' }));
+    expect(current()).toHaveTextContent('Mode');
+    expect(screen.getByRole('radio', { name: 'Add to my collection' })).toBeChecked();
+    expect(screen.getByText('Adds the copies; identical lines are merged.')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Import' }));
     expect(
-      await screen.findByText(
-        'Creadas: 2 · Sumadas: 0 · Cartas reemplazadas: 0 · Omitidas: 1',
-        {},
-        LONG,
-      ),
+      await screen.findByText('Created: 2 · Merged: 0 · Cards replaced: 0 · Skipped: 1', {}, LONG),
     ).toBeVisible();
-    expect(current()).toHaveTextContent('Resultado');
+    expect(current()).toHaveTextContent('Result');
     expect(sent[1]).toEqual({
       path: '/collection/import/commit',
       body: { preview_id: 'prev-1', mode: 'add' },
@@ -201,40 +192,36 @@ describe('ImportWizard commit (F3-i S2, S4)', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['collection'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['cards'] });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Importar otro fichero' }));
-    expect(current()).toHaveTextContent('Fichero');
-    expect(screen.getByRole('textbox', { name: 'O pega aquí el contenido' })).toHaveValue('');
+    await userEvent.click(screen.getByRole('button', { name: 'Import another file' }));
+    expect(current()).toHaveTextContent('File');
+    expect(screen.getByRole('textbox', { name: 'Or paste the content here' })).toHaveValue('');
 
     await toModeStep();
-    await userEvent.click(screen.getByRole('button', { name: 'Importar' }));
-    await userEvent.click(await screen.findByRole('link', { name: 'Ir a la colección' }, LONG));
+    await userEvent.click(screen.getByRole('button', { name: 'Import' }));
+    await userEvent.click(await screen.findByRole('link', { name: 'Go to the collection' }, LONG));
     await waitFor(() => expect(where()).toBe('/collection'));
   }, 30000);
 
   it('replace asks first, with the number of cards, and sends the mode', async () => {
     await openWizard();
     await toModeStep();
-    await userEvent.click(screen.getByRole('radio', { name: 'Reemplazar estas cartas' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Replace these cards' }));
     expect(
       screen.getByText(
-        'Para cada carta del fichero se borran tus líneas actuales de esa carta y se ponen las del fichero. El resto de tu colección no cambia.',
+        "For each card in the file your current lines of that card are deleted and the file's lines are added. The rest of your collection does not change.",
       ),
     ).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Importar' }));
-    let confirm = await screen.findByRole('dialog', { name: 'Reemplazar estas cartas' });
-    expect(within(confirm).getByText('¿Reemplazar 2 cartas de tu colección?')).toBeVisible();
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Cancelar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Import' }));
+    let confirm = await screen.findByRole('dialog', { name: 'Replace these cards' });
+    expect(within(confirm).getByText('Replace 2 cards in your collection?')).toBeVisible();
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
     expect(sent.filter((one) => one.path.endsWith('/commit'))).toEqual([]);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Importar' }));
-    confirm = await screen.findByRole('dialog', { name: 'Reemplazar estas cartas' });
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Importar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Import' }));
+    confirm = await screen.findByRole('dialog', { name: 'Replace these cards' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Import' }));
     expect(
-      await screen.findByText(
-        'Creadas: 2 · Sumadas: 0 · Cartas reemplazadas: 2 · Omitidas: 1',
-        {},
-        LONG,
-      ),
+      await screen.findByText('Created: 2 · Merged: 0 · Cards replaced: 2 · Skipped: 1', {}, LONG),
     ).toBeVisible();
     expect(sent[1].body).toEqual({ preview_id: 'prev-1', mode: 'replace' });
   }, 30000);
@@ -247,29 +234,29 @@ describe('ImportWizard commit (F3-i S2, S4)', () => {
     );
     await openWizard();
     await toModeStep();
-    await userEvent.click(screen.getByRole('button', { name: 'Importar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Import' }));
     expect(await screen.findByRole('alert', {}, LONG)).toHaveTextContent(
-      'La vista previa ha caducado. Vuelve a subir el fichero.',
+      'The preview expired. Upload the file again.',
     );
-    expect(current()).toHaveTextContent('Fichero');
+    expect(current()).toHaveTextContent('File');
   }, 25000);
 });
 
 describe('ImportWizard entry points and states (F3-i S2-S3)', () => {
   it('the collection toolbar links to the wizard', async () => {
     const { where } = await renderApp({ path: '/collection', width: 1280 });
-    await userEvent.click(await screen.findByRole('link', { name: 'Importar' }, LONG));
+    await userEvent.click(await screen.findByRole('link', { name: 'Import' }, LONG));
     await waitFor(() => expect(where()).toBe('/collection/import'));
-    expect(await screen.findByRole('heading', { name: 'Importar colección' }, LONG)).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Import collection' }, LONG)).toBeVisible();
   }, 20000);
 
   it('offline: says why and disables the actions', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await openWizard(390);
-    expect(screen.getByText('Necesitas conexión para hacer cambios.')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Revisar' })).toBeDisabled();
-    expect(screen.getByLabelText('Fichero CSV en formato RBAPP')).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'O pega aquí el contenido' })).toBeDisabled();
+    expect(screen.getByText('You need a connection to make changes.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review' })).toBeDisabled();
+    expect(screen.getByLabelText('CSV file in RBAPP format')).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Or paste the content here' })).toBeDisabled();
   }, 15000);
 
   it('marks the busy preview button', async () => {
@@ -284,11 +271,11 @@ describe('ImportWizard entry points and states (F3-i S2-S3)', () => {
       }),
     );
     await openWizard();
-    await userEvent.click(screen.getByRole('textbox', { name: 'O pega aquí el contenido' }));
+    await userEvent.click(screen.getByRole('textbox', { name: 'Or paste the content here' }));
     await userEvent.paste('x');
-    await userEvent.click(screen.getByRole('button', { name: 'Revisar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Revisar' })).toHaveAttribute('aria-busy', 'true'),
+      expect(screen.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-busy', 'true'),
     );
     release();
     await screen.findByRole('alert', {}, LONG);
@@ -301,16 +288,16 @@ describe.each([390, 1280, 1700])('ImportWizard layout at %i px (F3-i S3)', (widt
     expect(await axe(container)).toHaveNoViolations();
     await pasteAndReview();
     if (width < 860) {
-      expect(screen.queryByRole('table', { name: 'Revisión' })).toBeNull();
-      const list = screen.getByRole('list', { name: 'Revisión' });
+      expect(screen.queryByRole('table', { name: 'Review' })).toBeNull();
+      const list = screen.getByRole('list', { name: 'Review' });
       expect(within(list).getAllByRole('listitem')).toHaveLength(3);
-      expect(within(list).getByText('La carta no existe en el catálogo.')).toBeVisible();
+      expect(within(list).getByText('The card is not in the catalog.')).toBeVisible();
     } else {
-      expect(screen.getByRole('table', { name: 'Revisión' })).toBeVisible();
+      expect(screen.getByRole('table', { name: 'Review' })).toBeVisible();
     }
     expect(await axe(container)).toHaveNoViolations();
-    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
-    await screen.findByRole('group', { name: 'Modo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('group', { name: 'Mode' });
     expect(await axe(container)).toHaveNoViolations();
   }, 30000);
 });

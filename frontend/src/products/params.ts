@@ -7,7 +7,7 @@ import {
 
 export type ProductsTab = 'mine' | 'catalog';
 
-/** The screen's params: `GET /products` plus `owned=owned` ("solo los míos", F14-f S1). */
+/** The screen's params: `GET /products` plus `owned=owned` ("only mine", F14-f S1). */
 export type ProductsParams = ProductListParams & { owned?: 'owned' };
 
 export const DEFAULT_SORT: ProductListSort = 'name';
@@ -70,7 +70,7 @@ export function withChange(params: ProductsParams, patch: Partial<ProductsParams
   return next;
 }
 
-/** How many filters (kinds, sets and "solo los míos", not the search) are active. */
+/** How many filters (kinds, sets and "only mine", not the search) are active. */
 export const activeFilterCount = (params: ProductsParams): number =>
   (params.kind?.length ?? 0) + (params.set?.length ?? 0) + (params.owned ? 1 : 0);
 

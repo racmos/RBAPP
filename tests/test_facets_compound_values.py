@@ -163,10 +163,9 @@ class TestMetaGame:
         assert data['domains'] == [*DOMAINS, 'Weird']
 
 
-@pytest.mark.parametrize('lang', ['es', 'en'])
-def test_every_canonical_value_has_a_label(lang):
-    """The facets translate every canonical value (`enums.json`, both languages)."""
-    enums = json.loads((LOCALES / lang / 'enums.json').read_text(encoding='utf-8'))
+def test_every_canonical_value_has_a_label():
+    """The facets label every canonical value (`enums.json`; English is the only catalog)."""
+    enums = json.loads((LOCALES / 'en' / 'enums.json').read_text(encoding='utf-8'))
     for kind, values in (('domain', DOMAINS), ('type', CARD_TYPES),
                          ('supertype', SUPERTYPES), ('rarity', RARITIES)):
-        assert set(values) <= set(enums[kind]), (lang, kind)
+        assert set(values) <= set(enums[kind]), kind

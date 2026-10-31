@@ -48,15 +48,15 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
       'src',
       '/riftbound/media/products/501.png',
     );
-    const facts = screen.getByText('Tipo', { selector: 'dt' }).closest('dl')!;
-    expect(within(facts).getByText('Caja de sobres')).toBeVisible();
+    const facts = screen.getByText('Kind', { selector: 'dt' }).closest('dl')!;
+    expect(within(facts).getByText('Booster box')).toBeVisible();
     expect(within(facts).getByText('OGN')).toBeVisible();
-    expect(within(facts).getByText('99,50 €')).toBeVisible();
-    expect(within(facts).getByText('7 días')).toBeVisible();
-    expect(within(facts).getByText('+2,5 %')).toBeVisible();
-    expect(within(facts).getByText('30 días')).toBeVisible();
-    expect(within(facts).getByText('-4,1 %')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute(
+    expect(within(facts).getByText('99.50 €')).toBeVisible();
+    expect(within(facts).getByText('7 days')).toBeVisible();
+    expect(within(facts).getByText('+2.5%')).toBeVisible();
+    expect(within(facts).getByText('30 days')).toBeVisible();
+    expect(within(facts).getByText('-4.1%')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute(
       'href',
       '/riftbound/app/products',
     );
@@ -68,23 +68,23 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
     const { container } = await renderApp({ path: '/products/502', width: WIDTH });
     await screen.findByRole('heading', { level: 1, name: 'Riftbound Sleeves' }, LONG);
     expect(container.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent(
-      'Fundas',
+      'Sleeves',
     );
     expect(screen.queryByRole('img', { name: 'Riftbound Sleeves' })).toBeNull();
-    expect(screen.getByText('Sin precio')).toBeVisible();
+    expect(screen.getByText('No price')).toBeVisible();
   }, 20000);
 
   it('the chart ranges request the right range', async () => {
     signedIn();
     const sent = record('/prices');
     await renderApp({ path: '/products/501', width: WIDTH });
-    const history = await screen.findByRole('region', { name: 'Evolución del precio' }, LONG);
+    const history = await screen.findByRole('region', { name: 'Price history' }, LONG);
     await waitFor(() => expect(sent.map((r) => r.url)).toContain('/products/501/prices?range=90d'));
-    expect(await within(history).findByRole('button', { name: 'Ver como tabla' })).toBeVisible();
+    expect(await within(history).findByRole('button', { name: 'Show as table' })).toBeVisible();
     for (const [label, range] of [
       ['30 d', '30d'],
-      ['1 año', '1y'],
-      ['Todo', 'all'],
+      ['1 year', '1y'],
+      ['All', 'all'],
     ] as const) {
       await userEvent.click(within(history).getByRole('radio', { name: label }));
       await waitFor(() =>
@@ -96,12 +96,12 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
   it('lists the owned lines', async () => {
     signedIn();
     await renderApp({ path: '/products/501', width: WIDTH });
-    const lines = await screen.findByRole('region', { name: 'Tus unidades' }, LONG);
+    const lines = await screen.findByRole('region', { name: 'Your units' }, LONG);
     const items = within(lines).getAllByRole('listitem');
     expect(items).toHaveLength(1);
     expect(items[0]).toHaveTextContent('2');
-    expect(items[0]).toHaveTextContent('90,00 €');
-    expect(items[0]).toHaveTextContent('199,00 €');
+    expect(items[0]).toHaveTextContent('90.00 €');
+    expect(items[0]).toHaveTextContent('199.00 €');
     expect(items[0]).toHaveTextContent('Sealed');
   }, 20000);
 
@@ -109,17 +109,17 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
     signedIn();
     const sent = record('/me/products');
     await renderApp({ path: '/products/501', width: WIDTH });
-    const form = await screen.findByRole('form', { name: 'Añadir a mis productos' }, LONG);
-    const qty = within(form).getByRole('spinbutton', { name: 'Cantidad' });
+    const form = await screen.findByRole('form', { name: 'Add to my products' }, LONG);
+    const qty = within(form).getByRole('spinbutton', { name: 'Quantity' });
     expect(qty).toHaveValue(1);
     await userEvent.clear(qty);
     await userEvent.type(qty, '2');
     await userEvent.type(
-      within(form).getByRole('spinbutton', { name: 'Precio de compra (unidad)' }),
+      within(form).getByRole('spinbutton', { name: 'Purchase price (each)' }),
       '95.5',
     );
-    await userEvent.type(within(form).getByRole('textbox', { name: 'Nota' }), ' Gift ');
-    await userEvent.click(within(form).getByRole('button', { name: 'Añadir' }));
+    await userEvent.type(within(form).getByRole('textbox', { name: 'Note' }), ' Gift ');
+    await userEvent.click(within(form).getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(sent.some((r) => r.method === 'POST')).toBe(true), LONG);
     expect(sent.find((r) => r.method === 'POST')!.body).toEqual({
       product_id: 501,
@@ -128,13 +128,13 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
       note: 'Gift',
     });
     expect(
-      (await screen.findAllByText('Añadido a tus productos.', {}, LONG)).length,
+      (await screen.findAllByText('Added to your products.', {}, LONG)).length,
     ).toBeGreaterThan(0);
 
     server.use(http.post(`${API}/me/products`, () => ok({ line: boxLine, merged: true }, 201)));
-    await userEvent.click(within(form).getByRole('button', { name: 'Añadir' }));
+    await userEvent.click(within(form).getByRole('button', { name: 'Add' }));
     expect(
-      (await screen.findAllByText('Sumado a una línea que ya tenías.', {}, LONG)).length,
+      (await screen.findAllByText('Added to a line you already had.', {}, LONG)).length,
     ).toBeGreaterThan(0);
     expect(sent.filter((r) => r.method === 'POST')[1].body).toEqual({
       product_id: 501,
@@ -147,23 +147,23 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
   it('an unknown product is a not found page', async () => {
     signedIn();
     await renderApp({ path: '/products/999', width: WIDTH });
-    expect(await screen.findByText('Página no encontrada', {}, LONG)).toBeVisible();
+    expect(await screen.findByText('Page not found', {}, LONG)).toBeVisible();
   }, 20000);
 
   it('offline: the add form is disabled', async () => {
     signedIn();
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await renderApp({ path: '/products/501', width: WIDTH });
-    const form = await screen.findByRole('form', { name: 'Añadir a mis productos' }, LONG);
-    expect(within(form).getByText('Necesitas conexión para hacer cambios.')).toBeVisible();
-    expect(within(form).getByRole('button', { name: 'Añadir' })).toBeDisabled();
+    const form = await screen.findByRole('form', { name: 'Add to my products' }, LONG);
+    expect(within(form).getByText('You need a connection to make changes.')).toBeVisible();
+    expect(within(form).getByRole('button', { name: 'Add' })).toBeDisabled();
   }, 20000);
 
   it('is axe clean', async () => {
     signedIn();
     const { container } = await renderApp({ path: '/products/501', width: WIDTH });
-    await screen.findByRole('region', { name: 'Tus unidades' }, LONG);
-    await screen.findByRole('button', { name: 'Ver como tabla' }, LONG);
+    await screen.findByRole('region', { name: 'Your units' }, LONG);
+    await screen.findByRole('button', { name: 'Show as table' }, LONG);
     expect(await axe(container)).toHaveNoViolations();
   }, 30000);
 });

@@ -225,7 +225,6 @@ function CardAtomsPanel() {
               },
             ]}
             series={['market', 'market_foil']}
-            lang="es"
             title="Kitchen price history"
           />
         </div>

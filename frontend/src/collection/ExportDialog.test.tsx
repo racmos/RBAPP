@@ -51,8 +51,8 @@ afterEach(() => {
 async function openDialog(path = '/collection', width = 1280) {
   const rendered = await renderApp({ path, width });
   await screen.findByRole('button', { name: /Ayla/ }, LONG);
-  await userEvent.click(screen.getByRole('button', { name: 'Exportar' }));
-  const dialog = await screen.findByRole('dialog', { name: 'Exportar colección' });
+  await userEvent.click(screen.getByRole('button', { name: 'Export' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Export collection' });
   return { ...rendered, dialog };
 }
 
@@ -62,42 +62,38 @@ const radio = (dialog: HTMLElement, name: string | RegExp) =>
 describe('ExportDialog (F3-i S1)', () => {
   it('starts on RBAPP and the whole collection; Cardmarket forces what is on sale', async () => {
     const { dialog } = await openDialog();
-    expect(within(dialog).getByRole('group', { name: 'Formato' })).toBeVisible();
-    expect(within(dialog).getByRole('group', { name: 'Qué exportar' })).toBeVisible();
+    expect(within(dialog).getByRole('group', { name: 'Format' })).toBeVisible();
+    expect(within(dialog).getByRole('group', { name: 'What to export' })).toBeVisible();
     expect(radio(dialog, /^RBAPP/)).toBeChecked();
-    expect(radio(dialog, 'Toda la colección')).toBeChecked();
+    expect(radio(dialog, 'The whole collection')).toBeChecked();
     expect(
-      within(dialog).queryByText(
-        'El mismo fichero que la exportación clásica, para subirlo a Cardmarket.',
-      ),
+      within(dialog).queryByText('The same file as the classic export, to upload to Cardmarket.'),
     ).toBeNull();
 
-    await userEvent.click(radio(dialog, 'Cardmarket (cartas en venta)'));
+    await userEvent.click(radio(dialog, 'Cardmarket (cards on sale)'));
     expect(
-      within(dialog).getByText(
-        'El mismo fichero que la exportación clásica, para subirlo a Cardmarket.',
-      ),
+      within(dialog).getByText('The same file as the classic export, to upload to Cardmarket.'),
     ).toBeVisible();
-    expect(radio(dialog, 'Solo lo que está en venta')).toBeChecked();
-    expect(radio(dialog, 'Toda la colección')).toBeDisabled();
-    expect(radio(dialog, 'Solo lo filtrado ahora')).toBeDisabled();
+    expect(radio(dialog, 'Only what is on sale')).toBeChecked();
+    expect(radio(dialog, 'The whole collection')).toBeDisabled();
+    expect(radio(dialog, 'Only the current filters')).toBeDisabled();
 
     await userEvent.click(radio(dialog, /^RBAPP/));
-    expect(radio(dialog, 'Toda la colección')).toBeEnabled();
-    expect(radio(dialog, 'Solo lo filtrado ahora')).toBeEnabled();
+    expect(radio(dialog, 'The whole collection')).toBeEnabled();
+    expect(radio(dialog, 'Only the current filters')).toBeEnabled();
   }, 20000);
 
   it('downloads the file with the name the server gave and says how many rows', async () => {
     const { dialog } = await openDialog();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Descargar' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(downloads).toHaveLength(1), LONG);
     expect(exports).toEqual(['format=rbapp']);
     expect(downloads[0].name).toBe('rbapp_collection_20261028101500.csv');
     expect(downloads[0].href).toBe('blob:rbapp/1');
     expect(await blobs[0].text()).toBe(exportCsv);
-    expect(await screen.findByText('Exportada 1 fila.', {}, LONG)).toBeVisible();
+    expect(await screen.findByText('1 row exported.', {}, LONG)).toBeVisible();
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'Exportar colección' })).toBeNull(),
+      expect(screen.queryByRole('dialog', { name: 'Export collection' })).toBeNull(),
     );
     // the anchor did not stay in the page
     expect(document.querySelector('a[download]')).toBeNull();
@@ -105,21 +101,21 @@ describe('ExportDialog (F3-i S1)', () => {
 
   it('sends the current URL filters, without sort or paging', async () => {
     const { dialog } = await openDialog('/collection?q=ayla&foil=nonfoil&sort=value&page=1');
-    await userEvent.click(radio(dialog, 'Solo lo filtrado ahora'));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Descargar' }));
+    await userEvent.click(radio(dialog, 'Only the current filters'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(exports).toEqual(['q=ayla&foil=nonfoil&format=rbapp']), LONG);
   }, 20000);
 
   it('asks for the lines on sale, and Cardmarket names its own file', async () => {
     let { dialog } = await openDialog();
-    await userEvent.click(radio(dialog, 'Solo lo que está en venta'));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Descargar' }));
+    await userEvent.click(radio(dialog, 'Only what is on sale'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(exports).toEqual(['format=rbapp&only_selling=true']), LONG);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Exportar' }, LONG));
-    dialog = await screen.findByRole('dialog', { name: 'Exportar colección' });
-    await userEvent.click(radio(dialog, 'Cardmarket (cartas en venta)'));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Descargar' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Export' }, LONG));
+    dialog = await screen.findByRole('dialog', { name: 'Export collection' });
+    await userEvent.click(radio(dialog, 'Cardmarket (cards on sale)'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(downloads).toHaveLength(2), LONG);
     expect(exports[1]).toBe('format=cardmarket&only_selling=true');
     expect(downloads[1].name).toBe('20261028101500_cardmarket.csv');
@@ -132,10 +128,10 @@ describe('ExportDialog (F3-i S1)', () => {
       ),
     );
     const { dialog } = await openDialog();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Descargar' }));
-    expect(await screen.findByText('Revisa los datos del formulario.', {}, LONG)).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
+    expect(await screen.findByText('Check the form data.', {}, LONG)).toBeVisible();
     expect(downloads).toHaveLength(0);
-    expect(screen.getByRole('dialog', { name: 'Exportar colección' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Export collection' })).toBeVisible();
   }, 20000);
 
   it('offline: the download is disabled', async () => {
@@ -143,7 +139,7 @@ describe('ExportDialog (F3-i S1)', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     window.dispatchEvent(new Event('offline'));
     await waitFor(() =>
-      expect(within(dialog).getByRole('button', { name: 'Descargar' })).toBeDisabled(),
+      expect(within(dialog).getByRole('button', { name: 'Download' })).toBeDisabled(),
     );
   }, 20000);
 
@@ -152,7 +148,7 @@ describe('ExportDialog (F3-i S1)', () => {
     async (width) => {
       vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
       await renderApp({ path: '/collection', width });
-      expect(await screen.findByRole('button', { name: 'Exportar' }, LONG)).toBeDisabled();
+      expect(await screen.findByRole('button', { name: 'Export' }, LONG)).toBeDisabled();
     },
     20000,
   );

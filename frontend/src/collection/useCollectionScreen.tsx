@@ -5,7 +5,6 @@ import type { CollectionGroup, CollectionParams } from '@/api/types';
 import { useGameMeta, useSearchNavigation } from '@/catalog';
 import { useOffline } from '@/auth';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
-import type { Lang } from '@/lib/format';
 import { usePrefs } from '@/prefs';
 import {
   activeFilterCount,
@@ -32,7 +31,6 @@ function useCollectionParams() {
 export function useCollectionScreen(desktop: boolean) {
   const { t, i18n } = useTranslation('collection');
   useDocumentTitle(t('title'));
-  const lang: Lang = i18n.language.split('-')[0] === 'en' ? 'en' : 'es';
   const offline = useOffline();
   const { prefs } = usePrefs();
   const { label } = useEnumLabel();
@@ -81,7 +79,6 @@ export function useCollectionScreen(desktop: boolean) {
   return {
     t,
     i18n,
-    lang,
     offline,
     label,
     params,

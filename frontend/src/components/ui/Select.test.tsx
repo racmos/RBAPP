@@ -12,12 +12,12 @@ const value = (selector: string, prop: string) =>
 describe('Select (owner feedback S2)', () => {
   it('renders a native combobox with the module class and the caller class', () => {
     render(
-      <Select aria-label="Orden" className="extra" defaultValue="b">
+      <Select aria-label="Order" className="extra" defaultValue="b">
         <option value="a">A</option>
         <option value="b">B</option>
       </Select>,
     );
-    const select = screen.getByRole('combobox', { name: 'Orden' });
+    const select = screen.getByRole('combobox', { name: 'Order' });
     expect(select.className).toMatch(/select/);
     expect(select.className).toMatch(/extra/);
     expect(select).toHaveValue('b');

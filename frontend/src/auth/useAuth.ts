@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 import { logout as logoutRequest } from '@/api/endpoints';
 import { ApiError } from '@/api/errors';
 import { pushToast } from '@/components/ui/toastStore';
-import { storeLang, translateError } from '@/i18n';
+import { translateError } from '@/i18n';
 import { resetToAnonymous } from './signOut';
 import type { Session } from '@/api/types';
 import { sessionQuery } from './session';
@@ -44,7 +44,6 @@ export function useLogout() {
         pushToast({ kind: 'error', message: translateError(error, i18n) });
         return;
       }
-      storeLang(i18n.language === 'en' ? 'en' : 'es');
       resetToAnonymous(queryClient);
       await navigate('/login');
     },

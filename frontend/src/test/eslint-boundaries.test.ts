@@ -28,7 +28,7 @@ describe('ESLint boundaries (F2-e S13)', () => {
 
   it('allows a card component with permitted imports', async () => {
     const result = await lint(
-      "import { formatMoney } from '@/lib/format';\nimport { useTranslation } from 'react-i18next';\nimport { Badge } from '@/components/ui/Badge';\nimport type { CardSummary } from '@/api/types';\nexport function A({ p }: { p: CardSummary }) {\n  const { t } = useTranslation();\n  return <Badge tone=\"accent\">{formatMoney(1, 'es')} {t('ok')} {p.name}</Badge>;\n}\n",
+      "import { formatMoney } from '@/lib/format';\nimport { useTranslation } from 'react-i18next';\nimport { Badge } from '@/components/ui/Badge';\nimport type { CardSummary } from '@/api/types';\nexport function A({ p }: { p: CardSummary }) {\n  const { t } = useTranslation();\n  return <Badge tone=\"accent\">{formatMoney(1)} {t('ok')} {p.name}</Badge>;\n}\n",
       cardFile('Okay.tsx'),
     );
     expect(result[0].errorCount).toBe(0);

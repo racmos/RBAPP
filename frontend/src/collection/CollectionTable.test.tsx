@@ -11,7 +11,7 @@ describe('CollectionTable columns (owner feedback S18 i, S24 q)', () => {
   it('gives the condition and language selects a fixed width for their codes', () => {
     // `.table .code` outranks the Select primitive's own `.select { width: 100% }`; a select at
     // 100 % of an auto column was squeezed to "Si…" (S18 i). The selects show the code ("NM",
-    // "FR") and "—" for no value (S24 q), so "Sin especificar" no longer sets the width.
+    // "FR") and "—" for no value (S24 q), so "Not set" no longer sets the width.
     expect(px(value('.table .code', 'width'))).toBeGreaterThanOrEqual(60);
     expect(px(value('.table .code', 'width'))).toBeLessThanOrEqual(72);
     expect(value('.table .code', 'min-width')).toBe(value('.table .code', 'width'));

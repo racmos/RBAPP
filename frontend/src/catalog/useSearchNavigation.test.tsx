@@ -61,9 +61,9 @@ describe('useSearchNavigation (L6)', () => {
   it('keeps a collection change that the page has not rendered yet', async () => {
     server.use(http.get(`${API}/auth/session`, () => signedInSession(NO_PREFS)));
     const { where } = await renderApp({ path: '/collection', width: 1280 });
-    await screen.findByRole('table', { name: 'Tu colección agrupada por carta' }, LONG);
-    const byName = within(screen.getByRole('columnheader', { name: 'Nombre' })).getByRole('button');
-    const perPage = screen.getByRole('combobox', { name: 'Por página' });
+    await screen.findByRole('table', { name: 'Your collection grouped by card' }, LONG);
+    const byName = within(screen.getByRole('columnheader', { name: 'Name' })).getByRole('button');
+    const perPage = screen.getByRole('combobox', { name: 'Per page' });
     // the router applies a navigation in a transition: the second change comes before the render
     act(() => {
       fireEvent.click(byName);

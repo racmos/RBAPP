@@ -51,7 +51,6 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
   const {
     t,
     i18n,
-    lang,
     offline,
     label,
     params,
@@ -142,7 +141,6 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
       <CollectionTable
         groups={items}
         playsetSize={playsetSize}
-        lang={lang}
         sort={params.sort ?? 'number'}
         dir={params.dir ?? 'asc'}
         onSort={(sort) =>
@@ -169,7 +167,6 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
               group={group}
               variant="tile"
               playsetSize={playsetSize}
-              lang={lang}
               onOpen={() => {
                 setActiveKey(group.key);
                 setOpen({ key: group.key, group });
@@ -240,7 +237,7 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
               </>
             }
           />
-          {totals && <SummaryBand totals={totals} lang={lang} />}
+          {totals && <SummaryBand totals={totals} />}
 
           <div className={styles.toolbar}>
             <form role="search" className={styles.search} onSubmit={(e) => e.preventDefault()}>
@@ -344,7 +341,7 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
           )}
         </div>
 
-        {wide && <CollectionPanel group={active} lang={lang} />}
+        {wide && <CollectionPanel group={active} />}
       </div>
 
       <ExportDialog

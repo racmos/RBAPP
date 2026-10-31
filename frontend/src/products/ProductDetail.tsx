@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle } from '@/i18n';
 import { NotFound } from '@/shell/NotFound';
-import { langOf } from './format';
+
 import { AddProductForm, PriceFacts, ProductHistory, ProductLines } from './ProductSections';
 import { ProductThumb } from './ProductThumb';
 import { useProduct } from './queries';
@@ -15,9 +15,8 @@ import styles from './ProductDetail.module.css';
 
 /** `/products/:id` (F14-e S3): a full page on a phone. */
 export function ProductDetail() {
-  const { t, i18n } = useTranslation('products');
+  const { t } = useTranslation('products');
   const { t: tCommon } = useTranslation('common');
-  const lang = langOf(i18n.language);
   const offline = useOffline();
   const id = Number(useParams().id);
   const query = useProduct(id);
@@ -67,14 +66,14 @@ export function ProductDetail() {
             <dt>{t('filters.set')}</dt>
             <dd>{product.set_id ?? '—'}</dd>
           </div>
-          <PriceFacts product={product} lang={lang} />
+          <PriceFacts product={product} />
         </dl>
       </div>
       {product.description && <p className={styles.muted}>{product.description}</p>}
 
-      <ProductHistory product={product} lang={lang} />
+      <ProductHistory product={product} />
 
-      <ProductLines product={product} lang={lang} />
+      <ProductLines product={product} />
 
       <AddProductForm product={product} offline={offline} />
     </div>

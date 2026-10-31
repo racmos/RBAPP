@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl, type SegmentedOption } from '@/components/ui/SegmentedControl';
 import { SettingsCard, SettingsRow } from '@/components/ui/SettingsCard';
 import { Slider } from '@/components/ui/Slider';
-import { useDocumentTitle, type Lang } from '@/i18n';
+import { useDocumentTitle } from '@/i18n';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { usePrefs, type Prefs } from '@/prefs';
@@ -44,14 +44,14 @@ const toControl = <T extends string>(value: T | null): Auto<T> => value ?? AUTO;
 const fromControl = <T extends string>(value: Auto<T>): T | null => (value === AUTO ? null : value);
 
 /**
- * `/account/interface` (SHELL-7): density, accent, background, language and default collection
- * view. Every control applies live and saves optimistically (PREF-8); at `xl` a live preview
- * sits beside them.
+ * `/account/interface` (SHELL-7): density, accent, background and default collection view. Every
+ * control applies live and saves optimistically (PREF-8); at `xl` a live preview sits beside them.
+ * The app is English-only, so there is no language setting.
  */
 export function InterfacePage() {
   const { t } = useTranslation('prefs');
   const { t: tCollection } = useTranslation('collection');
-  const { prefs, effective, set, flush, setLanguage, offline } = usePrefs();
+  const { prefs, effective, set, flush, offline } = usePrefs();
   const wide = useMediaQuery(up('xl'));
   useDocumentTitle(t('interface.title'));
 
@@ -64,11 +64,6 @@ export function InterfacePage() {
   const accent: SegmentedOption<NonNullable<Prefs['accent']>>[] = [
     { value: 'cyan', label: t('interface.accent.cyan') },
     { value: 'orange', label: t('interface.accent.orange') },
-  ];
-  const language: SegmentedOption<Auto<Lang>>[] = [
-    { value: AUTO, label: t('language.auto') },
-    { value: 'es', label: t('language.es') },
-    { value: 'en', label: t('language.en') },
   ];
   const view: SegmentedOption<Auto<NonNullable<Prefs['collection_view']>>>[] = [
     { value: AUTO, label: t('interface.collectionView.auto') },
@@ -120,18 +115,6 @@ export function InterfacePage() {
               <p className={styles.hint}>{t('interface.background.hint')}</p>
             </div>
           </SettingsRow>
-
-          <Setting label={t('interface.language.label')} hint={t('interface.language.hint')}>
-            {(labelledBy) => (
-              <SegmentedControl
-                labelledBy={labelledBy}
-                options={language}
-                value={toControl(prefs.lang)}
-                onChange={(value) => setLanguage(fromControl(value))}
-                disabled={offline}
-              />
-            )}
-          </Setting>
 
           <Setting
             label={t('interface.collectionView.label')}

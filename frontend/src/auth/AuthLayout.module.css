@@ -9,12 +9,6 @@
       calc(var(--pad) + var(--safe-bottom)) calc(var(--pad) + var(--safe-left));
   }
 
-  .language {
-    position: absolute;
-    top: calc(var(--pad) + var(--safe-top));
-    right: calc(var(--pad) + var(--safe-right));
-  }
-
   .panel {
     width: min(100%, 440px);
     padding: 28px;

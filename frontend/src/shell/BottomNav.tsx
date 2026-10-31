@@ -8,7 +8,7 @@ import { MoreSheet } from './MoreSheet';
 import { NavItem } from './NavItem';
 import { navEntries } from './navRegistry';
 
-/** Phone navigation (SHELL-3, R3): four destinations from the registry and "Más". */
+/** Phone navigation (SHELL-3, R3): four destinations from the registry and "More". */
 export function BottomNav() {
   const { t } = useTranslation('nav');
   const session = useSession();

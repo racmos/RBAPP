@@ -4,7 +4,7 @@ import type { CollectionGroup, CollectionLine, CollectionSort } from '@/api/type
 import { CardImage } from '@/components/card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Icon } from '@/components/ui/Icon';
-import { formatDate, formatMoney, formatPct, type Lang } from '@/lib/format';
+import { formatDate, formatMoney, formatPct } from '@/lib/format';
 import { LineCells } from './LineCells';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './CollectionTable.module.css';
@@ -17,7 +17,6 @@ type Selection = {
 type CollectionTableProps = {
   groups: CollectionGroup[];
   playsetSize: number;
-  lang: Lang;
   sort: CollectionSort;
   dir: 'asc' | 'desc';
   onSort: (sort: CollectionSort) => void;
@@ -51,20 +50,12 @@ function groupProfit(lines: CollectionLine[]): { abs: number | null; pct: number
   return { abs, pct: paid > 0 ? (abs / paid) * 100 : null };
 }
 
-function Signed({
-  value,
-  lang,
-  kind,
-}: {
-  value: number | null;
-  lang: Lang;
-  kind: 'money' | 'pct';
-}) {
+function Signed({ value, kind }: { value: number | null; kind: 'money' | 'pct' }) {
   if (value === null) return <span>—</span>;
   const text =
     kind === 'money'
-      ? `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatMoney(Math.abs(value), lang)}`
-      : formatPct(value, lang);
+      ? `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatMoney(Math.abs(value))}`
+      : formatPct(value);
   const sign = value > 0 ? styles.gain : value < 0 ? styles.loss : '';
   return <span className={sign}>{text}</span>;
 }
@@ -142,7 +133,6 @@ function SelectBox({
 export function CollectionTable({
   groups,
   playsetSize,
-  lang,
   sort,
   dir,
   onSort,
@@ -309,19 +299,17 @@ export function CollectionTable({
                     <td />
                   </>
                 )}
+                <td className={styles.numeric}>{market === null ? '—' : formatMoney(market)}</td>
                 <td className={styles.numeric}>
-                  {market === null ? '—' : formatMoney(market, lang)}
+                  <Signed value={profit.abs} kind="money" />
                 </td>
                 <td className={styles.numeric}>
-                  <Signed value={profit.abs} lang={lang} kind="money" />
+                  <Signed value={profit.pct} kind="pct" />
                 </td>
                 <td className={styles.numeric}>
-                  <Signed value={profit.pct} lang={lang} kind="pct" />
+                  <Signed value={trend} kind="pct" />
                 </td>
-                <td className={styles.numeric}>
-                  <Signed value={trend} lang={lang} kind="pct" />
-                </td>
-                <td>{updated ? formatDate(updated, lang) : ''}</td>
+                <td>{updated ? formatDate(updated) : ''}</td>
               </tr>,
               ...(!single && open
                 ? lines.map((line, index) => (
@@ -352,16 +340,16 @@ export function CollectionTable({
                         disabled={offline}
                       />
                       <td className={styles.numeric}>
-                        {line.market === null ? '—' : formatMoney(line.market, lang)}
+                        {line.market === null ? '—' : formatMoney(line.market)}
                       </td>
                       <td className={styles.numeric}>
-                        <Signed value={line.pl_abs} lang={lang} kind="money" />
+                        <Signed value={line.pl_abs} kind="money" />
                       </td>
                       <td className={styles.numeric}>
-                        <Signed value={line.pl_pct} lang={lang} kind="pct" />
+                        <Signed value={line.pl_pct} kind="pct" />
                       </td>
                       <td />
-                      <td>{formatDate(line.updated_at, lang)}</td>
+                      <td>{formatDate(line.updated_at)}</td>
                     </tr>
                   ))
                 : []),

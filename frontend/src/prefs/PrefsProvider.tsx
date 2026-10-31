@@ -1,9 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { hasSignedInHint, useCachedSession, useOffline } from '@/auth';
+import { useCachedSession, useOffline } from '@/auth';
 import { pushToast } from '@/components/ui/toastStore';
-import { clearStoredLang, resolveLang, storeLang, type Lang } from '@/i18n';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { applyPrefs } from './apply';
 import { PrefsContext, type PrefsApi } from './context';
@@ -14,8 +13,8 @@ import { createPrefsSync, type PrefsSync } from './sync';
 /**
  * The live side of the preferences (design 4.5). The session query holds the server copy, which
  * `sync` updates optimistically; this provider turns it into `<html>` attributes, keeps the
- * mirror (`rb_prefs_v1`) equal to the server copy, re-resolves Auto when the viewport crosses
- * 860 px, and lets the account language drive i18next.
+ * mirror (`rb_prefs_v1`) equal to the server copy and re-resolves Auto when the viewport crosses
+ * 860 px. The app is English-only, so no language handling lives here.
  */
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -61,25 +60,9 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     writeMirror(serverPrefs);
   }, [serverPrefs]);
 
-  // The account language drives i18next (R4): the mirror's while the session is pending (only
-  // for a browser that was signed in), the server's afterwards. With no account language (Auto,
-  // anonymous) i18next keeps what the bootstrap or the device toggle chose.
-  const pending = session === undefined;
-  const accountLang: Lang | null = pending
-    ? hasSignedInHint()
-      ? mirror.lang
-      : null
-    : signedIn
-      ? (serverPrefs?.lang ?? null)
-      : null;
   useEffect(() => {
-    if (accountLang && accountLang !== i18n.language) void i18n.changeLanguage(accountLang);
-  }, [accountLang, i18n]);
-
-  const lang = i18n.language === 'en' ? 'en' : 'es';
-  useEffect(() => {
-    applyPrefs(document.documentElement, { ...effective, lang });
-  }, [effective, lang]);
+    applyPrefs(document.documentElement, effective);
+  }, [effective]);
 
   // Read-only while offline (PWA-7): a change would be applied and then fail to save.
   const set = useCallback<PrefsSync['set']>(
@@ -87,26 +70,6 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       if (!offline) sync.set(key, value, options);
     },
     [offline, sync],
-  );
-
-  const setLanguage = useCallback(
-    (next: Lang | null) => {
-      if (next) {
-        storeLang(next);
-        void i18n.changeLanguage(next);
-      } else {
-        clearStoredLang();
-        void i18n.changeLanguage(
-          resolveLang({
-            accountLang: null,
-            storedLang: null,
-            browserLanguages: navigator.languages,
-          }),
-        );
-      }
-      set('lang', next);
-    },
-    [i18n, set],
   );
 
   const value = useMemo<PrefsApi>(
@@ -118,9 +81,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       offline,
       set,
       flush: sync.flush,
-      setLanguage,
     }),
-    [prefs, effective, phone, signedIn, offline, set, sync, setLanguage],
+    [prefs, effective, phone, signedIn, offline, set, sync],
   );
 
   return <PrefsContext value={value}>{children}</PrefsContext>;

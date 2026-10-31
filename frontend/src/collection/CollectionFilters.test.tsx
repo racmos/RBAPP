@@ -11,14 +11,14 @@ const META: GameMeta = {
   types: ['Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield'],
   supertypes: ['Champion', 'Signature', 'Token', 'Basic'],
   rarities: ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'],
-  sets: [{ id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 }],
+  sets: [{ id: 'OGN', name: 'Origins', released_on: '2024-01-15', card_count: 6 }],
   price: { provider: 'cardmarket', currency: 'EUR', updated_on: null },
   rules: {},
   conditions: ['MT', 'NM'],
   languages: ['English'],
 };
 
-function renderSidebar(lang: 'es' | 'en' = 'es', meta: GameMeta = META) {
+function renderSidebar(meta: GameMeta = META) {
   return renderWithI18n(
     <CollectionFilters
       variant="sidebar"
@@ -29,14 +29,13 @@ function renderSidebar(lang: 'es' | 'en' = 'es', meta: GameMeta = META) {
       total={0}
       onClear={() => undefined}
     />,
-    lang,
   );
 }
 
 describe('CollectionFilters (owner feedback S18 g)', () => {
   it('shows each facet group heading once', async () => {
     await renderSidebar();
-    for (const title of ['Set', 'Dominio', 'Tipo', 'Rareza', 'Estado', 'Idioma']) {
+    for (const title of ['Set', 'Domain', 'Type', 'Rarity', 'Condition', 'Language']) {
       expect(screen.getAllByText(title, { exact: true }), title).toHaveLength(1);
       expect(screen.getByRole('group', { name: title })).toBeInTheDocument();
     }
@@ -45,9 +44,9 @@ describe('CollectionFilters (owner feedback S18 g)', () => {
   it('shows what every tri-state filter filters (owner feedback S24)', async () => {
     await renderSidebar();
     for (const [name, option] of [
-      ['Foil', 'Solo foil'],
-      ['En venta', 'Da igual'],
-      ['Con precio de compra', 'Da igual'],
+      ['Foil', 'Foil only'],
+      ['On sale', 'Any'],
+      ['With purchase price', 'Any'],
     ]) {
       const group = screen.getByRole('radiogroup', { name });
       const label = document.getElementById(group.getAttribute('aria-labelledby')!);
@@ -60,12 +59,12 @@ describe('CollectionFilters (owner feedback S18 g)', () => {
 
   it('translates every base type and domain', async () => {
     await renderSidebar();
-    const types = screen.getByRole('group', { name: 'Tipo' });
-    for (const name of ['Leyenda', 'Unidad', 'Hechizo', 'Equipo', 'Runa', 'Campo de batalla']) {
+    const types = screen.getByRole('group', { name: 'Type' });
+    for (const name of ['Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield']) {
       expect(within(types).getByRole('button', { name })).toBeInTheDocument();
     }
-    const domains = screen.getByRole('group', { name: 'Dominio' });
-    for (const name of ['Furia', 'Calma', 'Mente', 'Cuerpo', 'Caos', 'Orden', 'Incoloro']) {
+    const domains = screen.getByRole('group', { name: 'Domain' });
+    for (const name of ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless']) {
       expect(within(domains).getByRole('button', { name })).toBeInTheDocument();
     }
   });
@@ -73,7 +72,7 @@ describe('CollectionFilters (owner feedback S18 g)', () => {
 
 describe('CollectionFilters set order (owner feedback S19)', () => {
   it('lists the set chips newest first and the sets without a date last', async () => {
-    await renderSidebar('es', {
+    await renderSidebar({
       ...META,
       sets: [
         { id: 'OLD', name: 'Old', released_on: '2024-01-15', card_count: 1 },

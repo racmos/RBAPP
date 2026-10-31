@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { CardListParams, CardSummary } from '@/api/types';
 import { useOffline } from '@/auth';
 import { CardImage, DomainPips } from '@/components/card';
-import { useEnumLabel, type Lang } from '@/i18n';
+import { useEnumLabel } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { COMBOBOX_LIMIT, useCardSearch } from './queries';
 import styles from './CardCombobox.module.css';
@@ -71,9 +71,8 @@ export function CardCombobox({
   className,
   inputRef,
 }: CardComboboxProps) {
-  const { t, i18n } = useTranslation('cards');
+  const { t } = useTranslation('cards');
   const { typeLabel } = useEnumLabel();
-  const lang: Lang = i18n.language.split('-')[0] === 'en' ? 'en' : 'es';
   const offline = useOffline();
   const generated = useId();
   const inputId = id ?? `${generated}-input`;
@@ -262,7 +261,7 @@ export function CardCombobox({
                     </span>
                   </span>
                   <span className={styles.price}>
-                    {card.price?.market != null ? formatMoney(card.price.market, lang) : '—'}
+                    {card.price?.market != null ? formatMoney(card.price.market) : '—'}
                   </span>
                 </li>
               ))}

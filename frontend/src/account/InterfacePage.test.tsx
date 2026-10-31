@@ -32,25 +32,23 @@ describe('Interface page: playset size (F3-g S8)', () => {
   it('shows the setting with its hint and an empty value for the default', async () => {
     signedIn();
     await renderApp({ path: '/account/interface', width: 390 });
-    const input = await screen.findByRole('spinbutton', { name: 'Tamaño del playset' }, LONG);
+    const input = await screen.findByRole('spinbutton', { name: 'Playset size' }, LONG);
     expect(input).toHaveValue(null);
     expect(
-      screen.getByText('Copias que quieres conservar de cada carta marcada. Por defecto, 3.'),
+      screen.getByText('Copies you want to keep of each marked card. 3 by default.'),
     ).toBeVisible();
   }, 15000);
 
   it('shows the stored size', async () => {
     signedIn({ ...NO_PREFS, playset_size: 4 });
     await renderApp({ path: '/account/interface', width: 390 });
-    expect(await screen.findByRole('spinbutton', { name: 'Tamaño del playset' }, LONG)).toHaveValue(
-      4,
-    );
+    expect(await screen.findByRole('spinbutton', { name: 'Playset size' }, LONG)).toHaveValue(4);
   }, 15000);
 
   it('saves a size through PATCH /me/prefs and clears it to null', async () => {
     signedIn({ ...NO_PREFS, playset_size: 4 });
     await renderApp({ path: '/account/interface', width: 390 });
-    const input = await screen.findByRole('spinbutton', { name: 'Tamaño del playset' }, LONG);
+    const input = await screen.findByRole('spinbutton', { name: 'Playset size' }, LONG);
     await userEvent.clear(input);
     await userEvent.type(input, '6');
     await waitFor(() => expect(patches).toContainEqual({ playset_size: 6 }), LONG);
@@ -61,7 +59,7 @@ describe('Interface page: playset size (F3-g S8)', () => {
   it('ignores values outside 1-9', async () => {
     signedIn();
     await renderApp({ path: '/account/interface', width: 390 });
-    const input = await screen.findByRole('spinbutton', { name: 'Tamaño del playset' }, LONG);
+    const input = await screen.findByRole('spinbutton', { name: 'Playset size' }, LONG);
     await userEvent.type(input, '12');
     await new Promise((resolve) => setTimeout(resolve, 700));
     expect(patches.filter((p) => 'playset_size' in p)).toEqual([]);

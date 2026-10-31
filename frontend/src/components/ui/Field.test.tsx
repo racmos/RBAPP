@@ -19,7 +19,7 @@ describe('Field labels (owner feedback S18 c)', () => {
       <Field label="Set">
         {(control) => (
           <Select {...control}>
-            <option value="">Todos</option>
+            <option value="">All</option>
           </Select>
         )}
       </Field>,

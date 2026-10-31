@@ -21,7 +21,7 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
     const { container } = await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     expect(container.querySelector('[data-testid="catalog-sidebar"]')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Filtros' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Filters' })).not.toBeInTheDocument();
     expect(screen.getByTestId('catalog-sidebar')).toHaveTextContent('Set');
   });
 
@@ -30,16 +30,16 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
     await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     expect(
-      screen.getAllByText('6 cartas').some((el) => el.closest('form, [class*="toolbar"]')),
+      screen.getAllByText('6 cards').some((el) => el.closest('form, [class*="toolbar"]')),
     ).toBe(true);
-    expect(screen.getByLabelText('Por página')).toHaveValue('48');
+    expect(screen.getByLabelText('Per page')).toHaveValue('48');
   });
 
   it('changes per_page to 96 and resets the page to 1', async () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards?page=2', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.selectOptions(await screen.findByLabelText('Por página'), '96');
+    await userEvent.selectOptions(await screen.findByLabelText('Per page'), '96');
     await waitFor(() => expect(where()).toBe('/cards?per_page=96'), LONG);
   });
 
@@ -47,8 +47,8 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    const perPage = screen.getByLabelText('Por página');
-    const dir = screen.getByRole('button', { name: 'Orden descendente' });
+    const perPage = screen.getByLabelText('Per page');
+    const dir = screen.getByRole('button', { name: 'Descending order' });
     // the router applies a navigation in a transition: the second change comes before the render
     act(() => {
       fireEvent.change(perPage, { target: { value: '96' } });
@@ -61,7 +61,7 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.click(screen.getByRole('radio', { name: 'Tabla' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Table' }));
     expect(await screen.findByRole('table', {}, LONG)).toBeVisible();
     expect(window.localStorage.getItem('rb_cards_view')).toBe('table');
   });
@@ -85,9 +85,7 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
       ),
     );
     await renderApp({ path: '/cards', width: 1680 });
-    expect(
-      await screen.findByText('Selecciona una carta para verla aquí.', {}, LONG),
-    ).toBeVisible();
+    expect(await screen.findByText('Select a card to preview it here.', {}, LONG)).toBeVisible();
   });
 
   it('dims the sidebar counts only after 300 ms in flight', async () => {
@@ -105,7 +103,7 @@ describe('CatalogPage desktop (F2-i S2, S3)', () => {
     await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     const sidebar = screen.getByTestId('catalog-sidebar');
-    await userEvent.selectOptions(screen.getByLabelText('Ordenar por'), 'price');
+    await userEvent.selectOptions(screen.getByLabelText('Sort by'), 'price');
     expect(sidebar).not.toHaveAttribute('aria-busy');
     await waitFor(() => expect(sidebar).toHaveAttribute('aria-busy', 'true'), LONG);
   });
@@ -126,7 +124,7 @@ describe('CatalogPage side panels (owner feedback S23)', () => {
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     await expectCollapsible(
       screen.getByTestId('catalog-sidebar'),
-      { hide: 'Ocultar filtros', show: 'Mostrar filtros' },
+      { hide: 'Hide filters', show: 'Show filters' },
       'rb_panel_cards-filters_v1',
     );
   });
@@ -136,7 +134,7 @@ describe('CatalogPage side panels (owner feedback S23)', () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    expect(screen.getByRole('button', { name: 'Mostrar filtros' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Show filters' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
@@ -148,8 +146,8 @@ describe('CatalogPage side panels (owner feedback S23)', () => {
     await renderApp({ path: '/cards', width: 1700 });
     await screen.findByRole('button', { name: /Ayla/ }, LONG);
     await expectCollapsible(
-      screen.getByRole('complementary', { name: 'Vista previa' }),
-      { hide: 'Ocultar vista previa', show: 'Mostrar vista previa' },
+      screen.getByRole('complementary', { name: 'Preview' }),
+      { hide: 'Hide preview', show: 'Show preview' },
       'rb_panel_cards-preview_v1',
     );
   });

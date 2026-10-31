@@ -2,7 +2,6 @@ import type { PrefKey, Prefs } from './types';
 
 /** The stored fields, in the order of the API (PREF-2). */
 export const PREF_KEYS = [
-  'lang',
   'density',
   'accent',
   'bg_intensity',
@@ -13,7 +12,6 @@ export const PREF_KEYS = [
 /** Allowed values of the enumerated fields; `bg_intensity` is an integer 0..100 and
     `playset_size` an integer 1..9. */
 export const DOMAINS = {
-  lang: ['es', 'en'],
   density: ['compact', 'regular', 'comfy'],
   accent: ['cyan', 'orange'],
   collection_view: ['table', 'grid'],
@@ -25,7 +23,6 @@ export const PLAYSET_MIN = 1;
 export const PLAYSET_MAX = 9;
 
 export const EMPTY_PREFS: Prefs = {
-  lang: null,
   density: null,
   accent: null,
   bg_intensity: null,

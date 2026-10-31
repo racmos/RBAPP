@@ -13,7 +13,7 @@ type ProductTabsProps = {
   children: ReactNode;
 };
 
-/** "Mis productos" and "Catálogo" as tabs (arrows, Home and End move between them), and the panel. */
+/** "My products" and "Catalog" as tabs (arrows, Home and End move between them), and the panel. */
 export function ProductTabs({ tab, choose, children }: ProductTabsProps) {
   const { t } = useTranslation('products');
   const tabRefs = useRef<Partial<Record<ProductsTab, HTMLButtonElement | null>>>({});

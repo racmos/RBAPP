@@ -5,7 +5,7 @@ import { createI18n } from '@/i18n';
 import { ChipGroup, FilterChip } from './FilterChip';
 
 async function renderChip(props: React.ComponentProps<typeof FilterChip>) {
-  const i18n = await createI18n('es');
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   return render(
     <I18nextProvider i18n={i18n}>
@@ -47,7 +47,7 @@ describe('FilterChip (F2-h S11)', () => {
 
 describe('ChipGroup (F2-h S11)', () => {
   it('names the group with the legend', async () => {
-    const i18n = await createI18n('es');
+    const i18n = await createI18n();
     const { I18nextProvider } = await import('react-i18next');
     render(
       <I18nextProvider i18n={i18n}>

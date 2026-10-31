@@ -6,11 +6,8 @@ import { basicRune, champion, foilCommon, noImage, noPrice, token } from '@/test
 import { render } from '@testing-library/react';
 import { BanBadge, CardArtPlaceholder, CardImage, DomainPips, PriceTag, RarityDot } from '.';
 
-async function renderWithI18n(
-  ui: ReactElement,
-  { lang = 'es' as const }: { lang?: 'es' | 'en' } = {},
-) {
-  const i18n = await createI18n(lang);
+async function renderWithI18n(ui: ReactElement) {
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
 }

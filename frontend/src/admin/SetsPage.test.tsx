@@ -11,7 +11,7 @@ import { expectCollapsible } from '@/test/sidePanel';
 const SETS = [
   {
     id: 'OGN',
-    name: 'Origen',
+    name: 'Origins',
     release_date: '2026-01-01',
     card_count: 2,
     declared_count: 2,
@@ -20,7 +20,7 @@ const SETS = [
   },
   {
     id: 'SFD',
-    name: 'Segundo',
+    name: 'Second',
     release_date: null,
     card_count: 0,
     declared_count: null,
@@ -41,22 +41,18 @@ describe('SetsPage (F13-f S4-S6)', () => {
     setsApi();
     const { container } = await renderApp({ path: '/admin/sets', width: 1280 });
     // First render of the file pays for the lazy admin chunk.
-    const table = await screen.findByRole(
-      'table',
-      { name: 'Sets del catálogo' },
-      { timeout: 10000 },
-    );
+    const table = await screen.findByRole('table', { name: 'Catalog sets' }, { timeout: 10000 });
     expect(table).toBeVisible();
     const [head] = within(table).getAllByRole('rowgroup');
     expect(within(head!).queryAllByRole('button')).toHaveLength(0);
-    expect(screen.getByRole('columnheader', { name: 'Código' })).toHaveAttribute(
+    expect(screen.getByRole('columnheader', { name: 'Code' })).toHaveAttribute(
       'aria-sort',
       'ascending',
     );
-    expect(screen.getByLabelText('Buscar set')).toBeVisible();
-    expect(screen.getByLabelText('Ordenar por')).toHaveValue('id');
-    expect(screen.getByLabelText('Dirección')).toHaveValue('asc');
-    expect(screen.getByRole('button', { name: 'Nuevo set' })).toBeVisible();
+    expect(screen.getByLabelText('Search set')).toBeVisible();
+    expect(screen.getByLabelText('Sort by')).toHaveValue('id');
+    expect(screen.getByLabelText('Direction')).toHaveValue('asc');
+    expect(screen.getByRole('button', { name: 'New set' })).toBeVisible();
     expect(await axe(container)).toHaveNoViolations();
   });
 
@@ -71,27 +67,27 @@ describe('SetsPage (F13-f S4-S6)', () => {
       ),
     );
     const { where } = await renderApp({ path: '/admin/sets?sort=name&dir=desc', width: 1280 });
-    await screen.findByRole('table', { name: 'Sets del catálogo' });
+    await screen.findByRole('table', { name: 'Catalog sets' });
     // Re-query: a navigation may remount the table.
     const firstCells = () =>
-      within(screen.getByRole('table', { name: 'Sets del catálogo' }))
+      within(screen.getByRole('table', { name: 'Catalog sets' }))
         .getAllByRole('row')
         .slice(1)
         .map((row) => within(row).getAllByRole('cell')[0]!.textContent);
     expect(firstCells()).toEqual(['ARC', 'SFD', 'OGN']);
-    expect(screen.getByRole('columnheader', { name: 'Nombre' })).toHaveAttribute(
+    expect(screen.getByRole('columnheader', { name: 'Name' })).toHaveAttribute(
       'aria-sort',
       'descending',
     );
 
-    await userEvent.selectOptions(screen.getByLabelText('Ordenar por'), 'releaseDate');
+    await userEvent.selectOptions(screen.getByLabelText('Sort by'), 'releaseDate');
     await waitFor(() => expect(where()).toBe('/admin/sets?sort=releaseDate&dir=desc'));
     await waitFor(() => expect(firstCells()).toEqual(['OGN', 'ARC', 'SFD']));
-    await userEvent.selectOptions(screen.getByLabelText('Dirección'), 'asc');
+    await userEvent.selectOptions(screen.getByLabelText('Direction'), 'asc');
     await waitFor(() => expect(where()).toBe('/admin/sets?sort=releaseDate&dir=asc'));
     await waitFor(() => expect(firstCells()).toEqual(['SFD', 'ARC', 'OGN']));
 
-    await userEvent.type(screen.getByLabelText('Buscar set'), 'orig');
+    await userEvent.type(screen.getByLabelText('Search set'), 'orig');
     await waitFor(() => expect(where()).toBe('/admin/sets?sort=releaseDate&dir=asc&q=orig'));
     await waitFor(() => expect(firstCells()).toEqual(['OGN']));
   });
@@ -99,8 +95,8 @@ describe('SetsPage (F13-f S4-S6)', () => {
   it('a search without matches says so', async () => {
     setsApi();
     await renderApp({ path: '/admin/sets?q=zzz', width: 1280 });
-    expect(await screen.findByText('Ningún set coincide con la búsqueda.')).toBeVisible();
-    expect(screen.getByLabelText('Buscar set')).toHaveValue('zzz');
+    expect(await screen.findByText('No set matches the search.')).toBeVisible();
+    expect(screen.getByLabelText('Search set')).toHaveValue('zzz');
   });
 
   it.each([1280, 1700])('new set opens the form and creates the set at %i px', async (width) => {
@@ -124,35 +120,35 @@ describe('SetsPage (F13-f S4-S6)', () => {
       }),
     );
     await renderApp({ path: '/admin/sets', width });
-    await userEvent.click(await screen.findByRole('button', { name: 'Nuevo set' }));
-    await userEvent.type(await screen.findByLabelText('Código'), 'TST');
-    await userEvent.type(screen.getByLabelText('Nombre'), 'Test');
-    await userEvent.type(screen.getByLabelText('Fecha de salida'), '2026-12-04');
-    await userEvent.type(screen.getByLabelText('Cartas anunciadas'), '12');
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
-    expect((await screen.findAllByText('Set guardado.')).length).toBeGreaterThan(0);
+    await userEvent.click(await screen.findByRole('button', { name: 'New set' }));
+    await userEvent.type(await screen.findByLabelText('Code'), 'TST');
+    await userEvent.type(screen.getByLabelText('Name'), 'Test');
+    await userEvent.type(screen.getByLabelText('Release date'), '2026-12-04');
+    await userEvent.type(screen.getByLabelText('Announced cards'), '12');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('Set saved.')).length).toBeGreaterThan(0);
     expect(created).toEqual([
       { id: 'TST', name: 'Test', release_date: '2026-12-04', declared_count: 12 },
     ]);
     expect(await screen.findByRole('cell', { name: 'TST' })).toBeVisible();
-    expect(screen.queryByLabelText('Código')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Code')).not.toBeInTheDocument();
   });
 
   it('cards at 390 px with an actions menu, editor in a bottom sheet', async () => {
     setsApi();
     await renderApp({ path: '/admin/sets', width: 390 });
     expect(await screen.findByRole('heading', { name: /OGN/ })).toBeVisible();
-    await userEvent.click(screen.getAllByText('Acciones')[0]);
-    expect(screen.getByRole('button', { name: 'Editar OGN' })).toBeVisible();
+    await userEvent.click(screen.getAllByText('Actions')[0]);
+    expect(screen.getByRole('button', { name: 'Edit OGN' })).toBeVisible();
   });
 
   it('persistent editor panel at 1700 px', async () => {
     setsApi();
     await renderApp({ path: '/admin/sets', width: 1700 });
-    expect(await screen.findByText('Elige un set para editarlo.')).toBeVisible();
+    expect(await screen.findByText('Pick a set to edit it.')).toBeVisible();
     await expectCollapsible(
       screen.getByRole('complementary', { name: 'Editor' }),
-      { hide: 'Ocultar editor', show: 'Mostrar editor' },
+      { hide: 'Hide editor', show: 'Show editor' },
       'rb_panel_admin-sets-editor_v1',
     );
   });
@@ -170,20 +166,20 @@ describe('SetsPage (F13-f S4-S6)', () => {
       ),
     );
     await renderApp({ path: '/admin/sets', width: 1280 });
-    await userEvent.click(await screen.findByRole('button', { name: 'Nuevo set' }));
-    await userEvent.type(screen.getByLabelText('Código'), 'TST');
-    await userEvent.type(screen.getByLabelText('Nombre'), 'Test');
-    await userEvent.type(screen.getByLabelText('Fecha de salida'), '2026-12-04');
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
-    expect(await screen.findByText('Este campo es obligatorio.')).toBeVisible();
+    await userEvent.click(await screen.findByRole('button', { name: 'New set' }));
+    await userEvent.type(screen.getByLabelText('Code'), 'TST');
+    await userEvent.type(screen.getByLabelText('Name'), 'Test');
+    await userEvent.type(screen.getByLabelText('Release date'), '2026-12-04');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('This field is required.')).toBeVisible();
   });
 
   it('delete asks for confirmation', async () => {
     setsApi();
     server.use(http.delete(`${API}/admin/sets/OGN`, () => ok({ deleted: 'OGN' })));
     await renderApp({ path: '/admin/sets', width: 1280 });
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Borrar OGN' }))[0]);
-    expect(await screen.findByText('¿Borrar el set OGN?')).toBeVisible();
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Delete OGN' }))[0]);
+    expect(await screen.findByText('Delete set OGN?')).toBeVisible();
   });
 });
 
@@ -201,13 +197,15 @@ describe('SetsPage delete outcome (owner feedback S20)', () => {
       ),
     );
     await renderApp({ path: '/admin/sets', width: 1280 });
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Borrar OGN' }))[0]!);
-    const dialog = await screen.findByRole('dialog', { name: '¿Borrar el set OGN?' });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Borrar' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Delete OGN' }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: 'Delete set OGN?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(
       (
-        await screen.findAllByText(/El set tiene cartas; no se puede cambiar su código ni borrarlo/)
+        await screen.findAllByText(
+          /The set has cards; its code cannot be changed and it cannot be deleted/,
+        )
       )[0],
     ).toBeVisible();
   }, 20000);
@@ -216,10 +214,10 @@ describe('SetsPage delete outcome (owner feedback S20)', () => {
     setsApi();
     server.use(http.delete(`${API}/admin/sets/OGN`, () => ok({ deleted: 'OGN' })));
     await renderApp({ path: '/admin/sets', width: 1280 });
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Borrar OGN' }))[0]!);
-    const dialog = await screen.findByRole('dialog', { name: '¿Borrar el set OGN?' });
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Borrar' }));
-    expect((await screen.findAllByText('Set borrado.'))[0]).toBeVisible();
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Delete OGN' }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: 'Delete set OGN?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    expect((await screen.findAllByText('Set deleted.'))[0]).toBeVisible();
   }, 20000);
 });
 
@@ -227,9 +225,9 @@ describe('SetsPage row actions (owner feedback S20)', () => {
   it('are the shared Button with an icon, like the cards table', async () => {
     setsApi();
     await renderApp({ path: '/admin/sets', width: 1280 });
-    const edit = await screen.findByRole('button', { name: 'Editar OGN' });
-    const remove = screen.getByRole('button', { name: 'Borrar OGN' });
-    const buttonClass = screen.getByRole('button', { name: 'Nuevo set' }).classList[0]!;
+    const edit = await screen.findByRole('button', { name: 'Edit OGN' });
+    const remove = screen.getByRole('button', { name: 'Delete OGN' });
+    const buttonClass = screen.getByRole('button', { name: 'New set' }).classList[0]!;
     for (const action of [edit, remove]) {
       expect(action).toHaveClass(buttonClass);
       expect(action.querySelector('svg')).not.toBeNull();

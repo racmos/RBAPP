@@ -62,72 +62,69 @@ afterEach(() => {
 });
 
 describe('ProductsPage tabs (F14-e S2)', () => {
-  it('opens on "Mis productos" when the user owns products', async () => {
+  it('opens on "My products" when the user owns products', async () => {
     signedIn();
     await renderApp({ path: '/products', width: WIDTH });
-    expect(await screen.findByRole('heading', { name: 'Productos' }, LONG)).toBeVisible();
-    expect(await screen.findByRole('tablist', { name: 'Productos' }, LONG)).toBeVisible();
-    await waitFor(
-      () => expect(tab('Mis productos')).toHaveAttribute('aria-selected', 'true'),
-      LONG,
-    );
-    expect(tab('Catálogo')).toHaveAttribute('aria-selected', 'false');
-    expect(screen.getByRole('tabpanel', { name: 'Mis productos' })).toBeVisible();
-    expect(document.title).toBe('Productos · Rift Manager');
+    expect(await screen.findByRole('heading', { name: 'Products' }, LONG)).toBeVisible();
+    expect(await screen.findByRole('tablist', { name: 'Products' }, LONG)).toBeVisible();
+    await waitFor(() => expect(tab('My products')).toHaveAttribute('aria-selected', 'true'), LONG);
+    expect(tab('Catalog')).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tabpanel', { name: 'My products' })).toBeVisible();
+    expect(document.title).toBe('Products · Rift Manager');
   }, 20000);
 
-  it('opens on "Catálogo" when the user owns nothing', async () => {
+  it('opens on "Catalog" when the user owns nothing', async () => {
     signedIn();
     ownsNothing();
     await renderApp({ path: '/products', width: WIDTH });
-    await waitFor(() => expect(tab('Catálogo')).toHaveAttribute('aria-selected', 'true'), LONG);
+    await waitFor(() => expect(tab('Catalog')).toHaveAttribute('aria-selected', 'true'), LONG);
     expect(await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG)).toBeVisible();
   }, 20000);
 
   it('follows ?tab= and writes the chosen tab to the URL', async () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDTH });
-    await waitFor(() => expect(tab('Catálogo')).toHaveAttribute('aria-selected', 'true'), LONG);
-    await userEvent.click(tab('Mis productos'));
+    await waitFor(() => expect(tab('Catalog')).toHaveAttribute('aria-selected', 'true'), LONG);
+    await userEvent.click(tab('My products'));
     await waitFor(() => expect(where()).toBe('/products?tab=mine'), LONG);
-    await waitFor(() => expect(tab('Mis productos')).toHaveAttribute('aria-selected', 'true'));
+    await waitFor(() => expect(tab('My products')).toHaveAttribute('aria-selected', 'true'));
     // arrow keys move between the tabs
-    tab('Mis productos').focus();
+    tab('My products').focus();
     await userEvent.keyboard('{ArrowRight}');
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
-    expect(tab('Catálogo')).toHaveFocus();
+    expect(tab('Catalog')).toHaveFocus();
   }, 20000);
 
   it('the nav entry opens this screen in the app', async () => {
     signedIn();
     await renderApp({ path: '/', width: 1280 });
-    const links = await screen.findAllByRole('link', { name: /Productos/ }, LONG);
+    const links = await screen.findAllByRole('link', { name: /Products/ }, LONG);
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) expect(link).toHaveAttribute('href', '/riftbound/app/products');
   }, 15000);
 });
 
-describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
+describe('ProductsPage "My products" at 390 px (F14-e S2)', () => {
   it('shows the total band, the separation hint and the lines', async () => {
     signedIn();
     await renderApp({ path: '/products?tab=mine', width: WIDTH });
-    const band = (await screen.findByText('Valor de tus productos', {}, LONG)).closest('dl')!;
-    expect(within(band).getByText('199,00 €')).toBeVisible();
-    expect(within(band).getByText('Líneas')).toBeVisible();
+    const band = (await screen.findByText('Value of your products', {}, LONG)).closest('dl')!;
+    expect(within(band).getByText('199.00 €')).toBeVisible();
+    expect(within(band).getByText('Lines')).toBeVisible();
     expect(within(band).getByText('2')).toBeVisible();
-    expect(screen.getByText('1 sin precio')).toBeVisible();
+    expect(screen.getByText('1 without price')).toBeVisible();
     expect(
-      screen.getByText('Este total no se suma al valor de tu colección de cartas.'),
+      screen.getByText('This total is not added to the value of your card collection.'),
     ).toBeVisible();
     const box = screen.getByRole('article', { name: 'Origins Booster Box' });
-    expect(within(box).getByText('Caja de sobres')).toBeVisible();
-    expect(within(box).getByRole('spinbutton', { name: 'Cantidad' })).toHaveValue(2);
-    expect(within(box).getByText('99,50 €')).toBeVisible();
-    expect(within(box).getByText('199,00 €')).toBeVisible();
+    expect(within(box).getByText('Booster box')).toBeVisible();
+    expect(within(box).getByRole('spinbutton', { name: 'Quantity' })).toHaveValue(2);
+    expect(within(box).getByText('99.50 €')).toBeVisible();
+    expect(within(box).getByText('199.00 €')).toBeVisible();
     const sleeves = screen.getByRole('article', { name: 'Riftbound Sleeves' });
     // no image: the kind placeholder (S4); no price: the unpriced text (S5)
-    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent('Fundas');
-    expect(within(sleeves).getAllByText('Sin precio').length).toBeGreaterThan(0);
+    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent('Sleeves');
+    expect(within(sleeves).getAllByText('No price').length).toBeGreaterThan(0);
   }, 20000);
 
   it('the stepper saves the quantity with a PATCH', async () => {
@@ -135,7 +132,7 @@ describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
     const sent = record();
     await renderApp({ path: '/products?tab=mine', width: WIDTH });
     const box = await screen.findByRole('article', { name: 'Origins Booster Box' }, LONG);
-    await userEvent.click(within(box).getByRole('button', { name: 'Más copias: Cantidad' }));
+    await userEvent.click(within(box).getByRole('button', { name: 'More copies: Quantity' }));
     await waitFor(() => expect(sent).toHaveLength(1), LONG);
     expect(sent[0]).toEqual({ method: 'PATCH', path: '/me/products/801', body: { quantity: 3 } });
   }, 20000);
@@ -147,13 +144,13 @@ describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
     const box = await screen.findByRole('article', { name: 'Origins Booster Box' }, LONG);
     await userEvent.click(within(box).getByRole('button', { name: /Origins Booster Box/ }));
     const sheet = await screen.findByRole('dialog', { name: 'Origins Booster Box' }, LONG);
-    expect(within(sheet).getByRole('spinbutton', { name: 'Cantidad' })).toHaveValue(2);
-    const note = within(sheet).getByRole('textbox', { name: 'Nota' });
+    expect(within(sheet).getByRole('spinbutton', { name: 'Quantity' })).toHaveValue(2);
+    const note = within(sheet).getByRole('textbox', { name: 'Note' });
     expect(note).toHaveValue('Sealed');
     await userEvent.clear(note);
     await userEvent.type(note, 'Gift');
     await waitFor(() => expect(sent.some((r) => r.body?.note === 'Gift')).toBe(true), LONG);
-    const price = within(sheet).getByRole('spinbutton', { name: 'Precio de compra (unidad)' });
+    const price = within(sheet).getByRole('spinbutton', { name: 'Purchase price (each)' });
     await userEvent.clear(price);
     await waitFor(
       () => expect(sent.some((r) => r.body && r.body.purchase_price === null)).toBe(true),
@@ -161,15 +158,15 @@ describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
     );
     expect(sent.every((r) => r.method === 'PATCH' && r.path === '/me/products/801')).toBe(true);
 
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Eliminar' }));
-    const confirm = await screen.findByRole('dialog', { name: '¿Eliminar esta línea?' });
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Eliminar' }));
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Delete' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Delete this line?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(sent.some((r) => r.method === 'DELETE')).toBe(true), LONG);
     expect(sent.find((r) => r.method === 'DELETE')!.path).toBe('/me/products/801');
     // the toast and the live region both say it
-    expect((await screen.findAllByText('Línea eliminada.', {}, LONG)).length).toBeGreaterThan(0);
-    expect(getToasts().find((toast) => toast.message === 'Línea eliminada.')?.duration).toBe(8000);
-    await userEvent.click(screen.getByRole('button', { name: 'Deshacer' }));
+    expect((await screen.findAllByText('Line deleted.', {}, LONG)).length).toBeGreaterThan(0);
+    expect(getToasts().find((toast) => toast.message === 'Line deleted.')?.duration).toBe(8000);
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(sent.some((r) => r.method === 'POST')).toBe(true), LONG);
     expect(sent.find((r) => r.method === 'POST')).toEqual({
       method: 'POST',
@@ -182,8 +179,8 @@ describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
     signedIn();
     ownsNothing();
     const { where } = await renderApp({ path: '/products?tab=mine', width: WIDTH });
-    expect(await screen.findByText('Todavía no has añadido productos.', {}, LONG)).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Ver el catálogo' }));
+    expect(await screen.findByText('You have not added any products yet.', {}, LONG)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Browse the catalog' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
   }, 20000);
 
@@ -192,9 +189,9 @@ describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await renderApp({ path: '/products?tab=mine', width: WIDTH });
     const box = await screen.findByRole('article', { name: 'Origins Booster Box' }, LONG);
-    expect(screen.getByText('Necesitas conexión para hacer cambios.')).toBeVisible();
-    expect(within(box).getByRole('button', { name: 'Más copias: Cantidad' })).toBeDisabled();
-    expect(within(box).getByRole('spinbutton', { name: 'Cantidad' })).toBeDisabled();
+    expect(screen.getByText('You need a connection to make changes.')).toBeVisible();
+    expect(within(box).getByRole('button', { name: 'More copies: Quantity' })).toBeDisabled();
+    expect(within(box).getByRole('spinbutton', { name: 'Quantity' })).toBeDisabled();
   }, 20000);
 
   it('an error can be retried', async () => {
@@ -203,8 +200,8 @@ describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
       http.get(`${API}/me/products`, () => failure(500, { error: 'Internal Server Error' })),
     );
     await renderApp({ path: '/products?tab=mine', width: WIDTH });
-    expect(await screen.findByText('No se pudieron cargar los productos.', {}, LONG)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeVisible();
+    expect(await screen.findByText('Could not load the products.', {}, LONG)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
   }, 20000);
 
   it('is axe clean', async () => {
@@ -215,21 +212,21 @@ describe('ProductsPage "Mis productos" at 390 px (F14-e S2)', () => {
   }, 30000);
 });
 
-describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
+describe('ProductsPage "Catalog" at 390 px (F14-e S2)', () => {
   it('shows tiles with price, 7-day change, owned badge and unpriced text', async () => {
     signedIn();
     await renderApp({ path: '/products?tab=catalog', width: WIDTH });
     const box = await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG);
     expect(box).toHaveAttribute('href', '/riftbound/app/products/501');
-    expect(within(box).getByText('99,50 €')).toBeVisible();
-    expect(within(box).getByText('+2,5 %')).toBeInTheDocument();
+    expect(within(box).getByText('99.50 €')).toBeVisible();
+    expect(within(box).getByText('+2.5%')).toBeInTheDocument();
     expect(within(box).getByText('×2')).toBeVisible();
-    expect(within(box).getByText('Tienes 2')).toBeInTheDocument();
-    expect(within(box).getByText('Caja de sobres')).toBeVisible();
+    expect(within(box).getByText('You own 2')).toBeInTheDocument();
+    expect(within(box).getByText('Booster box')).toBeVisible();
     const sleeves = screen.getByRole('link', { name: /Riftbound Sleeves/ });
-    expect(within(sleeves).getByText('Sin precio')).toBeVisible();
-    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent('Fundas');
-    const booster = screen.getByRole('link', { name: /^Origins Booster Sobre/ });
+    expect(within(sleeves).getByText('No price')).toBeVisible();
+    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent('Sleeves');
+    const booster = screen.getByRole('link', { name: /^Origins Booster Booster/ });
     expect(within(booster).queryByText(/×/)).toBeNull();
   }, 20000);
 
@@ -237,7 +234,7 @@ describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDTH });
     await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG);
-    await userEvent.type(screen.getByRole('searchbox', { name: 'Buscar productos' }), 'sleeve');
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search products' }), 'sleeve');
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&q=sleeve'), LONG);
     await waitFor(
       () => expect(screen.queryByRole('link', { name: /Origins Booster Box/ })).toBeNull(),
@@ -250,18 +247,18 @@ describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDTH });
     await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG);
-    const kinds = screen.getByRole('group', { name: 'Tipo' });
-    const chip = within(kinds).getByRole('button', { name: 'Caja de sobres (1)' });
+    const kinds = screen.getByRole('group', { name: 'Kind' });
+    const chip = within(kinds).getByRole('button', { name: 'Booster box (1)' });
     expect(chip).toHaveAttribute('aria-pressed', 'false');
     await userEvent.click(chip);
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box'), LONG);
     await waitFor(() =>
-      expect(within(kinds).getByRole('button', { name: 'Caja de sobres (1)' })).toHaveAttribute(
+      expect(within(kinds).getByRole('button', { name: 'Booster box (1)' })).toHaveAttribute(
         'aria-pressed',
         'true',
       ),
     );
-    await userEvent.click(within(kinds).getByRole('button', { name: 'Caja de sobres (1)' }));
+    await userEvent.click(within(kinds).getByRole('button', { name: 'Booster box (1)' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
   }, 20000);
 
@@ -270,12 +267,12 @@ describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDTH });
     await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG);
     const set = screen.getByRole('combobox', { name: 'Set' });
-    expect(within(set).getByRole('option', { name: 'Todos los sets' })).toBeInTheDocument();
+    expect(within(set).getByRole('option', { name: 'All sets' })).toBeInTheDocument();
     await userEvent.selectOptions(set, 'OGN');
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&set=OGN'), LONG);
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Ordenar por' }), 'Precio');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'Price');
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&set=OGN&sort=price'), LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Cambiar sentido del orden' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Change sort direction' }));
     await waitFor(
       () => expect(where()).toBe('/products?tab=catalog&set=OGN&sort=price&dir=desc'),
       LONG,
@@ -287,7 +284,7 @@ describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
     catalog({ pages: 3, page: 1 });
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDTH });
     await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&page=2'), LONG);
   }, 20000);
 
@@ -298,10 +295,8 @@ describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
       path: '/products?tab=catalog&q=zzz&kind=box',
       width: WIDTH,
     });
-    expect(
-      await screen.findByText('Ningún producto coincide con los filtros.', {}, LONG),
-    ).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
+    expect(await screen.findByText('No product matches the filters.', {}, LONG)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
   }, 20000);
 
@@ -309,8 +304,8 @@ describe('ProductsPage "Catálogo" at 390 px (F14-e S2)', () => {
     signedIn();
     server.use(http.get(`${API}/products`, () => failure(500, { error: 'Internal Server Error' })));
     await renderApp({ path: '/products?tab=catalog', width: WIDTH });
-    expect(await screen.findByText('No se pudieron cargar los productos.', {}, LONG)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeVisible();
+    expect(await screen.findByText('Could not load the products.', {}, LONG)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
   }, 20000);
 
   it('is axe clean', async () => {
@@ -340,7 +335,7 @@ describe('ProductsPage set order (owner feedback S19)', () => {
           supertypes: ['Champion'],
           rarities: ['Common'],
           sets: [
-            { id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 },
+            { id: 'OGN', name: 'Origins', released_on: '2024-01-15', card_count: 6 },
             { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
           ],
           price: { provider: 'cardmarket', currency: 'EUR', updated_on: null },

@@ -4,7 +4,7 @@ import type { PriceRange } from '@/api/endpoints';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Skeleton } from '@/components/ui/Skeleton';
-import type { Lang } from '@/lib/format';
+
 import { readStorage, writeStorage } from '@/lib/storage';
 import { PriceChart } from '@/components/charts';
 import { useCardPrices } from './queries';
@@ -27,8 +27,7 @@ type CardPriceHistoryProps = {
 };
 
 export function CardPriceHistory({ setId, cardId, foilable, name }: CardPriceHistoryProps) {
-  const { t, i18n } = useTranslation('cards');
-  const lang = (i18n.language.split('-')[0] === 'en' ? 'en' : 'es') as Lang;
+  const { t } = useTranslation('cards');
   const [range, setRange] = useState<PriceRange>(() => storedRange());
   const { data, isPending, isError, error, refetch } = useCardPrices(setId, cardId, range);
 
@@ -67,7 +66,7 @@ export function CardPriceHistory({ setId, cardId, foilable, name }: CardPriceHis
 
       {data && (
         <div className={isPending ? styles.dimmed : undefined} aria-busy={isPending || undefined}>
-          <PriceChart points={data.points} series={series} lang={lang} title={name} />
+          <PriceChart points={data.points} series={series} title={name} />
         </div>
       )}
     </section>

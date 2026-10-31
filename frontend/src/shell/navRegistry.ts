@@ -2,7 +2,7 @@ import type { IconName } from '@/components/ui/icons';
 import { legacyHref, type LegacyKey } from './legacyRoutes';
 
 /**
- * One registry feeds the topbar, the bottom navigation, the "Más" sheet and the home hub
+ * One registry feeds the topbar, the bottom navigation, the "More" sheet and the home hub
  * (SHELL-5). Each entry is `spa` (a router link), `legacy` (a plain link to a Jinja page) or
  * `planned` (not rendered anywhere). When a phase ports a module, flip its entry to `spa`.
  */

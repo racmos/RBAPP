@@ -23,10 +23,10 @@ export async function startApp(
   host: HTMLElement,
   { reload }: StartOptions = {},
 ): Promise<() => void> {
-  const { lang } = bootstrapPrefs();
+  bootstrapPrefs();
   const stopInstallListener = listenForInstallPrompt();
   const uninstallChunkReload = installChunkReload({ reload });
-  const i18n = await createI18n(lang);
+  const i18n = await createI18n();
   const queryClient = createQueryClient();
   const router = createBrowserRouter(createAppRoutes(queryClient), { basename: BASENAME });
 

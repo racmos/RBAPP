@@ -8,34 +8,12 @@ import enErrors from './locales/en/errors.json';
 import enNav from './locales/en/nav.json';
 import enPrefs from './locales/en/prefs.json';
 import enProducts from './locales/en/products.json';
-import esAdmin from './locales/es/admin.json';
-import esAuth from './locales/es/auth.json';
-import esCards from './locales/es/cards.json';
-import esCollection from './locales/es/collection.json';
-import esCommon from './locales/es/common.json';
-import esEnums from './locales/es/enums.json';
-import esErrors from './locales/es/errors.json';
-import esNav from './locales/es/nav.json';
-import esPrefs from './locales/es/prefs.json';
-import esProducts from './locales/es/products.json';
 
-export const LANGUAGES = ['es', 'en'] as const;
-export type Lang = (typeof LANGUAGES)[number];
-
-/** Catalogs are bundled and precached: no runtime fetch of translations (I18N-1). */
+/**
+ * Catalogs are bundled and precached: no translation requests at run time (I18N-1). English is
+ * the only language (owner feedback S21): there is no Spanish catalog and no language choice.
+ */
 export const resources = {
-  es: {
-    common: esCommon,
-    nav: esNav,
-    auth: esAuth,
-    errors: esErrors,
-    prefs: esPrefs,
-    admin: esAdmin,
-    enums: esEnums,
-    cards: esCards,
-    collection: esCollection,
-    products: esProducts,
-  },
   en: {
     common: enCommon,
     nav: enNav,

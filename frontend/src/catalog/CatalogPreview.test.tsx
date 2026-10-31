@@ -89,8 +89,8 @@ describe('CatalogPreview (F2-i S5)', () => {
     await renderApp({ path: '/cards?selected=OGN-79', width: 1680 });
     await screen.findByRole('heading', { name: /Ayla/ }, LONG);
     const preview = screen.getByTestId('catalog-preview');
-    expect(preview).toHaveTextContent('1,21 €');
-    expect(preview).toHaveTextContent('2,50 €');
+    expect(preview).toHaveTextContent('1.21 €');
+    expect(preview).toHaveTextContent('2.50 €');
     await waitFor(() => expect(preview.querySelector('svg[role="img"]')).toBeInTheDocument(), LONG);
   }, 15000);
 
@@ -105,7 +105,7 @@ describe('CatalogPreview (F2-i S5)', () => {
     await renderApp({ path: '/cards?selected=OGN-r01', width: 1680 });
     await screen.findByRole('heading', { name: /Fury Rune/ }, LONG);
     const preview = screen.getByTestId('catalog-preview');
-    expect(preview).not.toHaveTextContent('2,50 €');
+    expect(preview).not.toHaveTextContent('2.50 €');
   }, 15000);
 
   it('has a link to open the detail modal', async () => {
@@ -118,7 +118,7 @@ describe('CatalogPreview (F2-i S5)', () => {
     );
     await renderApp({ path: '/cards?selected=OGN-79', width: 1680 });
     await screen.findByRole('heading', { name: /Ayla/ }, LONG);
-    const link = await screen.findByRole('link', { name: /ficha completa/ }, LONG);
+    const link = await screen.findByRole('link', { name: /Open full card/ }, LONG);
     expect(link).toHaveAttribute('href', '/riftbound/app/cards/OGN/79?selected=OGN-79');
   }, 15000);
 

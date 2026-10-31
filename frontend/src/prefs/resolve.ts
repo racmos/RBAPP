@@ -8,7 +8,7 @@ export const PHONE_QUERY = down('md');
 
 export const isPhone = (): boolean => window.matchMedia(PHONE_QUERY).matches;
 
-/** Auto (`null`) to concrete values (PREF-6); the language is resolved by `resolveLang`. */
+/** Auto (`null`) to concrete values (PREF-6). */
 export function resolvePrefs(raw: Prefs, { phone }: PrefsEnv): EffectivePrefs {
   return {
     density: raw.density ?? (phone ? 'compact' : 'regular'),

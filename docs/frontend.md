@@ -142,18 +142,38 @@ applies to both.
   `altcha`. A payload is single use and is consumed before the duplicate check, so after
   any failed attempt the page fetches a new challenge and remounts the widget.
 - **Logout.** `POST /auth/logout`. A `200` and a `401` (already signed out) both clear the
-  cache and the hint, keep the current language in `rb_lang` and go to `/login`; any other
+  cache and the hint and go to `/login`; any other
   failure keeps the user signed in and shows an error toast.
 
-## Languages and error codes
+## Language, formats and error codes
 
-Text lives in `frontend/src/i18n/locales/{es,en}/{common,nav,auth,errors,prefs}.json`
-and is bundled (no translation requests at run time). Spanish is the typed source: a
-missing key fails `npm run typecheck`. Both languages need the same keys, the same
-`{{placeholders}}` and every plural form the language needs; the unit that adds strings
-adds the parity test. The language is the account preference, then
-`rb_lang` in `localStorage`, then the first supported entry of `navigator.languages`,
-then Spanish.
+**English only** (owner feedback S21, 2026-10-30). The app has one catalog,
+`frontend/src/i18n/locales/en/<namespace>.json`, bundled (no translation requests at run time)
+and typed: a missing key fails `npm run typecheck`. There is no Spanish catalog, no ES/EN toggle
+(login screen, topbar, "More" sheet), no language setting in `/account/interface`, no language
+detection (`navigator.languages`, `rb_lang`) and no language in the `rb_prefs_v1` mirror;
+`createI18n()` always starts in `en` and `<html lang>` is always `en`. The backend still stores
+and sends the `lang` preference (`rbprf_lang`, see `docs/api.md`); the app ignores it and never
+sends it. The Jinja pages are not part of this: they keep their own texts.
+
+What was removed: `locales/es/*`, `LanguageToggle`, `AccountLanguageToggle`,
+`i18n/resolveLang.ts` (`resolveLang`, `storeLang`, `initialLang`...), the `Lang` type and every
+`lang` prop, the `lang` field of the front-end `Prefs` and `setLanguage` of `usePrefs`, and the
+ES/EN parity test (`i18n/parity.ts`).
+
+**Catalog test.** `src/i18n/catalogCheck.test.ts` (`checkCatalog` in `catalogCheck.ts`) checks
+that English is the only bundled language with every namespace, that no string is empty, that
+every plural group has the forms English needs (`_one`, `_other`) and none it never uses (a
+`_many` is a Spanish leftover), and that no string has Spanish-only characters (`á é í ó ú ñ ¿
+¡`). `src/i18n/englishOnly.test.tsx` checks the screens: no language control anywhere, an
+account that stored `lang: 'es'` still gets English, `PATCH /me/prefs` never carries `lang`.
+Tests are written in English and query the English texts.
+
+**Formats.** `src/lib/format.ts` is the only formatter and uses one locale, `LOCALE = 'en-GB'`:
+money is English numbers with the euro after the value (`1,061.52 €`), numbers group with a
+comma (`1,234,567`), dates are medium English dates in UTC (`5 Oct 2026`), date and time
+`5 Oct 2026, 08:00`, percentages one decimal with the sign (`+10.0%`, `-3.1%`, `0.0%`). The
+price chart axis uses the same locale. None of them takes a language argument.
 
 Server errors are translated by `code` (`translateError` in `src/i18n/translateError.ts`):
 `errors:code.<code>` with the `params` interpolated, then the API `message`, then
@@ -165,9 +185,10 @@ Server errors are translated by `code` (`translateError` in `src/i18n/translateE
 
 1. Add the value to `ErrorCode` in `app/api/error_codes.py` (a field-level code goes to
    `DetailCode`) and return it from the endpoint (`fail(..., code=ErrorCode.X)`).
-2. Add `code.<value>` to `frontend/src/i18n/locales/es/errors.json` and
-   `.../en/errors.json` (for a field-level code, `validation.<value>`).
-3. Add a test that both catalogs have the entry (the unit adds a test for it).
+2. Add `code.<value>` to `frontend/src/i18n/locales/en/errors.json` (for a field-level code,
+   `validation.<value>`).
+3. Add a test that the catalog has the entry (`tests/test_error_catalogs.py` covers every
+   `ErrorCode`).
 
 An older server may answer without codes: `deriveCode` in `src/api/errors.ts` maps the
 F0 bodies (401 login, 409 duplicates, 429) so the screens still work.
@@ -177,7 +198,7 @@ F0 bodies (401 login, 409 duplicates, 429) so the screens still work.
 **Shell anatomy.** Signed-in routes render inside `src/shell/AppShell.tsx`: a skip link
 (first tab stop), the sticky `Topbar` (64 px, 56 px below `sm`), one `main`
 (content capped at `--maxw`, `--maxw-wide` from `2xl`) and, below 860 px, the `BottomNav`
-(Inicio, Cartas, Colección, Mazos and "Más", which opens a native `<dialog>` sheet).
+(Home, Cards, Collection, Decks and "More", which opens a native `<dialog>` sheet).
 The top or the bottom navigation is *mounted* by `useMediaQuery(up('md'))`, not hidden, and
 `main` carries `data-botnav` (bottom padding) only while the bottom navigation exists.
 Pages sit under a pathless route with `ShellError` as its `errorElement`, so a page that
@@ -206,32 +227,29 @@ only, the server still enforces). **To port a module, flip its entry**: change
 `src/app/routes.tsx` and keep the label in `nav.json`. Every URL of `legacy-routes.json` must
 exist in the Flask `url_map`; the unit that adds a legacy link adds a test for it.
 
-**Preferences.** The account stores five values (`lang`, `density`, `accent`,
-`bg_intensity`, `collection_view`; `null` is Auto). `src/prefs/`:
+**Preferences.** The app uses four interface values (`density`, `accent`, `bg_intensity`,
+`collection_view`; `null` is Auto) plus `playset_size`. The account also stores `lang`, which
+the app ignores (English only, see "Language, formats and error codes"). `src/prefs/`:
 
 - `bootstrap.ts` runs before React renders: it reads the `rb_prefs_v1` mirror (corrupt or
   out-of-domain values are dropped), resolves Auto for the viewport and writes
-  `data-accent`, `data-density` (absent for regular), `lang` and the background variables to
-  `<html>`. Auto means compact density and grid view below 860 px, regular and table above;
+  `data-accent`, `data-density` (absent for regular), `lang="en"` and the background variables
+  to `<html>`. Auto means compact density and grid view below 860 px, regular and table above;
   accent orange; background 100.
 - `PrefsProvider` keeps `<html>` in step with the session query, re-resolves Auto when the
-  viewport crosses 860 px, copies the server prefs into the mirror and lets the account
-  language drive i18next. `rb_lang` stays the device choice (written by the toggle and on
-  logout).
+  viewport crosses 860 px and copies the server prefs into the mirror (without `lang`).
 - `sync.ts` saves optimistically: the change is written to the session cache at once, one
   PATCH is in flight at a time, each request carries only the changed fields (`null` for
   Auto), the slider waits 400 ms (and flushes on pointerup, blur and pagehide), and a failure
-  restores the previous value with an error toast and a "Reintentar" action.
-- `AccountLanguageToggle` is the ES/EN toggle of the login screen, the topbar and the sheet:
-  it always writes `rb_lang`; when signed in it also saves `lang` to the account.
+  restores the previous value with an error toast and a "Retry" action.
 
-`/account/interface` (`src/account/InterfacePage.tsx`) edits all five; at 1240 px and above a
+`/account/interface` (`src/account/InterfacePage.tsx`) edits the four interface values and the
+playset size; at 1240 px and above a
 live preview sits beside the controls.
 
-**How to add a catalog namespace.** Create `locales/es/<ns>.json` and `locales/en/<ns>.json`,
-import both in `src/i18n/resources.ts`, add the name to `NAMESPACES` and to both `resources`
-objects, and call `useTranslation('<ns>')`. Spanish types the keys; the parity test covers
-English.
+**How to add a catalog namespace.** Create `locales/en/<ns>.json`, import it in
+`src/i18n/resources.ts`, add the name to `NAMESPACES` and to the `en` resources, and call
+`useTranslation('<ns>')`. English types the keys; the catalog test covers the new namespace.
 
 **Development.** `/riftbound/app/_kitchen` shows every primitive; the route exists only in
 `npm run dev` (the production table has no `/_kitchen`).
@@ -241,10 +259,10 @@ create the page next to `AdminLayout.tsx`, add the child route under `/admin` in
 `src/app/routes.tsx` (inside the shell, guarded by `requireAdmin`), and put its strings in the
 `admin` namespace. The nav (`NavLink` at ≥ 1240 px, `Select` below) and the mobile hint come
 from `AdminLayout`; the page only renders its `PageHeader` and content. The desktop nav is a
-`SidePanel` (`admin-nav`, "Ocultar menú"); the persistent editor or detail panels of sets, products
+`SidePanel` (`admin-nav`, "Hide menu"); the persistent editor or detail panels of sets, products
 and Riot changes at ≥ 1600 px are `SidePanel`s too (`admin-sets-editor`, `admin-products-editor`,
 `admin-changes-detail`), in a grid column sized `auto`. The Riot changes status filter shows its
-label ("Estado") and the set and field selects are labelled "Set" and "Campo" (S24).
+label ("Status") and the set and field selects are labelled "Set" and "Field" (S24).
 
 **Products admin (F14-d).** `/admin/products` (`src/admin/ProductsAdminPage.tsx`, nav entry
 `products`) lists `GET /admin/products` with its filters in the URL (`q`, repeated `kind`,
@@ -261,14 +279,14 @@ live in the `products` namespace (`products:kind.<kind>`, F14-e adds the rest).
 `GET /admin/sets` list in the browser, with the state in the URL: `q` (code or name
 substring), `sort` = `id|name|releaseDate|cards` (default `id`) and `dir` = `asc|desc`
 (default `asc`). The filters section holds the search, the sort `Select` and the direction
-`Select`; the table headers are plain text with `aria-sort` on the sorted column. "Nuevo set"
+`Select`; the table headers are plain text with `aria-sort` on the sorted column. "New set"
 opens the editor in the side drawer (bottom sheet below 960 px) and in the persistent panel at
 ≥ 1600 px.
 
-**Cards admin.** `/admin/cards` (`src/admin/CardsAdminPage.tsx`): "Nueva carta" and the row
-"Editar" open `CardEditor` in the side drawer below 1600 px (bottom sheet below 960 px) and in
+**Cards admin.** `/admin/cards` (`src/admin/CardsAdminPage.tsx`): "New card" and the row
+"Edit" open `CardEditor` in the side drawer below 1600 px (bottom sheet below 960 px) and in
 the `aside` panel next to the table at ≥ 1600 px (the table and its pagination are one column).
-"Borrar" asks with a `ConfirmDialog`; the question closes on the answer and a toast says the
+"Delete" asks with a `ConfirmDialog`; the question closes on the answer and a toast says the
 outcome (`card_in_use` 409 translated, otherwise the API message). Row actions in the sets and
 cards tables are icon-only `Button`s (`ghost` edit, `danger` delete) with the action and the
 name as accessible name.
@@ -282,14 +300,14 @@ The `/admin/sets` table keeps its own sort.
 **Riot changes.** `/admin/riot/changes` (`src/admin/ChangesPage.tsx`) wraps long values (URLs,
 abilities) so the columns fit; the table sits in a labelled region, `TableScroll fit`, so the page
 is the only scroll (no box inside the page) and the header sticks below the topbar. With rows
-selected the bulk bar sticks to the bottom of the viewport (opaque, above the header). "Por
-página" picks 50 / 100 / 200 rows (`per_page` in the URL, 50 is not written; a change goes back
+selected the bulk bar sticks to the bottom of the viewport (opaque, above the header). "Per
+page" picks 50 / 100 / 200 rows (`per_page` in the URL, 50 is not written; a change goes back
 to page 1).
 
 ## Products (F14-e)
 
 `frontend/src/products/` is the products section (nav entry `products`, `spa`, icon `gift`, after
-`collection`; top, hub and "Más"). The mobile layout is the target; F14-f adds the desktop one.
+`collection`; top, hub and "More"). The mobile layout is the target; F14-f adds the desktop one.
 
 - `params.ts` — URL ⇄ `GET /products` params (`q`, repeated `kind` and `set`, `sort` =
   `name|price|change_7d|change_30d`, `dir`, `page`, `per_page` 24-96, default 48; defaults are never
@@ -297,18 +315,18 @@ to page 1).
   always written first. `queries.ts` — `useProductList` (`['products', 'list', <query>]`), `useProduct`,
   `useProductPrices(id, range)`, `useMyProducts` (`['me-products']`) and `useAddProduct`,
   `usePatchProduct`, `useDeleteProduct`, which refresh `['me-products']` and `['products']`.
-- `ProductsPage` (`/products`) — a `role="tablist"` with "Mis productos" and "Catálogo" (arrow keys,
+- `ProductsPage` (`/products`) — a `role="tablist"` with "My products" and "Catalog" (arrow keys,
   Home/End). Without `?tab=` it opens on the user's products when `GET /me/products` has lines, else on
-  the catalog. "Mis productos" (`MineTab`): the total band (value, lines, unpriced count) with the hint
+  the catalog. "My products" (`MineTab`): the total band (value, lines, unpriced count) with the hint
   that it is not part of the collection value, and one row per owned line (image or placeholder, name,
   kind, unit price, line value, quantity stepper → `PATCH /me/products/<id>`); the row opens
-  `ProductLineSheet` (quantity, purchase price, note, delete behind a `ConfirmDialog` with "Deshacer"
-  for 8 s, which posts the deleted line back). "Catálogo" (`CatalogTab`): search, kind chips with the
+  `ProductLineSheet` (quantity, purchase price, note, delete behind a `ConfirmDialog` with "Undo"
+  for 8 s, which posts the deleted line back). "Catalog" (`CatalogTab`): search, kind chips with the
   facet counts, set and sort `Select`s, direction, `ProductTile`s (price with the 7-day change, `×N`
   owned badge) and `Pagination`.
 - `ProductDetail` (`/products/:id`, a page) — image, kind, set, price and 7/30-day changes, the price
-  history (`PriceChart` with 30 d / 90 d / 1 año / Todo; `asChartPoints` maps `{date, value}` to the
-  card chart's `market` series), the owned lines and the "Añadir" form (`POST /me/products`; the toast
+  history (`PriceChart` with 30 d / 90 d / 1 year / All; `asChartPoints` maps `{date, value}` to the
+  card chart's `market` series), the owned lines and the "Add" form (`POST /me/products`; the toast
   says whether it merged). An unknown id renders the shell's `NotFound`.
 - `ProductThumb` — the image, or the `gift` icon with the kind label (`data-slot="product-placeholder"`).
 - States: skeletons, empty mine (button to the catalog tab), empty catalog (clear filters), unpriced
@@ -320,17 +338,17 @@ to page 1).
 
 Desktop (F14-f). `ProductsPage` picks `ProductsMobile` (the F14-e layout above) below 1240 px
 (`up('xl')`) and `ProductsDesktop` from there; both read `useProductsScreen` (tab, URL params,
-`setParams`, owned lines) and render `ProductTabs`. `params.ts` also carries `owned=owned` ("solo los
-míos", counted as a filter and cleared with the others). `ProductsDesktop`: a sticky 240 px rail
-(`ProductsRail` in a `SidePanel` `products-filters`, "Filtros": search, kind checkboxes with facet counts, `SetSelect`, the
-`Switch` "Solo los míos"; any rail change shows the catalog tab) and, under the tabs, `CatalogTable`
-(caption "Productos de Cardmarket"; image, name, kind, set, price, 7 d and 30 d signed in the text,
-`×N` owned, "Ya no aparece" badge when `listed` is false; name, price, 7 d and 30 d headers sort with
-`aria-sort`, a new column starts descending except the name; "Por página" 48/96) or `MineTable`
-(caption "Tus productos"; `MineSummary` band, quantity `Stepper`, purchase price and note inline,
+`setParams`, owned lines) and render `ProductTabs`. `params.ts` also carries `owned=owned` ("only
+mine", counted as a filter and cleared with the others). `ProductsDesktop`: a sticky 240 px rail
+(`ProductsRail` in a `SidePanel` `products-filters`, "Filters": search, kind checkboxes with facet counts, `SetSelect`, the
+`Switch` "Only mine"; any rail change shows the catalog tab) and, under the tabs, `CatalogTable`
+(caption "Cardmarket products"; image, name, kind, set, price, 7 d and 30 d signed in the text,
+`×N` owned, "No longer listed" badge when `listed` is false; name, price, 7 d and 30 d headers sort with
+`aria-sort`, a new column starts descending except the name; "Per page" 48/96) or `MineTable`
+(caption "Your products"; `MineSummary` band, quantity `Stepper`, purchase price and note inline,
 labelled `<column>: <product>` and saved with `useProductLineSaver`; the name opens
 `ProductLineSheet`). From 1600 px (`up('2xl')`) a row click selects the product for the sticky 380 px
-`ProductPanel` (`SidePanel` `products-detail`, "Detalle del producto": image, price facts, 90-day `ProductHistory`,
+`ProductPanel` (`SidePanel` `products-detail`, "Product details": image, price facts, 90-day `ProductHistory`,
 `ProductLines`, `AddProductForm`, shared with `ProductDetail` through `ProductSections.tsx`); below it a
 row click opens `/products/:id`. Clicks on inline editors never reach the row.
 
@@ -352,8 +370,8 @@ row click opens `/products/:id`. Clicks on inline editors never reach the row.
 - **Side panels.** Every filter, detail, editor or preview column at a side of a page (and the
   admin nav) is a `components/ui/SidePanel` (owner feedback S23): `id` (the collapsed state is
   remembered in `localStorage` `rb_panel_<id>_v1`, `collapsed` | `expanded`), `kind`
-  (`filters` | `detail` | `editor` | `menu` | `preview`, which names the toggle "Ocultar filtros" /
-  "Mostrar filtros"… from `common:sidePanel`), `label` (the region name), `side`, `as` (`aside` or
+  (`filters` | `detail` | `editor` | `menu` | `preview`, which names the toggle "Hide filters" /
+  "Show filters"… from `common:sidePanel`), `label` (the region name), `side`, `as` (`aside` or
   `nav`), `className` (look and width) and `contentClassName` (layout of the content); other
   attributes reach the region. The toggle has `aria-expanded` and `aria-controls`; the content stays
   mounted and is `hidden` while collapsed. Collapsed, the panel shrinks to its toggle: give the
@@ -382,7 +400,7 @@ manifest as `application/manifest+json`.
 | Manifest | `id` and `scope` `/riftbound/`, `start_url` `/riftbound/app/`, standalone, `#06222c`. The scope is wider than the worker on purpose: the installed window may still open a legacy page |
 | Precache | The app shell only: hashed JS and CSS, `index.html`, latin fonts, the background images, the brand SVGs and the icons. **No runtime caching** of `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages |
 | Offline | The shell opens from the precache with an offline banner; F1 is read-only offline |
-| Updates | A new worker waits. The app shows a "Nueva versión" toast; "Actualizar" activates it and reloads. It checks every hour and when the window becomes visible |
+| Updates | A new worker waits. The app shows a "New version available." toast; "Update" activates it and reloads. It checks every hour and when the window becomes visible |
 | Development | The worker is disabled in `npm run dev` |
 
 `npm run check:dist` (also run by CI before the upload) fails the build when the manifest has
@@ -433,19 +451,19 @@ Run on the dev server over HTTPS (a service worker needs it; `localhost` is the 
 
 - **Installability (desktop Chrome):** DevTools, Application, Manifest shows no installability
   error. Lighthouse 12+ has no "Progressive Web App" category; see "Lighthouse baseline".
-- **Android (Chrome):** the menu offers "Install app" (also the "Instalar app" item in "Más"). The
+- **Android (Chrome):** the menu offers "Install app" (also the "Install app" item in "More"). The
   launched window is called "Rift Manager" and shows the swirl icon on the dark teal background.
-- **iPhone (Safari):** "Más" then "Instalar app" shows the three steps; Share, Add to Home Screen.
+- **iPhone (Safari):** "More" then "Install app" shows the three steps; Share, Add to Home Screen.
   Name "Rift Manager" and the mark icon, no black corners.
-- **Desktop (Chrome or Edge):** the install button in the address bar and "Instalar app" in the
+- **Desktop (Chrome or Edge):** the install button in the address bar and "Install app" in the
   topbar; the app opens in its own window.
 - **Scope:** DevTools, Application, Service Workers shows the scope `/riftbound/app/`; a Jinja page
   (for example `/riftbound/deck`) is "not controlled".
 - **Offline:** with the installed app, airplane mode, open it: the shell opens with the offline
-  banner and the preference controls and "Cerrar sesión" are disabled. Back online: the banner goes.
-- **Update:** deploy a second build, reopen the installed app, wait for the "Nueva versión" toast,
+  banner and the preference controls and "Sign out" are disabled. Back online: the banner goes.
+- **Update:** deploy a second build, reopen the installed app, wait for the "New version available." toast,
   accept it and see the new version. Dismissing it must keep a half-filled form.
-- **Session:** sign in with "Recordarme", close the installed app completely and reopen it the next
+- **Session:** sign in with "Remember me on this device", close the installed app completely and reopen it the next
   day: still signed in.
 
 ## Lighthouse baseline
@@ -487,15 +505,15 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   1240 px), filters (`CatalogFilters`: sheet below 1240, a `SidePanel` sidebar at ≥ 1240
   (`cards-filters`, folds away) with `aria-expanded` groups remembered in `rb_cards_facets`; one
   visible heading per group: in the sidebar the group's own legend or label is `sr-only`
-  (`ChipGroup hideLegend`) and the "Solo versión base" switch is not collapsible; the "Coincidencia"
-  and, in the sheet, "Colección" tri-states show their label), active chips, grid/list results,
-  pagination and states. "Limpiar filtros" appears once, at the end of the active filters row
+  (`ChipGroup hideLegend`) and the "Base printing only" switch is not collapsible; the "Match"
+  and, in the sheet, "Collection" tri-states show their label), active chips, grid/list results,
+  pagination and states. "Clear filters" appears once, at the end of the active filters row
   (every active filter has a chip there); the sidebar has none (S24 r). The sheet keeps its footer
-  "Limpiar". URL parameters mirror the API names (`params.ts`:
+  "Clear". URL parameters mirror the API names (`params.ts`:
   parse/serialize/round-trip; text search debounced with `replace`, other changes push; scroll
   restored per search string). The detail opens as a modal over the catalog at ≥ 860 px and as
   a page below; `navRegistry` entry `cards` is `spa` (the classic Jinja page stays linked as
-  "Versión clásica").
+  "Classic version").
 - `CatalogTable` — the table view (860 px and up, optional): 13 columns below 1240 in a horizontal
   scroll box (`min-width: 920px`); 16 with tags/foil/30 d at ≥ 1240 in `TableScroll fit`, so the page
   is the only vertical scroll and the header sticks below the topbar (owner feedback S22). Fitted, the
@@ -529,7 +547,7 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   error and offline states (no request while offline unless cached) are announced through a polite
   live region together with the result count and the active card. The popup stays inside the
   component, so it also works inside a `Modal` (`--z-popover`). The topbar uses it at ≥ 1240 px as
-  the global "Buscar cartas" box; `/` focuses it from anywhere except an editable field, and
+  the global "Search cards" box; `/` focuses it from anywhere except an editable field, and
   choosing a card navigates to `/cards/<set>/<id>` with state `{ fromCatalog: true }` (a modal
   over the catalog at ≥ 860 px). Below 860 px the popup is as wide as its field (it ran past the
   sheet's edge, S24 p); from 860 px it may grow to 420 px past a narrow field.
@@ -557,7 +575,7 @@ Device storage keys: `rb_cards_view` (`grid` | `list` | `table`), `rb_cards_face
 ## Collection (F3-g)
 
 `frontend/src/collection/` is the `/collection` screen (nav entry `collection` is `spa`; the Jinja page
-stays linked as "Versión clásica"). Below 1240 px it is a grid or a list, and until F3-h it is the same
+stays linked as "Classic version"). Below 1240 px it is a grid or a list, and until F3-h it is the same
 layout on a desktop.
 
 - `params.ts` — URL ⇄ `GET /collection` params (F3-b names): defaults `sort=number`, `per_page=50`
@@ -568,18 +586,18 @@ layout on a desktop.
 - `CollectionPage` — header with the summary line, summary strip (copies, unique, value), search
   (`DebouncedInput`, writes `q`), toolbar (filters sheet with the count of active ones, sort, direction,
   grid/list; the start view comes from the `collection_view` preference, `table` meaning the list,
-  Auto the grid), removable chips, `Pagination`, and a floating "Añadir carta" button (sticky in a
+  Auto the grid), removable chips, `Pagination`, and a floating "Add card" button (sticky in a
   dock after the results, so the last rows scroll clear of it; not shown over an empty collection,
   whose empty state has its own add button). States: skeleton, empty collection, empty filters, error
   with retry, offline (the button and every edit control are disabled with
   `common:offline.editDisabled`).
 - `CollectionItem` — tile or row. A group whose `playset_short` is true gets an outline **and** the text
-  "Playset incompleto (kept/size)"; `kept` comes from the API (`CollectionGroup.kept`).
+  "Playset incomplete (kept/size)"; `kept` comes from the API (`CollectionGroup.kept`).
 - `LineSheet` — the lines of a group: quantity stepper, condition and language selects, purchase price,
   selling switch, copies to sell, sale price. Each change is a `PATCH` that sends the change time the
   server last returned (`if_updated_at`, `useLineSaver`); saves of one line run one after another, typed
   numbers wait 500 ms, and a failure (`stale_line` included) shows the translated message and reloads the
-  list. "Separar copias" splits, "Eliminar" asks first and then offers "Deshacer" for 8 s (it posts the
+  list. "Split copies" splits, "Delete" asks first and then offers "Undo" for 8 s (it posts the
   deleted line back). The "keep a playset" checkbox calls `keep-playset`.
 - `AddSheet` — set filter (`GET /meta/game` sets; narrows the `CardCombobox` search with `set`),
   `CardCombobox`, foil, quantity, condition, language, purchase price, selling; the same sheet on
@@ -588,8 +606,8 @@ layout on a desktop.
   `sessionStorage` `rb_quick_add_v1` (`quickAdd.ts`, never in the URL) and restored when the sheet
   opens again. Enter in the search adds the highlighted card with the current choices
   (`CardCombobox` `onEnterSelect`). Foil on a card without a foil version shows
-  `errors:code.foil_not_allowed` and posts nothing. "Añadidas en esta sesión" lists the last 10
-  adds (one row per line; repeated adds that merge into it sum up) with "Deshacer": a line the
+  `errors:code.foil_not_allowed` and posts nothing. "Added in this session" lists the last 10
+  adds (one row per line; repeated adds that merge into it sum up) with "Undo": a line the
   session created is deleted (the toast offers to put it back), copies merged into an existing line
   are taken off it with a `PATCH` of `qty` guarded by `if_updated_at`. Offline disables adding and
   undoing.
@@ -606,25 +624,25 @@ layout on a desktop.
   1440 px with the filters open and at 1280 px with them folded (S24 q): no fixed minimum width,
   4 px cells, 32 px thumbnails, 48/64 px number and money inputs, condition and language selects of
   68 px that show codes ("NM", "FR"; `label` attribute; the full name is the option text and the
-  `title`) and "—" for no value, and abbreviated headers ("A vend.", "Venta", "P. venta",
-  "Gan. €", "Gan. %", "Modif."; `collection:table.short`) with the full name in `title` and
+  `title`) and "—" for no value, and abbreviated headers ("Sale", "Sale pr.", "P/L €", "P/L %",
+  "Upd."; `collection:table.short`; "To sell" is short enough and shown whole) with the full name in `title` and
   `sr-only`, so the column header keeps its full accessible name. `LineCells` holds the seven editable
   cells (copies, to sell, on sale, sale price, condition, language, purchase) and saves like the line
   sheet. Sortable headers carry `aria-sort`: number, name, copies, market, profit €, 7 d, updated.
 - Selection (`useSelection`, forgotten when the filters change): a box per line, per card (indeterminate
-  when partial) and per page; when the page is only a part of the result, "Seleccionar las N líneas
-  filtradas" reads the ids page by page (`fetchFilteredLineIds`, at most 1000 lines). `BulkBar` (sticky,
+  when partial) and per page; when the page is only a part of the result, "Select all N filtered
+  lines" reads the ids page by page (`fetchFilteredLineIds`, at most 1000 lines). `BulkBar` (sticky,
   while something is selected): condition, language, on sale, copies-to-sell rule (all / none / keep N),
-  prices; apply and delete go through a `ConfirmDialog`, delete offers "Deshacer" for 8 s (it posts
+  prices; apply and delete go through a `ConfirmDialog`, delete offers "Undo" for 8 s (it posts
   the deleted lines back).
 - From 1600 px `CollectionPanel` (380 px, a `SidePanel`, `collection-detail`) shows the clicked row's card: image, totals, 30-day `PriceChart`
   (foil series for a foil group), lines, the decks using the card (`in_decks`) and a link to the card page.
-- Import and export (F3-i): "Exportar" (toolbar on the desktop, header on a phone; off offline) opens
+- Import and export (F3-i): "Export" (toolbar on the desktop, header on a phone; off offline) opens
   `ExportDialog`: format RBAPP or Cardmarket (Cardmarket forces "only what is on sale"), scope all / the
   current URL filters (`exportQuery` in `params.ts`, no sort or paging) / on sale. The file comes from
   `requestFile` in `api/client.ts` (same timeout, credentials and `ApiError` as `request`) and is saved
   through a Blob and a temporary link with the `Content-Disposition` name; the toast counts
-  `X-Rows-Exported`. "Importar" (header and empty state) opens `/collection/import`, `ImportWizard`:
+  `X-Rows-Exported`. "Import" (header and empty state) opens `/collection/import`, `ImportWizard`:
   `StepIndicator` (`aria-current="step"`; not the numeric `Stepper`) over four steps. File (`.csv` read
   with `FileReader`, or pasted text; empty and over 2 MB are refused before any request), review
   (`POST /collection/import/preview`: summary, status filter, a table from 860 px with a sticky header

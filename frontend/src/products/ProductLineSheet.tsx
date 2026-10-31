@@ -11,7 +11,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { formatMoney } from '@/lib/format';
-import { langOf } from './format';
+
 import { ProductThumb } from './ProductThumb';
 import { useAddProduct, useDeleteProduct } from './queries';
 import { useProductLineSaver } from './useProductLineSaver';
@@ -30,7 +30,6 @@ type ProductLineSheetProps = {
 export function ProductLineSheet({ line, onClose, offline }: ProductLineSheetProps) {
   const { t, i18n } = useTranslation('products');
   const { t: tCommon } = useTranslation('common');
-  const lang = langOf(i18n.language);
   const save = useProductLineSaver(line.id);
   const remove = useDeleteProduct();
   const add = useAddProduct();
@@ -101,7 +100,7 @@ export function ProductLineSheet({ line, onClose, offline }: ProductLineSheetPro
           </Field>
           <dl className={styles.value}>
             <dt>{t('line.value')}</dt>
-            <dd>{line.value === null ? t('unpriced') : formatMoney(line.value, lang)}</dd>
+            <dd>{line.value === null ? t('unpriced') : formatMoney(line.value)}</dd>
           </dl>
           <Button
             variant="danger"

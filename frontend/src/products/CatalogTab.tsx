@@ -22,7 +22,7 @@ type CatalogTabProps = {
   setParams: (patch: Partial<ProductsParams>, options?: { replace?: boolean }) => void;
 };
 
-/** "Catálogo": search, kind chips, set, sort, the tiles and the pages (F14-e S2). */
+/** "Catalog": search, kind chips, set, sort, the tiles and the pages (F14-e S2). */
 export function CatalogTab({ params, setParams }: CatalogTabProps) {
   const { t } = useTranslation('products');
   const list = useProductList(params);

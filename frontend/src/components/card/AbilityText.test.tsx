@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { createI18n } from '@/i18n';
 import { AbilityText } from './AbilityText';
 
-async function renderAbility(text: string | null, lang: 'es' | 'en' = 'es') {
-  const i18n = await createI18n(lang);
+async function renderAbility(text: string | null) {
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   return render(
     <I18nextProvider i18n={i18n}>
@@ -28,41 +28,41 @@ describe('AbilityText (F2-f S9)', () => {
   it('renders energy with a visible count and screen-reader text', async () => {
     await renderAbility(':rb_energy_3:');
     expect(screen.getByText('3')).toBeVisible();
-    expect(screen.getByText('3 de energía')).toBeInTheDocument();
+    expect(screen.getByText('3 energy')).toBeInTheDocument();
   });
 
   it('renders exhaust and might with screen-reader text', async () => {
     await renderAbility(':rb_exhaust:');
-    expect(screen.getByText('agotar')).toBeInTheDocument();
+    expect(screen.getByText('exhaust')).toBeInTheDocument();
     await renderAbility(':rb_might:');
-    expect(screen.getByText('fuerza')).toBeInTheDocument();
+    expect(screen.getByText('might')).toBeInTheDocument();
   });
 
   it('renders a rune with the domain label', async () => {
     await renderAbility(':rb_rune_fury:');
-    expect(screen.getByText('runa de Furia')).toBeInTheDocument();
+    expect(screen.getByText('Fury rune')).toBeInTheDocument();
   });
 
   it('renders the rainbow rune with the any-domain label', async () => {
     await renderAbility(':rb_rune_rainbow:');
-    expect(screen.getByText('runa de cualquier dominio')).toBeInTheDocument();
+    expect(screen.getByText('rune of any domain')).toBeInTheDocument();
   });
 
   it('renders reminder text in italic', async () => {
     await renderAbility('(then :rb_exhaust:)');
     expect(screen.getByText('then')).toBeInTheDocument();
-    expect(screen.getByText('agotar')).toBeInTheDocument();
+    expect(screen.getByText('exhaust')).toBeInTheDocument();
   });
 
   it('renders the empty message for null/empty text', async () => {
     await renderAbility(null);
-    expect(screen.getByText('Sin texto')).toBeVisible();
+    expect(screen.getByText('No text')).toBeVisible();
   });
 
-  it('translates sr-only labels into English', async () => {
-    await renderAbility(':rb_energy_2:', 'en');
+  it('gives the symbols English sr-only labels', async () => {
+    await renderAbility(':rb_energy_2:');
     expect(screen.getByText('2 energy')).toBeInTheDocument();
-    await renderAbility(':rb_rune_calm:', 'en');
+    await renderAbility(':rb_rune_calm:');
     expect(screen.getByText('Calm rune')).toBeInTheDocument();
   });
 

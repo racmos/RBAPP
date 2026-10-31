@@ -4,7 +4,7 @@ import type { ErrorDetail } from '@/api/types';
 
 /**
  * Keys here are built at run time, so they cannot be statically typed; the contract test
- * (`tests/test_frontend_contracts.py`) and the parity test guard the catalogs instead.
+ * (`tests/test_frontend_contracts.py`) and the catalog test guard the catalogs instead.
  */
 type Translator = Pick<I18n, 'exists'> & { t: (key: string, options?: object) => string };
 const loose = (i18n: I18n): Translator => i18n as unknown as Translator;

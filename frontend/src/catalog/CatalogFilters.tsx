@@ -268,7 +268,7 @@ export function CatalogFilters({
     />
   );
 
-  // The sidebar heading already shows "Colección"; the sheet has no heading (S24).
+  // The sidebar heading already shows "Collection"; the sheet has no heading (S24).
   const renderOwned = () => (
     <SegmentedControl
       label={t('catalog.facet.owned')}
@@ -384,7 +384,7 @@ export function CatalogFilters({
   }
 
   return (
-    // Folds away to its toggle (S23). No "Limpiar filtros" here: the active filters row above the
+    // Folds away to its toggle (S23). No "Clear filters" here: the active filters row above the
     // results has the only one (S24 r).
     <SidePanel
       id="cards-filters"

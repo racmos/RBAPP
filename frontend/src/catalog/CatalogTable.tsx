@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import type { CardListSort, CardSummary } from '@/api/types';
 import { BanBadge, CardImage, DomainPips, PriceTag, RarityDot } from '@/components/card';
 import { useEnumLabel } from '@/i18n';
-import { formatMoney, type Lang } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './CatalogTable.module.css';
 
@@ -58,9 +58,8 @@ export type CatalogTableProps = {
 };
 
 export function CatalogTable({ items, sort, dir, onSort, isWide }: CatalogTableProps) {
-  const { t, i18n } = useTranslation('cards');
+  const { t } = useTranslation('cards');
   const { typeLabel } = useEnumLabel();
-  const lang = (i18n.language.split('-')[0] === 'en' ? 'en' : 'es') as Lang;
   const columns = isWide ? WIDE_COLUMNS : NARROW_COLUMNS;
 
   const handleSort = (column: CardListSort) => {
@@ -120,7 +119,7 @@ export function CatalogTable({ items, sort, dir, onSort, isWide }: CatalogTableP
         );
       case 'foil':
         if (!card.foilable || card.price?.market_foil == null) return '—';
-        return formatMoney(card.price.market_foil, lang);
+        return formatMoney(card.price.market_foil);
       case 'owned':
         return card.owned.total > 0 ? card.owned.total : '—';
       case 'bans':

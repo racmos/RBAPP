@@ -40,7 +40,6 @@ const SEARCH_DELAY_MS = 300;
 export function CollectionMobile({ s }: { s: CollectionScreen }) {
   const {
     t,
-    lang,
     offline,
     label,
     params,
@@ -160,7 +159,6 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
               group={group}
               variant={view === 'grid' ? 'tile' : 'row'}
               playsetSize={playsetSize}
-              lang={lang}
               onOpen={() => setOpen({ key: group.key, group })}
             />
           </li>
@@ -178,7 +176,7 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
             ? t('summary.line', {
                 qty: totals.qty,
                 unique: totals.unique,
-                value: formatMoney(totals.value, lang),
+                value: formatMoney(totals.value),
               })
             : undefined
         }
@@ -214,7 +212,7 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
           </div>
           <div>
             <dt>{t('summary.value')}</dt>
-            <dd>{formatMoney(totals.value, lang)}</dd>
+            <dd>{formatMoney(totals.value)}</dd>
           </div>
         </dl>
       )}

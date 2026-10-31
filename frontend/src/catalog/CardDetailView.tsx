@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
-import { formatDate, formatMoney, type Lang } from '@/lib/format';
+import { formatDate, formatMoney } from '@/lib/format';
 import { legacyHref } from '@/shell/legacyRoutes';
 import { CardPriceHistory } from './CardPriceHistory';
 import styles from './CardDetailView.module.css';
@@ -37,9 +37,8 @@ export function CardDetailView({
   error,
   onRetry,
 }: CardDetailViewProps) {
-  const { t, i18n } = useTranslation('cards');
+  const { t } = useTranslation('cards');
   const { label } = useEnumLabel();
-  const lang = (i18n.language.split('-')[0] === 'en' ? 'en' : 'es') as Lang;
 
   useDocumentTitle(card?.name);
 
@@ -79,7 +78,7 @@ export function CardDetailView({
           <div className={styles.imageWrap}>
             <CardImage card={card} size="full" priority decorative />
           </div>
-          <PricesPanel card={card} lang={lang} />
+          <PricesPanel card={card} />
           <CardPriceHistory
             setId={card.set_id}
             cardId={card.card_id}
@@ -130,7 +129,7 @@ export function CardDetailView({
                   <li key={ban.mode}>
                     {t('detail.bans.line', {
                       mode: label('mode', ban.mode),
-                      date: formatDate(ban.since, lang),
+                      date: formatDate(ban.since),
                     })}
                     {ban.reason && (
                       <span className={styles.banReason}>
@@ -205,7 +204,7 @@ export function CardDetailView({
                         <span className={styles.selling}>
                           {line.sell_price !== null
                             ? t('detail.mine.selling', {
-                                price: formatMoney(line.sell_price, lang),
+                                price: formatMoney(line.sell_price),
                               })
                             : t('detail.mine.sellingNoPrice')}
                         </span>
@@ -236,7 +235,6 @@ export function CardDetailView({
                     key={printing.key}
                     printing={printing}
                     current={printing.set_id === card.set_id && printing.card_id === card.card_id}
-                    lang={lang}
                   />
                 ))}
               </ul>
@@ -314,15 +312,7 @@ function imageCardFromMini(mini: CardMini): CardImageCard {
   };
 }
 
-function PrintingItem({
-  printing,
-  current,
-  lang,
-}: {
-  printing: CardMini;
-  current: boolean;
-  lang: Lang;
-}) {
+function PrintingItem({ printing, current }: { printing: CardMini; current: boolean }) {
   const { label } = useEnumLabel();
   const market = printing.price?.market ?? null;
   const name = `${printing.set_id} · #${printing.card_id}`;
@@ -332,9 +322,7 @@ function PrintingItem({
       <CardImage card={imageCardFromMini(printing)} size="thumb" decorative />
       <span className={styles.printingKey}>{name}</span>
       <RarityDot rarity={printing.rarity} />
-      <span className={styles.printingPrice}>
-        {market !== null ? formatMoney(market, lang) : '—'}
-      </span>
+      <span className={styles.printingPrice}>{market !== null ? formatMoney(market) : '—'}</span>
     </>
   );
 
@@ -359,7 +347,7 @@ function PrintingItem({
   );
 }
 
-function PricesPanel({ card, lang }: { card: CardDetail; lang: Lang }) {
+function PricesPanel({ card }: { card: CardDetail }) {
   const { t } = useTranslation('cards');
 
   if (!card.price) {
@@ -387,23 +375,23 @@ function PricesPanel({ card, lang }: { card: CardDetail; lang: Lang }) {
       </h2>
       <div className={styles.priceGrid}>
         <div>
-          <p className={styles.priceBig}>{market !== null ? formatMoney(market, lang) : '—'}</p>
+          <p className={styles.priceBig}>{market !== null ? formatMoney(market) : '—'}</p>
           <p className={styles.priceLabel}>{t('detail.prices.market')}</p>
           {source && (
             <p className={styles.sourceLine}>{t('detail.prices.sourceLine', { source })}</p>
           )}
         </div>
         <div>
-          <p className={styles.priceValue}>{low !== null ? formatMoney(low, lang) : '—'}</p>
+          <p className={styles.priceValue}>{low !== null ? formatMoney(low) : '—'}</p>
           <p className={styles.priceLabel}>{t('detail.prices.low')}</p>
         </div>
         <div>
-          <p className={styles.priceValue}>{avg30 !== null ? formatMoney(avg30, lang) : '—'}</p>
+          <p className={styles.priceValue}>{avg30 !== null ? formatMoney(avg30) : '—'}</p>
           <p className={styles.priceLabel}>{t('detail.prices.avg30')}</p>
         </div>
         {card.foilable && marketFoil !== null && (
           <div>
-            <p className={styles.priceValue}>{formatMoney(marketFoil, lang)}</p>
+            <p className={styles.priceValue}>{formatMoney(marketFoil)}</p>
             <p className={styles.priceLabel}>{t('detail.prices.marketFoil')}</p>
           </div>
         )}
@@ -414,7 +402,7 @@ function PricesPanel({ card, lang }: { card: CardDetail; lang: Lang }) {
       </div>
       {card.price.as_of && (
         <p className={styles.asOf}>
-          {t('detail.prices.asOf', { date: formatDate(card.price.as_of, lang) })}
+          {t('detail.prices.asOf', { date: formatDate(card.price.as_of) })}
         </p>
       )}
     </section>

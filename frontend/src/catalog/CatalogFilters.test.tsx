@@ -17,9 +17,9 @@ describe('CatalogFilters (F2-i S1)', () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    expect(await screen.findByRole('dialog', { name: 'Filtros' }, LONG)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Ver 6 cartas' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    expect(await screen.findByRole('dialog', { name: 'Filters' }, LONG)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Show 6 cards' })).toBeVisible();
     const setLegend = screen.getByText('Set');
     expect(setLegend.closest('button')).toBeNull();
     expect(screen.queryAllByRole('button', { expanded: true })).toHaveLength(0);
@@ -29,7 +29,7 @@ describe('CatalogFilters (F2-i S1)', () => {
     signedInApi();
     const { container } = await renderApp({ path: '/cards', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    expect(screen.queryByRole('button', { name: 'Filtros' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Filters' })).not.toBeInTheDocument();
     const sidebar = container.querySelector('[data-testid="catalog-sidebar"]');
     expect(sidebar).toBeInTheDocument();
     expect(sidebar).toHaveTextContent('Set');
@@ -54,18 +54,18 @@ describe('CatalogFilters (F2-i S1)', () => {
     expect(screen.getByRole('button', { name: 'Set' })).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('shows one "Limpiar filtros", in the active filters row, not in the sidebar (S24 r)', async () => {
+  it('shows one "Clear filters", in the active filters row, not in the sidebar (S24 r)', async () => {
     signedInApi();
     const { where, container } = await renderApp({ path: '/cards?domain=Fury', width: 1280 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     const sidebar = container.querySelector('[data-testid="catalog-sidebar"]')!;
-    const clear = screen.getByRole('button', { name: 'Limpiar filtros' });
+    const clear = screen.getByRole('button', { name: 'Clear filters' });
     expect(sidebar.contains(clear)).toBe(false);
-    expect(screen.getByRole('list', { name: /filtros? activos?/ })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: /active filters?/ })).toBeInTheDocument();
     await userEvent.click(clear);
     await waitFor(() => expect(where()).toBe('/cards'), LONG);
     await waitFor(
-      () => expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).toBeNull(),
+      () => expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull(),
       LONG,
     );
   });
@@ -114,19 +114,19 @@ function shown(container: HTMLElement, text: string): HTMLElement[] {
 
 const GROUP_TITLES = [
   'Set',
-  'Dominio',
-  'Tipo',
-  'Supertipo',
-  'Rareza',
-  'Coste de energía',
-  'Poder',
-  'Fuerza',
-  'Precio (€)',
-  'Colección',
-  'Baneos',
-  'Solo versión base',
-  'Texto de la carta',
-  'Etiquetas',
+  'Domain',
+  'Type',
+  'Supertype',
+  'Rarity',
+  'Energy cost',
+  'Power',
+  'Might',
+  'Price (€)',
+  'Collection',
+  'Bans',
+  'Base printing only',
+  'Card text',
+  'Tags',
 ];
 
 describe('CatalogFilters headings (owner feedback S18 g)', () => {
@@ -138,39 +138,43 @@ describe('CatalogFilters headings (owner feedback S18 g)', () => {
     for (const title of GROUP_TITLES) {
       expect(shown(sidebar, title), title).toHaveLength(1);
     }
-    for (const name of ['Dominio', 'Tipo', 'Supertipo', 'Rareza', 'Coste de energía']) {
+    for (const name of ['Domain', 'Type', 'Supertype', 'Rarity', 'Energy cost']) {
       expect(within(sidebar).getByRole('group', { name })).toBeInTheDocument();
     }
-    expect(within(sidebar).getByRole('combobox', { name: 'Baneos' })).toBeInTheDocument();
-    expect(within(sidebar).getByRole('searchbox', { name: 'Texto de la carta' })).toBeVisible();
-    expect(within(sidebar).getByRole('switch', { name: 'Solo versión base' })).toBeVisible();
+    expect(within(sidebar).getByRole('combobox', { name: 'Bans' })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('searchbox', { name: 'Card text' })).toBeVisible();
+    expect(within(sidebar).getByRole('switch', { name: 'Base printing only' })).toBeVisible();
     // the heading names the owned tri-state; the domain match shows its own label (S24)
-    expect(within(sidebar).getByRole('radiogroup', { name: 'Colección' })).toBeVisible();
-    expectVisibleLabel(within(sidebar).getByRole('radiogroup', { name: 'Coincidencia' }));
+    expect(within(sidebar).getByRole('radiogroup', { name: 'Collection' })).toBeVisible();
+    expectVisibleLabel(within(sidebar).getByRole('radiogroup', { name: 'Match' }));
   });
 
   it('shows what each tri-state of the sheet filters (owner feedback S24)', async () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Filtros' }, LONG);
-    expectVisibleLabel(within(dialog).getByRole('radiogroup', { name: 'Colección' }));
-    expectVisibleLabel(within(dialog).getByRole('radiogroup', { name: 'Coincidencia' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Filters' }, LONG);
+    expectVisibleLabel(within(dialog).getByRole('radiogroup', { name: 'Collection' }));
+    expectVisibleLabel(within(dialog).getByRole('radiogroup', { name: 'Match' }));
   });
 
   it('names each sheet group once and translates the base types', async () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Filtros' }, LONG);
-    for (const title of ['Dominio', 'Tipo', 'Supertipo', 'Rareza']) {
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Filters' }, LONG);
+    for (const title of ['Domain', 'Type', 'Supertype', 'Rarity']) {
       expect(shown(dialog, title), title).toHaveLength(1);
     }
-    const types = within(dialog).getByRole('group', { name: 'Tipo' });
-    expect(within(types).getByRole('button', { name: /^Unidad/ })).toBeInTheDocument();
-    expect(within(types).queryByText(/Champion|Unit$/)).not.toBeInTheDocument();
+    const types = within(dialog).getByRole('group', { name: 'Type' });
+    expect(within(types).getByRole('button', { name: /^Unit/ })).toBeInTheDocument();
+    // base values only: no raw compound type such as "Champion Unit"
+    expect(within(types).queryByText(/Champion/)).not.toBeInTheDocument();
+    expect(
+      within(types).queryByRole('button', { name: /^(Champion|Signature|Token|Basic) / }),
+    ).toBeNull();
   });
 });
 
@@ -179,10 +183,10 @@ describe('CatalogFilters numeric ranges', () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Filtros' }, LONG);
-    const energy = within(dialog).getByRole('group', { name: 'Coste de energía' });
-    const min = within(energy).getByLabelText('Mín.');
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Filters' }, LONG);
+    const energy = within(dialog).getByRole('group', { name: 'Energy cost' });
+    const min = within(energy).getByLabelText('Min');
     await userEvent.type(min, '12');
     expect(min).toHaveValue(12);
     await waitFor(() => expect(where()).toBe('/cards?energy_min=12'), LONG);
@@ -202,8 +206,8 @@ describe('CatalogFilters set order (owner feedback S19)', () => {
           supertypes: ['Champion'],
           rarities: ['Common'],
           sets: [
-            { id: 'OGN', name: 'Origen', released_on: '2024-01-15', card_count: 6 },
-            { id: 'NOD', name: 'Sin fecha', released_on: null, card_count: 0 },
+            { id: 'OGN', name: 'Origins', released_on: '2024-01-15', card_count: 6 },
+            { id: 'NOD', name: 'No date', released_on: null, card_count: 0 },
             { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
             { id: 'OGS', name: 'Proving Grounds', released_on: '2024-03-01', card_count: 24 },
           ],
@@ -221,8 +225,8 @@ describe('CatalogFilters set order (owner feedback S19)', () => {
     const names = within(sidebar)
       .getAllByRole('checkbox')
       .map((box) => box.getAttribute('aria-label') ?? box.closest('label')?.textContent ?? '')
-      .filter((name) => /Origen|Sin fecha|Vendetta|Proving/.test(name))
+      .filter((name) => /Origins|No date|Vendetta|Proving/.test(name))
       .map((name) => name.replace(/ \(.*\)$/, ''));
-    expect(names).toEqual(['Vendetta', 'Proving Grounds', 'Origen', 'Sin fecha']);
+    expect(names).toEqual(['Vendetta', 'Proving Grounds', 'Origins', 'No date']);
   });
 });
