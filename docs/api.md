@@ -33,6 +33,14 @@ Failure:
 Public endpoints under `/riftbound/api/v1/` (auth and preferences live in
 `AGENTS.md` → "API v1"). Later units extend this reference.
 
+### The `lang` preference (English-only app, owner feedback S21)
+
+The React app is English-only. The API is unchanged: `GET /auth/session` and `GET`/`PATCH
+/me/prefs` still carry `lang` (`es`, `en` or `null`), validated by `PrefsUpdate` and stored in
+`rbuserprefs.rbprf_lang` with its CHECK `rbuserprefs_lang_chk`, so older clients and stored rows
+keep working. The app ignores the value it receives and never sends `lang`. Dropping the column
+needs its own migration (a later unit); until then, do not build anything new on `lang`.
+
 ### GET /meta/game
 
 `app/api/v1/meta.py` (`api_v1.meta_game`, P): game metadata for the catalog UI.

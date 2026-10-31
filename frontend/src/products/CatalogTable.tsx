@@ -8,7 +8,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { TableScroll } from '@/components/ui/TableScroll';
-import { formatMoney, type Lang } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import { DEFAULT_PAGE, DEFAULT_PER_PAGE, activeFilterCount, type ProductsParams } from './params';
 import { ProductThumb } from './ProductThumb';
 import { useProductList } from './queries';
@@ -20,7 +20,6 @@ const PAGE_SIZES = [DEFAULT_PER_PAGE, 96];
 type CatalogTableProps = {
   params: ProductsParams;
   setParams: (patch: Partial<ProductsParams>) => void;
-  lang: Lang;
   /** From 1600 px the name selects the product for the panel; below it opens the product page. */
   wide: boolean;
   selected: number | null;
@@ -29,13 +28,11 @@ type CatalogTableProps = {
 
 function Row({
   product,
-  lang,
   wide,
   selected,
   onActivate,
 }: {
   product: ProductSummary;
-  lang: Lang;
   wide: boolean;
   selected: boolean;
   onActivate: (id: number) => void;
@@ -67,12 +64,12 @@ function Row({
       </td>
       <td>{product.kind ? t(`kind.${product.kind}`) : '—'}</td>
       <td>{product.set_id ?? '—'}</td>
-      <td className={styles.numeric}>{price ? formatMoney(price.value, lang) : t('unpriced')}</td>
+      <td className={styles.numeric}>{price ? formatMoney(price.value) : t('unpriced')}</td>
       <td className={styles.numeric}>
-        <Signed value={price?.change_7d_pct} lang={lang} kind="pct" />
+        <Signed value={price?.change_7d_pct} kind="pct" />
       </td>
       <td className={styles.numeric}>
-        <Signed value={price?.change_30d_pct} lang={lang} kind="pct" />
+        <Signed value={price?.change_30d_pct} kind="pct" />
       </td>
       <td className={styles.numeric}>
         {product.owned_qty > 0 ? (
@@ -89,15 +86,8 @@ function Row({
   );
 }
 
-/** "Catálogo" from 1240 px (F14-f S2): page size, the table with sortable headers, the pages. */
-export function CatalogTable({
-  params,
-  setParams,
-  lang,
-  wide,
-  selected,
-  onActivate,
-}: CatalogTableProps) {
+/** "Catalog" from 1240 px (F14-f S2): page size, the table with sortable headers, the pages. */
+export function CatalogTable({ params, setParams, wide, selected, onActivate }: CatalogTableProps) {
   const { t } = useTranslation('products');
   const list = useProductList(params);
   const meta = list.data?.meta;
@@ -163,7 +153,6 @@ export function CatalogTable({
               <Row
                 key={product.id}
                 product={product}
-                lang={lang}
                 wide={wide}
                 selected={selected === product.id}
                 onActivate={onActivate}

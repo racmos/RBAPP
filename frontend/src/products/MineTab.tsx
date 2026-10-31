@@ -5,8 +5,7 @@ import { Stepper } from '@/collection/Stepper';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatMoney, type Lang } from '@/lib/format';
-import { langOf } from './format';
+import { formatMoney } from '@/lib/format';
 import { ProductLineSheet } from './ProductLineSheet';
 import { ProductThumb } from './ProductThumb';
 import { useMyProducts } from './queries';
@@ -15,12 +14,10 @@ import styles from './ProductsPage.module.css';
 
 function OwnedLine({
   line,
-  lang,
   offline,
   onOpen,
 }: {
   line: OwnedProductLine;
-  lang: Lang;
   offline: boolean;
   onOpen: () => void;
 }) {
@@ -28,7 +25,7 @@ function OwnedLine({
   const save = useProductLineSaver(line.id);
   const { product } = line;
   const money = (value: number | null | undefined) =>
-    value === null || value === undefined ? t('unpriced') : formatMoney(value, lang);
+    value === null || value === undefined ? t('unpriced') : formatMoney(value);
   return (
     <article className={styles.line} aria-label={product.name}>
       <button type="button" className={styles.lineOpen} aria-haspopup="dialog" onClick={onOpen}>
@@ -55,15 +52,7 @@ function OwnedLine({
 }
 
 /** The total band, the unpriced count, the hint that it is separate and the offline note. */
-export function MineSummary({
-  total,
-  lang,
-  offline,
-}: {
-  total: MyProducts['total'];
-  lang: Lang;
-  offline: boolean;
-}) {
+export function MineSummary({ total, offline }: { total: MyProducts['total']; offline: boolean }) {
   const { t } = useTranslation('products');
   const { t: tCommon } = useTranslation('common');
   return (
@@ -71,7 +60,7 @@ export function MineSummary({
       <dl className={styles.band}>
         <div>
           <dt>{t('total.title')}</dt>
-          <dd>{formatMoney(total.value, lang)}</dd>
+          <dd>{formatMoney(total.value)}</dd>
         </div>
         <div>
           <dt>{t('total.lines')}</dt>
@@ -87,10 +76,9 @@ export function MineSummary({
   );
 }
 
-/** "Mis productos": the total band, the hint that it is separate, the owned lines (F14-e S2). */
+/** "My products": the total band, the hint that it is separate, the owned lines (F14-e S2). */
 export function MineTab({ offline, onBrowse }: { offline: boolean; onBrowse: () => void }) {
-  const { t, i18n } = useTranslation('products');
-  const lang = langOf(i18n.language);
+  const { t } = useTranslation('products');
   const mine = useMyProducts();
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -112,16 +100,11 @@ export function MineTab({ offline, onBrowse }: { offline: boolean; onBrowse: () 
 
   return (
     <>
-      <MineSummary total={total} lang={lang} offline={offline} />
+      <MineSummary total={total} offline={offline} />
       <ul className={styles.lines} aria-busy={mine.isFetching || undefined}>
         {items.map((line) => (
           <li key={line.id}>
-            <OwnedLine
-              line={line}
-              lang={lang}
-              offline={offline}
-              onOpen={() => setOpenId(line.id)}
-            />
+            <OwnedLine line={line} offline={offline} onOpen={() => setOpenId(line.id)} />
           </li>
         ))}
       </ul>

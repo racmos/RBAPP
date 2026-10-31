@@ -13,15 +13,14 @@
     "label": "More",
     "title": "More options",
     "account": "Account",
-    "modules": "Classic modules",
-    "language": "Language"
+    "modules": "Classic modules"
   },
   "hub": {
     "subtitle": "Pick a module to get started.",
     "classic": "Classic version",
     "account": "Your account",
     "customize": "Customize the interface",
-    "customizeHint": "Density, accent, background and language."
+    "customizeHint": "Density, accent, background and collection view."
   },
   "items": {
     "home": {
@@ -30,7 +29,7 @@
     },
     "interface": {
       "label": "Interface",
-      "description": "Density, accent, background and language"
+      "description": "Density, accent, background and collection view"
     },
     "dashboard": {
       "label": "Dashboard",

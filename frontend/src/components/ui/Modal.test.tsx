@@ -9,7 +9,7 @@ import styles from './Modal.module.css';
 async function renderModal(
   props: Omit<React.ComponentProps<typeof Modal>, 'open' | 'onClose' | 'title' | 'children'>,
 ) {
-  const i18n = await createI18n('es');
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   return render(
     <I18nextProvider i18n={i18n}>

@@ -13,7 +13,7 @@ const LONG = { timeout: 10000 };
 const RIOT = {
   pending_changes: 2,
   active_sets: [
-    { id: 'OGN', name: 'Origen', window: 'pre_release', next_run_at: '2030-01-01T08:00:00+01:00' },
+    { id: 'OGN', name: 'Origins', window: 'pre_release', next_run_at: '2030-01-01T08:00:00+01:00' },
   ],
   last_sync: {
     job_id: 7,
@@ -48,17 +48,17 @@ describe('OverviewPage (F13-a S6)', () => {
   it('shows the four catalog counters, axe clean', { timeout: 30000 }, async () => {
     adminApi();
     const { container } = await renderApp({ path: '/admin', width: 1280 });
-    expect(await screen.findByRole('heading', { level: 1, name: 'Resumen' }, LONG)).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' }, LONG)).toBeVisible();
     expect(await tileValue('Sets')).toBe('3');
-    expect(await tileValue('Sets sin fecha de salida')).toBe('2');
-    expect(await tileValue('Cartas')).toBe('4');
-    expect(await tileValue('Cartas sin imagen')).toBe('1');
+    expect(await tileValue('Sets without release date')).toBe('2');
+    expect(await tileValue('Cards')).toBe('4');
+    expect(await tileValue('Cards without image')).toBe('1');
     expect(await screen.findByRole('heading', { level: 2, name: 'Riot' }, LONG)).toBeVisible();
     expect(screen.getByRole('link', { name: '2' })).toHaveAttribute(
       'href',
       '/riftbound/app/admin/riot/changes',
     );
-    expect(screen.getByText('Última sincronización')).toBeVisible();
+    expect(screen.getByText('Last sync')).toBeVisible();
     expect(screen.getByRole('link', { name: /NEW/ })).toHaveAttribute(
       'href',
       '/riftbound/app/admin/sets',
@@ -80,15 +80,15 @@ describe('OverviewPage (F13-a S6)', () => {
         ),
       );
       await renderApp({ path: '/admin', width: 1280 });
-      expect(await screen.findByText('Todavía no se ha sincronizado.', {}, LONG)).toBeVisible();
+      expect(await screen.findByText('No sync yet.', {}, LONG)).toBeVisible();
     },
   );
 
   it('sets the document title', { timeout: 30000 }, async () => {
     adminApi();
     await renderApp({ path: '/admin', width: 1280 });
-    await screen.findByRole('heading', { level: 1, name: 'Resumen' }, LONG);
-    await waitFor(() => expect(document.title).toContain('Resumen'), LONG);
+    await screen.findByRole('heading', { level: 1, name: 'Overview' }, LONG);
+    await waitFor(() => expect(document.title).toContain('Overview'), LONG);
   });
 
   it('shows skeletons while the counters load', { timeout: 30000 }, async () => {
@@ -107,10 +107,10 @@ describe('OverviewPage (F13-a S6)', () => {
       }),
     );
     await renderApp({ path: '/admin', width: 1280 });
-    await screen.findByRole('heading', { level: 1, name: 'Resumen' }, LONG);
+    await screen.findByRole('heading', { level: 1, name: 'Overview' }, LONG);
     expect(document.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThan(0);
     release(null);
-    expect(await tileValue('Cartas')).toBe('4');
+    expect(await tileValue('Cards')).toBe('4');
   });
 
   it('a failure shows the error state, and retry recovers', { timeout: 30000 }, async () => {
@@ -129,7 +129,7 @@ describe('OverviewPage (F13-a S6)', () => {
     await renderApp({ path: '/admin', width: 1280 });
     expect(await screen.findByRole('alert', undefined, LONG)).toBeVisible();
     failing = false;
-    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
-    expect(await tileValue('Cartas')).toBe('4');
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await tileValue('Cards')).toBe('4');
   });
 });

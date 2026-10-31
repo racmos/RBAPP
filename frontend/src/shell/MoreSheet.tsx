@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useLogout, useOffline, useSession } from '@/auth';
 import { Icon } from '@/components/ui/Icon';
 import { Sheet } from '@/components/ui/Sheet';
-import { AccountLanguageToggle } from '@/prefs';
 import styles from './MoreSheet.module.css';
 import { NavItem } from './NavItem';
 import { navEntries, type NavEntry } from './navRegistry';
@@ -16,7 +15,7 @@ type MoreSheetProps = {
   install?: ReactNode;
 };
 
-/** The phone's "Más" menu (SHELL-4): Interface, classic modules, language, install, Admin, logout. */
+/** The phone's "More" menu (SHELL-4): Interface, classic modules, install, Admin, logout. */
 export function MoreSheet({ open, onClose, returnFocusRef, install }: MoreSheetProps) {
   const { t } = useTranslation('nav');
   const session = useSession();
@@ -54,11 +53,6 @@ export function MoreSheet({ open, onClose, returnFocusRef, install }: MoreSheetP
         <section className={styles.section}>
           <h3 className={styles.heading}>{t('more.modules')}</h3>
           {renderEntries(modules)}
-        </section>
-
-        <section className={styles.section}>
-          <h3 className={styles.heading}>{t('more.language')}</h3>
-          <AccountLanguageToggle />
         </section>
 
         {install}

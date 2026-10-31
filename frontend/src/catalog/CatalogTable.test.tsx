@@ -38,9 +38,9 @@ describe('CatalogTable (F2-i S4)', () => {
     signedInApi();
     await renderApp({ path: '/cards?sort=name', width: 1280 });
     const table = await screen.findByRole('table', {}, LONG);
-    const nameHeader = await within(table).findByRole('columnheader', { name: /Nombre/ });
+    const nameHeader = await within(table).findByRole('columnheader', { name: /Name/ });
     expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
-    await userEvent.click(within(table).getByRole('button', { name: /Nombre/ }));
+    await userEvent.click(within(table).getByRole('button', { name: /Name/ }));
     await waitFor(() => expect(nameHeader).toHaveAttribute('aria-sort', 'descending'));
   });
 
@@ -49,7 +49,7 @@ describe('CatalogTable (F2-i S4)', () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards', width: 1280 });
     const table = await screen.findByRole('table', {}, LONG);
-    await userEvent.click(within(table).getByRole('button', { name: /Precio/ }));
+    await userEvent.click(within(table).getByRole('button', { name: /Price/ }));
     await waitFor(() => expect(where()).toBe('/cards?sort=price&dir=desc'), LONG);
   });
 
@@ -75,7 +75,7 @@ describe('CatalogTable (F2-i S4)', () => {
     window.localStorage.setItem('rb_cards_view', 'table');
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
-    expect(await screen.findByRole('list', { name: 'Resultados' }, LONG)).toBeVisible();
+    expect(await screen.findByRole('list', { name: 'Results' }, LONG)).toBeVisible();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });
@@ -135,7 +135,7 @@ describe('CatalogTable single scroll (owner feedback S22)', () => {
       .getAllByRole('columnheader')
       .filter((th) => /optional/.test(th.className))
       .map((th) => th.textContent);
-    expect(optional).toEqual(['Etiquetas', 'Foil', '30 d']);
+    expect(optional).toEqual(['Tags', 'Foil', '30 d']);
   });
 
   it('in table view the page takes the wide width from 1240 px', async () => {

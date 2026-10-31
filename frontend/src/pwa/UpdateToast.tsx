@@ -38,7 +38,7 @@ function UpdateWatcher() {
   return null;
 }
 
-/** Mounted once in `AppProviders`: the "Nueva versión" toast (PWA-4). Renders nothing itself. */
+/** Mounted once in `AppProviders`: the "New version" toast (PWA-4). Renders nothing itself. */
 export function UpdateToast() {
   return selfDestroying() ? null : <UpdateWatcher />;
 }

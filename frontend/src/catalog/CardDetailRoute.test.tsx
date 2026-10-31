@@ -69,8 +69,8 @@ describe('CardDetailRoute (F2-f S4-S6, S11)', () => {
       extraRoutes: () => [modalRoute(onClose)],
     });
     expect(await screen.findByRole('dialog', undefined, LONG)).toBeVisible();
-    const prev = screen.getByRole('button', { name: 'Carta anterior' });
-    const next = screen.getByRole('button', { name: 'Carta siguiente' });
+    const prev = screen.getByRole('button', { name: 'Previous card' });
+    const next = screen.getByRole('button', { name: 'Next card' });
     expect(prev).toBeVisible();
     expect(next).toBeVisible();
     expect(prev).toBeDisabled();
@@ -78,7 +78,7 @@ describe('CardDetailRoute (F2-f S4-S6, S11)', () => {
 
     await userEvent.click(next);
     await waitFor(
-      () => expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeEnabled(),
+      () => expect(screen.getByRole('button', { name: 'Previous card' })).toBeEnabled(),
       LONG,
     );
   });
@@ -92,9 +92,9 @@ describe('CardDetailRoute (F2-f S4-S6, S11)', () => {
       extraRoutes: () => [modalRoute(onClose)],
     });
     await screen.findByRole('dialog', undefined, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Next card' }));
     await waitFor(() => expect(where()).toBe('/test-modal/OGN/80'), LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Carta anterior' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Previous card' }));
     await waitFor(() => expect(where()).toBe('/test-modal/OGN/79'), LONG);
   });
 
@@ -132,10 +132,8 @@ describe('CardDetailRoute (F2-f S4-S6, S11)', () => {
       http.get(`${API}/cards/:setId/:cardId`, () => failure(404, { message: 'Not found' })),
     );
     await renderApp({ path: '/cards/OGN/NOPE', width: 390 });
-    expect(await screen.findByText('Carta no encontrada', {}, LONG)).toBeVisible();
-    expect(
-      screen.getByText('Puede que el enlace sea antiguo o que la carta ya no exista.'),
-    ).toBeVisible();
+    expect(await screen.findByText('Card not found', {}, LONG)).toBeVisible();
+    expect(screen.getByText('The link may be old or the card may no longer exist.')).toBeVisible();
   });
 
   it('shows a loading skeleton while the card loads', async () => {
@@ -172,7 +170,7 @@ describe('CardDetailRoute (F2-f S4-S6, S11)', () => {
     await renderApp({ path: '/cards/OGN/79', width: 390 });
     expect(await screen.findByRole('alert', undefined, LONG)).toBeVisible();
     failing = false;
-    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(
       await screen.findByRole('heading', { level: 1, name: cardDetail.name }, LONG),
     ).toBeVisible();

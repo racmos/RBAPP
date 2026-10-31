@@ -6,8 +6,8 @@ import { contrast } from '@/lib/contrast';
 import { DOMAIN_COLORS } from '@/lib/domains';
 import { DomainPips } from './DomainPips';
 
-async function renderPips(ui: ReactElement, { lang = 'es' as const }: { lang?: 'es' | 'en' } = {}) {
-  const i18n = await createI18n(lang);
+async function renderPips(ui: ReactElement) {
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
 }
@@ -18,13 +18,13 @@ describe('DomainPips', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('labels the group with translated names in Spanish', async () => {
-    await renderPips(<DomainPips domains={['Fury', 'Chaos']} />, { lang: 'es' });
-    expect(screen.getByRole('img', { name: 'Furia y Caos' })).toBeVisible();
+  it('labels the group with the names of three domains as an English list', async () => {
+    await renderPips(<DomainPips domains={['Fury', 'Chaos', 'Calm']} />);
+    expect(screen.getByRole('img', { name: 'Fury, Chaos, and Calm' })).toBeVisible();
   });
 
-  it('labels the group with translated names in English', async () => {
-    await renderPips(<DomainPips domains={['Fury', 'Chaos']} />, { lang: 'en' });
+  it('labels the group with the names of two domains', async () => {
+    await renderPips(<DomainPips domains={['Fury', 'Chaos']} />);
     expect(screen.getByRole('img', { name: 'Fury and Chaos' })).toBeVisible();
   });
 

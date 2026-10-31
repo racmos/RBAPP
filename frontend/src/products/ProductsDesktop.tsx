@@ -14,7 +14,7 @@ import styles from './ProductsDesktop.module.css';
 
 /** The layout from 1240 px (F14-f): filter rail, the tabs with a table each, the wide panel. */
 export function ProductsDesktop({ s }: { s: ProductsScreen }) {
-  const { t, lang, offline, params, setParams, tab, choose } = s;
+  const { t, offline, params, setParams, tab, choose } = s;
   const wide = useMediaQuery(up('2xl'));
   const navigate = useNavigate();
   const [selected, setSelected] = useState<number | null>(null);
@@ -42,7 +42,6 @@ export function ProductsDesktop({ s }: { s: ProductsScreen }) {
           <ProductTabs tab={tab} choose={choose}>
             {tab === 'mine' ? (
               <MineTable
-                lang={lang}
                 offline={offline}
                 onBrowse={() => choose('catalog')}
                 selected={wide ? selected : null}
@@ -52,7 +51,6 @@ export function ProductsDesktop({ s }: { s: ProductsScreen }) {
               <CatalogTable
                 params={params}
                 setParams={setParams}
-                lang={lang}
                 wide={wide}
                 selected={wide ? selected : null}
                 onActivate={activate}
@@ -61,7 +59,7 @@ export function ProductsDesktop({ s }: { s: ProductsScreen }) {
           </ProductTabs>
         </div>
 
-        {wide && <ProductPanel id={selected} lang={lang} offline={offline} />}
+        {wide && <ProductPanel id={selected} offline={offline} />}
       </div>
     </div>
   );

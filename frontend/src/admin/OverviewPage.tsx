@@ -6,13 +6,13 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle } from '@/i18n';
-import { formatDateTime, type Lang } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { getAdminOverview, type AdminRiot } from '@/api/endpoints';
 import styles from './OverviewPage.module.css';
 
 /** Admin overview (F13-a S6): the four catalog counters. */
 export function OverviewPage() {
-  const { t, i18n } = useTranslation('admin');
+  const { t } = useTranslation('admin');
   const { t: common } = useTranslation('common');
   useDocumentTitle(t('overview.title'));
 
@@ -57,7 +57,6 @@ export function OverviewPage() {
     [t('overview.kpi.cards'), catalog.cards],
     [t('overview.kpi.cardsWithoutImage'), catalog.cards_without_image],
   ];
-  const lang = (i18n.language.split('-')[0] === 'en' ? 'en' : 'es') as Lang;
 
   return (
     <>
@@ -70,13 +69,13 @@ export function OverviewPage() {
           </div>
         ))}
       </div>
-      <RiotBand riot={query.data.riot} lang={lang} />
+      <RiotBand riot={query.data.riot} />
     </>
   );
 }
 
 /** Riot band (F13-g S8): pending changes, last sync, sets to name. */
-function RiotBand({ riot, lang }: { riot: AdminRiot; lang: Lang }) {
+function RiotBand({ riot }: { riot: AdminRiot }) {
   const { t } = useTranslation('admin');
   return (
     <section aria-label={t('overview.riotTitle')}>
@@ -100,9 +99,7 @@ function RiotBand({ riot, lang }: { riot: AdminRiot; lang: Lang }) {
             {riot.last_sync ? (
               <>
                 <Badge>{riot.last_sync.status}</Badge>{' '}
-                {riot.last_sync.finished_at
-                  ? formatDateTime(riot.last_sync.finished_at, lang)
-                  : '—'}
+                {riot.last_sync.finished_at ? formatDateTime(riot.last_sync.finished_at) : '—'}
               </>
             ) : (
               t('overview.noSync')

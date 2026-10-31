@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import type { CardSummary } from '@/api/types';
 import { SRC_DIR, declsFor, readCss, rules } from '@/test/css';
-import { createI18n, type Lang } from '@/i18n';
+import { createI18n } from '@/i18n';
 import { cardList, champion, foilCommon, noPrice } from '@/test/fixtures/cards';
 import { API } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
@@ -16,15 +16,15 @@ import { CardCombobox, type CardComboboxProps } from './CardCombobox';
 
 const LONG = { timeout: 5000 };
 
-async function renderCombobox(props: Partial<CardComboboxProps> = {}, lang: Lang = 'es') {
-  const i18n = await createI18n(lang);
+async function renderCombobox(props: Partial<CardComboboxProps> = {}) {
+  const i18n = await createI18n();
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onSelect = vi.fn<(card: CardSummary) => void>();
   const user = userEvent.setup();
   const result = render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <CardCombobox label="Carta" onSelect={onSelect} {...props} />
+        <CardCombobox label="Card" onSelect={onSelect} {...props} />
       </QueryClientProvider>
     </I18nextProvider>,
   );
@@ -112,7 +112,7 @@ describe('CardCombobox search (F2-k S1, S2)', () => {
     const { user } = await renderCombobox();
     await user.type(input(), 'em');
     // the request for "em" is in flight
-    await waitFor(() => expect(status()).toHaveTextContent('Buscando…'), LONG);
+    await waitFor(() => expect(status()).toHaveTextContent('Searching…'), LONG);
     await waitFor(() => expect(signals.has('em')).toBe(true), LONG);
     await user.type(input(), 'b');
     await screen.findByRole('option', { name: /Ember Wisp/ }, LONG);
@@ -128,7 +128,7 @@ describe('CardCombobox search (F2-k S1, S2)', () => {
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("Ayla, Fury's Champion");
     expect(options[0]).toHaveTextContent('OGN · #79');
-    expect(options[0]).toHaveTextContent('1,21 €');
+    expect(options[0]).toHaveTextContent('1.21 €');
     expect(options[0].querySelector('img')).toHaveAttribute('alt', '');
     expect(options[1]).toHaveTextContent('No Price Yet');
     expect(options[1]).toHaveTextContent('—');
@@ -145,7 +145,7 @@ describe('CardCombobox search (F2-k S1, S2)', () => {
     await user.type(input(), 'ay');
     await screen.findAllByRole('option', {}, LONG);
     expect(screen.getAllByRole('option')).toHaveLength(20);
-    expect(screen.getByText('y 15 más: afina la búsqueda')).toBeVisible();
+    expect(screen.getByText('and 15 more: refine your search')).toBeVisible();
   });
 });
 
@@ -302,7 +302,7 @@ describe('CardCombobox name ranking (owner feedback S18 d)', () => {
     const { user } = await renderCombobox();
     await user.type(input(), 'Garen');
     await screen.findAllByRole('option', {}, LONG);
-    // each option reads "<name>OGN · #<number>…": the set follows the name
+    // each option reads '<name>OGN · #<number>…': the set follows the name
     const texts = screen.getAllByRole('option').map((option) => option.textContent);
     expect(texts).toEqual(
       [
@@ -403,10 +403,10 @@ describe('CardCombobox states (F2-k S5)', () => {
     );
     const { user } = await renderCombobox();
     await user.type(input(), 'ay');
-    await waitFor(() => expect(status()).toHaveTextContent('Buscando…'), LONG);
-    expect(popupState('loading')).toHaveTextContent('Buscando…');
+    await waitFor(() => expect(status()).toHaveTextContent('Searching…'), LONG);
+    expect(popupState('loading')).toHaveTextContent('Searching…');
     await screen.findAllByRole('option', {}, LONG);
-    expect(status()).toHaveTextContent('2 resultados');
+    expect(status()).toHaveTextContent('2 results');
     expect(status()).toHaveTextContent("Ayla, Fury's Champion");
   });
 
@@ -415,10 +415,10 @@ describe('CardCombobox states (F2-k S5)', () => {
     const { user } = await renderCombobox();
     await user.type(input(), 'zzz');
     await waitFor(
-      () => expect(popupState('empty')).toHaveTextContent('No hay cartas que coincidan con «zzz».'),
+      () => expect(popupState('empty')).toHaveTextContent('No cards match "zzz".'),
       LONG,
     );
-    expect(status()).toHaveTextContent('No hay cartas que coincidan con «zzz».');
+    expect(status()).toHaveTextContent('No cards match "zzz".');
     expect(input()).toHaveAttribute('aria-expanded', 'false'); // no listbox to point at
   });
 
@@ -431,10 +431,10 @@ describe('CardCombobox states (F2-k S5)', () => {
     const { user } = await renderCombobox();
     await user.type(input(), 'ay');
     await waitFor(
-      () => expect(popupState('error')).toHaveTextContent('No se pudo buscar. Inténtalo de nuevo.'),
+      () => expect(popupState('error')).toHaveTextContent('The search failed. Try again.'),
       LONG,
     );
-    expect(status()).toHaveTextContent('No se pudo buscar. Inténtalo de nuevo.');
+    expect(status()).toHaveTextContent('The search failed. Try again.');
   });
 
   it('makes no request while offline and nothing is cached', async () => {
@@ -443,17 +443,17 @@ describe('CardCombobox states (F2-k S5)', () => {
     const { user } = await renderCombobox();
     await user.type(input(), 'ay');
     await waitFor(
-      () => expect(popupState('offline')).toHaveTextContent('La búsqueda necesita conexión.'),
+      () => expect(popupState('offline')).toHaveTextContent('Search needs a connection.'),
       LONG,
     );
-    expect(status()).toHaveTextContent('La búsqueda necesita conexión.');
+    expect(status()).toHaveTextContent('Search needs a connection.');
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(seen.urls).toHaveLength(0);
   });
 
-  it('is translated to English', async () => {
+  it('says in English that nothing matches', async () => {
     recordCards([]);
-    const { user } = await renderCombobox({}, 'en');
+    const { user } = await renderCombobox({});
     await user.type(input(), 'zzz');
     await waitFor(
       () => expect(popupState('empty')).toHaveTextContent('No cards match "zzz".'),

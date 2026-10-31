@@ -8,7 +8,7 @@ type NavItemProps = {
   className?: string;
   /** Tooltip, for an entry whose text is visually hidden (the topbar below 2xl). */
   title?: string;
-  /** Runs when the entry is activated (the "Más" sheet closes itself here). */
+  /** Runs when the entry is activated (the "More" sheet closes itself here). */
   onActivate?: () => void;
   children: ReactNode;
 };

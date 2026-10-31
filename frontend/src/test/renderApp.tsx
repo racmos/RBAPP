@@ -5,7 +5,7 @@ import { createMemoryRouter } from 'react-router';
 import { App } from '@/app/App';
 import { createQueryClient } from '@/app/queryClient';
 import { createAppRoutes } from '@/app/routes';
-import { createI18n, type Lang } from '@/i18n';
+import { createI18n } from '@/i18n';
 import { setViewport } from './viewport';
 
 export const BASENAME = '/riftbound/app';
@@ -13,7 +13,6 @@ export const BASENAME = '/riftbound/app';
 type Options = {
   /** Path inside the app, for example `/login` (the basename is added). */
   path?: string;
-  lang?: Lang;
   /** Viewport width in px; defaults to a desktop. */
   width?: number;
   /** Routes added next to the real ones (test-only pages); they get the query client. */
@@ -33,14 +32,13 @@ export type RenderedApp = ReturnType<typeof render> & {
 /** The whole app (router, query cache, i18n, toasts) on a memory history, fed by MSW. */
 export async function renderApp({
   path = '/',
-  lang = 'es',
   width,
   extraRoutes,
   shellRoutes,
 }: Options = {}): Promise<RenderedApp> {
   if (width !== undefined) setViewport(width);
   const queryClient = createQueryClient();
-  const i18n = await createI18n(lang);
+  const i18n = await createI18n();
   const router = createMemoryRouter(
     createAppRoutes(queryClient, {
       extraRoutes: extraRoutes?.(queryClient),

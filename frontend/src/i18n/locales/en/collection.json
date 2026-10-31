@@ -31,10 +31,8 @@
     "rarity": "Rarity",
     "remove": "Remove filter {{label}}",
     "active_one": "{{count}} active filter",
-    "active_many": "{{count}} active filters",
     "active_other": "{{count}} active filters",
     "show_one": "Show {{count}} card",
-    "show_many": "Show {{count}} cards",
     "show_other": "Show {{count}} cards"
   },
   "sort": {
@@ -86,7 +84,6 @@
     "confirmDelete": {
       "title": "Delete this line?",
       "body_one": "{{count}} copy will be removed from your collection.",
-      "body_many": "{{count}} copies will be removed from your collection.",
       "body_other": "{{count}} copies will be removed from your collection."
     },
     "deleted": "Line deleted.",
@@ -131,11 +128,9 @@
     "playsetHint": "Copies you want to keep of each marked card. 3 by default."
   },
   "count_one": "{{count}} card",
-  "count_many": "{{count}} cards",
   "count_other": "{{count}} cards",
   "desktop": {
     "groups_one": "{{count}} card",
-    "groups_many": "{{count}} cards",
     "groups_other": "{{count}} cards",
     "pageSize": "Per page"
   },
@@ -185,7 +180,6 @@
   },
   "bulk": {
     "selected_one": "{{count}} line selected",
-    "selected_many": "{{count}} lines selected",
     "selected_other": "{{count}} lines selected",
     "selectAllFiltered": "Select all {{count}} filtered lines",
     "tooMany": "More than 1000 lines: filter a bit more.",
@@ -208,15 +202,12 @@
     "clear": "Clear selection",
     "confirm": {
       "apply_one": "Apply the changes to {{count}} line?",
-      "apply_many": "Apply the changes to {{count}} lines?",
       "apply_other": "Apply the changes to {{count}} lines?",
       "delete_one": "Delete {{count}} line?",
-      "delete_many": "Delete {{count}} lines?",
       "delete_other": "Delete {{count}} lines?"
     },
     "applied": "Changes applied.",
     "deleted_one": "{{count}} line deleted.",
-    "deleted_many": "{{count}} lines deleted.",
     "deleted_other": "{{count}} lines deleted.",
     "nothingToApply": "Choose at least one change."
   },
@@ -243,7 +234,6 @@
     "scopeSelling": "Only what is on sale",
     "download": "Download",
     "done_one": "{{count}} row exported.",
-    "done_many": "{{count}} rows exported.",
     "done_other": "{{count}} rows exported."
   },
   "import": {
@@ -298,7 +288,6 @@
     },
     "commit": "Import",
     "confirmReplace_one": "Replace {{count}} card in your collection?",
-    "confirmReplace_many": "Replace {{count}} cards in your collection?",
     "confirmReplace_other": "Replace {{count}} cards in your collection?",
     "result": "Created: {{created}} · Merged: {{merged}} · Cards replaced: {{replaced}} · Skipped: {{skipped}}",
     "goCollection": "Go to the collection",

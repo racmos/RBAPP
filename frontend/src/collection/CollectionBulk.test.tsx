@@ -33,51 +33,51 @@ afterEach(() => server.events.removeAllListeners());
 
 async function open(width = 1280) {
   const app = await renderApp({ path: '/collection', width });
-  await screen.findByRole('table', { name: 'Tu colección agrupada por carta' }, LONG);
+  await screen.findByRole('table', { name: 'Your collection grouped by card' }, LONG);
   return app;
 }
 
 const box = (name: RegExp | string) => screen.getByRole('checkbox', { name });
-const bar = () => screen.getByRole('region', { name: /seleccionadas?$/ });
+const bar = () => screen.getByRole('region', { name: /selected$/ });
 
 describe('selection (F3-h S4)', () => {
   it('nothing is selected and there is no bulk bar at first', async () => {
     await open();
-    expect(screen.queryByRole('region', { name: /seleccionadas?$/ })).toBeNull();
+    expect(screen.queryByRole('region', { name: /selected$/ })).toBeNull();
   }, 20000);
 
   it('selecting one line of a card marks the card as partly selected', async () => {
     await open();
     await userEvent.click(
-      screen.getByRole('button', { name: "Ver las líneas de Ayla, Fury's Champion" }),
+      screen.getByRole('button', { name: "Show the lines of Ayla, Fury's Champion" }),
     );
-    await userEvent.click(box(/Seleccionar .*línea 1/));
-    expect(await screen.findByText('1 línea seleccionada')).toBeVisible();
-    const group = box("Seleccionar Ayla, Fury's Champion") as HTMLInputElement;
+    await userEvent.click(box(/Select .*line 1/));
+    expect(await screen.findByText('1 line selected')).toBeVisible();
+    const group = box("Select Ayla, Fury's Champion") as HTMLInputElement;
     expect(group.indeterminate).toBe(true);
     expect(group.checked).toBe(false);
-    await userEvent.click(box(/Seleccionar .*línea 2/));
-    expect(await screen.findByText('2 líneas seleccionadas')).toBeVisible();
-    expect((box("Seleccionar Ayla, Fury's Champion") as HTMLInputElement).checked).toBe(true);
+    await userEvent.click(box(/Select .*line 2/));
+    expect(await screen.findByText('2 lines selected')).toBeVisible();
+    expect((box("Select Ayla, Fury's Champion") as HTMLInputElement).checked).toBe(true);
   }, 20000);
 
   it('the group box selects all its lines, the header box every line on the page', async () => {
     await open();
-    await userEvent.click(box("Seleccionar Ayla, Fury's Champion"));
-    expect(await screen.findByText('2 líneas seleccionadas')).toBeVisible();
-    await userEvent.click(box('Seleccionar todo en esta página'));
-    expect(await screen.findByText('4 líneas seleccionadas')).toBeVisible();
-    await userEvent.click(box('Seleccionar todo en esta página'));
-    await waitFor(() => expect(screen.queryByText(/seleccionadas?$/)).toBeNull());
+    await userEvent.click(box("Select Ayla, Fury's Champion"));
+    expect(await screen.findByText('2 lines selected')).toBeVisible();
+    await userEvent.click(box('Select all on this page'));
+    expect(await screen.findByText('4 lines selected')).toBeVisible();
+    await userEvent.click(box('Select all on this page'));
+    await waitFor(() => expect(screen.queryByText(/selected$/)).toBeNull());
   }, 20000);
 
   it('offers every filtered line when the page is only a part of the result', async () => {
     list(collectionGroups.slice(0, 2), { total_groups: 3, per_page: 2, pages: 2 });
     await open();
-    await userEvent.click(box('Seleccionar todo en esta página'));
-    const link = await screen.findByRole('button', { name: 'Seleccionar las 4 líneas filtradas' });
+    await userEvent.click(box('Select all on this page'));
+    const link = await screen.findByRole('button', { name: 'Select all 4 filtered lines' });
     await userEvent.click(link);
-    expect(await screen.findByText('4 líneas seleccionadas')).toBeVisible();
+    expect(await screen.findByText('4 lines selected')).toBeVisible();
   }, 20000);
 
   it('refuses to select more than 1000 lines', async () => {
@@ -88,18 +88,18 @@ describe('selection (F3-h S4)', () => {
       totals: { ...collectionMeta.totals, lines: 1500 },
     });
     await open();
-    await userEvent.click(box('Seleccionar todo en esta página'));
-    expect(await screen.findByText('Más de 1000 líneas: filtra un poco más.')).toBeVisible();
-    expect(screen.queryByRole('button', { name: /líneas filtradas/ })).toBeNull();
+    await userEvent.click(box('Select all on this page'));
+    expect(await screen.findByText('More than 1000 lines: filter a bit more.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /filtered lines/ })).toBeNull();
   }, 20000);
 
   it('forgets the selection when the filters change', async () => {
     const { where } = await open();
-    await userEvent.click(box('Seleccionar todo en esta página'));
-    expect(await screen.findByText('4 líneas seleccionadas')).toBeVisible();
-    await userEvent.click(screen.getByRole('radio', { name: 'Solo foil' }));
+    await userEvent.click(box('Select all on this page'));
+    expect(await screen.findByText('4 lines selected')).toBeVisible();
+    await userEvent.click(screen.getByRole('radio', { name: 'Foil only' }));
     await waitFor(() => expect(where()).toBe('/collection?foil=foil'), LONG);
-    await waitFor(() => expect(screen.queryByText(/seleccionadas?$/)).toBeNull(), LONG);
+    await waitFor(() => expect(screen.queryByText(/selected$/)).toBeNull(), LONG);
   }, 25000);
 });
 
@@ -118,41 +118,41 @@ function list(items = collectionGroups, meta: Record<string, unknown> = {}) {
 
 describe('bulk bar (F3-h S5)', () => {
   async function selectAll() {
-    await userEvent.click(box('Seleccionar todo en esta página'));
-    await screen.findByText('4 líneas seleccionadas');
+    await userEvent.click(box('Select all on this page'));
+    await screen.findByText('4 lines selected');
   }
 
   it('applies one change to the selected lines after a confirmation', async () => {
     await open();
     await selectAll();
     const controls = within(bar());
-    await userEvent.selectOptions(controls.getByLabelText('Estado'), 'Excelente (EX)');
-    await userEvent.selectOptions(controls.getByLabelText('Copias a vender'), 'Conservar');
-    await userEvent.clear(controls.getByLabelText('Copias a conservar'));
-    await userEvent.type(controls.getByLabelText('Copias a conservar'), '2');
-    await userEvent.click(controls.getByRole('button', { name: 'Aplicar' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Aplicar' });
-    expect(within(dialog).getByText('¿Aplicar los cambios a 4 líneas?')).toBeVisible();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Aplicar' }));
+    await userEvent.selectOptions(controls.getByLabelText('Condition'), 'Excellent (EX)');
+    await userEvent.selectOptions(controls.getByLabelText('Copies to sell'), 'Keep');
+    await userEvent.clear(controls.getByLabelText('Copies to keep'));
+    await userEvent.type(controls.getByLabelText('Copies to keep'), '2');
+    await userEvent.click(controls.getByRole('button', { name: 'Apply' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Apply' });
+    expect(within(dialog).getByText('Apply the changes to 4 lines?')).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
     await waitFor(() => expect(sent.some((r) => r.path === '/collection/bulk')).toBe(true), LONG);
     expect(sent.find((r) => r.path === '/collection/bulk')!.body).toEqual({
       ids: [1201, 1202, 1301, 1401],
       set: { condition: 'EX', sell_qty_rule: 'keep_n', keep: 2 },
     });
-    expect((await screen.findAllByText('Cambios aplicados.')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Changes applied.')).length).toBeGreaterThan(0);
   }, 30000);
 
   it('sends the selling flag and the prices when they are filled in', async () => {
     await open();
     await selectAll();
     const controls = within(bar());
-    await userEvent.selectOptions(controls.getByLabelText('En venta'), 'Sí');
-    await userEvent.type(controls.getByLabelText('Precio de venta'), '2.5');
-    await userEvent.type(controls.getByLabelText('Precio de compra'), '1');
-    await userEvent.click(controls.getByRole('button', { name: 'Aplicar' }));
+    await userEvent.selectOptions(controls.getByLabelText('On sale'), 'Yes');
+    await userEvent.type(controls.getByLabelText('Sale price'), '2.5');
+    await userEvent.type(controls.getByLabelText('Purchase price'), '1');
+    await userEvent.click(controls.getByRole('button', { name: 'Apply' }));
     await userEvent.click(
-      within(await screen.findByRole('dialog', { name: 'Aplicar' })).getByRole('button', {
-        name: 'Aplicar',
+      within(await screen.findByRole('dialog', { name: 'Apply' })).getByRole('button', {
+        name: 'Apply',
       }),
     );
     await waitFor(() => expect(sent.some((r) => r.path === '/collection/bulk')).toBe(true), LONG);
@@ -166,20 +166,20 @@ describe('bulk bar (F3-h S5)', () => {
   it('asks to choose a change when nothing is chosen', async () => {
     await open();
     await selectAll();
-    await userEvent.click(within(bar()).getByRole('button', { name: 'Aplicar' }));
-    expect(await screen.findByText('Elige al menos un cambio.')).toBeVisible();
-    expect(screen.queryByRole('dialog', { name: 'Aplicar' })).toBeNull();
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Apply' }));
+    expect(await screen.findByText('Choose at least one change.')).toBeVisible();
+    expect(screen.queryByRole('dialog', { name: 'Apply' })).toBeNull();
     expect(sent).toHaveLength(0);
   }, 20000);
 
   it('cancelling the confirmation changes nothing', async () => {
     await open();
     await selectAll();
-    await userEvent.selectOptions(within(bar()).getByLabelText('Estado'), 'Buena (GD)');
-    await userEvent.click(within(bar()).getByRole('button', { name: 'Aplicar' }));
+    await userEvent.selectOptions(within(bar()).getByLabelText('Condition'), 'Good (GD)');
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Apply' }));
     await userEvent.click(
-      within(await screen.findByRole('dialog', { name: 'Aplicar' })).getByRole('button', {
-        name: 'Cancelar',
+      within(await screen.findByRole('dialog', { name: 'Apply' })).getByRole('button', {
+        name: 'Cancel',
       }),
     );
     expect(sent).toHaveLength(0);
@@ -188,36 +188,34 @@ describe('bulk bar (F3-h S5)', () => {
   it('deletes after a confirmation and offers to undo for 8 seconds', async () => {
     await open();
     await selectAll();
-    await userEvent.click(within(bar()).getByRole('button', { name: 'Eliminar' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Eliminar' });
-    expect(within(dialog).getByText('¿Eliminar 4 líneas?')).toBeVisible();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Eliminar' }));
-    expect((await screen.findAllByText('4 líneas eliminadas.')).length).toBeGreaterThan(0);
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete' });
+    expect(within(dialog).getByText('Delete 4 lines?')).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    expect((await screen.findAllByText('4 lines deleted.')).length).toBeGreaterThan(0);
     expect(sent.find((r) => r.path === '/collection/bulk')!.body).toEqual({
       ids: [1201, 1202, 1301, 1401],
       delete: true,
     });
     const { getToasts } = await import('@/components/ui/toastStore');
-    expect(getToasts().find((toast) => toast.message === '4 líneas eliminadas.')?.duration).toBe(
-      8000,
-    );
+    expect(getToasts().find((toast) => toast.message === '4 lines deleted.')?.duration).toBe(8000);
     // the bar is gone with the selection
-    expect(screen.queryByRole('region', { name: /seleccionadas?$/ })).toBeNull();
+    expect(screen.queryByRole('region', { name: /selected$/ })).toBeNull();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Deshacer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(
       () =>
         expect(sent.filter((r) => r.method === 'POST' && r.path === '/collection')).toHaveLength(4),
       LONG,
     );
-    expect((await screen.findAllByText('Línea restaurada.')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Line restored.')).length).toBeGreaterThan(0);
   }, 30000);
 
   it('clears the selection on request', async () => {
     await open();
     await selectAll();
-    await userEvent.click(within(bar()).getByRole('button', { name: 'Quitar selección' }));
-    await waitFor(() => expect(screen.queryByText(/seleccionadas?$/)).toBeNull());
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Clear selection' }));
+    await waitFor(() => expect(screen.queryByText(/selected$/)).toBeNull());
   }, 20000);
 
   it('is axe clean with the bar open', async () => {

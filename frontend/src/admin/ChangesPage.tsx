@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { pushToast } from '@/components/ui/toastStore';
 import { useDocumentTitle, translateError } from '@/i18n';
 
-import { formatDate, type Lang } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { down, up } from '@/lib/breakpoints';
 import { sortSetsNewestFirst } from '@/lib/sets';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -119,15 +119,10 @@ async function decideBulk(ids: number[], action: 'approve' | 'reject') {
   );
 }
 
-function langOf(i18n: { language: string }): Lang {
-  return i18n.language.split('-')[0] === 'en' ? 'en' : 'es';
-}
-
 /** Riot change review (F13-g S1-S7): filter, review one by one or in bulk. */
 export function ChangesPage() {
   const { t, i18n } = useTranslation('admin');
   const { t: common } = useTranslation('common');
-  const lang = langOf(i18n);
   const offline = !useOnline();
   const phone = useMediaQuery(down('md'));
   const desktop = useMediaQuery(up('lg'));
@@ -420,7 +415,7 @@ export function ChangesPage() {
                           layout="inline"
                         />
                       </td>
-                      <td>{item.detected_at ? formatDate(item.detected_at, lang) : '—'}</td>
+                      <td>{item.detected_at ? formatDate(item.detected_at) : '—'}</td>
                       <td>
                         <span className={styles.actions}>
                           <RowActions

@@ -1,8 +1,4 @@
 import type { CardPrice, ProductPrice, ProductPricePoint, PricePoint } from '@/api/types';
-import type { Lang } from '@/lib/format';
-
-/** The app language as the formatters want it. */
-export const langOf = (language: string): Lang => (language.split('-')[0] === 'en' ? 'en' : 'es');
 
 /** `PriceTag` reads a card price: the product value is its market price, never a foil one. */
 export const asCardPrice = (price: ProductPrice): CardPrice => ({

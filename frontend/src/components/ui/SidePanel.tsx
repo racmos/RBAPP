@@ -9,7 +9,7 @@ export type SidePanelKind = 'filters' | 'detail' | 'editor' | 'menu' | 'preview'
 type SidePanelProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'className' | 'aria-label'> & {
   /** Remembers the collapsed state under `rb_panel_<id>_v1`. */
   id: string;
-  /** Names the toggle: "Ocultar filtros", "Mostrar detalle"... */
+  /** Names the toggle: "Hide filters", "Show details"... */
   kind: SidePanelKind;
   /** Accessible name of the region. */
   label: string;

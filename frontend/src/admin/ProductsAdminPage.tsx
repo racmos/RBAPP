@@ -28,7 +28,7 @@ import { pushToast } from '@/components/ui/toastStore';
 import { translateError, useDocumentTitle } from '@/i18n';
 import { down, up } from '@/lib/breakpoints';
 import { sortSetsNewestFirst } from '@/lib/sets';
-import { formatDateTime, formatMoney, type Lang } from '@/lib/format';
+import { formatDateTime, formatMoney } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { ProductEditor, ProductThumb } from './ProductEditor';
@@ -44,7 +44,6 @@ export function ProductsAdminPage() {
   const { t, i18n } = useTranslation('admin');
   const { t: tp } = useTranslation('products');
   const { t: common } = useTranslation('common');
-  const lang: Lang = i18n.language.split('-')[0] === 'en' ? 'en' : 'es';
   const offline = !useOnline();
   const phone = useMediaQuery(down('md'));
   const wide = useMediaQuery(up('2xl'));
@@ -134,8 +133,7 @@ export function ProductsAdminPage() {
   const { items, meta } = query.data;
   const sets = sortSetsNewestFirst(gameMeta.data?.sets ?? [], (set) => set.released_on);
   const yesNo = (value: boolean) => (value ? t('products.yes') : t('products.no'));
-  const price = (product: AdminProduct) =>
-    product.price ? formatMoney(product.price.value, lang) : '—';
+  const price = (product: AdminProduct) => (product.price ? formatMoney(product.price.value) : '—');
 
   const openEditor = (product: AdminProduct) => {
     setFieldErrors({});
@@ -285,7 +283,7 @@ export function ProductsAdminPage() {
                           t('products.no')
                         )}
                       </td>
-                      <td>{item.updated_at ? formatDateTime(item.updated_at, lang) : '—'}</td>
+                      <td>{item.updated_at ? formatDateTime(item.updated_at) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

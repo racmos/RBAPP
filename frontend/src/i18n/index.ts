@@ -1,28 +1,22 @@
 import { createInstance, type i18n as I18n } from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { NAMESPACES, resources as bundled, type Lang } from './resources';
+import { NAMESPACES, resources as bundled } from './resources';
 
-export { LANGUAGES, type Lang } from './resources';
-export { clearStoredLang, initialLang, resolveLang, storeLang, storedLang } from './resolveLang';
 export { translateDetail, translateError } from './translateError';
 export { useDocumentTitle } from './useDocumentTitle';
-export { LanguageToggle } from './LanguageToggle';
 export { useEnumLabel } from './enumLabel';
 
 /**
- * A ready i18next instance. ES is the fallback (I18N-5); a key missing everywhere renders
- * nothing in production instead of the raw key. `<html lang>` follows the active language.
+ * A ready i18next instance. English is the only language (owner feedback S21): no detection, no
+ * stored choice, and `<html lang>` is always `en`.
  */
-export async function createI18n(lang: Lang, resources: typeof bundled = bundled): Promise<I18n> {
+export async function createI18n(resources: typeof bundled = bundled): Promise<I18n> {
   const instance = createInstance();
-  instance.on('languageChanged', (language) => {
-    document.documentElement.lang = language;
-  });
   await instance.use(initReactI18next).init({
     resources,
-    lng: lang,
-    fallbackLng: 'es',
-    supportedLngs: ['es', 'en'],
+    lng: 'en',
+    fallbackLng: 'en',
+    supportedLngs: ['en'],
     ns: [...NAMESPACES],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
@@ -33,6 +27,6 @@ export async function createI18n(lang: Lang, resources: typeof bundled = bundled
       console.warn(`i18n: missing ${namespace}:${key}`),
     initAsync: false,
   });
-  document.documentElement.lang = instance.language;
+  document.documentElement.lang = 'en';
   return instance;
 }

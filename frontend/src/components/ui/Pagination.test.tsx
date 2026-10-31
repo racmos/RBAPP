@@ -6,7 +6,7 @@ import { Pagination } from './Pagination';
 
 async function renderPagination(page: number, pages: number) {
   const onChange = vi.fn();
-  const i18n = await createI18n('es');
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   render(
     <I18nextProvider i18n={i18n}>
@@ -19,18 +19,18 @@ async function renderPagination(page: number, pages: number) {
 describe('Pagination (F13-f S2)', () => {
   it('labels the nav, disables prev on the first page and calls onChange', async () => {
     const onChange = await renderPagination(1, 3);
-    expect(screen.getByRole('navigation', { name: 'Paginación' })).toBeVisible();
-    expect(screen.getByText('Página 1 de 3')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Anterior' })).toBeDisabled();
-    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+    expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeVisible();
+    expect(screen.getByText('Page 1 of 3')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(onChange).toHaveBeenCalledWith(2);
   });
 
   it('disables next on the last page', async () => {
     const onChange = await renderPagination(3, 3);
-    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Anterior' })).toBeEnabled();
-    await userEvent.click(screen.getByRole('button', { name: 'Anterior' }));
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Previous' }));
     expect(onChange).toHaveBeenCalledWith(2);
   });
 });

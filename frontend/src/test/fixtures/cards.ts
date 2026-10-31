@@ -175,7 +175,7 @@ export const cardDetail: CardDetail = {
   ability:
     '[Assault 2] When Ayla attacks, she deals 2 damage to the defending player. Pay :rb_energy_2: (then :rb_exhaust:).',
   artist: 'Maria Santos',
-  set: { id: 'OGN', name: 'Origen', released_on: '2024-01-15' },
+  set: { id: 'OGN', name: 'Origins', released_on: '2024-01-15' },
   price_detail: {
     date: '2026-10-25',
     product_id: 123456,

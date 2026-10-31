@@ -26,7 +26,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
-import { formatDate, formatDateTime, type Lang } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
@@ -48,7 +48,6 @@ const sortValue = (row: AdminSet, key: SortKey) =>
 export function SetsPage() {
   const { t, i18n } = useTranslation('admin');
   const { t: common } = useTranslation('common');
-  const lang = i18n.language.split('-')[0] === 'en' ? 'en' : 'es';
   const offline = !useOnline();
   const wide = useMediaQuery(up('2xl'));
   const desktop = useMediaQuery(up('lg'));
@@ -292,7 +291,7 @@ export function SetsPage() {
                   <tr key={row.id}>
                     <td>{row.id}</td>
                     <td>{row.name}</td>
-                    <td>{row.release_date ? formatDate(row.release_date, lang as Lang) : '—'}</td>
+                    <td>{row.release_date ? formatDate(row.release_date) : '—'}</td>
                     <td>
                       {t('sets.cardsValue', {
                         count: row.card_count,
@@ -306,7 +305,7 @@ export function SetsPage() {
                         )}
                       </Badge>
                     </td>
-                    <td>{row.next_run_at ? formatDateTime(row.next_run_at, lang as Lang) : '—'}</td>
+                    <td>{row.next_run_at ? formatDateTime(row.next_run_at) : '—'}</td>
                     <td>
                       <span className={styles.actions}>
                         <Button
@@ -376,7 +375,7 @@ export function SetsPage() {
                 {row.id} · {row.name}
               </h2>
               <p className={styles.cardMeta}>
-                {row.release_date ? formatDate(row.release_date, lang as Lang) : '—'} ·{' '}
+                {row.release_date ? formatDate(row.release_date) : '—'} ·{' '}
                 <Badge>
                   {t(`window.${row.window as 'pre_release' | 'post_release' | 'monthly' | 'none'}`)}
                 </Badge>

@@ -9,7 +9,7 @@ import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 import { expectCollapsible } from '@/test/sidePanel';
 
-const TABLE = 'Productos del catálogo';
+const TABLE = 'Catalog products';
 
 /** Admin session; records every PATCH body and the query string of every list request. */
 function productsApi(list = adminProductList) {
@@ -43,29 +43,29 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     productsApi();
     const { container } = await renderApp({ path: '/admin/products', width: 1280 });
     const table = await screen.findByRole('table', { name: TABLE }, { timeout: 10000 });
-    expect(screen.getByRole('heading', { name: 'Productos' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Products' })).toBeVisible();
     const headers = within(table)
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
     expect(headers).toEqual([
-      'Imagen',
-      'Nombre',
-      'Tipo',
+      'Image',
+      'Name',
+      'Kind',
       'Set',
-      'Precio',
-      'En Cardmarket',
-      'Oculto',
-      'Actualizado',
+      'Price',
+      'On Cardmarket',
+      'Hidden',
+      'Updated',
     ]);
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
     expect(rows[0].querySelector('img[src="/riftbound/media/products/501.png"]')).not.toBeNull();
-    expect(within(rows[0]).getByText('Caja de sobres')).toBeVisible();
+    expect(within(rows[0]).getByText('Booster box')).toBeVisible();
     expect(within(rows[0]).getByText('OGN')).toBeVisible();
-    expect(within(rows[0]).getByText(/99,50/)).toBeVisible();
+    expect(within(rows[0]).getByText(/99.50/)).toBeVisible();
     expect(rows[1].querySelector('img')).toBeNull();
     expect(rows[1].querySelector('svg')).not.toBeNull();
-    expect(within(rows[1]).getByText('Fundas')).toBeVisible();
+    expect(within(rows[1]).getByText('Sleeves')).toBeVisible();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(await axe(container)).toHaveNoViolations();
   }, 30000);
@@ -82,27 +82,27 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     expect(await axe(container)).toHaveNoViolations();
     await userEvent.click(card);
     const sheet = await screen.findByRole('dialog', { name: 'Riftbound Sleeves' });
-    expect(within(sheet).getByRole('combobox', { name: /Tipo/ })).toBeVisible();
+    expect(within(sheet).getByRole('combobox', { name: /Kind/ })).toBeVisible();
   }, 30000);
 
   it('the yes/no filters say what they filter (owner feedback S24)', async () => {
     productsApi();
     await renderApp({ path: '/admin/products', width: 1280 });
     await screen.findByRole('table', { name: TABLE }, { timeout: 10000 });
-    for (const name of ['Ocultos', 'En Cardmarket']) {
+    for (const name of ['Hidden', 'On Cardmarket']) {
       const select = screen.getByRole('combobox', { name });
       expect(select.closest('label')).toHaveTextContent(name);
-      expect(within(select).getByRole('option', { name: 'Todos' })).toHaveValue('');
+      expect(within(select).getByRole('option', { name: 'All' })).toHaveValue('');
     }
   }, 30000);
 
   it('≥ 1600 px: the editor panel folds away (owner feedback S23)', async () => {
     productsApi();
     await renderApp({ path: '/admin/products', width: 1700 });
-    await screen.findByText('Elige un producto para editarlo.', undefined, { timeout: 10000 });
+    await screen.findByText('Pick a product to edit it.', undefined, { timeout: 10000 });
     await expectCollapsible(
       screen.getByRole('complementary', { name: 'Editor' }),
-      { hide: 'Ocultar editor', show: 'Mostrar editor' },
+      { hide: 'Hide editor', show: 'Show editor' },
       'rb_panel_admin-products-editor_v1',
     );
   }, 30000);
@@ -111,15 +111,15 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     const { patches } = productsApi();
     await renderApp({ path: '/admin/products', width: 1700 });
     expect(
-      await screen.findByText('Elige un producto para editarlo.', undefined, { timeout: 10000 }),
+      await screen.findByText('Pick a product to edit it.', undefined, { timeout: 10000 }),
     ).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'Origins Booster Box' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    const kind = await screen.findByRole('combobox', { name: /Tipo/ });
+    const kind = await screen.findByRole('combobox', { name: /Kind/ });
     expect(kind).toHaveValue('');
     await userEvent.selectOptions(kind, 'sleeves');
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
-    expect((await screen.findAllByText('Producto guardado.')).length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('Product saved.')).length).toBeGreaterThan(0);
     expect(patches).toEqual([{ kind: 'sleeves' }]);
   }, 30000);
 
@@ -127,16 +127,16 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     const { patches } = productsApi();
     await renderApp({ path: '/admin/products', width: 1280 });
     const editor = await openEditor('Riftbound Sleeves');
-    expect(within(editor).getAllByText('Fijado a mano')).toHaveLength(2);
-    const kind = within(editor).getByRole('combobox', { name: /Tipo/ });
-    const set = within(editor).getByRole('combobox', { name: /Set/ });
-    const hidden = within(editor).getByRole('switch', { name: 'Ocultar a los usuarios' });
+    expect(within(editor).getAllByText('Set by hand')).toHaveLength(2);
+    const kind = within(editor).getByRole('combobox', { name: /Kind/ });
+    const set = within(editor).getByRole('combobox', { name: /^Set/ });
+    const hidden = within(editor).getByRole('switch', { name: 'Hide from users' });
     expect(kind).toHaveValue('sleeves');
     expect(hidden).toHaveAttribute('aria-checked', 'true');
-    await userEvent.selectOptions(kind, 'Automático (según la categoría)');
-    await userEvent.selectOptions(set, 'Automático (según la expansión)');
+    await userEvent.selectOptions(kind, 'Automatic (from the category)');
+    await userEvent.selectOptions(set, 'Automatic (from the expansion)');
     await userEvent.click(hidden);
-    await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(patches).toHaveLength(1));
     expect(patches[0]).toEqual({ kind: null, set_id: 'auto', hidden: false });
   }, 30000);
@@ -145,16 +145,16 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     const { patches } = productsApi();
     await renderApp({ path: '/admin/products', width: 1280 });
     let editor = await openEditor('Origins Booster Box');
-    expect(within(editor).queryByText('Fijado a mano')).toBeNull();
-    await userEvent.selectOptions(within(editor).getByRole('combobox', { name: /Set/ }), 'Sin set');
-    await userEvent.click(within(editor).getByRole('switch', { name: 'Ocultar a los usuarios' }));
-    await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
+    expect(within(editor).queryByText('Set by hand')).toBeNull();
+    await userEvent.selectOptions(within(editor).getByRole('combobox', { name: /^Set/ }), 'No set');
+    await userEvent.click(within(editor).getByRole('switch', { name: 'Hide from users' }));
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(patches).toHaveLength(1));
     expect(patches[0]).toEqual({ set_id: null, hidden: true });
 
     editor = await openEditor('Origins Booster Box');
-    await userEvent.selectOptions(within(editor).getByRole('combobox', { name: /Set/ }), 'OGN');
-    await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
+    await userEvent.selectOptions(within(editor).getByRole('combobox', { name: /^Set/ }), 'OGN');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(patches).toHaveLength(2));
     expect(patches[1]).toEqual({ set_id: 'OGN' });
   }, 30000);
@@ -174,10 +174,10 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     );
     await renderApp({ path: '/admin/products', width: 1280 });
     const editor = await openEditor('Origins Booster Box');
-    await userEvent.selectOptions(within(editor).getByRole('combobox', { name: /Set/ }), 'OGN');
-    await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
-    expect(await within(editor).findByText('El valor no es válido.')).toBeVisible();
-    expect(within(editor).getByRole('combobox', { name: /Set/ })).toHaveAttribute(
+    await userEvent.selectOptions(within(editor).getByRole('combobox', { name: /^Set/ }), 'OGN');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    expect(await within(editor).findByText('The value is not valid.')).toBeVisible();
+    expect(within(editor).getByRole('combobox', { name: /^Set/ })).toHaveAttribute(
       'aria-invalid',
       'true',
     );
@@ -196,8 +196,8 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     const editor = await openEditor('Riftbound Sleeves');
     const file = new File(['png'], 'sleeves.png', { type: 'image/png' });
     const append = vi.spyOn(FormData.prototype, 'append');
-    await userEvent.upload(within(editor).getByLabelText('Subir imagen'), file);
-    expect((await screen.findAllByText('Imagen actualizada.')).length).toBeGreaterThan(0);
+    await userEvent.upload(within(editor).getByLabelText('Upload image'), file);
+    expect((await screen.findAllByText('Image updated.')).length).toBeGreaterThan(0);
     expect(uploads).toHaveLength(1);
     expect(uploads[0]).toMatchObject({ id: '502' });
     expect((uploads[0] as { type: string | null }).type ?? '').not.toContain('json');
@@ -212,17 +212,17 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     await screen.findByRole('table', { name: TABLE }, { timeout: 10000 });
     expect(queries[0]).toContain('kind=box');
     expect(queries[0]).toContain('hidden=yes');
-    expect(screen.getByRole('button', { name: 'Caja de sobres' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Booster box' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('combobox', { name: 'Ocultos' })).toHaveValue('yes');
+    expect(screen.getByRole('combobox', { name: 'Hidden' })).toHaveValue('yes');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Fundas' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'En Cardmarket' }), 'no');
-    await userEvent.click(screen.getByRole('switch', { name: 'Sin set' }));
-    await userEvent.click(screen.getByRole('switch', { name: 'Sin imagen' }));
-    await userEvent.type(screen.getByRole('textbox', { name: /Buscar/ }), 'box');
+    await userEvent.click(screen.getByRole('button', { name: 'Sleeves' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'On Cardmarket' }), 'no');
+    await userEvent.click(screen.getByRole('switch', { name: 'Without set' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'Without image' }));
+    await userEvent.type(screen.getByRole('textbox', { name: /Search/ }), 'box');
     await waitFor(() => expect(app.where()).toContain('q=box'));
     const url = new URLSearchParams(app.where().split('?')[1]);
     expect(url.getAll('kind')).toEqual(['box', 'sleeves']);
@@ -233,7 +233,7 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     await waitFor(() => expect(queries.at(-1)).toContain('q=box'));
     expect(queries.at(-1)).toContain('no_image=true');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Caja de sobres' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Booster box' }));
     await waitFor(() =>
       expect(new URLSearchParams(app.where().split('?')[1]).getAll('kind')).toEqual(['sleeves']),
     );
@@ -243,7 +243,7 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     productsApi({ items: [], meta: { page: 1, per_page: 50, total: 0, pages: 1 } });
     await renderApp({ path: '/admin/products', width: 1280 });
     expect(
-      await screen.findByText('Ningún producto coincide con los filtros.', undefined, {
+      await screen.findByText('No product matches the filters.', undefined, {
         timeout: 10000,
       }),
     ).toBeVisible();
@@ -256,10 +256,8 @@ describe('ProductsAdminPage (F14-d S5)', () => {
       http.get(`${API}/admin/products`, () => failure(500, { error: 'Internal Server Error' })),
     );
     await renderApp({ path: '/admin/products', width: 1280 });
-    expect(
-      await screen.findByText('No se pudo cargar', undefined, { timeout: 10000 }),
-    ).toBeVisible();
-    expect(screen.getByRole('button', { name: /Reintentar/ })).toBeVisible();
+    expect(await screen.findByText('Could not load', undefined, { timeout: 10000 })).toBeVisible();
+    expect(screen.getByRole('button', { name: /Retry/ })).toBeVisible();
   }, 30000);
 });
 
@@ -275,8 +273,8 @@ describe('ProductsAdminPage set order (owner feedback S19)', () => {
           supertypes: ['Champion'],
           rarities: ['Common'],
           sets: [
-            { id: 'OGN', name: 'Origen', released_on: '2025-10-31', card_count: 6 },
-            { id: 'NOD', name: 'Sin fecha', released_on: null, card_count: 0 },
+            { id: 'OGN', name: 'Origins', released_on: '2025-10-31', card_count: 6 },
+            { id: 'NOD', name: 'No date', released_on: null, card_count: 0 },
             { id: 'VEN', name: 'Vendetta', released_on: '2026-08-01', card_count: 166 },
           ],
           price: { provider: 'cardmarket', currency: 'EUR', updated_on: null },

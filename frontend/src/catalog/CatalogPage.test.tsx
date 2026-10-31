@@ -18,16 +18,16 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
   it('renders the catalog grid at 390 px', async () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
-    expect(await screen.findByRole('heading', { name: 'Cartas' }, LONG)).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Cards' }, LONG)).toBeVisible();
     expect(await screen.findByRole('link', { name: /Ayla/ }, LONG)).toBeVisible();
-    expect(screen.getByText('6 cartas')).toBeVisible();
+    expect(screen.getByText('6 cards')).toBeVisible();
   });
 
   it('debounces the search input and uses replace', async () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    const input = screen.getByPlaceholderText('Nombre, etiqueta o número');
+    const input = screen.getByPlaceholderText('Name, tag or number');
     await userEvent.type(input, 'aya');
     expect(where()).toBe('/cards');
     await waitFor(() => expect(where()).toBe('/cards?q=aya'), LONG);
@@ -38,7 +38,7 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    const input = screen.getByPlaceholderText('Nombre, etiqueta o número');
+    const input = screen.getByPlaceholderText('Name, tag or number');
     const user = userEvent.setup();
     await user.type(input, 'ay');
     // The previous letters are on their way to the URL: type the next one right then.
@@ -52,7 +52,7 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
   it('still follows the URL when the search is changed from outside', async () => {
     signedInApi();
     const { router, where } = await renderApp({ path: '/cards?q=ayl', width: 390 });
-    const input = await screen.findByPlaceholderText('Nombre, etiqueta o número', {}, LONG);
+    const input = await screen.findByPlaceholderText('Name, tag or number', {}, LONG);
     expect(input).toHaveValue('ayl');
     await router.navigate('/cards');
     await waitFor(() => expect(input).toHaveValue(''), LONG);
@@ -63,27 +63,27 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    expect(await screen.findByRole('dialog', { name: 'Filtros' }, LONG)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Furia (3)' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    expect(await screen.findByRole('dialog', { name: 'Filters' }, LONG)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Fury (3)' })).toBeVisible();
   });
 
   it('filters by domain and reflects in URL and active chips', async () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    await screen.findByRole('dialog', { name: 'Filtros' }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Furia (3)' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    await screen.findByRole('dialog', { name: 'Filters' }, LONG);
+    await userEvent.click(screen.getByRole('button', { name: 'Fury (3)' }));
     await waitFor(() => expect(where()).toBe('/cards?domain=Fury'), LONG);
-    expect(await screen.findByRole('button', { name: 'Quitar filtro Furia' }, LONG)).toBeVisible();
+    expect(await screen.findByRole('button', { name: 'Remove filter Fury' }, LONG)).toBeVisible();
   });
 
   it('clears all active filters', async () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards?domain=Fury', width: 390 });
-    await screen.findByRole('button', { name: 'Quitar filtro Furia' }, LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
+    await screen.findByRole('button', { name: 'Remove filter Fury' }, LONG);
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     await waitFor(() => expect(where()).toBe('/cards'), LONG);
   });
 
@@ -91,18 +91,18 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     signedInApi();
     const { where } = await renderApp({ path: '/cards', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
-    await userEvent.selectOptions(screen.getByLabelText('Ordenar por'), 'name');
+    await userEvent.selectOptions(screen.getByLabelText('Sort by'), 'name');
     await waitFor(() => expect(where()).toBe('/cards?sort=name'), LONG);
-    await userEvent.click(screen.getByRole('button', { name: 'Orden descendente' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Descending order' }));
     await waitFor(() => expect(where()).toBe('/cards?sort=name&dir=desc'), LONG);
   });
 
   it('toggles grid/list view and persists in localStorage', async () => {
     signedInApi();
     await renderApp({ path: '/cards', width: 390 });
-    await screen.findByRole('list', { name: 'Resultados' }, LONG);
-    await userEvent.click(screen.getByRole('radio', { name: 'Lista' }));
-    expect(screen.getByRole('list', { name: 'Resultados' })).toHaveAttribute('data-view', 'list');
+    await screen.findByRole('list', { name: 'Results' }, LONG);
+    await userEvent.click(screen.getByRole('radio', { name: 'List' }));
+    expect(screen.getByRole('list', { name: 'Results' })).toHaveAttribute('data-view', 'list');
     expect(window.localStorage.getItem('rb_cards_view')).toBe('list');
   });
 
@@ -119,10 +119,10 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     await userEvent.click(screen.getByRole('link', { name: /Ayla/ }));
     await waitFor(() => expect(where()).toBe('/cards/OGN/79?domain=Fury'), LONG);
-    expect(screen.queryByRole('heading', { name: 'Cartas' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Cards' })).not.toBeInTheDocument();
     router.navigate(-1);
     await waitFor(() => expect(where()).toBe('/cards?domain=Fury'), LONG);
-    expect(await screen.findByRole('heading', { name: 'Cartas' }, LONG)).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Cards' }, LONG)).toBeVisible();
   });
 
   it('at 1024 px the detail is a modal with close returning to /cards?...', async () => {
@@ -133,7 +133,7 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     const dialog = await screen.findByRole('dialog', undefined, LONG);
     expect(dialog).toBeVisible();
     expect(where()).toBe('/cards/OGN/79?domain=Fury');
-    await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(where()).toBe('/cards?domain=Fury'), LONG);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -150,9 +150,7 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
       ),
     );
     await renderApp({ path: '/cards?q=nothing', width: 390 });
-    expect(
-      await screen.findByText('Ninguna carta coincide con los filtros', {}, LONG),
-    ).toBeVisible();
+    expect(await screen.findByText('No card matches the filters', {}, LONG)).toBeVisible();
   });
 
   it('shows an error state with retry', async () => {
@@ -172,7 +170,7 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     await renderApp({ path: '/cards', width: 390 });
     expect(await screen.findByRole('alert', {}, LONG)).toBeVisible();
     failing = false;
-    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByRole('link', { name: /Ayla/ }, LONG)).toBeVisible();
   });
 

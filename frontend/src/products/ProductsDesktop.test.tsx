@@ -53,9 +53,9 @@ function withUnlisted() {
   );
 }
 
-const catalogTable = () => screen.findByRole('table', { name: 'Productos de Cardmarket' }, LONG);
-const mineTable = () => screen.findByRole('table', { name: 'Tus productos' }, LONG);
-const rail = () => screen.getByRole('complementary', { name: 'Filtros' });
+const catalogTable = () => screen.findByRole('table', { name: 'Cardmarket products' }, LONG);
+const mineTable = () => screen.findByRole('table', { name: 'Your products' }, LONG);
+const rail = () => screen.getByRole('complementary', { name: 'Filters' });
 const header = (name: string) => screen.getByRole('columnheader', { name });
 
 afterEach(() => {
@@ -68,23 +68,23 @@ describe('ProductsDesktop rail at 1280 px (F14-f S1)', () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
     await catalogTable();
-    expect(screen.getByRole('tab', { name: 'Catálogo' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Catalog' })).toHaveAttribute('aria-selected', 'true');
     // the mobile chips and sort select are not there
-    expect(screen.queryByRole('button', { name: 'Caja de sobres (1)' })).toBeNull();
-    expect(screen.queryByRole('combobox', { name: 'Ordenar por' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Booster box (1)' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Sort by' })).toBeNull();
 
-    const box = within(rail()).getByRole('checkbox', { name: 'Caja de sobres (1)' });
+    const box = within(rail()).getByRole('checkbox', { name: 'Booster box (1)' });
     expect(box).not.toBeChecked();
     await userEvent.click(box);
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box'), LONG);
     await waitFor(() =>
-      expect(within(rail()).getByRole('checkbox', { name: 'Caja de sobres (1)' })).toBeChecked(),
+      expect(within(rail()).getByRole('checkbox', { name: 'Booster box (1)' })).toBeChecked(),
     );
 
     await userEvent.selectOptions(within(rail()).getByRole('combobox', { name: 'Set' }), 'OGN');
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box&set=OGN'), LONG);
 
-    const mine = within(rail()).getByRole('switch', { name: 'Solo los míos' });
+    const mine = within(rail()).getByRole('switch', { name: 'Only mine' });
     expect(mine).toHaveAttribute('aria-checked', 'false');
     await userEvent.click(mine);
     await waitFor(
@@ -92,22 +92,19 @@ describe('ProductsDesktop rail at 1280 px (F14-f S1)', () => {
       LONG,
     );
     await waitFor(() =>
-      expect(within(rail()).getByRole('switch', { name: 'Solo los míos' })).toHaveAttribute(
+      expect(within(rail()).getByRole('switch', { name: 'Only mine' })).toHaveAttribute(
         'aria-checked',
         'true',
       ),
     );
 
-    await userEvent.type(
-      within(rail()).getByRole('searchbox', { name: 'Buscar productos' }),
-      'box',
-    );
+    await userEvent.type(within(rail()).getByRole('searchbox', { name: 'Search products' }), 'box');
     await waitFor(
       () => expect(where()).toBe('/products?tab=catalog&q=box&kind=box&set=OGN&owned=owned'),
       LONG,
     );
 
-    await userEvent.click(within(rail()).getByRole('switch', { name: 'Solo los míos' }));
+    await userEvent.click(within(rail()).getByRole('switch', { name: 'Only mine' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&q=box&kind=box&set=OGN'), LONG);
   }, 30000);
 
@@ -115,8 +112,8 @@ describe('ProductsDesktop rail at 1280 px (F14-f S1)', () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
     await catalogTable();
-    const box = within(rail()).getByRole('checkbox', { name: 'Caja de sobres (1)' });
-    const mine = within(rail()).getByRole('switch', { name: 'Solo los míos' });
+    const box = within(rail()).getByRole('checkbox', { name: 'Booster box (1)' });
+    const mine = within(rail()).getByRole('switch', { name: 'Only mine' });
     // the router applies a navigation in a transition: the second change comes before the render
     act(() => {
       fireEvent.click(box);
@@ -125,12 +122,13 @@ describe('ProductsDesktop rail at 1280 px (F14-f S1)', () => {
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box&owned=owned'), LONG);
   }, 20000);
 
-  it('"solo los míos" asks the API for the owned products only', async () => {
+  it('"only mine" asks the API for the owned products only', async () => {
     signedIn();
     await renderApp({ path: '/products?tab=catalog&owned=owned', width: DESKTOP });
     const table = await catalogTable();
     await waitFor(
-      () => expect(within(table).queryByRole('row', { name: /^Origins Booster Sobre/ })).toBeNull(),
+      () =>
+        expect(within(table).queryByRole('row', { name: /^Origins Booster Booster/ })).toBeNull(),
       LONG,
     );
     expect(within(table).getByRole('row', { name: /Origins Booster Box/ })).toBeVisible();
@@ -145,15 +143,15 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
     await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
     const table = await catalogTable();
     for (const name of [
-      'Imagen',
-      'Nombre',
-      'Tipo',
+      'Image',
+      'Name',
+      'Kind',
       'Set',
-      'Precio',
+      'Price',
       '7 d',
       '30 d',
-      'Tienes',
-      'En Cardmarket',
+      'Owned',
+      'On Cardmarket',
     ]) {
       expect(within(table).getByRole('columnheader', { name })).toBeInTheDocument();
     }
@@ -162,42 +160,42 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
       'href',
       '/riftbound/app/products/501',
     );
-    expect(within(box).getByText('Caja de sobres')).toBeVisible();
+    expect(within(box).getByText('Booster box')).toBeVisible();
     expect(within(box).getByText('OGN')).toBeVisible();
-    expect(within(box).getByText('99,50 €')).toBeVisible();
-    expect(within(box).getByText('+2,5 %')).toBeVisible();
-    expect(within(box).getByText('-4,1 %')).toBeVisible();
+    expect(within(box).getByText('99.50 €')).toBeVisible();
+    expect(within(box).getByText('+2.5%')).toBeVisible();
+    expect(within(box).getByText('-4.1%')).toBeVisible();
     expect(within(box).getByText('×2')).toBeVisible();
-    expect(within(box).queryByText('Ya no aparece')).toBeNull();
+    expect(within(box).queryByText('No longer listed')).toBeNull();
 
-    const booster = within(table).getByRole('row', { name: /^Origins Booster Sobre/ });
-    expect(within(booster).getByText('-1,2 %')).toBeVisible();
+    const booster = within(table).getByRole('row', { name: /^Origins Booster Booster/ });
+    expect(within(booster).getByText('-1.2%')).toBeVisible();
     expect(within(booster).getAllByText('—').length).toBeGreaterThanOrEqual(2); // 30 d, owned
 
     const sleeves = within(table).getByRole('row', { name: /Riftbound Sleeves/ });
-    expect(within(sleeves).getByText('Sin precio')).toBeVisible();
+    expect(within(sleeves).getByText('No price')).toBeVisible();
     expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toBeInTheDocument();
     expect(within(sleeves).getByText('×1')).toBeVisible();
 
     const promo = within(table).getByRole('row', { name: /Origins Promo Pack/ });
-    expect(within(promo).getByText('Ya no aparece')).toBeVisible();
-    expect(within(promo).getByText('+6,3 %')).toBeVisible();
+    expect(within(promo).getByText('No longer listed')).toBeVisible();
+    expect(within(promo).getByText('+6.3%')).toBeVisible();
   }, 20000);
 
   it('sorts from the headers (aria-sort) and changes the page size', async () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
     await catalogTable();
-    expect(header('Nombre')).toHaveAttribute('aria-sort', 'ascending');
-    expect(header('Precio')).toHaveAttribute('aria-sort', 'none');
+    expect(header('Name')).toHaveAttribute('aria-sort', 'ascending');
+    expect(header('Price')).toHaveAttribute('aria-sort', 'none');
 
-    await userEvent.click(within(header('Precio')).getByRole('button'));
+    await userEvent.click(within(header('Price')).getByRole('button'));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&sort=price&dir=desc'), LONG);
-    await waitFor(() => expect(header('Precio')).toHaveAttribute('aria-sort', 'descending'));
-    expect(header('Nombre')).toHaveAttribute('aria-sort', 'none');
-    await userEvent.click(within(header('Precio')).getByRole('button'));
+    await waitFor(() => expect(header('Price')).toHaveAttribute('aria-sort', 'descending'));
+    expect(header('Name')).toHaveAttribute('aria-sort', 'none');
+    await userEvent.click(within(header('Price')).getByRole('button'));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&sort=price'), LONG);
-    await waitFor(() => expect(header('Precio')).toHaveAttribute('aria-sort', 'ascending'));
+    await waitFor(() => expect(header('Price')).toHaveAttribute('aria-sort', 'ascending'));
 
     await userEvent.click(within(header('7 d')).getByRole('button'));
     await waitFor(
@@ -209,10 +207,10 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
       () => expect(where()).toBe('/products?tab=catalog&sort=change_30d&dir=desc'),
       LONG,
     );
-    await userEvent.click(within(header('Nombre')).getByRole('button'));
+    await userEvent.click(within(header('Name')).getByRole('button'));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
 
-    const size = screen.getByRole('combobox', { name: 'Por página' });
+    const size = screen.getByRole('combobox', { name: 'Per page' });
     expect(
       within(size)
         .getAllByRole('option')
@@ -220,7 +218,7 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
     ).toEqual(['48', '96']);
     await userEvent.selectOptions(size, '96');
     await waitFor(() => expect(where()).toBe('/products?tab=catalog&per_page=96'), LONG);
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Por página' }), '48');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Per page' }), '48');
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
   }, 30000);
 
@@ -228,12 +226,12 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
     const table = await catalogTable();
-    const booster = within(table).getByRole('row', { name: /^Origins Booster Sobre/ });
-    await userEvent.click(within(booster).getByRole('cell', { name: 'Sobre' }));
+    const booster = within(table).getByRole('row', { name: /^Origins Booster Booster/ });
+    await userEvent.click(within(booster).getByRole('cell', { name: 'Booster' }));
     await waitFor(() => expect(where()).toBe('/products/503'), LONG);
   }, 20000);
 
-  it('filters that match nothing offer to clear them, "solo los míos" included', async () => {
+  it('filters that match nothing offer to clear them, "only mine" included', async () => {
     signedIn();
     server.use(
       http.get(`${API}/products`, () =>
@@ -248,10 +246,8 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
       path: '/products?tab=catalog&q=zzz&kind=box&owned=owned',
       width: DESKTOP,
     });
-    expect(
-      await screen.findByText('Ningún producto coincide con los filtros.', {}, LONG),
-    ).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
+    expect(await screen.findByText('No product matches the filters.', {}, LONG)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
   }, 20000);
 
@@ -269,46 +265,46 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
     signedIn();
     await renderApp({ path: '/products?tab=mine', width: DESKTOP });
     const table = await mineTable();
-    const band = screen.getByText('Valor de tus productos').closest('dl')!;
-    expect(within(band).getByText('199,00 €')).toBeVisible();
+    const band = screen.getByText('Value of your products').closest('dl')!;
+    expect(within(band).getByText('199.00 €')).toBeVisible();
     expect(within(band).getByText('2')).toBeVisible();
-    expect(screen.getByText('1 sin precio')).toBeVisible();
+    expect(screen.getByText('1 without price')).toBeVisible();
     expect(
-      screen.getByText('Este total no se suma al valor de tu colección de cartas.'),
+      screen.getByText('This total is not added to the value of your card collection.'),
     ).toBeVisible();
     for (const name of [
-      'Imagen',
-      'Nombre',
-      'Tipo',
-      'Cantidad',
-      'Compra',
-      'Precio',
-      'Valor',
-      'Ganancia €',
-      'Ganancia %',
-      'Nota',
+      'Image',
+      'Name',
+      'Kind',
+      'Quantity',
+      'Purchase',
+      'Price',
+      'Value',
+      'Profit €',
+      'Profit %',
+      'Note',
     ]) {
       expect(within(table).getByRole('columnheader', { name })).toBeInTheDocument();
     }
     const box = within(table).getByRole('row', { name: /Origins Booster Box/ });
     expect(
-      within(box).getByRole('spinbutton', { name: 'Cantidad: Origins Booster Box' }),
+      within(box).getByRole('spinbutton', { name: 'Quantity: Origins Booster Box' }),
     ).toHaveValue(2);
     expect(
-      within(box).getByRole('spinbutton', { name: 'Compra: Origins Booster Box' }),
+      within(box).getByRole('spinbutton', { name: 'Purchase: Origins Booster Box' }),
     ).toHaveValue(90);
-    expect(within(box).getByRole('textbox', { name: 'Nota: Origins Booster Box' })).toHaveValue(
+    expect(within(box).getByRole('textbox', { name: 'Note: Origins Booster Box' })).toHaveValue(
       'Sealed',
     );
-    expect(within(box).getByText('Caja de sobres')).toBeVisible();
-    expect(within(box).getByText('99,50 €')).toBeVisible();
-    expect(within(box).getByText('199,00 €')).toBeVisible();
-    expect(within(box).getByText('+19,00 €')).toBeVisible();
-    expect(within(box).getByText('+10,6 %')).toBeVisible();
+    expect(within(box).getByText('Booster box')).toBeVisible();
+    expect(within(box).getByText('99.50 €')).toBeVisible();
+    expect(within(box).getByText('199.00 €')).toBeVisible();
+    expect(within(box).getByText('+19.00 €')).toBeVisible();
+    expect(within(box).getByText('+10.6%')).toBeVisible();
     const sleeves = within(table).getByRole('row', { name: /Riftbound Sleeves/ });
-    expect(within(sleeves).getAllByText('Sin precio').length).toBeGreaterThan(0);
+    expect(within(sleeves).getAllByText('No price').length).toBeGreaterThan(0);
     expect(
-      within(sleeves).getByRole('spinbutton', { name: 'Compra: Riftbound Sleeves' }),
+      within(sleeves).getByRole('spinbutton', { name: 'Purchase: Riftbound Sleeves' }),
     ).toHaveValue(null);
   }, 20000);
 
@@ -319,24 +315,24 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
     const table = await mineTable();
     const box = within(table).getByRole('row', { name: /Origins Booster Box/ });
     await userEvent.click(
-      within(box).getByRole('button', { name: 'Más copias: Cantidad: Origins Booster Box' }),
+      within(box).getByRole('button', { name: 'More copies: Quantity: Origins Booster Box' }),
     );
     await waitFor(() => expect(sent).toHaveLength(1), LONG);
     expect(sent[0]).toEqual({ method: 'PATCH', path: '/me/products/801', body: { quantity: 3 } });
 
-    const price = within(box).getByRole('spinbutton', { name: 'Compra: Origins Booster Box' });
+    const price = within(box).getByRole('spinbutton', { name: 'Purchase: Origins Booster Box' });
     await userEvent.clear(price);
     await userEvent.type(price, '80');
     await waitFor(() => expect(sent.some((r) => r.body?.purchase_price === 80)).toBe(true), LONG);
 
-    const note = within(box).getByRole('textbox', { name: 'Nota: Origins Booster Box' });
+    const note = within(box).getByRole('textbox', { name: 'Note: Origins Booster Box' });
     await userEvent.clear(note);
     await userEvent.type(note, ' Gift ');
     await waitFor(() => expect(sent.some((r) => r.body?.note === 'Gift')).toBe(true), LONG);
 
     const sleeves = within(table).getByRole('row', { name: /Riftbound Sleeves/ });
     await userEvent.type(
-      within(sleeves).getByRole('textbox', { name: 'Nota: Riftbound Sleeves' }),
+      within(sleeves).getByRole('textbox', { name: 'Note: Riftbound Sleeves' }),
       'x',
     );
     await waitFor(
@@ -361,7 +357,7 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
     const box = within(table).getByRole('row', { name: /Origins Booster Box/ });
     await userEvent.click(within(box).getByRole('button', { name: 'Origins Booster Box' }));
     const sheet = await screen.findByRole('dialog', { name: 'Origins Booster Box' }, LONG);
-    expect(within(sheet).getByRole('button', { name: 'Eliminar' })).toBeVisible();
+    expect(within(sheet).getByRole('button', { name: 'Delete' })).toBeVisible();
     expect(where()).toBe('/products?tab=mine');
   }, 20000);
 
@@ -370,9 +366,9 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
     const { where } = await renderApp({ path: '/products?tab=mine', width: DESKTOP });
     const table = await mineTable();
     const box = within(table).getByRole('row', { name: /Origins Booster Box/ });
-    await userEvent.click(within(box).getByRole('textbox', { name: 'Nota: Origins Booster Box' }));
+    await userEvent.click(within(box).getByRole('textbox', { name: 'Note: Origins Booster Box' }));
     expect(where()).toBe('/products?tab=mine');
-    await userEvent.click(within(box).getByText('Caja de sobres'));
+    await userEvent.click(within(box).getByText('Booster box'));
     await waitFor(() => expect(where()).toBe('/products/501'), LONG);
   }, 20000);
 
@@ -381,15 +377,15 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await renderApp({ path: '/products?tab=mine', width: DESKTOP });
     const table = await mineTable();
-    expect(screen.getByText('Necesitas conexión para hacer cambios.')).toBeVisible();
+    expect(screen.getByText('You need a connection to make changes.')).toBeVisible();
     const box = within(table).getByRole('row', { name: /Origins Booster Box/ });
     expect(
-      within(box).getByRole('spinbutton', { name: 'Cantidad: Origins Booster Box' }),
+      within(box).getByRole('spinbutton', { name: 'Quantity: Origins Booster Box' }),
     ).toBeDisabled();
     expect(
-      within(box).getByRole('spinbutton', { name: 'Compra: Origins Booster Box' }),
+      within(box).getByRole('spinbutton', { name: 'Purchase: Origins Booster Box' }),
     ).toBeDisabled();
-    expect(within(box).getByRole('textbox', { name: 'Nota: Origins Booster Box' })).toBeDisabled();
+    expect(within(box).getByRole('textbox', { name: 'Note: Origins Booster Box' })).toBeDisabled();
   }, 20000);
 
   it('is axe clean', async () => {
@@ -401,7 +397,7 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
 });
 
 describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
-  const panel = () => screen.findByRole('complementary', { name: 'Detalle del producto' }, LONG);
+  const panel = () => screen.findByRole('complementary', { name: 'Product details' }, LONG);
 
   it('says what to do until a row is picked, then shows the product', async () => {
     signedIn();
@@ -409,7 +405,7 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDE });
     const table = await catalogTable();
     const aside = await panel();
-    expect(within(aside).getByText('Elige un producto para ver su detalle.')).toBeVisible();
+    expect(within(aside).getByText('Pick a product to see its details.')).toBeVisible();
 
     await userEvent.click(
       within(within(table).getByRole('row', { name: /Origins Booster Box/ })).getByText('OGN'),
@@ -420,21 +416,21 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
     ).toBeVisible();
     expect(within(aside).getByRole('img', { name: 'Origins Booster Box' })).toBeVisible();
     // the price facts (the chart's axis can show the same amounts)
-    const facts = within(aside).getByText('Precio', { selector: 'dt' }).closest('dl')!;
-    expect(within(facts).getByText('99,50 €')).toBeVisible();
-    expect(within(facts).getByText('+2,5 %')).toBeVisible();
-    expect(within(facts).getByText('-4,1 %')).toBeVisible();
-    const history = within(aside).getByRole('region', { name: 'Evolución del precio' });
+    const facts = within(aside).getByText('Price', { selector: 'dt' }).closest('dl')!;
+    expect(within(facts).getByText('99.50 €')).toBeVisible();
+    expect(within(facts).getByText('+2.5%')).toBeVisible();
+    expect(within(facts).getByText('-4.1%')).toBeVisible();
+    const history = within(aside).getByRole('region', { name: 'Price history' });
     expect(
-      await within(history).findByRole('button', { name: 'Ver como tabla' }, LONG),
+      await within(history).findByRole('button', { name: 'Show as table' }, LONG),
     ).toBeVisible();
     expect(within(history).getByRole('radio', { name: '90 d' })).toBeChecked();
-    const lines = await within(aside).findByRole('region', { name: 'Tus unidades' }, LONG);
+    const lines = await within(aside).findByRole('region', { name: 'Your units' }, LONG);
     expect(within(lines).getAllByRole('listitem')).toHaveLength(1);
     expect(within(lines).getByRole('listitem')).toHaveTextContent('Sealed');
 
-    const form = within(aside).getByRole('form', { name: 'Añadir a mis productos' });
-    await userEvent.click(within(form).getByRole('button', { name: 'Añadir' }));
+    const form = within(aside).getByRole('form', { name: 'Add to my products' });
+    await userEvent.click(within(form).getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(sent.some((r) => r.method === 'POST')).toBe(true), LONG);
     expect(sent.find((r) => r.method === 'POST')!.body).toEqual({
       product_id: 501,
@@ -448,7 +444,7 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDE });
     const table = await catalogTable();
-    const booster = within(table).getByRole('row', { name: /^Origins Booster Sobre/ });
+    const booster = within(table).getByRole('row', { name: /^Origins Booster Booster/ });
     const name = within(booster).getByRole('button', { name: 'Origins Booster' });
     expect(name).toHaveAttribute('aria-pressed', 'false');
     await userEvent.click(name);
@@ -461,11 +457,11 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
       'true',
     );
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Mis productos' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'My products' }));
     const mine = await mineTable();
     await userEvent.click(
       within(within(mine).getByRole('row', { name: /Riftbound Sleeves/ })).getByRole('cell', {
-        name: 'Fundas',
+        name: 'Sleeves',
       }),
     );
     expect(
@@ -478,7 +474,7 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
     signedIn();
     await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
     await catalogTable();
-    expect(screen.queryByRole('complementary', { name: 'Detalle del producto' })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Product details' })).toBeNull();
   }, 20000);
 
   it('is axe clean with a product open', async () => {
@@ -489,8 +485,8 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
       within(within(table).getByRole('row', { name: /Origins Booster Box/ })).getByText('OGN'),
     );
     const aside = await panel();
-    await within(aside).findByRole('region', { name: 'Tus unidades' }, LONG);
-    await within(aside).findByRole('button', { name: 'Ver como tabla' }, LONG);
+    await within(aside).findByRole('region', { name: 'Your units' }, LONG);
+    await within(aside).findByRole('button', { name: 'Show as table' }, LONG);
     expect(await axe(container)).toHaveNoViolations();
   }, 30000);
 });
@@ -502,12 +498,12 @@ describe('ProductsDesktop side panels (owner feedback S23)', () => {
     await catalogTable();
     await expectCollapsible(
       rail(),
-      { hide: 'Ocultar filtros', show: 'Mostrar filtros' },
+      { hide: 'Hide filters', show: 'Show filters' },
       'rb_panel_products-filters_v1',
     );
     await expectCollapsible(
-      await screen.findByRole('complementary', { name: 'Detalle del producto' }, LONG),
-      { hide: 'Ocultar detalle', show: 'Mostrar detalle' },
+      await screen.findByRole('complementary', { name: 'Product details' }, LONG),
+      { hide: 'Hide details', show: 'Show details' },
       'rb_panel_products-detail_v1',
     );
   }, 30000);

@@ -18,7 +18,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { translateError, useDocumentTitle, useEnumLabel } from '@/i18n';
 import { up } from '@/lib/breakpoints';
-import { formatMoney, type Lang } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useImportCommit, useImportPreview } from './queries';
 import { StepIndicator } from './StepIndicator';
@@ -41,10 +41,10 @@ function readText(file: File): Promise<string> {
 }
 
 /** One row of the preview, as table cells or as a list item (F3-i S2). */
-function useRowText(lang: Lang) {
+function useRowText() {
   const { t } = useTranslation('collection');
   const { label } = useEnumLabel();
-  const money = (value: number | null) => (value === null ? '—' : formatMoney(value, lang));
+  const money = (value: number | null) => (value === null ? '—' : formatMoney(value));
   const reasons = (row: ImportRow) =>
     [...new Set(row.reason_codes)].map((code) => t(`import.reason.${code}`) || code).join(' ');
   const card = (row: ImportRow): ReactNode =>
@@ -73,9 +73,9 @@ function useRowText(lang: Lang) {
   };
 }
 
-function ReviewTable({ rows, lang }: { rows: ImportRow[]; lang: Lang }) {
+function ReviewTable({ rows }: { rows: ImportRow[] }) {
   const { t } = useTranslation('collection');
-  const text = useRowText(lang);
+  const text = useRowText();
   return (
     <div className={styles.scroll}>
       <table className={styles.table} aria-label={t('import.steps.review')}>
@@ -114,9 +114,9 @@ function ReviewTable({ rows, lang }: { rows: ImportRow[]; lang: Lang }) {
   );
 }
 
-function ReviewList({ rows, lang }: { rows: ImportRow[]; lang: Lang }) {
+function ReviewList({ rows }: { rows: ImportRow[] }) {
   const { t } = useTranslation('collection');
-  const text = useRowText(lang);
+  const text = useRowText();
   return (
     <ul className={styles.list} aria-label={t('import.steps.review')}>
       {rows.map((row) => {
@@ -154,7 +154,6 @@ export function ImportWizard() {
   const { t, i18n } = useTranslation('collection');
   const { t: tCommon } = useTranslation('common');
   useDocumentTitle(t('import.title'));
-  const lang: Lang = i18n.language.split('-')[0] === 'en' ? 'en' : 'es';
   const ids = useId();
   const offline = useOffline();
   const desktop = useMediaQuery(up('md'));
@@ -317,11 +316,7 @@ export function ImportWizard() {
           />
         </div>
         <div className={styles.rows}>
-          {desktop ? (
-            <ReviewTable rows={rows} lang={lang} />
-          ) : (
-            <ReviewList rows={rows} lang={lang} />
-          )}
+          {desktop ? <ReviewTable rows={rows} /> : <ReviewList rows={rows} />}
         </div>
         <div className={styles.actions}>
           <Button variant="ghost" onClick={() => setStep('file')}>

@@ -1,14 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import type { CollectionGroup } from '@/api/types';
 import { CardImage } from '@/components/card';
-import { formatMoney, type Lang } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import styles from './CollectionItem.module.css';
 
 type CollectionItemProps = {
   group: CollectionGroup;
   variant: 'tile' | 'row';
   playsetSize: number;
-  lang: Lang;
   onOpen: (key: string) => void;
 };
 
@@ -16,7 +15,7 @@ type CollectionItemProps = {
  * One printing and foil of the collection, as a grid tile or a list row (F3-g S5). A group whose
  * playset is short gets an outline and a line of text: colour is never the only signal.
  */
-export function CollectionItem({ group, variant, playsetSize, lang, onOpen }: CollectionItemProps) {
+export function CollectionItem({ group, variant, playsetSize, onOpen }: CollectionItemProps) {
   const { t } = useTranslation('collection');
   const { card } = group;
   const forSale = group.sell_qty > 0 && group.lines.some((line) => line.selling);
@@ -57,9 +56,7 @@ export function CollectionItem({ group, variant, playsetSize, lang, onOpen }: Co
         </span>
       </span>
       {variant === 'row' && qty}
-      <span className={styles.value}>
-        {group.value === null ? '—' : formatMoney(group.value, lang)}
-      </span>
+      <span className={styles.value}>{group.value === null ? '—' : formatMoney(group.value)}</span>
     </button>
   );
 }

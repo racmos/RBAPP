@@ -5,7 +5,7 @@ import { I18nextProvider } from 'react-i18next';
 import { ValueDiff } from './ValueDiff';
 
 async function renderDiff(props: Parameters<typeof ValueDiff>[0]) {
-  const i18n = await createI18n('es');
+  const i18n = await createI18n();
   render(
     <I18nextProvider i18n={i18n}>
       <ValueDiff {...props} />
@@ -18,8 +18,8 @@ describe('ValueDiff (F13-g S6)', () => {
     await renderDiff({ oldValue: 'Alpha', newValue: 'Alfa', layout: 'inline' });
     const old = screen.getByText('Alpha');
     expect(old.tagName.toLowerCase()).toBe('del');
-    expect(screen.getByText('Antes:', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('Ahora:', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Before:', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Now:', { exact: false })).toBeInTheDocument();
   });
 
   it('stacked and side layouts render both values', async () => {
@@ -30,6 +30,6 @@ describe('ValueDiff (F13-g S6)', () => {
 
   it('empty and null values show the empty marker', async () => {
     await renderDiff({ oldValue: '', newValue: null, layout: 'inline' });
-    expect(screen.getAllByText('(vacío)')).toHaveLength(2);
+    expect(screen.getAllByText('(empty)')).toHaveLength(2);
   });
 });

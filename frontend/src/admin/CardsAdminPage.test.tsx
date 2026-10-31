@@ -51,7 +51,7 @@ const CARDS = {
 const SETS = [
   {
     id: 'OGN',
-    name: 'Origen',
+    name: 'Origins',
     release_date: '2026-01-01',
     card_count: 2,
     declared_count: 2,
@@ -72,10 +72,10 @@ describe('CardsAdminPage (F13-f S7, S8)', () => {
   it('table at 1280 px with images, no-image badge and pagination', async () => {
     cardsApi();
     const { container } = await renderApp({ path: '/admin/cards', width: 1280 });
-    expect(await screen.findByRole('table', { name: 'Cartas del catálogo' })).toBeVisible();
+    expect(await screen.findByRole('table', { name: 'Catalog cards' })).toBeVisible();
     expect(container.querySelector('img[src*="ogn_1.png"]')).not.toBeNull();
-    expect(screen.getByText('Sin imagen')).toBeVisible();
-    expect(screen.getByRole('navigation', { name: 'Paginación' })).toBeVisible();
+    expect(screen.getByText('No image')).toBeVisible();
+    expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeVisible();
     expect(await axe(container)).toHaveNoViolations();
   });
 
@@ -83,7 +83,7 @@ describe('CardsAdminPage (F13-f S7, S8)', () => {
     cardsApi();
     await renderApp({ path: '/admin/cards', width: 390 });
     await userEvent.click(await screen.findByRole('button', { name: /Alpha Unit/ }));
-    expect(await screen.findByLabelText('Nombre')).toBeVisible();
+    expect(await screen.findByLabelText('Name')).toBeVisible();
   });
 
   it('creates a card and sends FormData for the image', async () => {
@@ -101,12 +101,12 @@ describe('CardsAdminPage (F13-f S7, S8)', () => {
       http.post(`${API}/admin/cards/OGN/1/image`, async () => ok(CARDS.items[0])),
     );
     await renderApp({ path: '/admin/cards', width: 1280 });
-    await userEvent.click(await screen.findByRole('button', { name: 'Nueva carta' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'New card' }));
     await userEvent.type(screen.getByLabelText('Set'), 'OGN');
-    await userEvent.type(screen.getByLabelText('Número'), '9');
-    await userEvent.type(screen.getByLabelText('Nombre'), 'New Card');
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
-    expect((await screen.findAllByText('Carta guardada.')).length).toBeGreaterThan(0);
+    await userEvent.type(screen.getByLabelText('Number'), '9');
+    await userEvent.type(screen.getByLabelText('Name'), 'New Card');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('Card saved.')).length).toBeGreaterThan(0);
     expect(posted).toHaveLength(1);
     expect(posted[0]).toMatchObject({ set_id: 'OGN', card_id: '9', name: 'New Card' });
   });
@@ -123,10 +123,10 @@ describe('CardsAdminPage (F13-f S7, S8)', () => {
       }),
     );
     await renderApp({ path: '/admin/cards', width: 1280 });
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Editar Alpha Unit' }))[0]);
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Edit Alpha Unit' }))[0]);
     const file = new File(['png'], 'ogn_1.png', { type: 'image/png' });
-    await userEvent.upload(screen.getByLabelText('Subir imagen'), file);
-    expect((await screen.findAllByText('Imagen actualizada.')).length).toBeGreaterThan(0);
+    await userEvent.upload(screen.getByLabelText('Upload image'), file);
+    expect((await screen.findAllByText('Image updated.')).length).toBeGreaterThan(0);
     expect(uploaded).toBe(true);
   });
 });
@@ -164,38 +164,38 @@ const editorRole = (width: number) => (width >= 1600 ? 'complementary' : 'dialog
 
 describe('CardsAdminPage editor and row actions (owner feedback S20)', () => {
   it.each([1280, 1700])(
-    '"Nueva carta" opens the editor and creates the card at %i px',
+    '"New card" opens the editor and creates the card at %i px',
     async (width) => {
       const state = writableApi();
       await renderApp({ path: '/admin/cards', width });
-      await userEvent.click(await screen.findByRole('button', { name: 'Nueva carta' }));
-      const editor = await screen.findByRole(editorRole(width), { name: 'Nueva carta' });
+      await userEvent.click(await screen.findByRole('button', { name: 'New card' }));
+      const editor = await screen.findByRole(editorRole(width), { name: 'New card' });
       await userEvent.type(within(editor).getByLabelText('Set'), 'OGN');
-      await userEvent.type(within(editor).getByLabelText('Número'), '9');
-      await userEvent.type(within(editor).getByLabelText('Nombre'), 'New Card');
-      await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
-      expect((await screen.findAllByText('Carta guardada.')).length).toBeGreaterThan(0);
+      await userEvent.type(within(editor).getByLabelText('Number'), '9');
+      await userEvent.type(within(editor).getByLabelText('Name'), 'New Card');
+      await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+      expect((await screen.findAllByText('Card saved.')).length).toBeGreaterThan(0);
       expect(state.posted).toEqual([
         expect.objectContaining({ set_id: 'OGN', card_id: '9', name: 'New Card' }),
       ]);
       expect(await screen.findByRole('cell', { name: 'New Card' })).toBeVisible();
-      await waitFor(() => expect(screen.queryByLabelText('Número')).not.toBeInTheDocument());
+      await waitFor(() => expect(screen.queryByLabelText('Number')).not.toBeInTheDocument());
     },
   );
 
   it.each([1280, 1700])(
-    '"Editar" opens the card in the editor and saves it at %i px',
+    '"Edit" opens the card in the editor and saves it at %i px',
     async (width) => {
       const state = writableApi();
       await renderApp({ path: '/admin/cards', width });
-      await userEvent.click(await screen.findByRole('button', { name: 'Editar Alpha Unit' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Edit Alpha Unit' }));
       const editor = await screen.findByRole(editorRole(width), { name: 'Alpha Unit' });
-      const name = within(editor).getByLabelText('Nombre');
+      const name = within(editor).getByLabelText('Name');
       expect(name).toHaveValue('Alpha Unit');
       await userEvent.clear(name);
       await userEvent.type(name, 'Alpha Prime');
-      await userEvent.click(within(editor).getByRole('button', { name: 'Guardar' }));
-      expect((await screen.findAllByText('Carta guardada.')).length).toBeGreaterThan(0);
+      await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+      expect((await screen.findAllByText('Card saved.')).length).toBeGreaterThan(0);
       expect(state.patched).toEqual([expect.objectContaining({ name: 'Alpha Prime' })]);
       expect(await screen.findByRole('cell', { name: 'Alpha Prime' })).toBeVisible();
     },
@@ -204,18 +204,18 @@ describe('CardsAdminPage editor and row actions (owner feedback S20)', () => {
   it('at 1600 px and up the editor is a column next to the table, not below it', async () => {
     writableApi();
     await renderApp({ path: '/admin/cards', width: 1700 });
-    await userEvent.click(await screen.findByRole('button', { name: 'Editar Alpha Unit' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Alpha Unit' }));
     const panel = await screen.findByRole('complementary', { name: 'Alpha Unit' });
     // Two columns: the table with its pagination, then the editor.
     expect(panel.parentElement!.children).toHaveLength(2);
     const main = panel.previousElementSibling as HTMLElement;
-    expect(main).toContainElement(screen.getByRole('table', { name: 'Cartas del catálogo' }));
-    expect(main).toContainElement(screen.getByRole('navigation', { name: 'Paginación' }));
+    expect(main).toContainElement(screen.getByRole('table', { name: 'Catalog cards' }));
+    expect(main).toContainElement(screen.getByRole('navigation', { name: 'Pagination' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it.each([1280, 1700])(
-    '"Borrar" asks first, then deletes and refreshes at %i px',
+    '"Delete" asks first, then deletes and refreshes at %i px',
     async (width) => {
       const state = writableApi();
       let deleted = 0;
@@ -227,16 +227,16 @@ describe('CardsAdminPage editor and row actions (owner feedback S20)', () => {
         }),
       );
       await renderApp({ path: '/admin/cards', width });
-      await userEvent.click(await screen.findByRole('button', { name: 'Borrar Alpha Unit' }));
-      const confirm = await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' });
+      await userEvent.click(await screen.findByRole('button', { name: 'Delete Alpha Unit' }));
+      const confirm = await screen.findByRole('dialog', { name: 'Delete Alpha Unit?' });
       expect(deleted).toBe(0);
-      await userEvent.click(within(confirm).getByRole('button', { name: 'Borrar' }));
-      expect((await screen.findAllByText('Carta borrada.')).length).toBeGreaterThan(0);
+      await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }));
+      expect((await screen.findAllByText('Card deleted.')).length).toBeGreaterThan(0);
       expect(deleted).toBe(1);
       await waitFor(() =>
         expect(screen.queryByRole('cell', { name: 'Alpha Unit' })).not.toBeInTheDocument(),
       );
-      expect(screen.queryByRole('dialog', { name: '¿Borrar Alpha Unit?' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Delete Alpha Unit?' })).not.toBeInTheDocument();
     },
   );
 
@@ -255,19 +255,19 @@ describe('CardsAdminPage editor and row actions (owner feedback S20)', () => {
         ),
       );
       await renderApp({ path: '/admin/cards', width });
-      await userEvent.click(await screen.findByRole('button', { name: 'Borrar Alpha Unit' }));
-      const confirm = await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' });
-      await userEvent.click(within(confirm).getByRole('button', { name: 'Borrar' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Delete Alpha Unit' }));
+      const confirm = await screen.findByRole('dialog', { name: 'Delete Alpha Unit?' });
+      await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }));
       expect(
         (
           await screen.findAllByText(
-            'No se pudo borrar Alpha Unit: La carta está en colecciones o mazos; no se puede borrar.',
+            'Could not delete Alpha Unit: The card is used in collections or decks; it cannot be deleted.',
           )
         ).length,
       ).toBeGreaterThan(0);
       await waitFor(() =>
         expect(
-          screen.queryByRole('dialog', { name: '¿Borrar Alpha Unit?' }),
+          screen.queryByRole('dialog', { name: 'Delete Alpha Unit?' }),
         ).not.toBeInTheDocument(),
       );
       expect(screen.getByRole('cell', { name: 'Alpha Unit' })).toBeVisible();
@@ -282,24 +282,24 @@ describe('CardsAdminPage editor and row actions (owner feedback S20)', () => {
       ),
     );
     await renderApp({ path: '/admin/cards', width: 1280 });
-    await userEvent.click(await screen.findByRole('button', { name: 'Borrar Alpha Unit' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete Alpha Unit' }));
     await userEvent.click(
-      within(await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' })).getByRole(
+      within(await screen.findByRole('dialog', { name: 'Delete Alpha Unit?' })).getByRole(
         'button',
-        { name: 'Borrar' },
+        { name: 'Delete' },
       ),
     );
     expect(
       (
         await screen.findAllByText(
-          "No se pudo borrar Alpha Unit: Card 'OGN-1' is used and cannot be deleted.",
+          "Could not delete Alpha Unit: Card 'OGN-1' is used and cannot be deleted.",
         )
       ).length,
     ).toBeGreaterThan(0);
   });
 
   it.each([1280, 1700])(
-    '"Borrar" inside the editor deletes the card and closes the editor at %i px',
+    '"Delete" inside the editor deletes the card and closes the editor at %i px',
     async (width) => {
       const state = writableApi();
       server.use(
@@ -309,22 +309,22 @@ describe('CardsAdminPage editor and row actions (owner feedback S20)', () => {
         }),
       );
       await renderApp({ path: '/admin/cards', width });
-      await userEvent.click(await screen.findByRole('button', { name: 'Editar Alpha Unit' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Edit Alpha Unit' }));
       const editor = await screen.findByRole(editorRole(width), { name: 'Alpha Unit' });
-      await userEvent.click(within(editor).getByRole('button', { name: 'Borrar' }));
-      const confirm = await screen.findByRole('dialog', { name: '¿Borrar Alpha Unit?' });
-      await userEvent.click(within(confirm).getByRole('button', { name: 'Borrar' }));
-      expect((await screen.findAllByText('Carta borrada.')).length).toBeGreaterThan(0);
-      await waitFor(() => expect(screen.queryByLabelText('Nombre')).not.toBeInTheDocument());
+      await userEvent.click(within(editor).getByRole('button', { name: 'Delete' }));
+      const confirm = await screen.findByRole('dialog', { name: 'Delete Alpha Unit?' });
+      await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }));
+      expect((await screen.findAllByText('Card deleted.')).length).toBeGreaterThan(0);
+      await waitFor(() => expect(screen.queryByLabelText('Name')).not.toBeInTheDocument());
     },
   );
 
   it('row actions are the shared Button with an icon, like the header button', async () => {
     writableApi();
     await renderApp({ path: '/admin/cards', width: 1280 });
-    const edit = await screen.findByRole('button', { name: 'Editar Alpha Unit' });
-    const remove = screen.getByRole('button', { name: 'Borrar Alpha Unit' });
-    const buttonClass = screen.getByRole('button', { name: 'Nueva carta' }).classList[0]!;
+    const edit = await screen.findByRole('button', { name: 'Edit Alpha Unit' });
+    const remove = screen.getByRole('button', { name: 'Delete Alpha Unit' });
+    const buttonClass = screen.getByRole('button', { name: 'New card' }).classList[0]!;
     for (const action of [edit, remove]) {
       expect(action).toHaveClass(buttonClass);
       expect(action.querySelector('svg')).not.toBeNull();
@@ -349,7 +349,7 @@ describe('CardsAdminPage set order (owner feedback S19)', () => {
       ),
     );
     await renderApp({ path: '/admin/cards', width: 1280 });
-    const select = await screen.findByRole('combobox', { name: 'Todos los sets' });
+    const select = await screen.findByRole('combobox', { name: 'All sets' });
     await within(select).findByRole('option', { name: 'VEN' });
     expect(
       within(select)

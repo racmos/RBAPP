@@ -34,7 +34,7 @@ function freshClient() {
 async function renderHistory(props: React.ComponentProps<typeof CardPriceHistory>, width = 1280) {
   signedInApi();
   setViewport(width);
-  const i18n = await createI18n('es');
+  const i18n = await createI18n();
   const queryClient = freshClient();
   return render(
     <QueryClientProvider client={queryClient}>
@@ -56,16 +56,14 @@ describe('CardPriceHistory (F2-g S6)', () => {
   it('shows the price history section with 90d selected by default', async () => {
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory([])));
     await renderHistory(defaultProps);
-    expect(
-      await screen.findByRole('heading', { name: 'Historial de precios' }, LONG),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Price history' }, LONG)).toBeVisible();
     expect(screen.getByRole('radio', { name: '90 d' })).toBeChecked();
   });
 
   it('changes range and stores the choice', async () => {
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory(pricePoints)));
     await renderHistory(defaultProps);
-    await screen.findByRole('button', { name: 'Ver como tabla' }, LONG);
+    await screen.findByRole('button', { name: 'Show as table' }, LONG);
     await userEvent.click(screen.getByRole('radio', { name: '30 d' }));
     await waitFor(() => expect(screen.getByRole('radio', { name: '30 d' })).toBeChecked());
     expect(localStorage.getItem('rb_price_range')).toBe('30d');
@@ -75,31 +73,31 @@ describe('CardPriceHistory (F2-g S6)', () => {
     localStorage.setItem('rb_price_range', '1y');
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory([])));
     await renderHistory(defaultProps);
-    await screen.findByRole('heading', { name: 'Historial de precios' }, LONG);
-    expect(screen.getByRole('radio', { name: '1 año' })).toBeChecked();
+    await screen.findByRole('heading', { name: 'Price history' }, LONG);
+    expect(screen.getByRole('radio', { name: '1 year' })).toBeChecked();
   });
 
   it('falls back to 90d when the stored range is invalid', async () => {
     localStorage.setItem('rb_price_range', 'bad');
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory([])));
     await renderHistory(defaultProps);
-    await screen.findByRole('heading', { name: 'Historial de precios' }, LONG);
+    await screen.findByRole('heading', { name: 'Price history' }, LONG);
     expect(screen.getByRole('radio', { name: '90 d' })).toBeChecked();
   });
 
   it('shows the foil series when the card is foilable', async () => {
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory(pricePoints)));
     await renderHistory(defaultProps);
-    await screen.findByRole('heading', { name: 'Historial de precios' }, LONG);
-    expect(await screen.findByText('Mercado foil', {}, LONG)).toBeVisible();
+    await screen.findByRole('heading', { name: 'Price history' }, LONG);
+    expect(await screen.findByText('Foil market', {}, LONG)).toBeVisible();
   });
 
   it('hides the foil series when the card is not foilable', async () => {
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory(pricePoints)));
     await renderHistory({ ...defaultProps, foilable: false });
-    await screen.findByRole('heading', { name: 'Historial de precios' }, LONG);
-    await screen.findByText('Mercado', {}, LONG);
-    expect(screen.queryByText('Mercado foil')).not.toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'Price history' }, LONG);
+    await screen.findByText('Market', {}, LONG);
+    expect(screen.queryByText('Foil market')).not.toBeInTheDocument();
   });
 
   it('shows a loading skeleton and then the chart', async () => {
@@ -114,9 +112,9 @@ describe('CardPriceHistory (F2-g S6)', () => {
       }),
     );
     await renderHistory(defaultProps);
-    expect(await screen.findByText('Cargando historial', {}, LONG)).toBeInTheDocument();
+    expect(await screen.findByText('Loading history', {}, LONG)).toBeInTheDocument();
     release();
-    expect(await screen.findByText('Sin historial de precios todavía.', {}, LONG)).toBeVisible();
+    expect(await screen.findByText('No price history yet.', {}, LONG)).toBeVisible();
   });
 
   it('shows an error state with retry', async () => {
@@ -130,8 +128,8 @@ describe('CardPriceHistory (F2-g S6)', () => {
     const alert = await screen.findByRole('alert', {}, LONG);
     expect(alert).toBeVisible();
     failing = false;
-    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
-    expect(await screen.findByText('Sin historial de precios todavía.', {}, LONG)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('No price history yet.', {}, LONG)).toBeVisible();
   });
 });
 
@@ -139,8 +137,8 @@ describe('CardPriceHistory axe (F2-g AC5)', () => {
   it('has no violations at 390 px', async () => {
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory(pricePoints)));
     await renderHistory(defaultProps, 390);
-    await screen.findByRole('heading', { name: 'Historial de precios' }, LONG);
-    const toggle = await screen.findByRole('button', { name: 'Ver como tabla' }, LONG);
+    await screen.findByRole('heading', { name: 'Price history' }, LONG);
+    const toggle = await screen.findByRole('button', { name: 'Show as table' }, LONG);
     await userEvent.click(toggle);
     expect(await screen.findByRole('table', {}, LONG)).toBeVisible();
     expect(await axe(document.body)).toHaveNoViolations();
@@ -149,8 +147,8 @@ describe('CardPriceHistory axe (F2-g AC5)', () => {
   it('has no violations at 1280 px', async () => {
     server.use(http.get(`${API}/cards/:setId/:cardId/prices`, () => priceHistory(pricePoints)));
     await renderHistory(defaultProps, 1280);
-    await screen.findByRole('heading', { name: 'Historial de precios' }, LONG);
-    const toggle = await screen.findByRole('button', { name: 'Ver como tabla' }, LONG);
+    await screen.findByRole('heading', { name: 'Price history' }, LONG);
+    const toggle = await screen.findByRole('button', { name: 'Show as table' }, LONG);
     await userEvent.click(toggle);
     expect(await screen.findByRole('table', {}, LONG)).toBeVisible();
     expect(await axe(document.body)).toHaveNoViolations();

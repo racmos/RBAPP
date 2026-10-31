@@ -27,7 +27,7 @@ describe('createAppRoutes /cards (F2-h S6, S13)', () => {
     signedInApi();
     const { container } = await renderApp({ path: '/cards/OGN/79', width: 1280 });
     expect(await screen.findByRole('dialog', undefined, LONG)).toBeVisible();
-    expect(await screen.findByText(/Origen · #79/, {}, LONG)).toBeVisible();
+    expect(await screen.findByText(/Origins · #79/, {}, LONG)).toBeVisible();
     const modal = document.querySelector('[data-presentation="modal"]');
     expect(modal).toBeTruthy();
     expect(modal).toHaveTextContent(cardDetail.name);

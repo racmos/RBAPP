@@ -11,7 +11,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
-import { formatMoney, formatPct, type Lang } from '@/lib/format';
+import { formatMoney, formatPct } from '@/lib/format';
 import { asChartPoints } from './format';
 import { useAddProduct, useProductPrices } from './queries';
 import styles from './ProductDetail.module.css';
@@ -22,15 +22,15 @@ const RANGES: PriceRange[] = ['30d', '90d', '1y', 'all'];
 type Level = 'h2' | 'h3';
 
 /** The price and its 7 and 30-day changes, as the product page and the wide panel show them. */
-export function PriceFacts({ product, lang }: { product: ProductDetail; lang: Lang }) {
+export function PriceFacts({ product }: { product: ProductDetail }) {
   const { t } = useTranslation('products');
   const pct = (value: number | null | undefined) =>
-    value === null || value === undefined ? '—' : formatPct(value, lang);
+    value === null || value === undefined ? '—' : formatPct(value);
   return (
     <>
       <div>
         <dt>{t('detail.price')}</dt>
-        <dd>{product.price ? formatMoney(product.price.value, lang) : t('unpriced')}</dd>
+        <dd>{product.price ? formatMoney(product.price.value) : t('unpriced')}</dd>
       </div>
       {product.price && (
         <>
@@ -51,11 +51,9 @@ export function PriceFacts({ product, lang }: { product: ProductDetail; lang: La
 /** The price history (90 days first) with its range control (F14-e S3). */
 export function ProductHistory({
   product,
-  lang,
   level: Heading = 'h2',
 }: {
   product: ProductDetail;
-  lang: Lang;
   level?: Level;
 }) {
   const { t } = useTranslation('products');
@@ -73,7 +71,7 @@ export function ProductHistory({
   else {
     body = (
       <div aria-busy={prices.isFetching || undefined}>
-        <PriceChart points={points} series={['market']} lang={lang} title={product.name} />
+        <PriceChart points={points} series={['market']} title={product.name} />
       </div>
     );
   }
@@ -97,11 +95,9 @@ export function ProductHistory({
 /** The caller's lines of the product, when there are any. */
 export function ProductLines({
   product,
-  lang,
   level: Heading = 'h2',
 }: {
   product: ProductDetail;
-  lang: Lang;
   level?: Level;
 }) {
   const { t } = useTranslation('products');
@@ -118,11 +114,10 @@ export function ProductLines({
             </span>
             <span>
               {t('line.purchasePrice')}:{' '}
-              {line.purchase_price === null ? '—' : formatMoney(line.purchase_price, lang)}
+              {line.purchase_price === null ? '—' : formatMoney(line.purchase_price)}
             </span>
             <span>
-              {t('line.value')}:{' '}
-              {line.value === null ? t('unpriced') : formatMoney(line.value, lang)}
+              {t('line.value')}: {line.value === null ? t('unpriced') : formatMoney(line.value)}
             </span>
             {line.note && <span className={styles.muted}>{line.note}</span>}
           </li>
@@ -132,7 +127,7 @@ export function ProductLines({
   );
 }
 
-/** "Añadir a mis productos": quantity, purchase price and note (F14-e S3). */
+/** "Add to my products": quantity, purchase price and note (F14-e S3). */
 export function AddProductForm({
   product,
   offline,

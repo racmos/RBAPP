@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { PricePoint } from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { down } from '@/lib/breakpoints';
-import { formatDate, formatMoney, localeFor, type Lang } from '@/lib/format';
+import { formatDate, formatMoney, LOCALE } from '@/lib/format';
 import { linearScale, niceTicks } from '@/lib/scale';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import styles from './PriceChart.module.css';
@@ -13,7 +13,6 @@ type SeriesKey = 'market' | 'market_foil';
 type PriceChartProps = {
   points: PricePoint[];
   series: SeriesKey[];
-  lang: Lang;
   height?: number;
   title: string;
 };
@@ -25,17 +24,16 @@ function safeId(raw: string): string {
   return raw.replace(/[^a-zA-Z0-9-]/g, '-');
 }
 
-function axisDateFormat(date: Date, lang: Lang, rangeMs: number): string {
-  const locale = localeFor(lang);
+function axisDateFormat(date: Date, rangeMs: number): string {
   const days = rangeMs / (1000 * 60 * 60 * 24);
   if (days <= 90) {
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat(LOCALE, {
       day: 'numeric',
       month: 'short',
       timeZone: 'UTC',
     }).format(date);
   }
-  return new Intl.DateTimeFormat(locale, {
+  return new Intl.DateTimeFormat(LOCALE, {
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',
@@ -51,7 +49,7 @@ function xTickIndices(count: number): number[] {
   return indices;
 }
 
-export function PriceChart({ points, series, lang, height, title }: PriceChartProps) {
+export function PriceChart({ points, series, height, title }: PriceChartProps) {
   const { t } = useTranslation('cards');
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(FALLBACK_WIDTH);
@@ -111,14 +109,14 @@ export function PriceChart({ points, series, lang, height, title }: PriceChartPr
     const min = marketValues.length ? Math.min(...marketValues) : 0;
     const max = marketValues.length ? Math.max(...marketValues) : 0;
     return t('chart.summary', {
-      from: formatDate(points[0].date, lang),
-      to: formatDate(points[points.length - 1].date, lang),
-      first: formatMoney(first, lang),
-      last: formatMoney(last, lang),
-      min: formatMoney(min, lang),
-      max: formatMoney(max, lang),
+      from: formatDate(points[0].date),
+      to: formatDate(points[points.length - 1].date),
+      first: formatMoney(first),
+      last: formatMoney(last),
+      min: formatMoney(min),
+      max: formatMoney(max),
     });
-  }, [points, lang, t]);
+  }, [points, t]);
 
   function linePath(key: SeriesKey): string {
     let d = '';
@@ -177,11 +175,11 @@ export function PriceChart({ points, series, lang, height, title }: PriceChartPr
   const liveText =
     activePoint !== null
       ? t('chart.point', {
-          date: formatDate(activePoint.date, lang),
+          date: formatDate(activePoint.date),
           values: series
             .map((key) => {
               const value = activePoint[key];
-              return `${t(`chart.series.${key}`)}: ${value !== null ? formatMoney(value, lang) : '—'}`;
+              return `${t(`chart.series.${key}`)}: ${value !== null ? formatMoney(value) : '—'}`;
             })
             .join(', '),
         })
@@ -269,7 +267,7 @@ export function PriceChart({ points, series, lang, height, title }: PriceChartPr
                   vectorEffect="non-scaling-stroke"
                 />
                 <text x={MARGIN.left - 8} y={y + 4} textAnchor="end" className={styles.axisText}>
-                  {formatMoney(tick, lang)}
+                  {formatMoney(tick)}
                 </text>
               </g>
             );
@@ -286,7 +284,7 @@ export function PriceChart({ points, series, lang, height, title }: PriceChartPr
                 textAnchor="middle"
                 className={styles.axisText}
               >
-                {axisDateFormat(new Date(dates[index]), lang, rangeMs)}
+                {axisDateFormat(new Date(dates[index]), rangeMs)}
               </text>
             );
           })}
@@ -349,7 +347,7 @@ export function PriceChart({ points, series, lang, height, title }: PriceChartPr
                 y={MARGIN.top + yScale(points[0].market) + 4}
                 className={styles.axisText}
               >
-                {formatMoney(points[0].market, lang)}
+                {formatMoney(points[0].market)}
               </text>
             </g>
           )}
@@ -388,12 +386,12 @@ export function PriceChart({ points, series, lang, height, title }: PriceChartPr
               top: MARGIN.top + plotHeight / 2,
             }}
           >
-            <p className={styles.tooltipDate}>{formatDate(activePoint.date, lang)}</p>
+            <p className={styles.tooltipDate}>{formatDate(activePoint.date)}</p>
             <div className={styles.tooltipRow}>
               {series.map((key) => (
                 <span key={key}>
                   {t(`chart.series.${key}`)}:{' '}
-                  {activePoint[key] !== null ? formatMoney(activePoint[key] as number, lang) : '—'}
+                  {activePoint[key] !== null ? formatMoney(activePoint[key] as number) : '—'}
                 </span>
               ))}
             </div>
@@ -430,13 +428,13 @@ export function PriceChart({ points, series, lang, height, title }: PriceChartPr
             <tbody>
               {[...points].reverse().map((point, index) => (
                 <tr key={index}>
-                  <td>{formatDate(point.date, lang)}</td>
+                  <td>{formatDate(point.date)}</td>
                   <td className={styles.numeric}>
-                    {point.market !== null ? formatMoney(point.market, lang) : '—'}
+                    {point.market !== null ? formatMoney(point.market) : '—'}
                   </td>
                   {series.includes('market_foil') && (
                     <td className={styles.numeric}>
-                      {point.market_foil !== null ? formatMoney(point.market_foil, lang) : '—'}
+                      {point.market_foil !== null ? formatMoney(point.market_foil) : '—'}
                     </td>
                   )}
                 </tr>

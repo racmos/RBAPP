@@ -5,11 +5,8 @@ import { createI18n } from '@/i18n';
 import { champion, noImage } from '@/test/fixtures/cards';
 import { CardImage } from './CardImage';
 
-async function renderCardImage(
-  ui: ReactElement,
-  { lang = 'es' as const }: { lang?: 'es' | 'en' } = {},
-) {
-  const i18n = await createI18n(lang);
+async function renderCardImage(ui: ReactElement) {
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
 }

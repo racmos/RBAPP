@@ -5,11 +5,8 @@ import { createI18n } from '@/i18n';
 import { basicRune, champion, foilCommon, noImage, token } from '@/test/fixtures/cards';
 import { CardArtPlaceholder } from './CardArtPlaceholder';
 
-async function renderPlaceholder(
-  ui: ReactElement,
-  { lang = 'es' as const }: { lang?: 'es' | 'en' } = {},
-) {
-  const i18n = await createI18n(lang);
+async function renderPlaceholder(ui: ReactElement) {
+  const i18n = await createI18n();
   const { I18nextProvider } = await import('react-i18next');
   return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
 }
@@ -32,7 +29,7 @@ describe('CardArtPlaceholder', () => {
   });
 
   it('shows the translated type in upper case', async () => {
-    await renderPlaceholder(<CardArtPlaceholder card={champion} />, { lang: 'en' });
+    await renderPlaceholder(<CardArtPlaceholder card={champion} />);
     expect(screen.getByText('CHAMPION UNIT')).toBeVisible();
   });
 

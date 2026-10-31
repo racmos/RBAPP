@@ -7,11 +7,11 @@ import { CardImage } from '@/components/card';
 import { PriceChart } from '@/components/charts';
 import { SidePanel } from '@/components/ui/SidePanel';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatMoney, type Lang } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import styles from './CollectionPanel.module.css';
 
 /** The wide-screen panel of the selected card: price chart, its lines and the decks using it (F3-h S6). */
-export function CollectionPanel({ group, lang }: { group: CollectionGroup | null; lang: Lang }) {
+export function CollectionPanel({ group }: { group: CollectionGroup | null }) {
   const { t } = useTranslation('collection');
   const card = group?.card;
   const prices = useCardPrices(card?.set_id, card?.card_id, '30d');
@@ -40,14 +40,14 @@ export function CollectionPanel({ group, lang }: { group: CollectionGroup | null
       </p>
       <p className={styles.totals}>
         {t('qtyBadge', { count: group.qty })} ·{' '}
-        {group.value === null ? '—' : formatMoney(group.value, lang)}
+        {group.value === null ? '—' : formatMoney(group.value)}
       </p>
 
       <section aria-label={t('panel.chart')}>
         <h3 className={styles.heading}>{t('panel.chart')}</h3>
         {prices.isPending && <Skeleton label={t('loading')} lines={5} />}
         {prices.data && (
-          <PriceChart points={prices.data.points} series={series} lang={lang} title={card.name} />
+          <PriceChart points={prices.data.points} series={series} title={card.name} />
         )}
       </section>
 

@@ -9,7 +9,6 @@ import { Brand } from '@/components/ui/Brand';
 import { Icon } from '@/components/ui/Icon';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { AccountLanguageToggle } from '@/prefs';
 import { InstallItem } from '@/pwa';
 import { NavItem } from './NavItem';
 import { navEntries } from './navRegistry';
@@ -22,9 +21,9 @@ function isEditable(target: EventTarget | null): boolean {
 }
 
 /**
- * The sticky header (SHELL-2). From `md` it carries the wordmark, the navigation, the ES/EN
- * toggle, the avatar and logout; below it the mark alone and the avatar (the language toggle
- * moves to the "Más" sheet). Logout and the install entry are icons with a name and a tooltip at
+ * The sticky header (SHELL-2). From `md` it carries the wordmark, the navigation, the avatar
+ * and logout; below it the mark alone and the avatar. The app is English-only, so there is no
+ * language toggle. Logout and the install entry are icons with a name and a tooltip at
  * every width. The navigation is icons only (text read and shown as a tooltip) until `2xl`, where
  * the bar has room for every label (owner feedback S18 f).
  */
@@ -99,7 +98,6 @@ export function Topbar({ desktop }: { desktop: boolean }) {
         )}
 
         <div className={styles.right}>
-          {desktop && <AccountLanguageToggle />}
           {desktop && (
             <InstallItem className={styles.install} labelClassName={styles.installText} />
           )}

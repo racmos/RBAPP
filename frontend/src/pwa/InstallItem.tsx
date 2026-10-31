@@ -13,7 +13,7 @@ type InstallItemProps = {
 };
 
 /**
- * The "Install app" entry of the "Más" sheet and the desktop topbar (PWA-6). With a saved
+ * The "Install app" entry of the "More" sheet and the desktop topbar (PWA-6). With a saved
  * browser prompt it shows it; on iOS Safari it opens the instructions; otherwise (already
  * installed, or no way to install) it renders nothing.
  */

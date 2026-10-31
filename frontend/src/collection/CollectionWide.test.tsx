@@ -17,7 +17,7 @@ beforeEach(() => {
   server.use(http.get(`${API}/auth/session`, () => signedInSession(NO_PREFS)));
 });
 
-const panel = () => screen.findByRole('complementary', { name: 'Detalle de la carta' }, LONG);
+const panel = () => screen.findByRole('complementary', { name: 'Card details' }, LONG);
 
 describe('wide panel at 1700 px (F3-h S6)', () => {
   it('shows the first card with its chart, lines and decks', async () => {
@@ -27,12 +27,12 @@ describe('wide panel at 1700 px (F3-h S6)', () => {
       await within(aside).findByRole('heading', { name: "Ayla, Fury's Champion" }, LONG),
     ).toBeVisible();
     expect(within(aside).getByText('OGN · #79')).toBeVisible();
-    expect(within(aside).getByRole('heading', { name: 'Precio, últimos 30 días' })).toBeVisible();
-    const lines = within(aside).getByRole('region', { name: 'Líneas' });
-    expect(within(lines).getByText(/Línea 1: ×3 · NM · English · En venta: 2/)).toBeVisible();
-    expect(within(lines).getByText(/Línea 2: ×1 · EX · Spanish/)).toBeVisible();
+    expect(within(aside).getByRole('heading', { name: 'Price, last 30 days' })).toBeVisible();
+    const lines = within(aside).getByRole('region', { name: 'Lines' });
+    expect(within(lines).getByText(/Line 1: ×3 · NM · English · On sale: 2/)).toBeVisible();
+    expect(within(lines).getByText(/Line 2: ×1 · EX · Spanish/)).toBeVisible();
     expect(await within(aside).findByText('Fury Chaos: 2', {}, LONG)).toBeVisible();
-    expect(within(aside).getByRole('link', { name: 'Ver ficha de la carta' })).toHaveAttribute(
+    expect(within(aside).getByRole('link', { name: 'Open the card page' })).toHaveAttribute(
       'href',
       '/riftbound/app/cards/OGN/79',
     );
@@ -58,15 +58,13 @@ describe('wide panel at 1700 px (F3-h S6)', () => {
       ),
     );
     await renderApp({ path: '/collection', width: 1700 });
-    expect(
-      await within(await panel()).findByText('Elige una carta para ver su detalle.'),
-    ).toBeVisible();
+    expect(await within(await panel()).findByText('Pick a card to see its details.')).toBeVisible();
   }, 20000);
 
   it('is not there below 1600 px', async () => {
     await renderApp({ path: '/collection', width: 1280 });
-    await screen.findByRole('table', { name: 'Tu colección agrupada por carta' }, LONG);
-    expect(screen.queryByRole('complementary', { name: 'Detalle de la carta' })).toBeNull();
+    await screen.findByRole('table', { name: 'Your collection grouped by card' }, LONG);
+    expect(screen.queryByRole('complementary', { name: 'Card details' })).toBeNull();
   }, 20000);
 
   it('is axe clean', async () => {
@@ -87,7 +85,7 @@ describe('grid view on the desktop (F3-h S7)', () => {
     await renderApp({ path: '/collection', width: 1280 });
     await userEvent.click(await screen.findByRole('button', { name: /Ayla/ }, LONG));
     expect(
-      await screen.findByRole('dialog', { name: "Copias de Ayla, Fury's Champion" }),
+      await screen.findByRole('dialog', { name: "Copies of Ayla, Fury's Champion" }),
     ).toBeVisible();
   }, 20000);
 });
@@ -98,13 +96,13 @@ describe('collection side panels (owner feedback S23)', () => {
     const aside = await panel();
     await within(aside).findByRole('heading', { name: "Ayla, Fury's Champion" }, LONG);
     await expectCollapsible(
-      screen.getByRole('complementary', { name: 'Filtrar colección' }),
-      { hide: 'Ocultar filtros', show: 'Mostrar filtros' },
+      screen.getByRole('complementary', { name: 'Filter collection' }),
+      { hide: 'Hide filters', show: 'Show filters' },
       'rb_panel_collection-filters_v1',
     );
     await expectCollapsible(
       aside,
-      { hide: 'Ocultar detalle', show: 'Mostrar detalle' },
+      { hide: 'Hide details', show: 'Show details' },
       'rb_panel_collection-detail_v1',
     );
   }, 25000);

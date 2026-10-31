@@ -19,13 +19,13 @@ async function renderSignedIn(path: string, width: number) {
   return app;
 }
 
-const globalSearch = () => screen.queryByRole('combobox', { name: 'Buscar cartas' });
+const globalSearch = () => screen.queryByRole('combobox', { name: 'Search cards' });
 
 describe('Topbar global card search (F2-k S6)', () => {
   it('renders the search box from 1240 px', async () => {
     await renderSignedIn('/', 1280);
-    const box = await screen.findByRole('combobox', { name: 'Buscar cartas' }, LONG);
-    expect(box).toHaveAttribute('placeholder', 'Buscar cartas…');
+    const box = await screen.findByRole('combobox', { name: 'Search cards' }, LONG);
+    expect(box).toHaveAttribute('placeholder', 'Search cards…');
   });
 
   it.each([1239, 1000, 700])('does not render it at %i px', async (width) => {
@@ -36,7 +36,7 @@ describe('Topbar global card search (F2-k S6)', () => {
   it('opens the chosen card on the detail route, remembering it came from the catalog', async () => {
     const { router, where } = await renderSignedIn('/', 1280);
     const user = userEvent.setup();
-    await user.type(await screen.findByRole('combobox', { name: 'Buscar cartas' }), 'ember');
+    await user.type(await screen.findByRole('combobox', { name: 'Search cards' }), 'ember');
     await screen.findByRole('option', { name: /Ember Wisp/ }, LONG);
     await user.keyboard('{Enter}');
     await waitFor(() => expect(where()).toBe('/cards/OGN/12'), LONG);
@@ -45,7 +45,7 @@ describe('Topbar global card search (F2-k S6)', () => {
 
   it('focuses the box when "/" is pressed outside an editable field', async () => {
     await renderSignedIn('/', 1280);
-    const box = await screen.findByRole('combobox', { name: 'Buscar cartas' }, LONG);
+    const box = await screen.findByRole('combobox', { name: 'Search cards' }, LONG);
     expect(box).not.toHaveFocus();
     const notPrevented = fireEvent.keyDown(document.body, { key: '/' });
     expect(notPrevented).toBe(false); // preventDefault, so no "/" is typed into the box
@@ -64,14 +64,14 @@ describe('Topbar global card search (F2-k S6)', () => {
 
   it('ignores "/" with a modifier key', async () => {
     await renderSignedIn('/', 1280);
-    const box = await screen.findByRole('combobox', { name: 'Buscar cartas' }, LONG);
+    const box = await screen.findByRole('combobox', { name: 'Search cards' }, LONG);
     fireEvent.keyDown(document.body, { key: '/', ctrlKey: true });
     expect(box).not.toHaveFocus();
   });
 
   it('shows a "/" key hint that assistive technology skips', async () => {
     await renderSignedIn('/', 1280);
-    await screen.findByRole('combobox', { name: 'Buscar cartas' }, LONG);
+    await screen.findByRole('combobox', { name: 'Search cards' }, LONG);
     const hint = screen.getByRole('banner').querySelector('kbd');
     expect(hint).toHaveTextContent('/');
     expect(hint).toHaveAttribute('aria-hidden', 'true');
@@ -79,7 +79,7 @@ describe('Topbar global card search (F2-k S6)', () => {
 
   it('has no axe violations at 1280 px', async () => {
     await renderSignedIn('/', 1280);
-    await screen.findByRole('combobox', { name: 'Buscar cartas' }, LONG);
+    await screen.findByRole('combobox', { name: 'Search cards' }, LONG);
     expect(await axe(screen.getByRole('banner'))).toHaveNoViolations();
   });
 });
@@ -105,11 +105,11 @@ describe('Topbar fits from the desktop breakpoint up (owner feedback S18 f)', ()
     'at %i px each link keeps its text as name and shows it as a tooltip',
     async (width) => {
       await renderSignedIn('/', width);
-      const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
-      const link = within(nav).getByRole('link', { name: 'Colección' });
-      expect(link).toHaveAttribute('title', 'Colección');
+      const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+      const link = within(nav).getByRole('link', { name: 'Collection' });
+      expect(link).toHaveAttribute('title', 'Collection');
       expect(link.querySelector('svg')).not.toBeNull();
-      expect(link.querySelector('[data-slot="label"]')).toHaveTextContent('Colección');
+      expect(link.querySelector('[data-slot="label"]')).toHaveTextContent('Collection');
     },
   );
 
@@ -134,8 +134,8 @@ describe('Topbar fits from the desktop breakpoint up (owner feedback S18 f)', ()
     'at %i px logout is an icon with its name and a tooltip (no text to wrap)',
     async (width) => {
       await renderSignedIn('/', width);
-      const logout = screen.getByRole('button', { name: 'Cerrar sesión' });
-      expect(logout).toHaveAttribute('title', 'Cerrar sesión');
+      const logout = screen.getByRole('button', { name: 'Sign out' });
+      expect(logout).toHaveAttribute('title', 'Sign out');
       expect(logout.querySelector('svg')).not.toBeNull();
       expect(logout).toHaveTextContent('');
     },

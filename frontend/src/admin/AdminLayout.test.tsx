@@ -16,7 +16,7 @@ function adminApi() {
   );
 }
 
-const NAV_LABEL = 'Secciones de administración';
+const NAV_LABEL = 'Administration sections';
 
 describe('AdminLayout (F13-a S6)', () => {
   it('≥1240 px: a left navigation, no select', async () => {
@@ -24,7 +24,7 @@ describe('AdminLayout (F13-a S6)', () => {
     await renderApp({ path: '/admin', width: 1280 });
     const nav = await screen.findByRole('navigation', { name: NAV_LABEL }, { timeout: 10000 });
     expect(nav).toBeVisible();
-    const link = screen.getByRole('link', { name: 'Resumen' });
+    const link = screen.getByRole('link', { name: 'Overview' });
     expect(link).toHaveAttribute('href', '/riftbound/app/admin');
     expect(link).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByRole('combobox', { name: NAV_LABEL })).toBeNull();
@@ -42,13 +42,9 @@ describe('AdminLayout (F13-a S6)', () => {
       ),
     );
     await renderApp({ path: '/admin', width: 1280 });
-    await screen.findByRole('heading', { name: 'Resumen' }, { timeout: 10000 });
+    await screen.findByRole('heading', { name: 'Overview' }, { timeout: 10000 });
     const nav = screen.getByRole('navigation', { name: NAV_LABEL });
-    await expectCollapsible(
-      nav,
-      { hide: 'Ocultar menú', show: 'Mostrar menú' },
-      'rb_panel_admin-nav_v1',
-    );
+    await expectCollapsible(nav, { hide: 'Hide menu', show: 'Show menu' }, 'rb_panel_admin-nav_v1');
     expect(screen.getByRole('navigation', { name: NAV_LABEL })).toBe(nav);
   });
 
@@ -65,7 +61,7 @@ describe('AdminLayout (F13-a S6)', () => {
     adminApi();
     await renderApp({ path: '/admin', width: 390 });
     expect(
-      await screen.findByText('Más cómodo en un ordenador.', undefined, { timeout: 10000 }),
+      await screen.findByText('Easier on a computer.', undefined, { timeout: 10000 }),
     ).toBeVisible();
   });
 
@@ -73,7 +69,7 @@ describe('AdminLayout (F13-a S6)', () => {
     server.use(http.get(`${API}/auth/session`, () => signedInSession()));
     await renderApp({ path: '/admin', width: 1280 });
     expect(
-      await screen.findByRole('heading', { name: 'Página no encontrada' }, { timeout: 10000 }),
+      await screen.findByRole('heading', { name: 'Page not found' }, { timeout: 10000 }),
     ).toBeVisible();
   });
 
@@ -94,7 +90,7 @@ describe('AdminLayout (F13-a S6)', () => {
     );
     await renderApp({ path: '/admin', width: 1280 });
     expect(
-      await screen.findByRole('link', { name: 'Cambios (5)' }, { timeout: 10000 }),
+      await screen.findByRole('link', { name: 'Changes (5)' }, { timeout: 10000 }),
     ).toBeVisible();
   });
 
@@ -102,7 +98,7 @@ describe('AdminLayout (F13-a S6)', () => {
     adminApi();
     await renderApp({ path: '/admin', width: 1280 });
     const nav = await screen.findByRole('navigation', { name: NAV_LABEL }, { timeout: 10000 });
-    expect(within(nav).getByRole('link', { name: 'Productos' })).toHaveAttribute(
+    expect(within(nav).getByRole('link', { name: 'Products' })).toHaveAttribute(
       'href',
       '/riftbound/app/admin/products',
     );
@@ -112,6 +108,6 @@ describe('AdminLayout (F13-a S6)', () => {
     adminApi();
     await renderApp({ path: '/admin', width: 1280 });
     await screen.findByRole('navigation', { name: NAV_LABEL }, { timeout: 10000 });
-    expect(screen.getByRole('link', { name: 'Cambios' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Changes' })).toBeVisible();
   });
 });

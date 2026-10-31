@@ -14,7 +14,7 @@ const OVERVIEW = {
     active_sets: [
       {
         id: 'OGN',
-        name: 'Origen',
+        name: 'Origins',
         window: 'pre_release',
         next_run_at: '2030-01-01T08:00:00+01:00',
       },
@@ -31,7 +31,7 @@ const OVERVIEW = {
 const SETS = [
   {
     id: 'OGN',
-    name: 'Origen',
+    name: 'Origins',
     release_date: '2026-01-01',
     card_count: 1,
     declared_count: 1,
@@ -99,13 +99,13 @@ describe('RiotPage (F13-f S9)', () => {
       );
       const { container } = await renderApp({ path: '/admin/riot', width: 1280 });
       expect(
-        await screen.findByRole('heading', { name: 'Sincronización con Riot' }, { timeout: 10000 }),
+        await screen.findByRole('heading', { name: 'Riot sync' }, { timeout: 10000 }),
       ).toBeVisible();
       expect(await screen.findByText('OGN')).toBeVisible();
       await user.click(screen.getByRole('checkbox', { name: 'OGN' }));
-      await user.click(screen.getByRole('button', { name: 'Sincronizar ahora' }));
-      expect(await screen.findByText('En curso')).toBeVisible();
-      expect(await screen.findByText('Terminado', undefined, { timeout: 15000 })).toBeVisible();
+      await user.click(screen.getByRole('button', { name: 'Sync now' }));
+      expect(await screen.findByText('Running')).toBeVisible();
+      expect(await screen.findByText('Finished', undefined, { timeout: 15000 })).toBeVisible();
       expect(await axe(container)).toHaveNoViolations();
     },
   );
@@ -118,9 +118,9 @@ describe('RiotPage (F13-f S9)', () => {
       ),
     );
     await renderApp({ path: '/admin/riot', width: 1280 });
-    await userEvent.click(await screen.findByRole('button', { name: 'Sincronizar ahora' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sync now' }));
     expect(
-      await screen.findByText('Ya hay una sincronización en curso. Espera a que termine.'),
+      await screen.findByText('A sync is already running. Wait until it finishes.'),
     ).toBeVisible();
   });
 
@@ -147,7 +147,7 @@ describe('RiotPage (F13-f S9)', () => {
     await renderApp({ path: '/admin/riot', width: 1280 });
     await userEvent.click((await screen.findAllByRole('button', { name: /Manual/ }))[0]);
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Terminado')).toBeVisible();
+    expect(within(dialog).getByText('Finished')).toBeVisible();
   });
 
   it('no active sets shows the empty hint', async () => {
@@ -160,7 +160,7 @@ describe('RiotPage (F13-f S9)', () => {
       http.get(`${API}/admin/jobs`, () => ok({ items: [] })),
     );
     await renderApp({ path: '/admin/riot', width: 1280 });
-    expect(await screen.findByText('Ningún set está cerca de su salida.')).toBeVisible();
+    expect(await screen.findByText('No set is close to its release.')).toBeVisible();
   });
 });
 
@@ -181,7 +181,7 @@ describe('RiotPage set order (owner feedback S19)', () => {
     );
     await renderApp({ path: '/admin/riot', width: 1280 });
     await screen.findByRole('checkbox', { name: 'VEN' }, { timeout: 10000 });
-    const group = screen.getByRole('group', { name: 'Sets a sincronizar' });
+    const group = screen.getByRole('group', { name: 'Sets to sync' });
     expect(
       within(group)
         .getAllByRole('checkbox')

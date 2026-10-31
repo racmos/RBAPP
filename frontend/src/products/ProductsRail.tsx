@@ -15,7 +15,7 @@ type ProductsRailProps = {
   setParams: (patch: Partial<ProductsParams>, options?: { replace?: boolean }) => void;
 };
 
-/** The left rail from 1240 px (F14-f S1): search, kinds with counts, set and "solo los míos". */
+/** The left rail from 1240 px (F14-f S1): search, kinds with counts, set and "only mine". */
 export function ProductsRail({ params, setParams }: ProductsRailProps) {
   const { t } = useTranslation('products');
   const list = useProductList(params);

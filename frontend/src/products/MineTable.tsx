@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { TableScroll } from '@/components/ui/TableScroll';
-import { formatMoney, type Lang } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import { MineSummary } from './MineTab';
 import { ProductLineSheet } from './ProductLineSheet';
 import { ProductThumb } from './ProductThumb';
@@ -30,7 +30,6 @@ const COLUMNS = [
 ] as const;
 
 type MineTableProps = {
-  lang: Lang;
   offline: boolean;
   onBrowse: () => void;
   selected: number | null;
@@ -43,14 +42,12 @@ const keep = (event: { stopPropagation: () => void }) => event.stopPropagation()
 
 function Row({
   line,
-  lang,
   offline,
   selected,
   onActivate,
   onOpen,
 }: {
   line: OwnedProductLine;
-  lang: Lang;
   offline: boolean;
   selected: boolean;
   onActivate: (id: number) => void;
@@ -62,7 +59,7 @@ function Row({
   const label = (key: string) =>
     `${t(`table.columns.${key}` as 'table.columns.name')}: ${product.name}`;
   const money = (value: number | null | undefined) =>
-    value === null || value === undefined ? t('unpriced') : formatMoney(value, lang);
+    value === null || value === undefined ? t('unpriced') : formatMoney(value);
 
   return (
     <tr data-active={selected || undefined} onClick={() => onActivate(product.id)}>
@@ -108,10 +105,10 @@ function Row({
       <td className={styles.numeric}>{money(product.price?.value)}</td>
       <td className={styles.numeric}>{money(line.value)}</td>
       <td className={styles.numeric}>
-        <Signed value={line.pl_abs} lang={lang} kind="money" />
+        <Signed value={line.pl_abs} kind="money" />
       </td>
       <td className={styles.numeric}>
-        <Signed value={line.pl_pct} lang={lang} kind="pct" />
+        <Signed value={line.pl_pct} kind="pct" />
       </td>
       <td onClick={keep}>
         <DebouncedInput
@@ -128,8 +125,8 @@ function Row({
   );
 }
 
-/** "Mis productos" from 1240 px (F14-f S3): the total band and the lines with inline editors. */
-export function MineTable({ lang, offline, onBrowse, selected, onActivate }: MineTableProps) {
+/** "My products" from 1240 px (F14-f S3): the total band and the lines with inline editors. */
+export function MineTable({ offline, onBrowse, selected, onActivate }: MineTableProps) {
   const { t } = useTranslation('products');
   const mine = useMyProducts();
   const [openId, setOpenId] = useState<number | null>(null);
@@ -152,7 +149,7 @@ export function MineTable({ lang, offline, onBrowse, selected, onActivate }: Min
 
   return (
     <>
-      <MineSummary total={total} lang={lang} offline={offline} />
+      <MineSummary total={total} offline={offline} />
       <TableScroll>
         <table className={styles.table} aria-busy={mine.isFetching || undefined}>
           <caption className="sr-only">{t('table.mineCaption')}</caption>
@@ -173,7 +170,6 @@ export function MineTable({ lang, offline, onBrowse, selected, onActivate }: Min
               <Row
                 key={line.id}
                 line={line}
-                lang={lang}
                 offline={offline}
                 selected={selected === line.product.id}
                 onActivate={onActivate}

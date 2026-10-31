@@ -9,16 +9,11 @@ import { SRC_DIR, declsFor, readCss } from '@/test/css';
 import { aylaGroup, emberGroup, runeGroup } from '@/test/fixtures/collection';
 import { CollectionItem } from './CollectionItem';
 
-async function renderItem(
-  group = aylaGroup,
-  variant: 'tile' | 'row' = 'tile',
-  onOpen = vi.fn(),
-  lang: 'es' | 'en' = 'es',
-) {
-  const i18n = await createI18n(lang);
+async function renderItem(group = aylaGroup, variant: 'tile' | 'row' = 'tile', onOpen = vi.fn()) {
+  const i18n = await createI18n();
   const view = render(
     <I18nextProvider i18n={i18n}>
-      <CollectionItem group={group} variant={variant} playsetSize={3} lang={lang} onOpen={onOpen} />
+      <CollectionItem group={group} variant={variant} playsetSize={3} onOpen={onOpen} />
     </I18nextProvider>,
   );
   return { ...view, onOpen };
@@ -30,7 +25,7 @@ describe('CollectionItem (F3-g S5)', () => {
     expect(screen.getByText('×4')).toBeVisible();
     expect(screen.getByText("Ayla, Fury's Champion")).toBeVisible();
     expect(screen.getByText('OGN · #79')).toBeVisible();
-    expect(screen.getByText('4,84 €')).toBeVisible();
+    expect(screen.getByText('4.84 €')).toBeVisible();
   });
 
   it('marks foil groups and not the others', async () => {
@@ -43,15 +38,15 @@ describe('CollectionItem (F3-g S5)', () => {
 
   it('tags the copies on sale only when there are some', async () => {
     const { unmount } = await renderItem(aylaGroup);
-    expect(screen.getByText('En venta: 2')).toBeVisible();
+    expect(screen.getByText('On sale: 2')).toBeVisible();
     unmount();
     await renderItem(emberGroup);
-    expect(screen.queryByText(/En venta/)).toBeNull();
+    expect(screen.queryByText(/On sale/)).toBeNull();
   });
 
   it('writes the playset shortage as text and outlines the item', async () => {
     const { container } = await renderItem(aylaGroup);
-    expect(screen.getByText('Playset incompleto (2/3)')).toBeVisible();
+    expect(screen.getByText('Playset incomplete (2/3)')).toBeVisible();
     expect(container.querySelector('button')?.className).toMatch(/short/);
   });
 
@@ -74,12 +69,12 @@ describe('CollectionItem (F3-g S5)', () => {
 
   it('is the same data as a list row', async () => {
     await renderItem(aylaGroup, 'row');
-    expect(screen.getByText('Playset incompleto (2/3)')).toBeVisible();
-    expect(screen.getByText('4,84 €')).toBeVisible();
+    expect(screen.getByText('Playset incomplete (2/3)')).toBeVisible();
+    expect(screen.getByText('4.84 €')).toBeVisible();
   });
 
-  it('speaks English', async () => {
-    await renderItem(aylaGroup, 'tile', vi.fn(), 'en');
+  it('shows the playset state and the copies on sale on a tile', async () => {
+    await renderItem(aylaGroup, 'tile');
     expect(screen.getByText('Playset incomplete (2/3)')).toBeVisible();
     expect(screen.getByText('On sale: 2')).toBeVisible();
   });
@@ -100,8 +95,8 @@ describe('CollectionItem sizes (owner feedback S10)', () => {
   it('puts the sale and playset notes on one status line', async () => {
     const { container } = await renderItem(aylaGroup);
     const status = container.querySelector('[data-slot="status"]');
-    expect(status?.textContent).toContain('En venta: 2');
-    expect(status?.textContent).toContain('Playset incompleto (2/3)');
+    expect(status?.textContent).toContain('On sale: 2');
+    expect(status?.textContent).toContain('Playset incomplete (2/3)');
   });
 
   it('gives a list row its own quantity column instead of a badge on the thumbnail', async () => {
