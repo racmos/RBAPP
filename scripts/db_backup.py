@@ -1,6 +1,7 @@
 """Nightly database backup: pg_dump of the `riftbound` schema into ~/backups/rbapp.
 
-Reads DATABASE_URL from the git-ignored .env, never prints it. Keeps the files of
+Reads DATABASE_URL from the git-ignored .env, or from the environment when there is no
+.env; never prints it. Keeps the files of
 the last KEEP_DAYS days (dumps named riftbound_nightly_*.dump only; the manual
 riftbound_pre_*.dump files taken before a migration are never touched).
 
@@ -30,7 +31,12 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
-    url = make_url(dotenv_values(root / '.env')['DATABASE_URL'])
+    # .env of the checkout (development) or the environment (EnvironmentFile on a server)
+    database_url = dotenv_values(root / '.env').get('DATABASE_URL') or os.environ.get('DATABASE_URL')
+    if not database_url:
+        print('DATABASE_URL is not set (no .env and no environment variable)', file=sys.stderr)
+        return 2
+    url = make_url(database_url)
     out_dir = Path(args.dir)
     out_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     out = out_dir / f'{PREFIX}{datetime.now():%Y%m%d_%H%M}.dump'
