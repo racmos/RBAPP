@@ -65,11 +65,14 @@ class InvalidOrder(Exception):
 
 
 class LocationOverQuantity(Exception):
-    """The line has fewer unassigned copies than asked for; `available` is how many."""
+    """More copies asked for than can be placed: `available` is how many can (the unassigned
+    copies for an assignment, the line quantity for a whole replacement), `requested` how
+    many were asked for."""
 
-    def __init__(self, available: int):
-        super().__init__(f'only {available} unassigned copies')
+    def __init__(self, available: int, requested: int | None = None):
+        super().__init__(f'only {available} copies can be placed')
         self.available = available
+        self.requested = requested
 
 
 class NotEnoughCopies(Exception):
@@ -228,6 +231,50 @@ def _assigned(line_id: int) -> int:
 def list_locations(user) -> list[RbLocation]:
     """The user's locations in their order."""
     return _ordered(user)
+
+
+def _counts(user) -> dict[int, tuple[int, int]]:
+    """`{location id: (copies, lines)}` of the user's locations that hold copies."""
+    rows = db.session.execute(
+        sa.select(RbCollectionLocation.rbcll_location_id,
+                  sa.func.sum(RbCollectionLocation.rbcll_qty), sa.func.count())
+        .join(RbLocation, RbLocation.rbloc_id == RbCollectionLocation.rbcll_location_id)
+        .where(RbLocation.rbloc_user == user.username)
+        .group_by(RbCollectionLocation.rbcll_location_id)).all()
+    return {location_id: (int(copies), lines) for location_id, copies, lines in rows}
+
+
+def location_item(location: RbLocation, copies: int = 0, cards: int = 0) -> dict:
+    """The API shape of a location (F16-b): `cards` is the number of lines kept there."""
+    return {'id': location.rbloc_id, 'code': location.rbloc_code,
+            'description': location.rbloc_description, 'position': location.rbloc_position,
+            'locked': location.rbloc_locked, 'deck_id': location.rbloc_deck_id,
+            'copies': copies, 'cards': cards}
+
+
+def location_items(user) -> list[dict]:
+    """Every location of the user as `location_item`, in the user's order."""
+    counts = _counts(user)
+    return [location_item(location, *counts.get(location.rbloc_id, (0, 0)))
+            for location in _ordered(user)]
+
+
+def owned_item(user, location_id) -> dict:
+    """One location of the user as `location_item`; LocationNotFound otherwise."""
+    location = _owned_location(user, location_id)
+    return location_item(location, *_counts(user).get(location.rbloc_id, (0, 0)))
+
+
+def unassigned_total(user) -> int:
+    """Copies of all the user's lines that are in no location."""
+    total = db.session.execute(sa.select(sa.func.coalesce(sa.func.sum(
+        RbCollection.rbcol_quantity), 0)).where(
+        RbCollection.rbcol_user == user.username)).scalar_one()
+    placed = db.session.execute(sa.select(sa.func.coalesce(sa.func.sum(
+        RbCollectionLocation.rbcll_qty), 0)).join(
+        RbCollection, RbCollection.rbcol_id == RbCollectionLocation.rbcll_line_id).where(
+        RbCollection.rbcol_user == user.username)).scalar_one()
+    return int(total) - int(placed)
 
 
 def create_location(user, code, description=None) -> RbLocation:
@@ -391,7 +438,40 @@ def assign_copies(user, line_id, location_id, qty: int) -> None:
     try:
         move_copies(user, line_id, None, location_id, qty)
     except NotEnoughCopies as exc:
-        raise LocationOverQuantity(exc.available) from None
+        raise LocationOverQuantity(exc.available, qty) from None
+
+
+def set_line_locations(user, line_id, assignments: dict) -> None:
+    """Replace where a line's copies are (F16-R4): `assignments` is `{location id: qty}` and
+    every location of the line that is not in it loses its copies (they become unassigned).
+    A locked location whose quantity would change -> LocationLocked; more copies than the
+    line quantity -> LocationOverQuantity(quantity, requested). All or nothing."""
+    try:
+        for qty in assignments.values():
+            _check_qty(qty)
+        line = _owned_line(user, line_id)
+        targets = {location_id: _owned_location(user, location_id)
+                   for location_id in assignments}
+        current = {row.rbcll_location_id: row.rbcll_qty for row in db.session.execute(
+            sa.select(RbCollectionLocation).where(
+                RbCollectionLocation.rbcll_line_id == line.rbcol_id)).scalars()}
+        changed = [location_id for location_id in current.keys() | assignments.keys()
+                   if current.get(location_id, 0) != assignments.get(location_id, 0)]
+        locked = [location_id for location_id in changed
+                  if (targets.get(location_id) or db.session.get(RbLocation, location_id))
+                  .rbloc_locked]
+        if locked:
+            raise LocationLocked(sorted(locked))
+        requested = sum(assignments.values())
+        if requested > line.rbcol_quantity:
+            raise LocationOverQuantity(line.rbcol_quantity, requested)
+        for location_id in changed:
+            _change(line.rbcol_id, location_id,
+                    assignments.get(location_id, 0) - current.get(location_id, 0))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 def remove_copies(user, line_id, location_id, qty: int) -> None:

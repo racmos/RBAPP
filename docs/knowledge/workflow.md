@@ -67,12 +67,12 @@ Small fixes (a bug, a typo, one understood change) skip the Project: tell gentle
 
 ## Rules for requirements (the Project's checklist)
 
-- One unit = one branch = one PR. Backend/API units before the UI units that use them.
+- One phase, or a group of related units, = one branch = one PR, one commit per unit (owner decision 2026-11-03: fewer PRs). A migration or any change to stored data goes in its own PR. Backend/API units before the UI units that use them.
 - Respect, in this order: `product.md` (owner decisions) → `state.md` → the phase spec → `openspec/specs/`
   (existing contracts; a requirement that changes one says so explicitly) → `openspec/design-handoff.md`
   (visual design) → `conventions.md`.
 - Every new URL rule is classified (P/U/A) for `tests/test_authz_matrix.py`; every new error code lists
-  its ES and EN messages; every UI string has ES and EN text and an i18n key.
+  its English message; every UI string has English text and an i18n key (the app is English-only since 2026-10-30).
 - Every screen defines mobile (< 860 px), desktop (≥ 1240 px) and wide (≥ 1600 px) layouts and its
   loading, empty, error and offline states. Desktop shows more data, it does not stretch.
 - Migrations: name the revision, upgrade, downgrade, backfill and the `Risk: item 1` line; the deploy

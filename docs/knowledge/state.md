@@ -20,7 +20,7 @@ Last update: 2026-10-29 (F14-f implemented, batch 1 unit 32 (last); F14-d, F14-e
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Done — F3-a..i (#55, #56, #59-#64); wishlist and offline in batch 2 | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
 | F14 Products | Done in batch 1 — F14-a..e done (#65-#69), F14-f implemented; offline mode in batch 2 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
-| F16 Locations | In progress — F16-a in review (migration `0024_locations`, data layer + take-in-order service, no API yet) | `docs/requirements/F16/README.md` (spec; owner answered D1-D6 on 2026-10-29), `F16-a-locations-data.md`. Next: b API, c UI mobile, d UI desktop; e (mount a deck) waits for F5-d. |
+| F16 Locations | In progress — F16-a done (#87, migration `0024_locations`, deploy pending), F16-b in review (API: `/locations` CRUD, order, lock, next-code, line assignment and move, `locations` on `GET /collection` lines, `location` filter; error codes `location_over_quantity`, `location_locked`) | `docs/requirements/F16/README.md`, `F16-a-locations-data.md`, `F16-b-locations-api.md`. Next: c UI mobile, d UI desktop (with the sticky location of quick add, R4a); e (mount a deck) waits for F5-d. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
 | F15 Rules app | Planned (after production) | `docs/requirements/F15/README.md` (outline). |
 | F5-k Mulligan, F8 Events | Planned (after production, after F15) | F5-k in `docs/requirements/F5/README.md`; F8 with the new landing (F11-a/b). |
@@ -103,6 +103,10 @@ that file and in its `verify-report.md`.
   or pending on their side; nothing in this repo).
 
 ## Known issues
+
+- Intermittent test (open): `src/admin/ChangesPage.test.tsx` › "table at 1280 px with selection, bulk confirm and filters in the URL" failed twice on CI only (#81: dialog gone; #86: `Approved: 2` toast not found), passes 22/22 locally (14 isolated + 8 whole-file runs). Only seen with the whole suite on 2 cores; a rerun passes. Next time it fails: capture the failing step and the toast/dialog state before rerunning.
+
+- Ops 2026-11-03 (`chore/nightly-backup-pr-rule`): nightly `pg_dump` of the dev database (`scripts/db_backup.py`, `riftbound-backup.timer` 03:30 Europe/Madrid, 14 days kept, `docs/knowledge/ops-runbook.md` → "Nightly backup"); PR rule changed to one PR per phase or group with a commit per unit and migrations in their own PR (AGENTS.md, `workflow.md`); the owner-feedback tracking file now lives in `docs/requirements/OWNER-FEEDBACK-2026-10.md`. Engram upgraded to 3.6.0 in `~/.local/bin` (the old 1.15.15 stays in `/usr/local/bin`; backup of the old binary and its database in `~/backups`); the memory tools work after a session restart.
 
 - Production path (owner, 2026-11-03): **option A** — the current dev server and its database become production (F12: backup, HTTPS, new secrets, hardening; the DB is NOT rebuilt from scratch), so the owner enters the real collection now and nothing is exported/imported (F12-R29 and F12-i superseded, `docs/requirements/F12/README.md`). The nightly backup (`riftbound-backup.timer`, 03:30) is active since 2026-11-03. Each schema change still goes in its own PR, deployed with a `pg_dump` first (the `migrations-pg` CI job runs every migration on PostgreSQL).
 

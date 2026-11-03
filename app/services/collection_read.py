@@ -7,6 +7,10 @@ so the number of SQL statements does not depend on the size of the collection.
 Filters on a line (foil, selling, condition, language, purchase price) drop lines;
 filters on a card (text, set, domain, type, rarity) drop groups. A group lists, and
 adds up, only the lines that match.
+
+Each line also knows its storage locations (F16-b): one batched query loads every copy the
+user keeps in a location, in the user's location order; the `location` filter (codes,
+ignoring case) keeps the lines with copies in one of them.
 """
 import math
 from decimal import ROUND_HALF_UP, Decimal
@@ -14,7 +18,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import select
 
 from app import db
-from app.models import RbCard, RbCollection, RbKeepPlayset, RbSet, RbUserPrefs
+from app.models import (RbCard, RbCollection, RbCollectionLocation, RbKeepPlayset, RbLocation,
+                        RbSet, RbUserPrefs)
 from app.schemas.game_domain import CONDITIONS, LANGUAGES, RARITIES
 from app.schemas.validators import CollectionListQuery
 from app.services import bans as bans_service
@@ -23,6 +28,7 @@ from app.services import card_list, catalog, collection_rules, pricing
 CENT = Decimal('0.01')
 TENTH = Decimal('0.1')
 FACETS = ('set', 'rarity', 'condition', 'language', 'foil')
+LOCATIONS_SHOWN = 5   # F16-R5: a line shows its first 5 locations
 
 
 def _dec(value) -> Decimal | None:
@@ -47,7 +53,7 @@ class _Line:
     """One collection row, as plain values, with the numbers derived from its market price."""
     __slots__ = ('id', 'key', 'qty', 'condition', 'language', 'selling', 'sell_qty', 'chadat',
                  'parsed', 'foil', 'purchase', 'sell_price', 'market', 'value', 'pl_abs', 'pl_pct',
-                 'product_name')
+                 'product_name', 'places')
 
     def __init__(self, row, parsed, market):
         self.id = row.rbcol_id
@@ -64,6 +70,7 @@ class _Line:
         self.sell_price = _dec(row.rbcol_sell_price)
         self.market = market
         self.product_name = None   # set by the Cardmarket export
+        self.places = ()           # (location id, code, description, qty) in the user's order
         self.value = self.pl_abs = self.pl_pct = None
         if market is not None:
             self.value = (market * self.qty).quantize(CENT, ROUND_HALF_UP)
@@ -118,6 +125,9 @@ def _failed(query, line: _Line) -> frozenset[str]:
     if (query.has_purchase == 'yes') != (line.purchase is not None) \
             and query.has_purchase != 'any':
         failed.add('has_purchase')
+    if query.location and not {place[1].casefold() for place in line.places} & {
+            code.casefold() for code in query.location}:
+        failed.add('location')
     return frozenset(failed)
 
 
@@ -258,6 +268,33 @@ def _line_json(line: _Line) -> dict:
     }
 
 
+def _places_json(line: _Line) -> dict:
+    """The F16-b keys of a `GET /collection` line: its first locations, how many more it has
+    and its copies in no location."""
+    return {
+        'locations': [{'location_id': location_id, 'code': code, 'description': description,
+                       'qty': qty}
+                      for location_id, code, description, qty in line.places[:LOCATIONS_SHOWN]],
+        'locations_more': max(0, len(line.places) - LOCATIONS_SHOWN),
+        'unassigned': line.qty - sum(place[3] for place in line.places),
+    }
+
+
+def _load_places(user) -> dict[int, list[tuple]]:
+    """`{line id: [(location id, code, description, qty)]}` of the user, in the user's
+    location order: one query whatever the size of the collection."""
+    rows = db.session.execute(
+        select(RbCollectionLocation.rbcll_line_id, RbLocation.rbloc_id, RbLocation.rbloc_code,
+               RbLocation.rbloc_description, RbCollectionLocation.rbcll_qty)
+        .join(RbLocation, RbLocation.rbloc_id == RbCollectionLocation.rbcll_location_id)
+        .where(RbLocation.rbloc_user == user.username)
+        .order_by(RbLocation.rbloc_position)).all()
+    places: dict[int, list[tuple]] = {}
+    for line_id, *place in rows:
+        places.setdefault(line_id, []).append(tuple(place))
+    return places
+
+
 def _load_lines(user, cards: dict, set_rank: dict) -> tuple[list[_Line], dict]:
     """The user's lines as `_Line`s ordered by id, and the price summaries of their printings."""
     rows = db.session.execute(
@@ -277,12 +314,14 @@ def _load_lines(user, cards: dict, set_rank: dict) -> tuple[list[_Line], dict]:
         for key, p in parsed_by_key.items())
 
     markets = _markets(prices)
+    places = _load_places(user)
     lines = []
     for row in rows:
         key = (row.rbcol_rbset_id, row.rbcol_rbcar_id)
         if key in parsed_by_key:
-            lines.append(_Line(row, parsed_by_key[key],
-                               markets.get((*key, row.rbcol_foil == 'S'))))
+            line = _Line(row, parsed_by_key[key], markets.get((*key, row.rbcol_foil == 'S')))
+            line.places = places.get(line.id, ())
+            lines.append(line)
     return lines, prices
 
 
@@ -348,7 +387,7 @@ def list_collection(query: CollectionListQuery, user) -> dict:
             'qty': sum(m.qty for m in members),
             'sell_qty': sum(m.sell_qty for m in members),
             'value': _money(_sum(m.value for m in members)),
-            'lines': [_line_json(m) for m in members],
+            'lines': [{**_line_json(m), **_places_json(m)} for m in members],
             'keep_playset': keep,
             'playset_short': keep and kept_by_name[name] < size,
             'kept': kept_by_name[name],
