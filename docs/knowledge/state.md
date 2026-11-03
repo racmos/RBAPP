@@ -20,6 +20,7 @@ Last update: 2026-10-29 (F14-f implemented, batch 1 unit 32 (last); F14-d, F14-e
 | F13 Riot sync + catalog admin | In progress — F13-g in review (#44), batch 1 unit 8 | `docs/requirements/F13/F13-{a..g}-*.md`. |
 | F3 Collection | Done — F3-a..i (#55, #56, #59-#64); wishlist and offline in batch 2 | `docs/requirements/F3/F3-{a,b,c,d,e,g,h,i}-*.md`; wishlist and offline in batch 2. |
 | F14 Products | Done in batch 1 — F14-a..e done (#65-#69), F14-f implemented; offline mode in batch 2 | `docs/requirements/F14/F14-{a..f}-*.md`; offline in batch 2. |
+| F16 Locations | In progress — F16-a in review (migration `0024_locations`, data layer + take-in-order service, no API yet) | `docs/requirements/F16/README.md` (spec; owner answered D1-D6 on 2026-10-29), `F16-a-locations-data.md`. Next: b API, c UI mobile, d UI desktop; e (mount a deck) waits for F5-d. |
 | F5, F6, F7, F10, F9, F11, F12 | Planned | Medium priority, then production. Phase specs in `docs/requirements/F<n>/README.md`. |
 | F15 Rules app | Planned (after production) | `docs/requirements/F15/README.md` (outline). |
 | F5-k Mulligan, F8 Events | Planned (after production, after F15) | F5-k in `docs/requirements/F5/README.md`; F8 with the new landing (F11-a/b). |

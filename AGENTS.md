@@ -102,6 +102,7 @@ riftbound/
 │   │   ├── job.py           # RbJob (rbjobs): job queue and results, one active job per kind
 │   │   ├── user_product.py  # RbUserProduct (rbuserproducts): sealed products a user owns (F14-c)
 │   │   ├── playset.py       # RbKeepPlayset (rbkeepplayset): card names a user keeps a playset of (F3-a)
+│   │   ├── location.py      # RbLocation (rblocations), RbCollectionLocation (rbcollection_locations): storage locations and copies per location (F16-a)
 │   │   ├── import_preview.py # RbImportPreview (rbimportpreviews): parsed import rows for 30 minutes (F3-e)
 │   │   ├── snapshot.py      # RbValueSnapshot (rbvaluesnaps): daily collection value per user (F4-c)
 │   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto; playset size (F3-a)
@@ -132,6 +133,7 @@ riftbound/
 │   │   ├── collection_read.py # list_collection: groups, lines, prices, P/L, totals, facets (F3-b)
 │   │   ├── collection_write.py # add (merge), edit (stale guard), delete, split, bulk, keep playset (F3-c)
 │   │   ├── collection_rules.py # legacy_sell_qty, kept_copies, playset_size, sync_legacy_sell_qty (F3-a)
+│   │   ├── locations.py     # locations CRUD, order, lock, suggest_next_code, assign/move/remove copies, take_copies in order, release (F16-a)
 │   │   ├── daily_prices.py  # validate_load, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
 │   │   ├── prefs.py         # get_prefs / update_prefs (interface preferences)
@@ -232,7 +234,7 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, `rbuserproducts`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, `rbuserproducts`, `rblocations`, `rbcollection_locations`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 - `rbproducts` (F14-a): keyed by `rbpdt_id_product` (`rbpdt_id_set` nullable), with `rbpdt_category`, `rbpdt_kind` (CHECK `rbproducts_kind_chk`), `rbpdt_kind_locked`, `rbpdt_set_locked`, `rbpdt_hidden`, `rbpdt_listed`, `rbpdt_updated_at`; only `rbpdt_type = 'nonsingle'` rows are products; `products_refresh` never deletes (a product that leaves the file gets `rbpdt_listed = false`)

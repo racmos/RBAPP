@@ -98,6 +98,13 @@ def test_table_round_trip_and_drift(migration_app):
     assert drift() == []
 
 
+def _snapshot_drift():
+    """Drift on `rbvaluesnaps` only: at this revision the models are ahead by the tables of
+    later revisions (0024 locations), which say nothing about this column."""
+    ops = [op for entry in drift() for op in (entry if isinstance(entry, list) else [entry])]
+    return [op for op in ops if 'rbvaluesnaps' in op[1:3]]
+
+
 def _snapshot_columns():
     return {c['name'] for c in inspector().get_columns('rbvaluesnaps', schema='riftbound')}
 
@@ -115,7 +122,7 @@ def test_snapshot_column_round_trip_keeps_the_rows(migration_app):
     assert rows('SELECT rbvsn_value, rbvsn_products_value FROM riftbound.rbvaluesnaps') == [
         (12.5, None)]
     run('UPDATE riftbound.rbvaluesnaps SET rbvsn_products_value = 40.25')
-    assert drift() == []
+    assert _snapshot_drift() == []
     downgrade(TABLE)
     assert 'rbvsn_products_value' not in _snapshot_columns()
     assert rows('SELECT rbvsn_value, rbvsn_qty FROM riftbound.rbvaluesnaps') == [(12.5, 3)]
