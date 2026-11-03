@@ -31,10 +31,10 @@ UNITS = ['riftbound-jobs.service', 'riftbound-jobs.timer', 'riftbound-daily.serv
          'riftbound-daily.timer', 'riftbound-daily-retry.service',
          'riftbound-daily-retry.timer', 'riftbound-riot-sync-am.service',
          'riftbound-riot-sync-am.timer', 'riftbound-riot-sync-pm.service',
-         'riftbound-riot-sync-pm.timer']
+         'riftbound-riot-sync-pm.timer', 'riftbound-backup.service', 'riftbound-backup.timer']
 
 
-def test_exactly_the_ten_templates_exist():
+def test_exactly_the_twelve_templates_exist():
     assert sorted(p.name for p in SYSTEMD.iterdir()) == sorted(UNITS)
 
 
@@ -149,3 +149,23 @@ def test_riot_services_match_the_jobs_service(name):
     unit = _directives(SYSTEMD / name)
     for key in ('User', 'Group', 'WorkingDirectory', 'Environment', 'EnvironmentFile'):
         assert unit[key] == jobs_unit[key], key
+
+
+def test_backup_units():
+    service = _directives(SYSTEMD / 'riftbound-backup.service')
+    script = APP['WorkingDirectory'] + '/scripts/db_backup.py'
+    assert service['ExecStart'] == f"{APP['WorkingDirectory']}/venv/bin/python {script}"
+    assert (REPO / 'scripts' / 'db_backup.py').is_file()
+    timer = _directives(SYSTEMD / 'riftbound-backup.timer')
+    assert timer['OnCalendar'] == '*-*-* 03:30:00 Europe/Madrid'
+    # a night missed while the host was off is made up at the next boot
+    assert timer['Persistent'] == 'true'
+    assert timer['Unit'] == 'riftbound-backup.service'
+
+
+def test_runbook_nightly_backup_section():
+    runbook = (REPO / 'docs' / 'knowledge' / 'ops-runbook.md').read_text(encoding='utf-8')
+    section = runbook.split('## Nightly backup', 1)[1].split('\n## ', 1)[0]
+    for needle in ('scripts/db_backup.py', 'riftbound-backup.timer', 'enable --now',
+                   'disable --now', 'riftbound_pre_', 'ls -l ~/backups/rbapp'):
+        assert needle in section, needle
