@@ -103,6 +103,8 @@ that file and in its `verify-report.md`.
 
 ## Known issues
 
+- Intermittent test (open): `src/admin/ChangesPage.test.tsx` › "table at 1280 px with selection, bulk confirm and filters in the URL" failed twice on CI only (#81: dialog gone; #86: `Approved: 2` toast not found), passes 22/22 locally (14 isolated + 8 whole-file runs). Only seen with the whole suite on 2 cores; a rerun passes. Next time it fails: capture the failing step and the toast/dialog state before rerunning.
+
 - Ops 2026-11-03 (`chore/nightly-backup-pr-rule`): nightly `pg_dump` of the dev database (`scripts/db_backup.py`, `riftbound-backup.timer` 03:30 Europe/Madrid, 14 days kept, `docs/knowledge/ops-runbook.md` → "Nightly backup"); PR rule changed to one PR per phase or group with a commit per unit and migrations in their own PR (AGENTS.md, `workflow.md`); the owner-feedback tracking file now lives in `docs/requirements/OWNER-FEEDBACK-2026-10.md`. Engram upgraded to 3.6.0 in `~/.local/bin` (the old 1.15.15 stays in `/usr/local/bin`; backup of the old binary and its database in `~/backups`); the memory tools work after a session restart.
 
 - English-only SPA (owner 2026-10-30, `feat/english-only`): the Spanish catalogs, the ES/EN toggle and the language setting are gone from the React app; formats are English (`en-GB`); an EN-completeness test replaces the es/en parity test. Jinja pages and backend messages untouched. The backend still stores and returns `lang` (`rbprf_lang` column + CHECK, `docs/api.md`); the app ignores it. Follow-up: a migration dropping `rbprf_lang` when convenient.
