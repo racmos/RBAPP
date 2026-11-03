@@ -6,6 +6,10 @@ an identical one, splitting into an existing line) are changed in SQL
 (`rbcol_quantity = rbcol_quantity + n`), never read, added and written back, so two requests
 at once cannot lose a copy. An edit is applied only if the row still has the change time it
 was read with (`stale_line` otherwise).
+
+Copies a line loses (a lower quantity, a delete, a split) leave its storage locations in the
+take order of F16-R7 (`locations.release`); when only locked locations hold them the write is
+refused with `LockedCopies` and nothing changes.
 """
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -14,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.models import RbCard, RbCollection, RbKeepPlayset, RbUserPrefs
-from app.services import catalog, collection_read, collection_rules
+from app.services import catalog, collection_read, collection_rules, locations
 from app.utils import clock
 
 CENT = Decimal('0.01')
@@ -43,6 +47,24 @@ class InsufficientQuantity(Exception):
     def __init__(self, available: int):
         super().__init__(f'only {available} copies available')
         self.available = available
+
+
+class LockedCopies(InsufficientQuantity):
+    """The copies to remove are in locked locations (F16-R7). `available` is how many could be
+    removed; `locked` names the locations (`location_id`, `code`, `qty`)."""
+
+    def __init__(self, available: int, locked: list[dict]):
+        super().__init__(available)
+        self.locked = locked
+
+
+def _release(row: RbCollection, qty: int) -> list:
+    """Take `qty` copies of the line out of its locations before its quantity drops."""
+    try:
+        return locations.release(row, qty)
+    except locations.Shortfall as exc:
+        db.session.rollback()
+        raise LockedCopies(exc.missing[0]['available'], exc.locked) from None
 
 
 def _money(value) -> Decimal | None:
@@ -189,6 +211,8 @@ def edit_line(user, line_id: int, data) -> dict:
                 values['rbcol_sell_price'] = _default_sell_price(
                     collection_read.market_price(card, row.rbcol_foil == 'S'))
     values['rbcol_chadat'] = clock.utcnow()
+    if qty < row.rbcol_quantity:
+        _release(row, row.rbcol_quantity - qty)
 
     done = db.session.execute(
         sa.update(RbCollection).where(
@@ -209,6 +233,7 @@ def delete_line(user, line_id: int) -> dict:
     """Delete a line; returns it, enough to post it back (undo)."""
     row, card = _owned(user, line_id)
     payload = collection_read.line_payloads([(row, card)])[0]
+    _release(row, row.rbcol_quantity)
     db.session.delete(row)
     db.session.commit()
     return payload
@@ -237,6 +262,7 @@ def split_line(user, line_id: int, data) -> tuple[dict, dict, bool]:
         payload = _payload(row, card)          # nothing differs: nothing moves
         return payload, payload, True
 
+    moved = _release(row, data.qty)
     now = clock.utcnow()
     remaining = RbCollection.rbcol_quantity - data.qty
     done = db.session.execute(
@@ -265,6 +291,8 @@ def split_line(user, line_id: int, data) -> tuple[dict, dict, bool]:
             rbcol_condition=condition, rbcol_language=language, rbcol_chadat=now)
         db.session.add(target)
         merged = False
+    db.session.flush()
+    locations.carry(moved, target.rbcol_id)
     db.session.commit()
     return _payload(row, card), _payload(target, card), merged
 
@@ -323,6 +351,18 @@ def bulk_delete(user, ids) -> list[dict]:
     """Delete all the lines or none; returns them (S6)."""
     pairs = _owned_all(user, ids)
     payloads = collection_read.line_payloads(pairs)
+    available, locked = 0, {}
+    for row, _ in pairs:
+        try:
+            locations.release(row, row.rbcol_quantity)
+        except locations.Shortfall as exc:
+            available += exc.missing[0]['available']
+            for entry in exc.locked:
+                locked.setdefault(entry['location_id'], {**entry, 'qty': 0})['qty'] += \
+                    entry['qty']
+    if locked:
+        db.session.rollback()
+        raise LockedCopies(available, list(locked.values()))
     for row, _ in pairs:
         db.session.delete(row)
     db.session.commit()
