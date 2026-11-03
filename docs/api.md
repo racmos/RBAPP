@@ -175,7 +175,16 @@ the page: `{lines, qty, unique (distinct printings), value, cost (null without p
 prices), pl (null without any), selling_value, foil_pct}`. `facets` are disjunctive group
 counts for `set`, `rarity`, `condition`, `language` and `foil` (`{foil, nonfoil}`).
 Money is rounded half up to 2 decimals, `pl_pct` to 1. At most 10 SQL statements whatever
-the size of the collection. Other users' lines never appear.
+the size of the collection (10 since F16-b: one batched query for the line locations). Other
+users' lines never appear.
+
+Locations (F16-b, additive): repeated `location` (location codes, ignoring case, at most 50) is
+a line filter: it keeps the lines with copies in any of those locations (an unknown code
+matches nothing; it also applies to `GET /collection/export`). Each line of `GET /collection`
+appends `locations` (its first 5 locations in the user's order: `[{location_id, code,
+description, qty}]`), `locations_more` (how many more it has) and `unassigned` (copies in no
+location). The group keys do not change, and the lines of the write responses (`POST`,
+`PATCH`, split, bulk, `GET /cards/<set>/<id>`) do not carry these keys.
 
 ```http
 GET /riftbound/api/v1/collection?sort=value&dir=desc&per_page=25
@@ -352,6 +361,64 @@ price and a purchase price above 0. Money is rounded half up to cents, `pl_pct` 
 
 An id that does not exist or is another user's line -> the 404 envelope (PATCH/DELETE).
 
+### Locations (F16-b)
+
+`app/api/v1/locations.py`, all `U`, logic in `app/services/locations.py` (F16-a). Everything is
+scoped to the signed-in user: a location or line id that is not theirs (or does not exist) ->
+the 404 envelope, never 403.
+
+`Location` = `{id, code, description|null, position (1..n, the user's order), locked (bool),
+deck_id|null (the mounted deck, F16-e), copies (copies kept there), cards (lines kept there)}`,
+keys in this order. `code` is 1-32 letters, digits or `-`, unique per user ignoring case;
+`description` is up to 200 characters (trimmed; empty = null).
+
+- `GET /locations` (`api_v1.list_locations`) -> `{data: {items: [Location]}, meta:
+  {unassigned_copies}}` in the user's order; `unassigned_copies` = the copies of all the user's
+  lines that are in no location.
+- `POST /locations` (`api_v1.create_location`) `{code, description?}` -> 201 `Location`, last in
+  the order. A code the user already has (ignoring case) -> 409 `already_exists`; a bad code ->
+  400 `validation_error` on `code` (`required`, `too_short`, `too_long` with `params.max` 32,
+  `invalid_format`, or `invalid_value` when it is not a string).
+- `GET /locations/next-code?bump=block|row|pack[&after=CODE]` (`api_v1.suggest_location_code`)
+  -> `{code}`: the suggested `B001-F001-P0001` code (F16-R1a, D6): the chosen part goes up by one,
+  the parts to its right restart at 1, widths and case are kept and codes the user already has
+  are skipped. Without `after` it follows the user's newest location with that pattern, or is
+  `B001-F001-P0001` when there is none; `after` without the pattern (`DECK-001`, `Binder`) or a
+  result over 32 characters -> `code: null`. `bump` is required; another value -> 400.
+- `PATCH /locations/<id>` (`api_v1.update_location`) any of `{code, description, locked}` ->
+  `Location`. Only the sent keys change; `description: null` clears it; `code: null` or
+  `locked: null` -> 400. A **locked location can be renamed** (code and description are only
+  labels); what a lock makes read-only is the copies it holds. A duplicate code -> 409
+  `already_exists` and nothing changes.
+- `DELETE /locations/<id>` (`api_v1.delete_location`) -> `{deleted: Location}` (with its counts
+  before the delete). Its copies become unassigned (line totals do not change) and the order
+  closes up. A locked deck location (`deck_id` set) -> 409 `location_locked`; a locked ordinary
+  location can be deleted.
+- `PUT /locations/order` (`api_v1.reorder_locations`) `{ids}` -> `{items: [Location]}`: every
+  location id of the user, each once, in the new order (positions 1..n). A missing, repeated,
+  foreign or unknown id -> 400 `validation_error` on `ids` (`invalid_value`); nothing changes.
+
+Copies of one collection line (F16-R4). `LineLocations` = `{locations: [{location_id, code,
+description|null, locked, qty}] (the user's order), unassigned, total (the line quantity)}`.
+
+- `GET /collection/<id>/locations` (`api_v1.get_line_locations`) -> `LineLocations`.
+- `PUT /collection/<id>/locations` (`api_v1.put_line_locations`) `{assignments: [{location_id,
+  qty (1-9999)}]}` (each location at most once, else 400) -> `LineLocations`. Replaces the line's
+  assignment atomically; a location of the line that is not sent loses its copies (`[]` frees
+  them all). A locked location whose quantity would change (raised, lowered or dropped) -> 409
+  `location_locked`, so a locked location must be sent with its current quantity; then, a sum
+  above the line quantity -> 409 `location_over_quantity` with `params {max: <line quantity>,
+  requested: <sum>}`. Nothing changes on any error.
+- `POST /collection/<id>/locations/move` (`api_v1.move_line_locations`) `{from_location_id|null,
+  to_location_id|null, qty (1-9999)}` -> `LineLocations`; `null` is unassigned, the two sides must
+  differ (else 400). From unassigned, more than the unassigned copies -> 409
+  `location_over_quantity` (`params {max: <unassigned>, requested}`); from a location, more than
+  it holds -> 409 `insufficient_quantity` (`params.available`); a locked side -> 409
+  `location_locked`.
+
+New error codes: `location_over_quantity` (409, `params.max`, `params.requested`) and
+`location_locked` (409). `insufficient_unlocked` (deck mount) arrives with F16-e.
+
 ### GET /cards/<set_id>/<card_id>/prices
 
 `app/api/v1/cards.py` (`api_v1.get_card_prices`, U): daily price history.
@@ -405,7 +472,8 @@ purchase_price|null, selling (bool), sell_qty, sell_price|null, updated_at (UTC,
 "YYYY-MM-DDTHH:MM:SSZ"), market|null, value|null, pl_abs|null, pl_pct|null}`: `market` is the
 price of the line's own foil, `value` = market x qty, `pl_abs` = (market - purchase) x qty and
 `pl_pct` = (market - purchase) / purchase x 100, both null unless there is a market price and
-a purchase price above 0.
+a purchase price above 0. In `GET /collection` (F16-b) each line also carries `locations`
+(first 5, `[{location_id, code, description, qty}]`), `locations_more` and `unassigned`.
 `CollectionGroup` = `{key ("<set>-<id>:N" or ":S"), card: CardSummary, foil (bool), qty,
 sell_qty, value|null, lines: [CollectionLine] (by id), keep_playset, playset_short, kept}`.
 `keep_playset` is true when the user marked the card name (`rbkeepplayset`);

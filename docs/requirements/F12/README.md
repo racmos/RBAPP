@@ -187,7 +187,7 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
   = the final URL (USER, D-F12-9); VAPID keys generated for production (D-F12-10).
 
 ### Data and legal
-- **F12-R29** Data carried from dev (D-F12-6) only through tested export/import commands: curated Cardmarket
+- **F12-R29** *(Superseded 2026-11-03 by D-F12-6 option A: the dev database is promoted, nothing is carried over; text kept for the record.)* Data carried from dev (D-F12-6) only through tested export/import commands: curated Cardmarket
   data (`rbcm_product_card_map`, `rbcm_ignored`, `rbcm_expansions`, `rbproducts`), and optionally the owner's
   collection, decks and sales. Catalog rebuilt by the Riot sync job (F13); prices by the Cardmarket job.
 - **F12-R30** `docs/licensing.md`: fonts (OFL, licence files shipped with the build), third-party licences
@@ -254,7 +254,7 @@ None planned. The production database is built by the existing revisions. Option
 | F12-f | Production proxy template + runbook | F12-a | ~400 | Risk: item 5 (proxy config consumed by the owner) | Production `nginx_config` template with placeholders only (M-c already removed the dev domain), zones, gzip, log masking, HSTS; `docs/production.md` provisioning/secrets/go-live sections. |
 | F12-g | Moved to unit M-d | — | — | — | Card images out of git into a data directory outside the code tree is done early by M-d (owner, 2026-10-22); F12 only provisions that directory on the production host (F12-R3) and backs it up (F12-R16). |
 | F12-h | Licensing + privacy pages | F11-c | ~400 | Risk: item 6 (legal review is human) | `docs/licensing.md`, legal pages (ES/EN, owner texts), font licence files in the build. |
-| F12-i | Data export/import (optional) | F12-c, D-F12-6 | ~450 | Risk: item 1 (writes production data) | `flask data export` / `import` for curated Cardmarket tables and one user's data, idempotent, dry-run, tests on SQLite + PostgreSQL. |
+| F12-i | Data export/import (not needed since D-F12-6 option A; only if the owner later wants a second environment) | F12-c, D-F12-6 | ~450 | Risk: item 1 (writes production data) | `flask data export` / `import` for curated Cardmarket tables and one user's data, idempotent, dry-run, tests on SQLite + PostgreSQL. |
 | F12-j | Go-live record | all above + USER steps | ~150 | Risk: item 6 (live checks) | Run and record the go-live checklist, 4.31, PWA/push/OAuth checks; update `state.md`, `roadmap.md`. |
 
 ## Open decisions
@@ -266,7 +266,7 @@ None planned. The production database is built by the existing revisions. Option
 | D-F12-3 | Rate-limit storage | `memory://` + Nginx zones / local Valkey-Redis / memcached | `memory://` + Nginx zones; revisit if abuse is seen (no extra service) | F12-a, F12-f |
 | D-F12-4 | Backup target, encryption, retention | off-site location; age/gpg; 7/4/6 | Encrypted (age) daily dumps, 7 daily/4 weekly/6 monthly, copy to a second location the owner controls | F12-d |
 | D-F12-5 | Monitoring and alert channel | external uptime + heartbeat service / self-hosted; Discord webhook / phone push | Free external uptime + heartbeat service, alerts to a private Discord webhook | F12-e |
-| D-F12-6 | Data from dev | fresh / curated Cardmarket data + owner's data / full copy | Fresh catalog and prices; carry curated Cardmarket mappings and, if wanted, the owner's data; no other dev accounts | F12-i |
+| D-F12-6 | Data from dev | fresh / curated Cardmarket data + owner's data / full copy | **Decided 2026-11-03 (owner, option A): the current dev server and its database are promoted to production** (backup first, HTTPS, new secrets, hardening, F12-a..f); nothing is carried over, so no export/import is needed. The earlier default (fresh production DB + export/import) is dropped. | F12-i (now not needed) |
 | D-F12-7 | Privacy notice and terms | owner writes / planner drafts for approval | Planner drafts from the data inventory, owner approves; contact channel chosen by the owner | F12-h |
 | D-F12-9 | OAuth apps | separate production apps / add production redirect URIs to dev apps | Separate production apps (separate secrets) | F12-j |
 | D-F12-10 | VAPID keys | new for production / reuse dev | New (subscriptions are per origin anyway) | F12-j |

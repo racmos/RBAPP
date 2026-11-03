@@ -109,6 +109,7 @@ class CollectionListQuery(BaseModel, extra='ignore'):
     rarity: List[ShortStr] = Field(default_factory=list)
     condition: List[ShortStr] = Field(default_factory=list)
     language: List[ShortStr] = Field(default_factory=list)
+    location: List[ShortStr] = Field(default_factory=list)   # location codes (F16-b)
     foil: Literal['any', 'foil', 'nonfoil'] = 'any'
     selling: Literal['any', 'yes', 'no'] = 'any'
     has_purchase: Literal['any', 'yes', 'no'] = 'any'
@@ -118,7 +119,8 @@ class CollectionListQuery(BaseModel, extra='ignore'):
     page: int = Field(default=1, ge=1, le=10000)
     per_page: int = Field(default=50, ge=25, le=200)
 
-    @field_validator('set', 'domain', 'type', 'rarity', 'condition', 'language', mode='after')
+    @field_validator('set', 'domain', 'type', 'rarity', 'condition', 'language', 'location',
+                     mode='after')
     @classmethod
     def _limit_repeated(cls, v):
         if len(v) > 50:
@@ -310,6 +312,91 @@ class UserProductPatch(BaseModel, extra='ignore'):
     def _no_null_quantity(self):
         if 'quantity' in self.model_fields_set and self.quantity is None:
             raise PydanticCustomError('missing', 'quantity cannot be null')
+        return self
+
+
+# ============== Storage locations (F16-b) ==============
+
+_LOCATION_CODE_RE = re.compile(r'[A-Za-z0-9-]+')
+_LocationId = Annotated[StrictInt, Field(ge=1)]
+
+
+def _location_code(value):
+    """1-32 letters, digits or `-` (the length is checked by the field)."""
+    if value is not None and not _LOCATION_CODE_RE.fullmatch(value):
+        raise PydanticCustomError('invalid_format', 'use letters, digits and -')
+    return value
+
+
+_LocationCode = Annotated[str, Field(min_length=1, max_length=32)]
+
+
+class LocationCreate(BaseModel, extra='ignore'):
+    """POST /locations body (F16-b S2)."""
+    code: _LocationCode
+    description: Optional[str] = Field(None, max_length=200)
+
+    _code = field_validator('code')(lambda cls, v: _location_code(v))
+    _description = field_validator('description')(lambda cls, v: _note(v))
+
+
+class LocationPatch(BaseModel, extra='ignore'):
+    """PATCH /locations/<id> body (F16-b S4): only the keys that were sent change; `null`
+    clears the description."""
+    code: Optional[_LocationCode] = None
+    description: Optional[str] = Field(None, max_length=200)
+    locked: Optional[StrictBool] = None
+
+    _code = field_validator('code')(lambda cls, v: _location_code(v))
+    _description = field_validator('description')(lambda cls, v: _note(v))
+
+    @model_validator(mode='after')
+    def _no_null_code_or_locked(self):
+        for name in ('code', 'locked'):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise PydanticCustomError('missing', f'{name} cannot be null')
+        return self
+
+
+class LocationOrder(BaseModel, extra='ignore'):
+    """PUT /locations/order body (F16-b S6): every location id of the user, once."""
+    ids: List[_LocationId] = Field(..., max_length=1000)
+
+
+class LocationCodeQuery(BaseModel, extra='ignore'):
+    """GET /locations/next-code query (F16-b S3)."""
+    bump: Literal['block', 'row', 'pack']
+    after: Optional[str] = Field(None, max_length=32)
+
+
+class LineLocationAssignment(BaseModel, extra='ignore'):
+    location_id: _LocationId
+    qty: _Qty
+
+
+class LineLocationsPut(BaseModel, extra='ignore'):
+    """PUT /collection/<id>/locations body (F16-b S8): the whole new assignment."""
+    assignments: List[LineLocationAssignment] = Field(..., max_length=1000)
+
+    @model_validator(mode='after')
+    def _each_location_once(self):
+        ids = [row.location_id for row in self.assignments]
+        if len(ids) != len(set(ids)):
+            raise PydanticCustomError('invalid_value', 'each location at most once')
+        return self
+
+
+class LineLocationsMove(BaseModel, extra='ignore'):
+    """POST /collection/<id>/locations/move body (F16-b S9); `null` is unassigned."""
+    from_location_id: Optional[_LocationId] = None
+    to_location_id: Optional[_LocationId] = None
+    qty: _Qty
+
+    @model_validator(mode='after')
+    def _two_different_sides(self):
+        if self.from_location_id == self.to_location_id:
+            raise PydanticCustomError('invalid_value',
+                                      'from_location_id and to_location_id must differ')
         return self
 
 

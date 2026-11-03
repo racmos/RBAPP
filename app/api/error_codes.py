@@ -36,6 +36,10 @@ class ErrorCode(StrEnum):
     STALE_LINE = 'stale_line'                     # the collection line changed meanwhile, 409
     IMPORT_EXPIRED = 'import_expired'             # the import preview is gone or not the user's, 410
     IMPORT_FORMAT_UNKNOWN = 'import_format_unknown'  # the file header is not a known format, 400
+    LOCATION_OVER_QUANTITY = 'location_over_quantity'  # more copies placed than possible;
+                                                       # params.max, params.requested, 409
+    LOCATION_LOCKED = 'location_locked'           # the location is locked (quantities read-only,
+                                                  # a locked deck location stays), 409
 
 
 class DetailCode(StrEnum):

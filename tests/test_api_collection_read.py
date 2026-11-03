@@ -42,7 +42,8 @@ class TestGroups:
         assert [l['qty'] for l in lines] == [4, 2]
         assert list(lines[0]) == ['id', 'foil', 'qty', 'condition', 'language', 'purchase_price',
                                   'selling', 'sell_qty', 'sell_price', 'updated_at', 'market',
-                                  'value', 'pl_abs', 'pl_pct']
+                                  'value', 'pl_abs', 'pl_pct',
+                                  'locations', 'locations_more', 'unassigned']   # F16-b
         assert lines[0]['id'] < lines[1]['id']
         assert lines[0]['selling'] is True and lines[1]['selling'] is False
         assert lines[0]['updated_at'] == '2026-10-03T09:00:00Z'
