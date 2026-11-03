@@ -67,6 +67,27 @@ There is no production yet (phase F12). Everything here is the development serve
 - Nginx (public reverse proxy, TLS) runs on another host and is changed only by the owner. The template is
   `docs/nginx_config`.
 
+## Nightly backup (dev, 2026-11-03)
+
+`scripts/db_backup.py` writes `~/backups/rbapp/riftbound_nightly_<YYYYmmdd_HHMM>.dump` (`pg_dump -Fc -n riftbound`,
+mode 600) and deletes `riftbound_nightly_*` files older than 14 days; the manual `riftbound_pre_*` dumps taken
+before a migration are never touched. It reads `DATABASE_URL` from `.env` and never prints it. The timer
+`riftbound-backup.timer` runs it at 03:30 Europe/Madrid (`Persistent=true`).
+
+Install (sudo, same as the other timers) and rollback:
+
+```bash
+sudo cp docs/systemd/riftbound-backup.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now riftbound-backup.timer
+sudo systemctl start riftbound-backup.service      # one run now; then: ls -l ~/backups/rbapp
+systemctl list-timers riftbound-backup.timer       # next run
+# rollback
+sudo systemctl disable --now riftbound-backup.timer && sudo rm /etc/systemd/system/riftbound-backup.{service,timer} && sudo systemctl daemon-reload
+```
+
+This is a safety net on the development server, not the production backup (F12-d: encrypted, copied off the host,
+restore drill).
+
 ## Scheduled jobs (from F4)
 
 Jobs are Flask CLI commands run by systemd timers on the dev server. Each phase that adds a job documents

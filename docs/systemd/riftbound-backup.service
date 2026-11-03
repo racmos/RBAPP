@@ -1,0 +1,13 @@
+# Nightly database backup: venv/bin/python scripts/db_backup.py. Same placeholders
+# as docs/riftbound.service (user, paths). Install and rollback:
+# docs/knowledge/ops-runbook.md -> "Nightly backup".
+[Unit]
+Description=Riftbound nightly database backup (pg_dump)
+After=network.target
+
+[Service]
+Type=oneshot
+User=racmos
+Group=racmos
+WorkingDirectory=/home/racmos/RBAPP
+ExecStart=/home/racmos/RBAPP/venv/bin/python /home/racmos/RBAPP/scripts/db_backup.py

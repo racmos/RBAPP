@@ -1,0 +1,12 @@
+# Nightly backup at 03:30 Madrid time, before the 06:30 Cardmarket load.
+# Persistent: a run missed while the host was off happens at the next boot.
+[Unit]
+Description=Riftbound nightly database backup at 03:30 Europe/Madrid
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Europe/Madrid
+Persistent=true
+Unit=riftbound-backup.service
+
+[Install]
+WantedBy=timers.target
