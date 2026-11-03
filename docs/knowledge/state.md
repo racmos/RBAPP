@@ -104,6 +104,8 @@ that file and in its `verify-report.md`.
 
 ## Known issues
 
+- Production path (owner, 2026-11-03): **option A** — the current dev server and its database become production (F12: backup, HTTPS, new secrets, hardening; the DB is NOT rebuilt from scratch), so the owner enters the real collection now and nothing is exported/imported (F12-R29 and F12-i superseded, `docs/requirements/F12/README.md`). The nightly backup (`riftbound-backup.timer`, 03:30) is active since 2026-11-03. Each schema change still goes in its own PR, deployed with a `pg_dump` first (the `migrations-pg` CI job runs every migration on PostgreSQL).
+
 - English-only SPA (owner 2026-10-30, `feat/english-only`): the Spanish catalogs, the ES/EN toggle and the language setting are gone from the React app; formats are English (`en-GB`); an EN-completeness test replaces the es/en parity test. Jinja pages and backend messages untouched. The backend still stores and returns `lang` (`rbprf_lang` column + CHECK, `docs/api.md`); the app ignores it. Follow-up: a migration dropping `rbprf_lang` when convenient.
 
 - Owner feedback 2026-10-30, round 2: sets newest first in every set dropdown/button group with undated last (`GET /meta/game` + `sortSetsNewestFirst`); `/admin/cards` create/edit/delete fixed at all widths (wide panel showed only the edit form; delete hid the 409 reason behind the dialog) with shared-Button row actions, and the same hidden-error fix for set delete; `/cards` single page scroll; every side panel collapsible with its state remembered; tri-state filters labelled (`fix/sets-order-admin-cards`, `fix/panels-filters-layout`).
