@@ -1,8 +1,10 @@
 """F5-d S1-S6: GET/POST /decks, GET/PATCH/DELETE /decks/<id> (owner only, legality on read)."""
+from datetime import datetime
+
 import pytest
 
 from app import db
-from app.models import RbCardBan, RbCollection, RbDeckHead, RbDeckVersion
+from app.models import RbCard, RbCardBan, RbCollection, RbDeck, RbDeckHead, RbDeckVersion
 from app.schemas.deck_content import empty_content
 from tests.deck_api_helpers import (AZIR, BASE, NOT_FOUND, content, data, error, head_row,
                                     line, make_deck, ref, seed_catalog, user_id, versions)
@@ -221,9 +223,101 @@ class TestList:
     def test_sql_statements_do_not_grow_with_the_decks(self, app, api):
         make_deck('One', AZIR)
         _, one = count_statements(app, lambda: api.get(BASE))
-        for n in range(2, 6):
+        for n in range(2, 8):
             make_deck(f'Deck {n}', AZIR)
         resp, many = count_statements(app, lambda: api.get(BASE))
-        assert len(resp.get_json()['data']['items']) == 5
-        assert many == one
-        assert many <= 10
+        assert len(resp.get_json()['data']['items']) == 7
+        # user, heads, versions, cards, sets, bans, prices (2), owned copies
+        assert many == one == 9
+
+    def test_bans_are_read_at_every_request(self, api):
+        make_deck('Azir', AZIR)
+        assert data(api.get(BASE))['items'][0]['issues']['1v1'][-1] == 'sideboard_size'
+        _ban('azir, emperor', '1v1')
+        item = data(api.get(BASE))['items'][0]
+        assert item['issues'] == {'1v1': ['main_size', 'battlefields_count', 'sideboard_size',
+                                          'banned'],
+                                  '2v2': ['main_size', 'battlefields_count', 'sideboard_size']}
+        detail = data(api.get(f"{BASE}/{item['id']}"))
+        assert detail['legality']['1v1']['issues'][-1] == {
+            'code': 'banned', 'params': {'name': 'Azir, Emperor', 'mode': '1v1'}}
+
+
+# A complete Azir deck but for its sideboard: 13 extra Calm units fill the main deck.
+EXTRAS = [RbCard(rbcar_rbset_id='OGN', rbcar_id=f'X{n:02}', rbcar_name=f'Unit {n:02}',
+                 rbcar_type='Unit', rbcar_domain='Calm') for n in range(1, 15)]
+
+
+def _full(sideboard):
+    return content(legend=ref('OGN', 'L1'), champion=ref('OGN', 'C1'),
+                   main=[line('OGN', f'X{n:02}', 3) for n in range(1, 14)],
+                   runes=[line('OGN', 'R1', 6), line('OGN', 'R2', 6)],
+                   battlefields=[ref('OGN', 'B1'), ref('OGN', 'B2'), ref('OGN', 'B3')],
+                   sideboard=sideboard)
+
+
+SIDEBOARD_8 = [line('OGN', 'U1', 2), line('SFD', 'U1', 1), line('OGN', 'U2', 3),
+               line('OGN', 'S1', 2)]
+
+
+class TestCompleteDecks:
+    def test_a_sideboard_of_8_is_the_only_issue_and_saving_10_makes_it_legal(self, api):
+        db.session.add_all(EXTRAS)
+        db.session.commit()
+        deck_id = make_deck('Azir', _full(SIDEBOARD_8))
+        item = data(api.get(BASE))['items'][0]
+        assert item['legal'] == {'1v1': False, '2v2': False}
+        assert item['issues'] == {'1v1': ['sideboard_size'], '2v2': ['sideboard_size']}
+        assert item['counts'] == {'main': 39, 'runes': 12, 'battlefields': 3, 'sideboard': 8,
+                                  'workbench': 0}
+        one = data(api.get(f'{BASE}/{deck_id}'))['legality']['1v1']
+        assert one['issues'] == [{'code': 'sideboard_size',
+                                  'params': {'have': 8, 'need': 10, 'missing': 2, 'over': 0}}]
+        assert one['completeness']['sideboard'] == {'have': 8, 'need': 10, 'missing': 2}
+        assert sum(s['missing'] for s in one['completeness'].values()) == 2
+
+        deck = data(api.put(f'{BASE}/{deck_id}/content', json={'content': _full(
+            SIDEBOARD_8 + [line('OGN', 'S1', 1), line('OGN', 'X14', 1)])}))
+        assert {mode: r['legal'] for mode, r in deck['legality'].items()} == {
+            '1v1': True, '2v2': True}
+        assert deck['legality']['2v2'] == {'legal': True, 'issues': [], 'completeness': {
+            section: {'have': need, 'need': need, 'missing': 0} for section, need in (
+                ('legend', 1), ('champion', 1), ('main', 39), ('runes', 12),
+                ('battlefields', 3), ('sideboard', 10))}}
+        _ban('Desert Scout', '1v1')
+        assert data(api.get(BASE))['items'][0]['legal'] == {'1v1': False, '2v2': True}
+
+
+class TestMigratedDecks:
+    def test_decks_copied_by_flask_decks_migrate_are_read_and_saved(self, app, api):
+        def legacy(id, name, cards, mode='1v1'):
+            db.session.add(RbDeck(id=id, rbdck_user='testuser', rbdck_name=name, rbdck_seq=1,
+                                  rbdck_snapshot=datetime(2030, 1, id, 10), rbdck_mode=mode,
+                                  rbdck_cards=cards))
+        legacy(1, 'Azir Control', {
+            'main': [line('OGN', 'L1'), line('OGN', 'C1', 3), line('OGN', 'U1', 3),
+                     line('OGN', 'R1', 6), line('OGN', 'R2', 6), line('OGN', 'B1'),
+                     line('OGN', 'B2'), line('OGN', 'B3')],
+            'sideboard': [line('OGN', 'U2', 2)]})
+        legacy(2, 'Tokens', {'main': [line('OGN', 'T1', 2), line('OGN', '999')]}, mode='2v2')
+        legacy(3, 'Draft', None)
+        db.session.commit()
+        result = app.test_cli_runner().invoke(args=['decks', 'migrate'])
+        assert result.exit_code == 0, result.output
+
+        items = data(api.get(BASE))['items']
+        assert [(i['name'], i['mode']) for i in items] == [
+            ('Draft', '1v1'), ('Tokens', '2v2'), ('Azir Control', '1v1')]
+        azir = items[2]
+        assert (azir['legend']['key'], azir['champion']['key']) == ('OGN-L1', 'OGN-C1')
+        assert azir['counts'] == {'main': 5, 'runes': 12, 'battlefields': 3, 'sideboard': 2,
+                                  'workbench': 0}
+        assert azir['issues']['1v1'] == ['main_size', 'sideboard_size']
+        assert items[1]['counts']['workbench'] == 2 and items[1]['legend'] is None
+        notes = [v['note'] for v in data(api.get(f"{BASE}/{items[1]['id']}/versions"))['items']]
+        assert notes == ['Migrated from rbdecks #2. Left out: OGN-999 x1.']
+
+        deck = data(api.put(f"{BASE}/{azir['id']}/content", json={'content': AZIR}))
+        assert deck['current_seq'] == 1 and deck['content'] == AZIR
+        assert [v[2] for v in versions(azir['id'])] == ['Migrated from rbdecks #1.']
+        assert RbDeck.query.count() == 3
