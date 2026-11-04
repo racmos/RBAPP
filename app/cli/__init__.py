@@ -1,5 +1,5 @@
 """Flask CLI command groups: `flask schema ...`, `flask users ...`, `flask jobs ...`,
-`flask bans ...`, `flask images ...` and `flask riot ...`."""
+`flask bans ...`, `flask images ...`, `flask riot ...` and `flask decks ...`."""
 
 
 def register_cli(app):
@@ -16,3 +16,5 @@ def register_cli(app):
     app.cli.add_command(images_cli)
     from app.cli.riot import riot_cli
     app.cli.add_command(riot_cli)
+    from app.cli.decks import decks_cli
+    app.cli.add_command(decks_cli)
