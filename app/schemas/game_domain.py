@@ -31,3 +31,15 @@ CONDITIONS = ('MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO')
 # Card languages offered by the collection (F3-b, D-F3-4); the data may hold others.
 LANGUAGES = ('English', 'French', 'German', 'Spanish', 'Italian', 'Simplified Chinese',
              'Japanese', 'Portuguese', 'Russian', 'Korean', 'Traditional Chinese')
+
+# Deck rule values (F5-R1, product.md → "Game rules"): the engine
+# (`app/services/deck_rules.py`) and `/meta/game` (`rules.deck`) read them here.
+DECK_RULES = {
+    'main_size': 39,             # main-deck cards, the chosen champion apart
+    'total_with_champion': 40,   # main deck + chosen champion
+    'runes': 12,                 # exactly, only of the legend's domains
+    'battlefields': 3,           # distinct, not counted in the deck
+    'sideboard': 10,             # at most
+    'copies_max': 3,             # per name across main + sideboard + workbench + champion
+    'workbench_max': 100,        # distinct names
+}

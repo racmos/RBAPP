@@ -25,3 +25,15 @@ def test_supertypes():
 
 def test_rarities_lowest_first():
     assert game_domain.RARITIES == ('Common', 'Uncommon', 'Rare', 'Epic', 'Showcase')
+
+
+def test_deck_rules_values():
+    """F5-a S1 (F5-R1): the deck rule values, in this key order."""
+    assert game_domain.DECK_RULES == {
+        'main_size': 39, 'total_with_champion': 40, 'runes': 12, 'battlefields': 3,
+        'sideboard': 10, 'copies_max': 3, 'workbench_max': 100,
+    }
+    assert list(game_domain.DECK_RULES) == [
+        'main_size', 'total_with_champion', 'runes', 'battlefields', 'sideboard',
+        'copies_max', 'workbench_max',
+    ]

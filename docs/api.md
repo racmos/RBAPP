@@ -59,7 +59,10 @@ uses this order, `sortSetsNewestFirst` in `frontend/src/lib/sets.ts` for lists t
 from here), each with
 `{id, name, released_on (ISO|null), card_count}`; `price` is
 `{provider: "cardmarket", currency: "EUR", updated_on (ISO|null)}` where `updated_on`
-is the newest `rbcm_price` date; `rules` is `{}` (reserved for F15); `conditions` is
+is the newest `rbcm_price` date; `rules` is `{deck: {main_size: 39, total_with_champion: 40,
+runes: 12, battlefields: 3, sideboard: 10, copies_max: 3, workbench_max: 100}}` (F5-a:
+`DECK_RULES` in `game_domain.py`, the values the deck rules engine `app/services/deck_rules.py`
+uses; the UI never hardcodes them; other keys of `rules` are reserved for F15); `conditions` is
 `["MT","NM","EX","GD","LP","PL","PO"]` (best to worst) and `languages` the 11 languages of
 the collection (`CONDITIONS` / `LANGUAGES` in `game_domain.py`, F3-b). No new error code.
 
@@ -452,7 +455,8 @@ retyped or removed without a new unit.
 `GameMeta` = the `data` object of `GET /meta/game`:
 `{modes: [str], domains: [str], types: [str], supertypes: [str], rarities: [str],
 sets: [{id, name, released_on (ISO|null), card_count}] (newest first, undated last),
-price: {provider, currency, updated_on (ISO|null)}, rules: {},
+price: {provider, currency, updated_on (ISO|null)}, rules: {deck: {main_size, total_with_champion,
+runes, battlefields, sideboard, copies_max, workbench_max}},
 conditions: [str], languages: [str]}`.
 
 `CardSummary` = the object `app/services/catalog.py::card_summary` builds for one

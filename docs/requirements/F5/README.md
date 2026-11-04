@@ -57,7 +57,7 @@ after production).
 
 ### Rules
 - **F5-R1** `app/schemas/game_domain.py` gains `DECK_RULES = {main_size: 39, total_with_champion: 40, runes: 12, battlefields: 3, sideboard: 10, copies_max: 3, workbench_max: 100}`; `/meta/game` returns them under `rules.deck`. The opening-hand and mulligan values are added by F5-k after production. (F5-a)
-- **F5-R2** `app/services/deck_rules.py`: pure functions `validate(deck, cards, bans, mode) -> {legal, issues[{code, params}]}`, `can_add(deck, card, zone) -> ok | {code, params}`, `auto_runes(deck, cards)`, `apply_legend(deck, legend)`, `apply_champion(deck, champion)`, `deck_domains`. Issue codes: `legend_missing`, `champion_missing`, `champion_tag`, `main_size`, `runes_count`, `rune_off_identity`, `battlefields_count`, `battlefields_duplicate`, `sideboard_size`, `copies_over`, `workbench_over`, `card_off_identity`, `token_in_deck`, `banned` (params `{name, mode}`). (F5-a)
+- **F5-R2** `app/services/deck_rules.py`: pure functions `validate(deck, cards, bans, mode) -> {legal, issues[{code, params}]}`, `can_add(deck, card, zone) -> ok | {code, params}`, `auto_runes(deck, cards)`, `apply_legend(deck, legend)`, `apply_champion(deck, champion)`, `deck_domains`. Issue codes: `legend_missing`, `champion_missing`, `champion_tag`, `main_size`, `runes_count`, `rune_off_identity`, `battlefields_count`, `battlefields_duplicate`, `sideboard_size`, `copies_over`, `workbench_over`, `card_off_identity`, `token_in_deck`, `banned` (params `{name, mode}`). (F5-a) As built (F5-a, owner clarification 2026-11-04): the functions also take `cards`, `can_move`, `sort_names` and `validate.completeness` were added, sized issues carry `{have, need, missing, over}`, wrong-type cards are `card_off_identity` with `reason`, and a sideboard under 10 is a soft issue; see `F5-a-deck-rules-engine.md` S1-S15 and L1-L15.
 - **F5-R3** Shared cases in `tests/fixtures/deck_rules_cases.json` (input deck + catalog subset + mode → expected issues / operation result) covering design-handoff §5.1 (a)-(i), the §5.3 auto-runes examples (`[5,19] → [3,9]`, 1 colour → 12, 2 colours without cards → 6/6, `[1,100] → [1,11]`, `[7,3] → [8,4]`) and collation of names (`localeCompare` vs Python: D-F5-7). pytest and vitest both run every case. (F5-a, F5-b)
 - **F5-R4** `frontend/src/decks/rules/` implements the same functions in TS (used for instant feedback; the server stays authoritative). (F5-b)
 
@@ -128,21 +128,21 @@ mazos" + Nuevo/Importar), error, offline read-only, 404 for slugs.
 
 ## Units
 
-| ID | Title | Depends on | Size | Risk | Summary |
-|---|---|---|---|---|---|
-| F5-a | Deck rules engine (Python) + rule values | F2 done | ~600 | item 3 | `DECK_RULES` in `/meta/game`, `deck_rules.py`, shared cases JSON + pytest runner |
-| F5-b | Deck rules library (TS) | F5-a | ~500 | item 3 | `frontend/src/decks/rules/`, vitest runner over the same cases |
-| F5-c | Deck v2 data + migration | F5-a | ~600 | items 1, 3 | Tables, Pydantic content, routing migration + dry-run CLI, Jinja read-only switch |
-| F5-d | Decks API | F5-c | ~600 | items 3, 4 | CRUD, content save with hard limits, versions, diff, legality both modes |
-| F5-e | Import/export API | F5-d | ~550 | items 3, 6 | Parsers (rbapp + riftdecks + Piltover; samples needed), preview warnings, export formats |
-| F5-f | Deck vs collection | F5-d, F3-f | ~350 | item 3 | Missing/cost per name, missing to wishlist |
-| F5-g | Visibility, share link, public endpoint | F5-d | ~400 | item 2 | Slugs, public read endpoint with rate limit, authz P |
-| F5-h | Decks UI mobile | F5-b, F5-d | ~650 | none | List, workspace screen, editing with limits and reasons, nav flip |
-| F5-i | Decks UI desktop/wide + analysis | F5-h | ~650 | none | Columns, analysis panel, `MiniCurve`, `Donut` |
-| F5-j | Import/export + versions UI | F5-e, F5-h | ~550 | none | Modals, preview, versions, diff |
-| F5-k | Opening hands + mulligan (split out, after production) | F5-i, F15 (order), official rules (owner) | ~500 | item 3 | Opening-hand and mulligan rule values, `HandSimulator` in the analysis panel and the public page (F5-R21) |
-| F5-l | Offline decks | F5-i | ~250 | items 5, 6 | `rb-api-decks` cache, purge, disabled edits |
-| F5-m | Public deck page | F5-g, F5-i | ~400 | item 2 | `/d/:slug` outside the guard (the public part of the former F5-k) |
+| ID | Title | Depends on | Size | Risk | Status | Summary |
+|---|---|---|---|---|---|---|
+| F5-a | Deck rules engine (Python) + rule values | F2 done | ~600 | item 3 | In review (`F5-a-deck-rules-engine.md`) | `DECK_RULES` in `/meta/game`, `deck_rules.py`, shared cases JSON + pytest runner |
+| F5-b | Deck rules library (TS) | F5-a | ~500 | item 3 | Planned | `frontend/src/decks/rules/`, vitest runner over the same cases |
+| F5-c | Deck v2 data + migration | F5-a | ~600 | items 1, 3 | Planned | Tables, Pydantic content, routing migration + dry-run CLI, Jinja read-only switch |
+| F5-d | Decks API | F5-c | ~600 | items 3, 4 | Planned | CRUD, content save with hard limits, versions, diff, legality both modes |
+| F5-e | Import/export API | F5-d | ~550 | items 3, 6 | Planned | Parsers (rbapp + riftdecks + Piltover; samples needed), preview warnings, export formats |
+| F5-f | Deck vs collection | F5-d, F3-f | ~350 | item 3 | Planned | Missing/cost per name, missing to wishlist |
+| F5-g | Visibility, share link, public endpoint | F5-d | ~400 | item 2 | Planned | Slugs, public read endpoint with rate limit, authz P |
+| F5-h | Decks UI mobile | F5-b, F5-d | ~650 | none | Planned | List, workspace screen, editing with limits and reasons, nav flip |
+| F5-i | Decks UI desktop/wide + analysis | F5-h | ~650 | none | Planned | Columns, analysis panel, `MiniCurve`, `Donut` |
+| F5-j | Import/export + versions UI | F5-e, F5-h | ~550 | none | Planned | Modals, preview, versions, diff |
+| F5-k | Opening hands + mulligan (split out, after production) | F5-i, F15 (order), official rules (owner) | ~500 | item 3 | Planned | Opening-hand and mulligan rule values, `HandSimulator` in the analysis panel and the public page (F5-R21) |
+| F5-l | Offline decks | F5-i | ~250 | items 5, 6 | Planned | `rb-api-decks` cache, purge, disabled edits |
+| F5-m | Public deck page | F5-g, F5-i | ~400 | item 2 | Planned | `/d/:slug` outside the guard (the public part of the former F5-k) |
 
 ## Open decisions
 
