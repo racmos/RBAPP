@@ -74,6 +74,7 @@ riftbound/
 │   │   ├── images.py        # flask images import-legacy (copy the old card images into CARD_IMAGES_DIR)
 │   │   ├── jobs.py          # flask jobs enqueue|run-pending|list
 │   │   ├── riot.py          # flask riot recheck-pending [--dry-run] (marks stale pending card changes obsolete)
+│   │   ├── decks.py         # flask decks migrate [--dry-run] [--strict] (copies rbdecks into decks v2, F5-c)
 │   │   ├── schema.py        # flask schema snapshot
 │   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock
 │   ├── api/
@@ -95,7 +96,8 @@ riftbound/
 │   │   ├── set.py           # RbSet (rbset)
 │   │   ├── card.py          # RbCard (rbcards)
 │   │   ├── collection.py    # RbCollection (rbcollection)
-│   │   ├── deck.py          # RbDeck (rbdecks)
+│   │   ├── deck.py          # RbDeck (rbdecks): legacy decks, read and written by the Jinja deck pages
+│   │   ├── deck_v2.py       # RbDeckHead (rbdeckheads), RbDeckVersion (rbdeckversions): decks v2 (F5-c)
 │   │   ├── market.py        # RbCardMarket (rbcardmarket)
 │   │   ├── cardmarket.py    # Rbcm* models (rbcm_* tables, Cardmarket loader) and RbProducts (rbproducts)
 │   │   ├── captcha.py       # RbCaptchaUsed (rbcaptcha_used)
@@ -129,6 +131,7 @@ riftbound/
 │   │   ├── card_detail.py   # card detail + price history: printings, related, user lines/decks (F2-d)
 │   │   ├── card_list.py     # cards list query: filters, disjunctive facets, sort, pagination (F2-c)
 │   │   ├── deck_rules.py    # pure deck rules engine (F5-a): validate (issues + completeness), can_add/can_move, hard_limit_violations, apply_legend/champion, auto_runes, deck_domains, sort_names; shared cases tests/fixtures/deck_rules_cases.json
+│   │   ├── deck_migration.py # route_deck (legacy cards -> content v2 by type), plan_migration / report_lines / apply_plan for `flask decks migrate` (F5-c)
 │   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
 │   │   ├── collection_import.py # CSV import: preview rows with reason codes, commit add/replace (F3-e)
 │   │   ├── collection_export.py # CSV export rows and stream: RBAPP and Cardmarket formats (F3-d)
@@ -154,6 +157,7 @@ riftbound/
 │   │   ├── riot_sync.py     # fetch_gallery, window_for, sync (per-set savepoints)
 │   │   └── scraper.py       # Landing feeds with a TTL cache
 │   ├── schemas/             # Pydantic
+│   │   ├── deck_content.py  # DeckContentV2: shape of a v2 deck version (F5-R6), VISIBILITIES (F5-c)
 │   │   ├── game_domain.py   # Game enumerations (modes, domains, types, supertypes, rarities) and DECK_RULES (F5-a), the single source for schemas and CHECKs (F2-b; see docs/api.md)
 │   │   ├── prefs_domain.py  # Value domains of the interface preferences (schema + model CHECKs)
 │   │   ├── validators.py    # Request schemas
@@ -237,11 +241,12 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, `rbuserproducts`, `rblocations`, `rbcollection_locations`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbdeckheads`, `rbdeckversions`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, `rbuserproducts`, `rblocations`, `rbcollection_locations`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 - `rbproducts` (F14-a): keyed by `rbpdt_id_product` (`rbpdt_id_set` nullable), with `rbpdt_category`, `rbpdt_kind` (CHECK `rbproducts_kind_chk`), `rbpdt_kind_locked`, `rbpdt_set_locked`, `rbpdt_hidden`, `rbpdt_listed`, `rbpdt_updated_at`; only `rbpdt_type = 'nonsingle'` rows are products; `products_refresh` never deletes (a product that leaves the file gets `rbpdt_listed = false`)
 - `rbcollection` (F3-a): `rbcol_sell_qty` (0..quantity) is the number of copies for sale and `rbcol_purchase_price` the optional unit purchase price; `rbcol_selling` is only `Y` or `N`; **`rbcol_playset` is deprecated** (read only by the Jinja collection, dropped in F11); the Jinja writes keep `rbcol_sell_qty` coherent through `app/services/collection_rules.py`. Playset size per user is `rbuserprefs.rbprf_playset_size` (NULL = 3) and the "keep a playset" marks are `rbkeepplayset` (one row per user and `name_key`)
+- `rbdeckheads` / `rbdeckversions` (F5-c, migration `0025_decks_v2`): decks v2. A head (`rbdkh_user_id` → `rbusers.id`, name unique per user, mode, visibility, share slug, current version, `rbdkh_legacy_name`) has versions (`rbdkv_seq` unique per deck, `rbdkv_content` = content v2 validated by `app/schemas/deck_content.py`, `rbdkv_legacy_id` = the `rbdecks.id` it was copied from). `flask decks migrate [--dry-run] [--strict]` copies the legacy decks (dry run first, see `docs/knowledge/ops-runbook.md` → "Decks v2 migration"); `rbdecks` stays the Jinja source until the read-only switch (F5-d/h)
 
 ### Column Naming
 - snake_case with the table prefix: `rbcar_name`, `rbcol_quantity`, `rbdck_snapshot`
