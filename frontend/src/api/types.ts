@@ -129,6 +129,17 @@ export type PricePoint = {
 };
 
 /** `GET /meta/game` (F2-h S2). */
+/** `rules.deck` of `GET /meta/game` (`DECK_RULES`, F5-a S1). */
+export type DeckRuleValues = {
+  main_size: number;
+  total_with_champion: number;
+  runes: number;
+  battlefields: number;
+  sideboard: number;
+  copies_max: number;
+  workbench_max: number;
+};
+
 export type GameMeta = {
   modes: string[];
   domains: string[];
@@ -137,7 +148,9 @@ export type GameMeta = {
   rarities: string[];
   sets: { id: string; name: string; released_on: string | null; card_count: number }[];
   price: { provider: string; currency: string; updated_on: string | null };
-  rules: Record<string, unknown>;
+  /** Game rule values; `deck` since F5-a (read it with `rulesFromMeta` of `@/decks/rules`).
+   * Optional only for fixtures that predate it: the server always sends it. */
+  rules: { deck?: DeckRuleValues; [key: string]: unknown };
   /** Card conditions, best to worst (F3-b). */
   conditions: string[];
   /** Languages the collection offers (F3-b). */
