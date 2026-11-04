@@ -431,6 +431,90 @@ description|null, locked, qty}] (the user's order), unassigned, total (the line 
 New error codes: `location_over_quantity` (409, `params.max`, `params.requested`) and
 `location_locked` (409). `insufficient_unlocked` (deck mount) arrives with F16-e.
 
+### Decks (F5-d)
+
+`app/api/v1/decks.py`, all `U`, logic in `app/services/decks.py`, rules from
+`app/services/deck_rules.py` (F5-a). Only the owner sees a deck (D-F5-9): another user's deck,
+an unknown id or an unknown version seq -> the 404 envelope on every route, never 403;
+anonymous -> 401 `unauthenticated`. Import/export (F5-e), deck vs collection (F5-f) and the share
+link (F5-g) are not here yet.
+
+Shapes (keys in this order):
+
+- `Content` = content v2 (F5-R6, `app/schemas/deck_content.py`): `{v: 2, legend: ref|null,
+  champion: ref|null, main: [line], runes: [line], battlefields: [ref], sideboard: [line],
+  workbench: [line]}`, `ref = {set, id}`, `line = {set, id, qty ≥ 1}`. Printings are kept.
+- `DeckCard` = `CardMini` (`set_id, card_id, key, name, domains, type, supertype, rarity,
+  image_src, image_thumb_src, is_base, market, owned_total`) + `tags`. `market` is the non-foil
+  price chain of the printing; `owned_total` the caller's copies of that printing.
+- `Legality` = `{"1v1": Result, "2v2": Result}`, `Result = {legal, issues: [{code, params}],
+  completeness: {legend, champion, main, runes, battlefields, sideboard: {have, need, missing}}}`
+  (`deck_rules.validate`, issue codes in `F5-a-deck-rules-engine.md`). Always computed on read,
+  with the bans of that moment (`ban_map`, by `name_key`); never stored.
+- `DeckHead` = `{id, name, mode, visibility, created_at, updated_at}` (ISO UTC, `Z`).
+- `DeckListItem` = `DeckHead` + `{legend: DeckCard|null, champion: DeckCard|null, domains,
+  counts: {main, runes, battlefields, sideboard, workbench}, value, value_unpriced, legal:
+  {"1v1": bool, "2v2": bool}, issues: {"1v1": [code], "2v2": [code]}}`. `counts` sum the copies
+  of each zone (battlefields: entries); the workbench is its own count and never part of `main`.
+  `issues` are the distinct issue codes in engine order.
+- `DeckDetail` = `DeckHead` + `{current_seq, content, cards: {"<set>-<id>": DeckCard},
+  unknown_cards: [{zone, set, id}], domains, counts, value, value_unpriced, legality}`.
+  `cards` holds every known printing of the content; a printing missing from the catalog is
+  left out of `cards` and of the legality and listed in `unknown_cards` (it still counts in
+  `counts` and as unpriced).
+- `VersionItem` = `{seq, note|null, created_at, is_current}`; `VersionDetail` = `VersionItem` +
+  `{content, cards, unknown_cards, domains, counts, value, value_unpriced, legality}`.
+
+**Value rule** (EUR): Σ market price × copies over legend, champion, main, runes, battlefields
+and sideboard, rounded to cents. The workbench never counts (product.md). `value_unpriced` = the
+copies of those zones without a price (cards missing from the catalog included).
+
+Routes:
+
+- `GET /decks` (`api_v1.list_decks`) -> `{items: [DeckListItem]}`, newest `updated_at` first
+  (then id descending). 9 SQL statements whatever the number of decks (user, heads, current
+  versions, cards, sets, bans, prices ×2, owned copies).
+- `POST /decks` (`api_v1.create_deck`) `{name (trimmed, 1-80), mode: 1v1|2v2}` -> 201
+  `DeckDetail`: private, version 1 with the empty content as the current version. A name the
+  caller already has (exact) -> 409 `already_exists`; another user's name is free.
+- `GET /decks/<id>` (`api_v1.get_deck`) -> `DeckDetail` of the current version.
+- `PATCH /decks/<id>` (`api_v1.update_deck`) any of `{name, mode, visibility: private|public}` ->
+  `DeckDetail`. Only the sent keys change, none is nullable (400); a taken name -> 409
+  `already_exists`. No version is created; `updated_at` is refreshed.
+- `DELETE /decks/<id>` (`api_v1.delete_deck`) -> `{deleted: DeckHead}`; every version goes too.
+- `PUT /decks/<id>/content` (`api_v1.put_deck_content`) `{content: Content}` -> `DeckDetail`.
+  Autosave (D-F5-3): rewrites the **current** version in place, refreshes the head's
+  `updated_at`, creates no version. The shape is `DeckContentV2` (400 `validation_error`, fields
+  like `content.main.0.qty`). A card not in the catalog -> 400 `validation_error` with one detail
+  per card `{field: "content.main.1", message: "unknown card XXX-9", type: "value_error", code:
+  "invalid_value"}`. A hard limit (F5-R9, `deck_rules.hard_limit_violations`: copies per name > 3
+  over main + sideboard + workbench + champion, sideboard > 10, workbench > 100 distinct names,
+  battlefields > 3, runes > 12, a token outside the workbench) -> 400 `deck_limit_exceeded` with
+  `params` = the first violation `{rule: copies|sideboard|workbench|battlefields|runes|token,
+  max, name?}` and a `message` naming them all (`The deck goes over a limit: copies (max 3)
+  ("Desert Scout"); runes (max 12).`). Nothing is stored on any error. Soft rules (sizes not
+  reached, identity, champion tag, bans) never block: they come back in `legality`.
+- `GET /decks/<id>/versions` (`api_v1.list_deck_versions`) -> `{items: [VersionItem]}`, newest
+  seq first.
+- `POST /decks/<id>/versions` (`api_v1.create_deck_version`) `{note?: ≤ 200, trimmed, empty =
+  null}` (send `{}` for no note; a JSON body is required) -> 201 `VersionDetail`: a copy of the
+  current content as a **new** version (next seq), which becomes the current one; the older
+  versions never change again through autosave.
+- `GET /decks/<id>/versions/<seq>` (`api_v1.get_deck_version`) -> `VersionDetail`.
+- `POST /decks/<id>/versions/<seq>/restore` (`api_v1.restore_deck_version`) -> 201
+  `VersionDetail`: version `seq` is copied into a **new** version (next seq, note `Restored from
+  version <seq>.`), which becomes the current one. No version is overwritten or deleted.
+- `GET /decks/<id>/diff?a=&b=` (`api_v1.diff_deck_versions`, both ≥ 1, else 400 "Invalid query
+  parameters") -> `{a, b, zones: {legend, champion, main, runes, battlefields, sideboard,
+  workbench: {added, removed, changed}}, cards: {"<set>-<id>": DeckCard}}`. Entries
+  `{set, id, before, after}` (copies; 1 for legend, champion and each battlefield) compare
+  printings (set, id) from `a` to `b`: `added` only in `b`, `removed` only in `a`, `changed`
+  in both with another quantity; ordered by card name (`name_sort_key`), then set and id.
+  `cards` names every printing in an entry that is in the catalog.
+
+New error code: `deck_limit_exceeded` (400, `params {rule, max, name?}`). Legality issues are
+never HTTP errors.
+
 ### GET /cards/<set_id>/<card_id>/prices
 
 `app/api/v1/cards.py` (`api_v1.get_card_prices`, U): daily price history.

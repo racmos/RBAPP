@@ -9,7 +9,8 @@ from pydantic import (BaseModel, Field, StrictBool, StrictInt, ValidationError, 
                       model_validator)
 from pydantic_core import PydanticCustomError
 
-from app.schemas.game_domain import CONDITIONS
+from app.schemas.deck_content import VISIBILITIES, DeckContentV2
+from app.schemas.game_domain import CONDITIONS, GAME_MODES
 from app.schemas.prefs_domain import (ACCENTS, BG_INTENSITY_MAX, BG_INTENSITY_MIN,
                                       PLAYSET_SIZE_MAX, PLAYSET_SIZE_MIN,
                                       COLLECTION_VIEWS, DENSITIES, LANGS)
@@ -401,6 +402,62 @@ class LineLocationsMove(BaseModel, extra='ignore'):
             raise PydanticCustomError('invalid_value',
                                       'from_location_id and to_location_id must differ')
         return self
+
+
+# ============== Decks v2 (F5-d) ==============
+
+
+def _deck_name(value):
+    return value.strip() if isinstance(value, str) else value
+
+
+def _not_null(value, info):
+    if value is None:
+        raise PydanticCustomError('invalid_value', '{field} cannot be null',
+                                  {'field': info.field_name})
+    return value
+
+
+_DeckName = Annotated[str, Field(min_length=1, max_length=80)]
+_DeckMode = Literal[GAME_MODES]                 # a tuple subscript means Literal['1v1', '2v2']
+_Visibility = Literal[VISIBILITIES]
+
+
+class DeckCreate(BaseModel, extra='ignore'):
+    """POST /decks body (F5-d S1): the name is trimmed."""
+    name: _DeckName
+    mode: _DeckMode
+
+    _name = field_validator('name', mode='before')(lambda cls, v: _deck_name(v))
+
+
+class DeckPatch(BaseModel, extra='ignore'):
+    """PATCH /decks/<id> body (F5-d S4): only the keys that were sent change; none is nullable."""
+    name: Optional[_DeckName] = None
+    mode: Optional[_DeckMode] = None
+    visibility: Optional[_Visibility] = None
+
+    _name = field_validator('name', mode='before')(lambda cls, v: _deck_name(v))
+    _nulls = field_validator('name', 'mode', 'visibility')(
+        lambda cls, v, info: _not_null(v, info))
+
+
+class DeckContentPut(BaseModel, extra='ignore'):
+    """PUT /decks/<id>/content body (F5-d S7): the whole content v2 of the current version."""
+    content: DeckContentV2
+
+
+class DeckVersionCreate(BaseModel, extra='ignore'):
+    """POST /decks/<id>/versions body (F5-d S10): an optional note (empty = none)."""
+    note: Optional[str] = Field(None, max_length=200)
+
+    _note = field_validator('note')(lambda cls, v: _note(v))
+
+
+class DeckDiffQuery(BaseModel, extra='ignore'):
+    """GET /decks/<id>/diff query (F5-d S13): two version numbers of the deck."""
+    a: int = Field(..., ge=1)
+    b: int = Field(..., ge=1)
 
 
 # ============== Card Prices Query ==============

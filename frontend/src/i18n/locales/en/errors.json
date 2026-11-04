@@ -23,7 +23,8 @@
     "import_expired": "The preview expired. Upload the file again.",
     "import_format_unknown": "The file format is not recognised. Use the RBAPP format (the app's export).",
     "location_over_quantity": "Too many copies: at most {{max}} can be placed (requested: {{requested}}).",
-    "location_locked": "This location is locked. Unlock it first."
+    "location_locked": "This location is locked. Unlock it first.",
+    "deck_limit_exceeded": "The deck goes over a limit (maximum {{max}})."
   },
   "status": {
     "400": "The request is not valid.",
