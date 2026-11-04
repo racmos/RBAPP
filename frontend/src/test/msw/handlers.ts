@@ -95,7 +95,17 @@ export const handlers = [
       rarities: ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'],
       sets: [{ id: 'OGN', name: 'Origins', released_on: '2024-01-15', card_count: 6 }],
       price: { provider: 'cardmarket', currency: 'EUR', updated_on: '2026-10-25T00:00:00Z' },
-      rules: {},
+      rules: {
+        deck: {
+          main_size: 39,
+          total_with_champion: 40,
+          runes: 12,
+          battlefields: 3,
+          sideboard: 10,
+          copies_max: 3,
+          workbench_max: 100,
+        },
+      },
       conditions: ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'],
       languages: ['English', 'French', 'German', 'Spanish', 'Italian'],
     }),

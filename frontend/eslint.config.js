@@ -3,6 +3,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import { defineConfig, globalIgnores } from 'eslint/config';
+import pkg from './package.json' with { type: 'json' };
 import tseslint from 'typescript-eslint';
 
 // D10: one-way dependencies between folders. `lib` and `components/ui` are pure,
@@ -20,8 +21,13 @@ const FOLDERS = [
   'collection',
   'products',
   'locations',
+  'decks',
   'app',
 ];
+
+// Runtime packages of the app: the deck rules library may import none of them (F5-b).
+const RUNTIME_PACKAGES = Object.keys(pkg.dependencies);
+const RULES_PURE = 'The deck rules are pure: import only their sibling modules (F5-b).';
 
 const deep = (name) => [`@/${name}`, `@/${name}/**`];
 const parentRelative = {
@@ -90,8 +96,8 @@ export default defineConfig(
       deepOnly: FEATURES.filter((name) => name !== feature),
     }),
   ),
-  // shell, account, catalog, collection and products: everything below, never app; storage
-  // locations (F16) only through their index.
+  // shell, account, catalog, collection, products and decks: everything below, never app;
+  // storage locations (F16) only through their index.
   boundary(
     [
       'src/shell/**/*.{ts,tsx}',
@@ -99,12 +105,44 @@ export default defineConfig(
       'src/catalog/**/*.{ts,tsx}',
       'src/collection/**/*.{ts,tsx}',
       'src/products/**/*.{ts,tsx}',
+      'src/decks/**/*.{ts,tsx}',
     ],
     ['app'],
     { deepOnly: ['locations'] },
   ),
   // locations (F16): everything below, never app; it never needs the collection screens.
   boundary(['src/locations/**/*.{ts,tsx}'], ['app', 'collection']),
+  // deck rules (F5-b): pure functions, the twin of app/services/deck_rules.py. Only their
+  // sibling modules: no alias, no package, no node, no DOM. Their tests are exempt.
+  {
+    files: ['src/decks/rules/**/*.{ts,tsx}'],
+    ignores: ['src/decks/rules/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@/*',
+                '@/**',
+                'node:*',
+                ...RUNTIME_PACKAGES.flatMap((name) => [name, `${name}/**`]),
+              ],
+              message: RULES_PURE,
+            },
+            parentRelative,
+          ],
+        },
+      ],
+      'no-restricted-globals': [
+        'error',
+        ...['window', 'document', 'navigator', 'localStorage', 'sessionStorage', 'fetch'].map(
+          (name) => ({ name, message: 'The deck rules are pure: no DOM or browser API (F5-b).' }),
+        ),
+      ],
+    },
+  },
   // card and chart atoms: lib, i18n, ui and type-only @/api (F2-e).
   {
     files: ['src/components/card/**/*.{ts,tsx}', 'src/components/charts/**/*.{ts,tsx}'],

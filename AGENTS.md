@@ -191,6 +191,7 @@ riftbound/
 │       ├── shell/           # AppShell, Topbar, BottomNav, MoreSheet, HomeHub, nav registry, NotFound
 │       ├── products/        # ProductsPage (mobile F14-e, desktop rail/tables/panel F14-f), ProductDetail, line sheet, tiles, params ⇄ URL, queries
 │       ├── locations/       # LocationsPage (list F16-c, table/drag/panel F16-d), new and edit sheets with suggested codes, queries (also the line locations the collection uses)
+│       ├── decks/rules/     # Deck rules library (F5-b): pure TS port of app/services/deck_rules.py (validate, canAdd/canMove, hard limits, applyLegend/Champion, autoRunes, deckDomains, sortNames); RulesContext from /meta/game; cases.test.ts runs tests/fixtures/deck_rules_cases.json
 │       ├── collection/      # CollectionPage (mobile F3-g, desktop table/bulk/panel F3-h), items, LineSheet, AddSheet, filters, params ⇄ URL, queries
 │       ├── catalog/         # CardsLayout, card detail route/view, queries, outlet context (F2-f); CatalogPage, params, price history (F2-g/h); CardCombobox + topbar card search (F2-k)
 │       ├── components/ui/   # Primitives (Brand, Button, Field, Input, Toast, ...)
