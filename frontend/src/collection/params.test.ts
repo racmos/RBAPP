@@ -84,3 +84,24 @@ describe('exportQuery (F3-i S1)', () => {
     }
   });
 });
+
+describe('collection location filter (F16-b S11)', () => {
+  it('reads repeated location codes and writes them after the language', () => {
+    const params = parse('location=B001-F001-P0001&language=English&location=DECK-001');
+    expect(params.location).toEqual(['B001-F001-P0001', 'DECK-001']);
+    expect(serializeCollectionParams(params)).toBe(
+      'language=English&location=B001-F001-P0001&location=DECK-001',
+    );
+    expect(activeFilterCount(params)).toBe(3);
+  });
+
+  it('drops empty codes', () => {
+    expect(parse('location=&location=%20').location).toBeUndefined();
+  });
+
+  it('applies to the filtered export', () => {
+    expect(exportQuery(parse('location=DECK-001'), 'rbapp', 'filtered')).toBe(
+      'location=DECK-001&format=rbapp',
+    );
+  });
+});

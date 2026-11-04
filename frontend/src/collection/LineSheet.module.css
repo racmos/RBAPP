@@ -48,4 +48,61 @@
     padding-top: 12px;
     border-top: 1px solid var(--line-2);
   }
+
+  /* "Where they are" (F16-R5) */
+  .where {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-sm);
+  }
+
+  .whereTitle {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .muted,
+  .unassigned {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .places {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    list-style: none;
+  }
+
+  .placeCode {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .mover {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+  }
+
+  .mover > button {
+    justify-self: start;
+  }
+
+  .alert {
+    margin: 0;
+    color: var(--red-text);
+    font-weight: 700;
+  }
 }

@@ -5,6 +5,7 @@ import type { CollectionGroup, CollectionParams } from '@/api/types';
 import { useGameMeta, useSearchNavigation } from '@/catalog';
 import { useOffline } from '@/auth';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
+import { useLocations } from '@/locations';
 import { usePrefs } from '@/prefs';
 import {
   activeFilterCount,
@@ -37,6 +38,7 @@ export function useCollectionScreen(desktop: boolean) {
   const [params, setParams] = useCollectionParams();
   const gameMeta = useGameMeta();
   const list = useCollectionList(params);
+  const locations = useLocations();
 
   const [view, setView] = useState<'grid' | 'list' | 'table'>(() =>
     prefs.collection_view === 'grid'
@@ -71,6 +73,7 @@ export function useCollectionScreen(desktop: boolean) {
       rarity: undefined,
       condition: undefined,
       language: undefined,
+      location: undefined,
       foil: undefined,
       selling: undefined,
       has_purchase: undefined,
@@ -84,6 +87,8 @@ export function useCollectionScreen(desktop: boolean) {
     params,
     setParams,
     gameMeta,
+    /** The user's storage locations (F16), for the location filter. */
+    locations: locations.data?.items,
     list,
     items,
     meta,

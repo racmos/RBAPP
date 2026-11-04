@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { CollectionFacets, CollectionParams, GameMeta } from '@/api/types';
+import type { CollectionFacets, CollectionParams, GameMeta, StorageLocation } from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { ChipGroup, FilterChip } from '@/components/ui/FilterChip';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -8,7 +8,7 @@ import { sortSetsNewestFirst } from '@/lib/sets';
 import { activeFilterCount } from './params';
 import styles from './CollectionFilters.module.css';
 
-type ListKey = 'set' | 'domain' | 'type' | 'rarity' | 'condition' | 'language';
+type ListKey = 'set' | 'domain' | 'type' | 'rarity' | 'condition' | 'language' | 'location';
 
 type CollectionFiltersProps = {
   params: CollectionParams;
@@ -17,6 +17,8 @@ type CollectionFiltersProps = {
   facets: CollectionFacets;
   total: number;
   onClear: () => void;
+  /** The user's storage locations in their order (F16); no group when there are none. */
+  locations?: StorageLocation[];
   /** The sheet's "show" button; a sidebar has none. */
   onClose?: () => void;
   variant?: 'sheet' | 'sidebar';
@@ -33,6 +35,7 @@ export function CollectionFilters({
   facets,
   total,
   onClear,
+  locations = [],
   onClose,
   variant = 'sheet',
 }: CollectionFiltersProps) {
@@ -82,6 +85,12 @@ export function CollectionFilters({
   );
 
   const active = activeFilterCount(params);
+  // the user's codes in their order, then any code of the URL they do not have (any more)
+  const codes = locations.map((location) => location.code);
+  const locationCodes = [
+    ...codes,
+    ...(params.location ?? []).filter((code) => !codes.includes(code)),
+  ];
 
   return (
     <div className={styles.body}>
@@ -127,6 +136,8 @@ export function CollectionFilters({
         (v) => label('language', v),
         facets.language,
       )}
+      {locationCodes.length > 0 &&
+        chips('location', t('filters.location'), locationCodes, (v) => v)}
       {tri('has_purchase', t('filters.hasPurchase'))}
       <div className={styles.footer}>
         <Button variant="ghost" disabled={active === 0} onClick={onClear}>

@@ -37,4 +37,26 @@ describe('navRegistry (F2-h S13)', () => {
       'products',
     );
   });
+
+  it('adds locations as spa at /locations right after products (F16-c)', () => {
+    const index = NAV.findIndex((entry) => entry.id === 'locations');
+    const locations = NAV[index];
+    expect(locations).toEqual({
+      id: 'locations',
+      icon: 'pin',
+      status: 'spa',
+      to: '/locations',
+      placements: ['top', 'hub', 'more'],
+    });
+    expect(NAV[index - 1].id).toBe('products');
+    expect(entryHref(locations)).toBe('/locations');
+    for (const placement of ['top', 'hub', 'more'] as const) {
+      expect(navEntries(placement, { isAdmin: false }).map((entry) => entry.id)).toContain(
+        'locations',
+      );
+    }
+    expect(navEntries('bottom', { isAdmin: false }).map((entry) => entry.id)).not.toContain(
+      'locations',
+    );
+  });
 });

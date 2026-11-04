@@ -41,4 +41,11 @@ describe('CollectionTable columns (owner feedback S18 i, S24 q)', () => {
     );
     expect(wide?.decls).toContainEqual({ prop: 'max-width', value: 'var(--maxw-wide)' });
   });
+
+  it('keeps the location column narrow: one clamped line (F16-d)', () => {
+    expect(px(value('.where', 'max-width'))).toBeLessThanOrEqual(96);
+    expect(value('.where', 'white-space')).toBe('nowrap');
+    expect(value('.where', 'text-overflow')).toBe('ellipsis');
+    expect(value('.where', 'overflow')).toBe('hidden');
+  });
 });

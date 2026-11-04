@@ -1,0 +1,227 @@
+@layer components {
+  .page {
+    width: 100%;
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--pad);
+    padding-bottom: 32px;
+  }
+
+  @media (min-width: 1600px) {
+    .page {
+      max-width: var(--maxw-wide);
+    }
+  }
+
+  /* The panel column is as wide as its panel, so a folded panel gives its width to the table. */
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .layout[data-wide] {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  /* Sticky and opaque through TableScroll (components/ui). */
+  .table th {
+    padding: 8px 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table td {
+    padding: 6px;
+    border-top: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+
+  .table tbody tr:hover {
+    background: rgba(120, 205, 228, 0.05);
+  }
+
+  .table tr[data-active] {
+    background: var(--accent-soft);
+  }
+
+  /* Where a dragged row will land. */
+  .table tr[data-drop-target] td {
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+
+  .table tr[draggable='true'] {
+    cursor: grab;
+  }
+
+  .position {
+    width: 1%;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .grip {
+    margin-right: 6px;
+    color: var(--muted);
+    vertical-align: middle;
+  }
+
+  .codeCell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .code {
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .description {
+    width: 100%;
+    min-width: 160px;
+    height: 32px;
+  }
+
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .table th.numeric {
+    text-align: right;
+  }
+
+  .actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .actions button {
+    min-width: 32px;
+    padding: 0 6px;
+  }
+
+  .switch {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(5, 26, 34, 0.6);
+    cursor: pointer;
+  }
+
+  .switch span {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.15s;
+  }
+
+  .switch[aria-checked='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .switch[aria-checked='true'] span {
+    background: var(--accent);
+    transform: translateX(16px);
+  }
+
+  .switch:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .panel {
+    position: sticky;
+    top: calc(64px + var(--gap));
+    width: 340px;
+    max-height: calc(100dvh - 64px - 2 * var(--gap));
+    overflow-y: auto;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+  }
+
+  .panelBody {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .panelCode {
+    margin: 0;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panelText {
+    margin: 0;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+  }
+
+  .facts > div {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-3);
+  }
+
+  .facts dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .facts dd {
+    margin: 2px 0 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+
+  .link {
+    color: var(--accent-bright);
+    font-weight: 700;
+  }
+}

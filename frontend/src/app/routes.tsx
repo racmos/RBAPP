@@ -117,6 +117,12 @@ export function createAppRoutes(
                   }),
                 },
                 {
+                  path: '/locations',
+                  lazy: async () => ({
+                    Component: (await import('@/locations/LocationsPage')).LocationsPage,
+                  }),
+                },
+                {
                   path: '/admin',
                   loader: requireAdmin(queryClient),
                   lazy: async () => ({

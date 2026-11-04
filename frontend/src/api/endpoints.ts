@@ -18,6 +18,12 @@ import type {
   ImportPreview,
   ImportResult,
   KeepPlaysetResult,
+  LineLocationMove,
+  LineLocations,
+  LocationBump,
+  LocationCreateBody,
+  LocationList,
+  LocationPatchBody,
   LoginBody,
   MetaConfig,
   MyProductAddBody,
@@ -32,6 +38,7 @@ import type {
   ProductSummary,
   RegisterBody,
   Session,
+  StorageLocation,
   UserPayload,
 } from './types';
 
@@ -346,3 +353,50 @@ export const patchMyProduct = (id: number, body: MyProductPatchBody) =>
 
 export const deleteMyProduct = (id: number) =>
   request<{ deleted: OwnedProductLine }>(`/me/products/${id}`, { method: 'DELETE' });
+
+// --- Storage locations (F16-b) ---
+
+/** `GET /locations`: the user's locations in their order and the unassigned copies. */
+export const listLocations = async (signal?: AbortSignal): Promise<LocationList> => {
+  const { data, meta } = await requestWithMeta<
+    { items: StorageLocation[] },
+    { unassigned_copies: number }
+  >('/locations', { signal });
+  return { items: data.items, unassigned: meta?.unassigned_copies ?? 0 };
+};
+
+export const createLocation = (body: LocationCreateBody) =>
+  request<StorageLocation>('/locations', { method: 'POST', body });
+
+/** `GET /locations/next-code`: `code` is null when `after` has no `B001-F001-P0001` pattern. */
+export const suggestLocationCode = (bump: LocationBump, after?: string, signal?: AbortSignal) => {
+  const query = new URLSearchParams({ bump });
+  if (after) query.set('after', after);
+  return request<{ code: string | null }>(`/locations/next-code?${query.toString()}`, { signal });
+};
+
+export const patchLocation = (id: number, body: LocationPatchBody) =>
+  request<StorageLocation>(`/locations/${id}`, { method: 'PATCH', body });
+
+export const deleteLocation = (id: number) =>
+  request<{ deleted: StorageLocation }>(`/locations/${id}`, { method: 'DELETE' });
+
+/** `PUT /locations/order`: every id of the user, once, in the new order. */
+export const reorderLocations = (ids: number[]) =>
+  request<{ items: StorageLocation[] }>('/locations/order', { method: 'PUT', body: { ids } });
+
+export const getLineLocations = (lineId: number, signal?: AbortSignal) =>
+  request<LineLocations>(`/collection/${lineId}/locations`, { signal });
+
+/** Replaces the line's assignment; a locked location must keep its quantity. */
+export const putLineLocations = (
+  lineId: number,
+  assignments: { location_id: number; qty: number }[],
+) =>
+  request<LineLocations>(`/collection/${lineId}/locations`, {
+    method: 'PUT',
+    body: { assignments },
+  });
+
+export const moveLineLocations = (lineId: number, body: LineLocationMove) =>
+  request<LineLocations>(`/collection/${lineId}/locations/move`, { method: 'POST', body });

@@ -8,6 +8,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Switch } from '@/components/ui/Switch';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
+import { LineWhere } from './LineWhere';
 import { MoneyField } from './MoneyField';
 import { OptionSelect } from './OptionSelect';
 import { useAddLine, useDeleteLine, useKeepPlayset, useSplitLine } from './queries';
@@ -161,6 +162,7 @@ function LineEditor({
         disabled={offline}
         onCommit={(qty) => void save({ qty })}
       />
+      <LineWhere line={line} offline={offline} />
       <OptionSelect
         kind="condition"
         label={t('line.condition')}

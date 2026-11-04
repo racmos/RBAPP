@@ -19,6 +19,7 @@ const FOLDERS = [
   'catalog',
   'collection',
   'products',
+  'locations',
   'app',
 ];
 
@@ -89,7 +90,8 @@ export default defineConfig(
       deepOnly: FEATURES.filter((name) => name !== feature),
     }),
   ),
-  // shell, account, catalog, collection and products: everything below, never app.
+  // shell, account, catalog, collection and products: everything below, never app; storage
+  // locations (F16) only through their index.
   boundary(
     [
       'src/shell/**/*.{ts,tsx}',
@@ -99,7 +101,10 @@ export default defineConfig(
       'src/products/**/*.{ts,tsx}',
     ],
     ['app'],
+    { deepOnly: ['locations'] },
   ),
+  // locations (F16): everything below, never app; it never needs the collection screens.
+  boundary(['src/locations/**/*.{ts,tsx}'], ['app', 'collection']),
   // card and chart atoms: lib, i18n, ui and type-only @/api (F2-e).
   {
     files: ['src/components/card/**/*.{ts,tsx}', 'src/components/charts/**/*.{ts,tsx}'],

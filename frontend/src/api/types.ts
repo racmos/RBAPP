@@ -294,6 +294,12 @@ export type CollectionLine = {
   value: number | null;
   pl_abs: number | null;
   pl_pct: number | null;
+  /** `GET /collection` only (F16-b): the first 5 locations of the line, in the user's order. */
+  locations?: LineLocationSummary[];
+  /** `GET /collection` only: how many more locations the line has. */
+  locations_more?: number;
+  /** `GET /collection` only: copies of the line in no location. */
+  unassigned?: number;
 };
 
 /** A line as the write endpoints return it. */
@@ -357,6 +363,8 @@ export type CollectionParams = {
   rarity?: string[];
   condition?: string[];
   language?: string[];
+  /** Location codes (F16-b): lines with copies in any of them. */
+  location?: string[];
   foil?: 'any' | 'foil' | 'nonfoil';
   selling?: 'any' | 'yes' | 'no';
   has_purchase?: 'any' | 'yes' | 'no';
@@ -581,3 +589,57 @@ export type MyProductPatchBody = Partial<{
   purchase_price: number | null;
   note: string | null;
 }>;
+
+// --- Storage locations (F16-b) ---
+
+/** `Location` of `GET /locations`; named so it does not shadow the DOM `Location`. */
+export type StorageLocation = {
+  id: number;
+  code: string;
+  description: string | null;
+  /** 1..n, the user's order. */
+  position: number;
+  locked: boolean;
+  /** The mounted deck (F16-e), else null. */
+  deck_id: number | null;
+  /** Copies kept there. */
+  copies: number;
+  /** Lines kept there. */
+  cards: number;
+};
+
+/** `GET /locations` with its `meta.unassigned_copies`. */
+export type LocationList = { items: StorageLocation[]; unassigned: number };
+
+export type LocationBump = 'block' | 'row' | 'pack';
+
+export type LocationCreateBody = { code: string; description?: string | null };
+
+export type LocationPatchBody = Partial<{
+  code: string;
+  description: string | null;
+  locked: boolean;
+}>;
+
+/** One location of a line as `GET /collection` lists it (first 5). */
+export type LineLocationSummary = {
+  location_id: number;
+  code: string;
+  description: string | null;
+  qty: number;
+};
+
+/** `LineLocations` of `GET /collection/:id/locations` (all of them, the user's order). */
+export type LineLocations = {
+  locations: (LineLocationSummary & { locked: boolean })[];
+  unassigned: number;
+  /** The line quantity. */
+  total: number;
+};
+
+/** `null` is unassigned on either side. */
+export type LineLocationMove = {
+  from_location_id: number | null;
+  to_location_id: number | null;
+  qty: number;
+};

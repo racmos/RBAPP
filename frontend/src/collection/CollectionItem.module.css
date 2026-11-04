@@ -98,7 +98,8 @@
 
   .name,
   .meta,
-  .status {
+  .status,
+  .where {
     display: block;
     min-width: 0;
     overflow: hidden;
@@ -124,6 +125,19 @@
     font-size: 12px;
     font-weight: 700;
     line-height: 16px;
+  }
+
+  .where {
+    min-height: 16px;
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    line-height: 16px;
+  }
+
+  .pin {
+    margin-right: 3px;
+    vertical-align: -2px;
   }
 
   .status > * + * {
