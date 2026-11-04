@@ -712,6 +712,33 @@ layout on a desktop.
   Offline the wizard says `common:offline.editDisabled` and its actions are disabled.
 - ESLint: `collection` may import everything below `app`, like `catalog`.
 
+## Decks rules library (F5-b)
+
+`frontend/src/decks/rules/` is the TypeScript twin of `app/services/deck_rules.py` (F5-a), for instant
+feedback in the deck editor; the server stays authoritative. Import it through `@/decks/rules`.
+
+- Functions, same semantics, issue order and params as Python: `validate` (issues + `completeness`),
+  `canAdd`, `canMove`, `hardLimitViolations`, `applyLegend`, `applyChampion`, `autoRunes`
+  (`Math.floor(x + 0.5)`, not `Math.round`), `deckDomains`, `sortNames` / `compareNames` / `nameKey`.
+  Pure: inputs are never mutated and the operations return a new deck. An unknown card throws
+  `UnknownCard` (`ref = [set, id]`); an unknown mode, zone or move throws `RangeError`.
+- Rule values are never hardcoded: build a `RulesContext` (`{deck, modes, domains}`) from
+  `GET /meta/game` with `rulesFromMeta(meta)` (`null` when the payload has no `rules.deck`) and pass
+  it to every function that needs it. `DEFAULT_RULES` is for tests only (a test fails when a non-test
+  file uses it, and another keeps it equal to the backend `DECK_RULES`, `GAME_MODES`, `DOMAINS`).
+- `Cards` is a `Map` keyed by `cardKey({set, id})`; build it with `makeCards([[ref, card], ...])`. Any
+  `CardSummary` works as a card; map order matters only to `autoRunes` (first rune of a colour).
+- Names: `nameKey` = Python `name_key` with `toLocaleLowerCase('en')` for `casefold()` and Python's
+  whitespace set for `split()`; names compare by code point (not UTF-16 units, never `localeCompare`).
+  `casefold` and `toLocaleLowerCase('en')` differ only for a few characters no card uses today (`ß`,
+  ligatures such as `ﬁ`, final sigma); the server result wins if they ever disagree.
+- Tests: `cases.test.ts` runs every case of `tests/fixtures/deck_rules_cases.json` (read with `fs`
+  through `src/test/deckRulesCases.ts`, never bundled) and checks the file (unique ids, the Python
+  runner's ops, the Python issue codes and hard rules); `rules.test.ts` covers purity, errors, values
+  from the context and names. A rules change lands in Python, the cases file and here together.
+- ESLint: `decks` may import everything below `app`, like `catalog`; `decks/rules` (tests apart) may
+  import only its sibling modules (no `@/` alias, no package, no `node:`) and no DOM globals.
+
 ## Charts
 
 Charts are hand-made SVG components in `frontend/src/components/charts/`. There is no chart
