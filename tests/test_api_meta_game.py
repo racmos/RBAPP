@@ -54,7 +54,10 @@ def test_shape_order_and_extras(app, client):
     ]
     assert data['price'] == {'provider': 'cardmarket', 'currency': 'EUR',
                              'updated_on': '2026-10-20'}
-    assert data['rules'] == {}
+    # F5-a S1: the deck rule values, served so the UI never hardcodes them.
+    assert data['rules'] == {'deck': {
+        'main_size': 39, 'total_with_champion': 40, 'runes': 12, 'battlefields': 3,
+        'sideboard': 10, 'copies_max': 3, 'workbench_max': 100}}
 
 
 def test_sets_newest_first_undated_last(app, client):

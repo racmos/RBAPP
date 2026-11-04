@@ -128,6 +128,7 @@ riftbound/
 │   │   ├── catalog.py       # card parsing, natural sort, foil eligibility, base printings, card_summary (F2-b)
 │   │   ├── card_detail.py   # card detail + price history: printings, related, user lines/decks (F2-d)
 │   │   ├── card_list.py     # cards list query: filters, disjunctive facets, sort, pagination (F2-c)
+│   │   ├── deck_rules.py    # pure deck rules engine (F5-a): validate (issues + completeness), can_add/can_move, hard_limit_violations, apply_legend/champion, auto_runes, deck_domains, sort_names; shared cases tests/fixtures/deck_rules_cases.json
 │   ├── catalog_admin.py # set/card lists, create/update/delete, image upload helpers (F13-b)
 │   │   ├── collection_import.py # CSV import: preview rows with reason codes, commit add/replace (F3-e)
 │   │   ├── collection_export.py # CSV export rows and stream: RBAPP and Cardmarket formats (F3-d)
@@ -153,7 +154,7 @@ riftbound/
 │   │   ├── riot_sync.py     # fetch_gallery, window_for, sync (per-set savepoints)
 │   │   └── scraper.py       # Landing feeds with a TTL cache
 │   ├── schemas/             # Pydantic
-│   │   ├── game_domain.py   # Game enumerations (modes, domains, types, supertypes, rarities), the single source for schemas and CHECKs (F2-b; see docs/api.md)
+│   │   ├── game_domain.py   # Game enumerations (modes, domains, types, supertypes, rarities) and DECK_RULES (F5-a), the single source for schemas and CHECKs (F2-b; see docs/api.md)
 │   │   ├── prefs_domain.py  # Value domains of the interface preferences (schema + model CHECKs)
 │   │   ├── validators.py    # Request schemas
 │   │   └── validation.py    # @validate_json decorator
@@ -310,7 +311,7 @@ Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/sessio
 - `GET /collection/export` (`app/api/v1/collection.py`, U, F3-d, `docs/api.md` → "GET /collection/export"): CSV download, `format=rbapp|cardmarket` (default rbapp) plus the list filters and `only_selling`; UTF-8 BOM, streamed, `X-Rows-Exported`; the Cardmarket file is byte-identical to the Jinja export (golden test), text cells starting with `=+-@` get a leading `'`.
 - Collection writes (F3-c, `app/api/v1/collection.py`, U, `docs/api.md` → "Collection writes"): `POST /collection` merges identical lines, `PATCH /collection/<id>` guards with `if_updated_at` (409 `stale_line`), `DELETE` returns the line so it can be posted back, `split`, `bulk` (all or nothing) and `keep-playset`; quantities that add up change in SQL; ids that are not the user's are a 404. New codes `foil_not_allowed`, `insufficient_quantity`, `stale_line`. Bulk `set.location_id` (F16-x): absent keeps every line's locations, an id puts all the copies of each line there, `null` unassigns them; a locked location that would change is a 409 `location_locked` with `params.codes` and nothing changes.
 - `GET /collection` (`app/api/v1/collection.py`, U, F3-b) returns `{data: {items: [CollectionGroup]}, meta: {page, per_page, total_groups, pages, totals, facets, price_as_of, playset_size}}` (`docs/api.md` → "GET /collection"): groups per printing and foil with their lines, market value and profit/loss, the playset flag, 9 sort keys, line and card filters, disjunctive facets; at most 10 SQL statements. `CollectionLine` and `CollectionGroup` are contracts (additive changes only).
-- `GET /meta/game` (`app/api/v1/meta.py`, P) returns a `GameMeta` (`docs/api.md` → "Data shapes"): modes, domains/types/supertypes/rarities (S1 tuples plus unknown data values), every set with `card_count`, price freshness (`updated_on` from `rbcm_price`, null when empty), `rules: {}` reserved for F15. Anonymous 200, `Cache-Control: no-cache`. Card objects use `CardSummary` from `app/services/catalog.py::card_summary` (batched prices via `price_summaries`, at most two SQL statements).
+- `GET /meta/game` (`app/api/v1/meta.py`, P) returns a `GameMeta` (`docs/api.md` → "Data shapes"): modes, domains/types/supertypes/rarities (S1 tuples plus unknown data values), every set with `card_count`, price freshness (`updated_on` from `rbcm_price`, null when empty), `rules: {deck: DECK_RULES}` (F5-a; other keys reserved for F15). Anonymous 200, `Cache-Control: no-cache`. Card objects use `CardSummary` from `app/services/catalog.py::card_summary` (batched prices via `price_summaries`, at most two SQL statements).
 
 ```json
 {"success": true, "data": {}, "meta": {}}

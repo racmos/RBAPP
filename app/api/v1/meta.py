@@ -9,8 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.api.responses import fail, ok
 from app.api.v1 import api_v1
-from app.schemas.game_domain import (CARD_TYPES, CONDITIONS, DOMAINS, GAME_MODES, LANGUAGES,
-                                     RARITIES, SUPERTYPES)
+from app.schemas.game_domain import (CARD_TYPES, CONDITIONS, DECK_RULES, DOMAINS, GAME_MODES,
+                                     LANGUAGES, RARITIES, SUPERTYPES)
 from app.services.captcha import get_captcha_provider
 from app.services.catalog import parse_domains, sets_newest_first, type_facets
 
@@ -60,7 +60,8 @@ def _distinct(column):
 
 @api_v1.get('/meta/game')
 def meta_game():
-    """Game metadata for the catalog UI (F2-b S9): enums, sets, price freshness."""
+    """Game metadata for the catalog UI (F2-b S9): enums, sets, price freshness,
+    deck rule values (F5-a)."""
     from app.models.card import RbCard
     from app.models.cardmarket import RbcmPrice
     from app.models.set import RbSet
@@ -96,7 +97,7 @@ def meta_game():
         'price': {'provider': 'cardmarket', 'currency': 'EUR',
                   'updated_on': date(int(latest[0:4]), int(latest[4:6]),
                                      int(latest[6:8])).isoformat() if latest else None},
-        'rules': {},
+        'rules': {'deck': dict(DECK_RULES)},
         'conditions': list(CONDITIONS),
         'languages': list(LANGUAGES),
     })
