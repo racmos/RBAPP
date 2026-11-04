@@ -1,0 +1,66 @@
+@layer components {
+  .body,
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .body {
+    padding: 16px;
+  }
+
+  .note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .alert {
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--red);
+    border-radius: var(--radius-sm);
+    color: var(--red-text);
+    font-weight: 700;
+  }
+
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .badges svg {
+    margin-right: 4px;
+  }
+
+  .bumps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .link {
+    color: var(--accent-bright);
+    font-weight: 700;
+  }
+}

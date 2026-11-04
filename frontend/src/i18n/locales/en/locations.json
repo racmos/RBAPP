@@ -1,0 +1,79 @@
+{
+  "title": "Locations",
+  "subtitle": "Where you keep your cards, in the order they are taken from.",
+  "loading": "Loading your locations",
+  "error": "Your locations could not be loaded.",
+  "list": "Your locations in order",
+  "new": "New location",
+  "empty": {
+    "title": "No locations yet",
+    "body": "Create one for each binder, box or pack where you keep cards."
+  },
+  "counts": "{{copies}} · {{cards}}",
+  "copies_one": "{{count}} copy",
+  "copies_other": "{{count}} copies",
+  "cards_one": "{{count}} card",
+  "cards_other": "{{count}} cards",
+  "locked": "Locked",
+  "deck": "Deck",
+  "noDescription": "No description",
+  "unassigned_one": "Unassigned: {{count}} copy",
+  "unassigned_other": "Unassigned: {{count}} copies",
+  "unassignedHint": "Always last: it cannot be moved.",
+  "moveUp": "Move {{code}} up",
+  "moveDown": "Move {{code}} down",
+  "dragHint": "Drag a row to change the order, or use its arrows.",
+  "edit": "Edit {{code}}",
+  "deleteRow": "Delete {{code}}",
+  "lockRow": "Lock {{code}}",
+  "editTitle": "Location {{code}}",
+  "viewCards": "View cards",
+  "form": {
+    "code": "Code",
+    "codeHint": "Letters, digits and hyphens, up to 32. Suggested as block, row and pack.",
+    "description": "Description",
+    "create": "Create",
+    "save": "Save",
+    "codeRequired": "Enter a code.",
+    "codeFormat": "Use 1 to 32 letters, digits or hyphens.",
+    "codeTaken": "You already have a location with this code.",
+    "suggest": "Suggest the next code",
+    "bump": {
+      "block": "Next block",
+      "row": "Next row",
+      "pack": "Next pack"
+    },
+    "noPattern": "This code has no block-row-pack pattern to continue."
+  },
+  "lock": "Lock this location",
+  "lockHint": "A locked location is skipped when cards are taken from your locations, and its copies cannot be changed.",
+  "delete": "Delete location",
+  "confirmDelete": {
+    "title": "Delete {{code}}?",
+    "body_one": "Its {{count}} copy goes back to unassigned.",
+    "body_other": "Its {{count}} copies go back to unassigned."
+  },
+  "created": "Location created.",
+  "saved": "Location saved.",
+  "deleted": "Location deleted.",
+  "table": {
+    "columns": {
+      "position": "Position",
+      "code": "Code",
+      "description": "Description",
+      "copies": "Copies",
+      "cards": "Cards",
+      "lock": "Lock",
+      "actions": "Actions"
+    },
+    "descriptionOf": "Description of {{code}}"
+  },
+  "panel": {
+    "title": "Location details",
+    "empty": "Pick a location to see its details.",
+    "edit": "Edit this location",
+    "position": "Position",
+    "copies": "Copies",
+    "cards": "Cards"
+  }
+}

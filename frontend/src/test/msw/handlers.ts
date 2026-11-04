@@ -10,6 +10,7 @@ import {
   importResult,
   withCard,
 } from '@/test/fixtures/collection';
+import { aylaLineLocations } from '@/test/fixtures/locations';
 import {
   adminProductList,
   boxLine,
@@ -258,6 +259,31 @@ export const handlers = [
     const line = myProducts.items.find((item) => String(item.id) === params.id);
     return line ? ok({ deleted: line }) : failure(404, { error: 'Not Found' });
   }),
+  // Storage locations (F16-b): by default the user has none, so screens that read them stay as
+  // they were; the locations tests install their own list.
+  http.get(`${API}/locations`, () =>
+    HttpResponse.json({ success: true, data: { items: [] }, meta: { unassigned_copies: 0 } }),
+  ),
+  http.get(`${API}/locations/next-code`, () => ok({ code: 'B001-F001-P0001' })),
+  http.post(`${API}/locations`, async ({ request }) => {
+    const body = (await request.json()) as { code: string; description?: string | null };
+    return ok(
+      {
+        id: 99,
+        code: body.code,
+        description: body.description ?? null,
+        position: 1,
+        locked: false,
+        deck_id: null,
+        copies: 0,
+        cards: 0,
+      },
+      201,
+    );
+  }),
+  http.get(`${API}/collection/:id/locations`, () => ok(aylaLineLocations)),
+  http.put(`${API}/collection/:id/locations`, () => ok(aylaLineLocations)),
+  http.post(`${API}/collection/:id/locations/move`, () => ok(aylaLineLocations)),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {
     const url = new URL(request.url);

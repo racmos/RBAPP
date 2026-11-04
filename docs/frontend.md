@@ -352,6 +352,61 @@ labelled `<column>: <product>` and saved with `useProductLineSaver`; the name op
 `ProductLines`, `AddProductForm`, shared with `ProductDetail` through `ProductSections.tsx`); below it a
 row click opens `/products/:id`. Clicks on inline editors never reach the row.
 
+## Locations (F16-c/d)
+
+`frontend/src/locations/` is the storage locations screen (nav entry `locations`, `spa`, icon `pin`,
+after `products`; top, hub and "More"; strings in the `locations` namespace). API: `docs/api.md` →
+"Locations (F16-b)".
+
+- `queries.ts` — `useLocations` (`['locations', 'list']`, `{items, unassigned}` from `GET /locations`
+  and its `meta.unassigned_copies`), `useCreateLocation`, `usePatchLocation`, `useDeleteLocation`,
+  `useSuggestedCode` (`GET /locations/next-code?bump=pack`), `useBumpCode` (the block / row / pack
+  buttons, `after=<typed code>`), `useReorderLocations` (`PUT /locations/order` with every id: the list
+  changes at once and goes back when saving fails), `useLineLocations` (`GET /collection/<id>/locations`,
+  on demand), `useMoveLineLocations`, `usePutLineLocations`. Every write refreshes `['locations']` and
+  `['collection']`. `index.ts` exports the queries and `useLocationLabel` for the collection; the router
+  loads `@/locations/LocationsPage` itself, so the collection chunk does not carry the screen.
+- `LocationsPage` (`/locations`) picks `LocationsMobile` below 1240 px and `LocationsDesktop` from there,
+  both on `useLocationsScreen`. Mobile: the locations in the user's order (code, description or "No
+  description", copies and cards, "Locked" and "Deck" badges), "Move <code> up/down" buttons, and the
+  fixed "Unassigned: N copies" row after the list. A tap opens `LocationSheet` (code and description
+  saved with "Save", only the changed keys are sent; "Lock this location" switch; "View cards" →
+  `/collection?location=<CODE>`; "Delete location" behind a `ConfirmDialog` that says the copies go back
+  to unassigned; a 409 such as `location_locked` on a deck location shows in the sheet). "New location"
+  opens `NewLocationSheet`: the code starts as the server's suggestion until the user types; "Next
+  block", "Next row" and "Next pack" ask for the next code after the current one ("This code has no
+  block-row-pack pattern to continue." when it answers `null`). Codes are checked before sending (1-32
+  letters, digits or `-`); `already_exists` shows "You already have a location with this code." on the
+  field.
+- Desktop: table in `TableScroll fit` (caption "Your locations in order"; Position, Code, Description,
+  Copies, Cards, Lock, Actions), inline description (`DebouncedInput`, 500 ms), a lock switch per row,
+  icon buttons (up, down, edit, delete). On pointer devices (`(pointer: fine)`) rows can also be
+  dragged onto another row (HTML drag and drop; the drop target gets an accent line); keyboard users
+  keep the arrows. From 1600 px `LocationPanel` (`SidePanel` `locations-detail`, "Location details")
+  shows the selected row: code, description, badges, position, copies, cards, "View cards" and "Edit
+  this location". No endpoint lists the cards of one location: "View cards" opens the collection
+  filtered by its code.
+- States: skeleton, empty ("No locations yet" + "New location", the unassigned copies still shown),
+  error with retry, offline (cached list, every write disabled with `common:offline.editDisabled`).
+- Collection side (F16-R4, R4a, R5): `params.ts` writes repeated `location` (after `language`, counted
+  as a filter, cleared with the others, applied to the filtered export); `CollectionFilters` gets a
+  "Location" chip group when the user has locations (codes of the URL they no longer have stay
+  listed); the removable chips read "Location: <code>". `CollectionItem` has one clamped "where" line
+  (`whereSummary`: first code and `+N` other locations, empty when none) so tiles and rows keep one
+  height. `CollectionTable` adds a last "Where" column (72 px, one clamped line; the table still fits
+  1440 px with the filters open and 1280 px with them folded); its button opens the line sheet.
+  `LineSheet` lines get "Where they are" (`LineWhere`): the first 5 locations as `CODE — description ×
+  qty`, "and N more" (loads the full list), "Unassigned: n" and "Change locations" (From: unassigned or
+  one of the line's locations; To: unassigned or any location; locked ones listed but disabled;
+  quantity up to what the source holds; `POST /collection/<id>/locations/move`; errors such as
+  `location_over_quantity` shown in place). `AddSheet` has a "Location" select (None + the locations,
+  locked ones disabled); the choice is kept in `rb_quick_add_v1` (`location_id`; an id that no longer
+  exists or is locked is ignored) and, after each add, the added copies go from unassigned into that
+  location with the same move endpoint (the line's other locations stay). If that fails the card stays
+  added and unassigned and the toast says so.
+- ESLint: `locations` may import everything below `app` except `collection`; the other features
+  import it only through `@/locations`.
+
 ## Shared primitives: tables, dropdowns, checkboxes
 
 - **Tables.** Every data table sits in `components/ui/TableScroll`: the box scrolls both ways,

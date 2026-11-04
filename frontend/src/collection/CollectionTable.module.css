@@ -164,4 +164,30 @@
   .loss {
     color: var(--red);
   }
+
+  /* The location summary (F16-d): one clamped line, so the table keeps fitting at 1440 px; the
+     full text is in its title and in the line sheet it opens. */
+  .where {
+    display: block;
+    max-width: 72px;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button.where {
+    min-height: 28px;
+    cursor: pointer;
+  }
+
+  button.where:hover {
+    color: var(--accent);
+  }
 }

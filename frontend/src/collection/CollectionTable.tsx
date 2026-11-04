@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { formatDate, formatMoney, formatPct } from '@/lib/format';
 import { LineCells } from './LineCells';
 import { TableScroll } from '@/components/ui/TableScroll';
+import { whereSummary } from './where';
 import styles from './CollectionTable.module.css';
 
 type Selection = {
@@ -26,6 +27,8 @@ type CollectionTableProps = {
   conditions: string[];
   languages: string[];
   offline: boolean;
+  /** The "Where" cell: opens the line sheet with the locations of the group (F16-d). */
+  onOpenWhere?: (group: CollectionGroup) => void;
 };
 
 /** Headers wider than their cells: an abbreviation on screen, the full name for everyone (S24 q). */
@@ -142,6 +145,7 @@ export function CollectionTable({
   conditions,
   languages,
   offline,
+  onOpenWhere,
 }: CollectionTableProps) {
   const { t } = useTranslation('collection');
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -205,6 +209,7 @@ export function CollectionTable({
               'plPct',
               'trend7d',
               'updated',
+              'where',
             ].map((id) => (
               <HeaderCell
                 key={id}
@@ -232,6 +237,7 @@ export function CollectionTable({
               (max, line) => (line.updated_at > max ? line.updated_at : max),
               '',
             );
+            const where = whereSummary(lines);
             return [
               <tr
                 key={group.key}
@@ -310,6 +316,21 @@ export function CollectionTable({
                   <Signed value={trend} kind="pct" />
                 </td>
                 <td>{updated ? formatDate(updated) : ''}</td>
+                <td>
+                  <button
+                    type="button"
+                    className={styles.where}
+                    aria-haspopup="dialog"
+                    aria-label={t('where.of', { summary: where || t('where.nothing') })}
+                    title={where || undefined}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onOpenWhere?.(group);
+                    }}
+                  >
+                    {where || '—'}
+                  </button>
+                </td>
               </tr>,
               ...(!single && open
                 ? lines.map((line, index) => (
@@ -350,6 +371,11 @@ export function CollectionTable({
                       </td>
                       <td />
                       <td>{formatDate(line.updated_at)}</td>
+                      <td>
+                        <span className={styles.where} title={whereSummary([line]) || undefined}>
+                          {whereSummary([line])}
+                        </span>
+                      </td>
                     </tr>
                   ))
                 : []),

@@ -5,6 +5,7 @@ import enCollection from './locales/en/collection.json';
 import enCommon from './locales/en/common.json';
 import enEnums from './locales/en/enums.json';
 import enErrors from './locales/en/errors.json';
+import enLocations from './locales/en/locations.json';
 import enNav from './locales/en/nav.json';
 import enPrefs from './locales/en/prefs.json';
 import enProducts from './locales/en/products.json';
@@ -25,6 +26,7 @@ export const resources = {
     cards: enCards,
     collection: enCollection,
     products: enProducts,
+    locations: enLocations,
   },
 };
 
@@ -39,5 +41,6 @@ export const NAMESPACES = [
   'cards',
   'collection',
   'products',
+  'locations',
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];

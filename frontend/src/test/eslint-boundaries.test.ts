@@ -74,4 +74,36 @@ describe('ESLint boundaries (F2-e S13)', () => {
     }
     expect(apiImports).toEqual([]);
   });
+
+  const locationsFile = (name: string) => join(process.cwd(), 'src/locations', name);
+
+  it('flags a locations component that imports from app (F16-c)', async () => {
+    const result = await lint(
+      "import { createAppRoutes } from '@/app/routes';\nexport const A = () => null;\n",
+      locationsFile('Bad.tsx'),
+    );
+    expect(result[0].errorCount).toBeGreaterThan(0);
+    expect(result[0].messages.some((m) => m.message.includes('folder boundaries'))).toBe(true);
+  });
+
+  it('lets locations use the api, the ui primitives and the features below it (F16-c)', async () => {
+    const result = await lint(
+      "import { listLocations } from '@/api/endpoints';\nimport { useOffline } from '@/auth';\nimport { Button } from '@/components/ui/Button';\nexport const A = () => <Button onClick={() => void listLocations()}>{String(useOffline())}</Button>;\n",
+      locationsFile('Okay.tsx'),
+    );
+    expect(result[0].errorCount).toBe(0);
+  });
+
+  it('lets the collection read locations through its index only (F16-c)', async () => {
+    const deep = await lint(
+      "import { useLocations } from '@/locations/queries';\nexport const A = () => useLocations;\n",
+      join(process.cwd(), 'src/collection', 'Deep.tsx'),
+    );
+    expect(deep[0].errorCount).toBeGreaterThan(0);
+    const index = await lint(
+      "import { useLocations } from '@/locations';\nexport const A = () => useLocations;\n",
+      join(process.cwd(), 'src/collection', 'Index.tsx'),
+    );
+    expect(index[0].errorCount).toBe(0);
+  });
 });

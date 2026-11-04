@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/Switch';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { sortSetsNewestFirst } from '@/lib/sets';
+import { useLocationLabel, useLocations, useMoveLineLocations } from '@/locations';
 import { MoneyField } from './MoneyField';
 import { OptionSelect } from './OptionSelect';
 import { useAddLine, useDeleteLine, usePatchLine } from './queries';
@@ -36,8 +37,9 @@ const SESSION_ROWS = 10;
 
 /**
  * Adds cards to the collection (F3-g S7). It stays open for the next card, keeps the set,
- * foil, quantity, condition, language, price and selling choices for the session, adds the
- * highlighted card on Enter and lists what was added with an undo per row (owner feedback S9).
+ * foil, quantity, condition, language, price, selling and location choices for the session
+ * (F16-R4a), adds the highlighted card on Enter and lists what was added with an undo per row
+ * (owner feedback S9).
  */
 export function AddSheet({ open, onClose, meta, offline }: AddSheetProps) {
   const { t, i18n } = useTranslation('collection');
@@ -46,6 +48,9 @@ export function AddSheet({ open, onClose, meta, offline }: AddSheetProps) {
   const add = useAddLine();
   const remove = useDeleteLine();
   const patch = usePatchLine();
+  const locations = useLocations();
+  const place = useMoveLineLocations();
+  const locationLabel = useLocationLabel();
   const search = useRef<HTMLInputElement>(null);
   const sessionTitle = useId();
   const [card, setCard] = useState<CardSummary | null>(null);
@@ -69,6 +74,43 @@ export function AddSheet({ open, onClose, meta, offline }: AddSheetProps) {
       ? choices.set
       : null;
 
+  // The stored location only while it exists and is not locked (F16-R4a); kept while loading.
+  const locationItems = locations.data?.items ?? [];
+  const location =
+    choices.location_id === null
+      ? null
+      : (locationItems.find((item) => item.id === choices.location_id && !item.locked) ?? null);
+  const locationId = locations.data ? (location?.id ?? null) : choices.location_id;
+
+  /**
+   * The added copies go from unassigned into the chosen location, so the line's other locations
+   * stay as they were. If that fails the card stays added, unassigned, and the toast says so.
+   */
+  const placeAdded = (lineId: number, qty: number, merged: boolean) => {
+    if (!location) {
+      pushToast({ kind: 'success', message: t(merged ? 'add.merged' : 'add.added') });
+      return;
+    }
+    const { code } = location;
+    place
+      .mutateAsync({
+        lineId,
+        body: { from_location_id: null, to_location_id: location.id, qty },
+      })
+      .then(() =>
+        pushToast({
+          kind: 'success',
+          message: t(merged ? 'add.mergedIn' : 'add.addedIn', { code }),
+        }),
+      )
+      .catch((error) =>
+        pushToast({
+          kind: 'error',
+          message: t('add.locationFailed', { reason: translateError(error, i18n) }),
+        }),
+      );
+  };
+
   const submit = (target: CardSummary | null = card) => {
     if (!target || offline || add.isPending) return;
     if (choices.foil && !target.foilable) {
@@ -89,7 +131,7 @@ export function AddSheet({ open, onClose, meta, offline }: AddSheetProps) {
       },
       {
         onSuccess: ({ line, merged }) => {
-          pushToast({ kind: 'success', message: t(merged ? 'add.merged' : 'add.added') });
+          placeAdded(line.id, qty, merged);
           setRows((current) => {
             const known = current.find((row) => row.line.id === line.id);
             const row = known
@@ -229,6 +271,25 @@ export function AddSheet({ open, onClose, meta, offline }: AddSheetProps) {
           disabled={offline}
           onCheckedChange={(selling) => change({ selling })}
         />
+        <Field label={t('add.location')}>
+          {(control) => (
+            <Select
+              {...control}
+              value={locationId === null ? '' : String(locationId)}
+              disabled={offline}
+              onChange={(event) =>
+                change({ location_id: event.target.value ? Number(event.target.value) : null })
+              }
+            >
+              <option value="">{t('add.noLocation')}</option>
+              {locationItems.map((item) => (
+                <option key={item.id} value={item.id} disabled={item.locked}>
+                  {locationLabel(item)}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
         <Button type="submit" block pending={add.isPending} disabled={offline || !card}>
           {t('add.submit')}
         </Button>

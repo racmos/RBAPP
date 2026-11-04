@@ -45,6 +45,7 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
     params,
     setParams,
     gameMeta,
+    locations,
     list,
     items,
     meta,
@@ -82,6 +83,7 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
       ['rarity', (v: string) => label('rarity', v)],
       ['condition', (v: string) => label('condition', v)],
       ['language', (v: string) => label('language', v)],
+      ['location', (v: string) => `${t('filters.location')}: ${v}`],
     ] as const;
     for (const [key, text] of lists) {
       for (const value of params[key] ?? []) {
@@ -305,6 +307,7 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
           facets={meta?.facets ?? {}}
           total={meta?.total_groups ?? 0}
           onClear={() => clearFilters()}
+          locations={locations}
           onClose={() => setFiltersOpen(false)}
         />
       </Sheet>

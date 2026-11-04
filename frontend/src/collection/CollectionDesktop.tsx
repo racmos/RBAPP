@@ -56,6 +56,7 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
     params,
     setParams,
     gameMeta,
+    locations,
     list,
     items,
     meta,
@@ -156,6 +157,10 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
         conditions={gameMeta.data?.conditions ?? []}
         languages={gameMeta.data?.languages ?? []}
         offline={offline}
+        onOpenWhere={(group) => {
+          setActiveKey(group.key);
+          setOpen({ key: group.key, group });
+        }}
       />
     );
   } else {
@@ -179,21 +184,27 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
   }
 
   const chips = [
-    ...(['set', 'domain', 'type', 'rarity', 'condition', 'language'] as const).flatMap((key) =>
-      (params[key] ?? []).map((value) => {
-        const text = key === 'set' ? value : label(key, value);
-        return (
-          <FilterChip
-            key={`${key}:${value}`}
-            label={text}
-            pressed
-            onRemove={{
-              'aria-label': t('filters.remove', { label: text }),
-              onClick: () => setParams({ [key]: (params[key] ?? []).filter((v) => v !== value) }),
-            }}
-          />
-        );
-      }),
+    ...(['set', 'domain', 'type', 'rarity', 'condition', 'language', 'location'] as const).flatMap(
+      (key) =>
+        (params[key] ?? []).map((value) => {
+          const text =
+            key === 'set'
+              ? value
+              : key === 'location'
+                ? `${t('filters.location')}: ${value}`
+                : label(key, value);
+          return (
+            <FilterChip
+              key={`${key}:${value}`}
+              label={text}
+              pressed
+              onRemove={{
+                'aria-label': t('filters.remove', { label: text }),
+                onClick: () => setParams({ [key]: (params[key] ?? []).filter((v) => v !== value) }),
+              }}
+            />
+          );
+        }),
     ),
   ];
 
@@ -214,6 +225,7 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
             facets={meta?.facets ?? {}}
             total={meta?.total_groups ?? 0}
             onClear={() => clearFilters()}
+            locations={locations}
           />
         </SidePanel>
 

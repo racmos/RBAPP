@@ -51,6 +51,10 @@
       "label": "Products",
       "description": "Boxes, boosters and accessories"
     },
+    "locations": {
+      "label": "Locations",
+      "description": "Binders, boxes and decks where your cards are"
+    },
     "decks": {
       "label": "Decks",
       "description": "Build and review decks"

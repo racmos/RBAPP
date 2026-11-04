@@ -25,6 +25,7 @@ const KEY_ORDER = [
   'rarity',
   'condition',
   'language',
+  'location',
   'foil',
   'selling',
   'has_purchase',
@@ -34,7 +35,7 @@ const KEY_ORDER = [
   'per_page',
 ] as const satisfies readonly (keyof CollectionParams)[];
 
-const LIST_KEYS = ['set', 'domain', 'type', 'rarity', 'condition', 'language'] as const;
+const LIST_KEYS = ['set', 'domain', 'type', 'rarity', 'condition', 'language', 'location'] as const;
 const TRISTATE_KEYS = ['selling', 'has_purchase'] as const;
 
 function text(value: string | null): string | undefined {

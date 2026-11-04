@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import type { CollectionGroup } from '@/api/types';
 import { CardImage } from '@/components/card';
+import { Icon } from '@/components/ui/Icon';
 import { formatMoney } from '@/lib/format';
+import { whereSummary } from './where';
 import styles from './CollectionItem.module.css';
 
 type CollectionItemProps = {
@@ -20,6 +22,7 @@ export function CollectionItem({ group, variant, playsetSize, onOpen }: Collecti
   const { card } = group;
   const forSale = group.sell_qty > 0 && group.lines.some((line) => line.selling);
   const className = [styles[variant], group.playset_short ? styles.short : ''].filter(Boolean);
+  const where = whereSummary(group.lines);
 
   const qty = (
     <span className={styles.qty} data-slot="qty">
@@ -52,6 +55,16 @@ export function CollectionItem({ group, variant, playsetSize, onOpen }: Collecti
             <span className={styles.shortText}>
               {t('playset.short', { kept: group.kept, size: playsetSize })}
             </span>
+          )}
+        </span>
+        {/* One line, kept even when empty, so every item has the same height (F16-R5). */}
+        <span className={styles.where} data-slot="where">
+          {where && (
+            <>
+              <Icon name="pin" size={12} className={styles.pin} />
+              <span className="sr-only">{`${t('where.label')}: `}</span>
+              {where}
+            </>
           )}
         </span>
       </span>

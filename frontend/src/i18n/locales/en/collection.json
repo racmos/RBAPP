@@ -33,7 +33,8 @@
     "active_one": "{{count}} active filter",
     "active_other": "{{count}} active filters",
     "show_one": "Show {{count}} card",
-    "show_other": "Show {{count}} cards"
+    "show_other": "Show {{count}} cards",
+    "location": "Location"
   },
   "sort": {
     "label": "Sort by",
@@ -111,7 +112,12 @@
     "copies_one": "{{count}} copy",
     "copies_other": "{{count}} copies",
     "undoRow": "Undo: {{name}}",
-    "undone": "Entry undone."
+    "undone": "Entry undone.",
+    "location": "Location",
+    "noLocation": "None",
+    "addedIn": "Added to your collection in {{code}}.",
+    "mergedIn": "Added to a line you already had, in {{code}}.",
+    "locationFailed": "The card was added but stays unassigned: {{reason}}"
   },
   "empty": {
     "title": "Your collection is empty",
@@ -167,7 +173,8 @@
       "plAbs": "Profit €",
       "plPct": "Profit %",
       "trend7d": "7 d",
-      "updated": "Updated"
+      "updated": "Updated",
+      "where": "Where"
     },
     "short": {
       "sellQty": "To sell",
@@ -294,5 +301,26 @@
     "again": "Import another file",
     "back": "Back",
     "next": "Next"
+  },
+  "where": {
+    "label": "Location",
+    "title": "Where they are",
+    "none": "In no location yet.",
+    "unassigned": "Unassigned: {{qty}}",
+    "more": "and {{n}} more",
+    "locked": "Locked",
+    "change": "Change locations",
+    "from": "From",
+    "to": "To",
+    "unassignedFrom": "Unassigned ({{qty}})",
+    "unassignedTo": "Unassigned",
+    "qty": "Copies to move",
+    "move": "Move copies",
+    "moved": "Copies moved.",
+    "noLocations": "You have no locations yet. Create them on the Locations screen.",
+    "of": "Where: {{summary}}",
+    "nothing": "none",
+    "loading": "Loading the locations",
+    "error": "The locations of this line could not be loaded."
   }
 }

@@ -91,6 +91,43 @@ const desktopCss = readCss(join(SRC_DIR, 'collection/CollectionDesktop.module.cs
 const decl = (css: string, selector: string, prop: string) =>
   declsFor(css, selector).find((item) => item.prop === prop)?.value;
 
+const placedAyla = {
+  ...aylaGroup,
+  lines: [
+    {
+      ...aylaGroup.lines[0],
+      locations: [
+        { location_id: 11, code: 'B001-F001-P0001', description: 'Red binder', qty: 1 },
+        { location_id: 12, code: 'B001-F001-P0002', description: null, qty: 1 },
+      ],
+      locations_more: 1,
+      unassigned: 1,
+    },
+    {
+      ...aylaGroup.lines[1],
+      locations: [{ location_id: 11, code: 'B001-F001-P0001', description: 'Red binder', qty: 1 }],
+      locations_more: 0,
+      unassigned: 0,
+    },
+  ],
+};
+
+describe('CollectionItem location (F16-R5)', () => {
+  it('shows the first location code and how many more, on its own line', async () => {
+    for (const variant of ['tile', 'row'] as const) {
+      const { container, unmount } = await renderItem(placedAyla, variant);
+      const where = container.querySelector('[data-slot="where"]');
+      expect(where?.textContent).toBe('Location: B001-F001-P0001 +2');
+      unmount();
+    }
+  });
+
+  it('keeps the line, empty, when the copies are in no location', async () => {
+    const { container } = await renderItem(aylaGroup);
+    expect(container.querySelector('[data-slot="where"]')?.textContent).toBe('');
+  });
+});
+
 describe('CollectionItem sizes (owner feedback S10)', () => {
   it('puts the sale and playset notes on one status line', async () => {
     const { container } = await renderItem(aylaGroup);
@@ -125,7 +162,7 @@ describe('CollectionItem sizes (owner feedback S10)', () => {
   });
 
   it('keeps each text line to one line with an ellipsis', () => {
-    for (const selector of ['.name', '.meta', '.status']) {
+    for (const selector of ['.name', '.meta', '.status', '.where']) {
       expect(decl(itemCss, selector, 'white-space')).toBe('nowrap');
       expect(decl(itemCss, selector, 'text-overflow')).toBe('ellipsis');
     }

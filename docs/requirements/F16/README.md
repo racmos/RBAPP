@@ -93,10 +93,10 @@ locations (a `location` column can be added later); hand simulator.
 
 | Unit | Content | Depends on | Status |
 |---|---|---|---|
-| F16-a | Data: migrations for both tables, models, order/uniqueness rules, service for take-in-order and invariants | F3 | In review ([F16-a-locations-data.md](F16-a-locations-data.md)) |
-| F16-b | Locations API (CRUD, order, lock) + line assignment endpoints + `locations` in `GET /collection` lines | F16-a | In review ([F16-b-locations-api.md](F16-b-locations-api.md)) |
-| F16-c | Locations screen (mobile) + line sheet block + filter by code | F16-b | Planned |
-| F16-d | Desktop/wide locations and collection integration | F16-c | Planned |
+| F16-a | Data: migrations for both tables, models, order/uniqueness rules, service for take-in-order and invariants | F3 | Done (#87, deployed 2026-11-03; [F16-a-locations-data.md](F16-a-locations-data.md)) |
+| F16-b | Locations API (CRUD, order, lock) + line assignment endpoints + `locations` in `GET /collection` lines | F16-a | Done (#88, deployed 2026-11-03; [F16-b-locations-api.md](F16-b-locations-api.md)) |
+| F16-c | Locations screen (mobile) + line sheet block + filter by code | F16-b | In review, one PR with F16-d ([F16-cd-locations-ui.md](F16-cd-locations-ui.md)) |
+| F16-d | Desktop/wide locations and collection integration | F16-c | In review, one PR with F16-c ([F16-cd-locations-ui.md](F16-cd-locations-ui.md)) |
 | F16-e | Mount / unmount deck (API + deck UI), "deck vs collection" shows mounted copies | F16-b, F5-d | Planned |
 
 ## Log

@@ -11,6 +11,8 @@ export type QuickAddChoices = {
   language: string | null;
   purchase_price: number | null;
   selling: boolean;
+  /** The storage location the added copies go to (F16-R4a); null = none. */
+  location_id: number | null;
 };
 
 export const DEFAULT_CHOICES: QuickAddChoices = {
@@ -21,6 +23,7 @@ export const DEFAULT_CHOICES: QuickAddChoices = {
   language: null,
   purchase_price: null,
   selling: false,
+  location_id: null,
 };
 
 const text = (value: unknown): string | null =>
@@ -38,7 +41,7 @@ export function readChoices(): QuickAddChoices {
   }
   if (typeof stored !== 'object' || stored === null) return DEFAULT_CHOICES;
   const value = stored as Record<string, unknown>;
-  const { qty, purchase_price: price } = value;
+  const { qty, purchase_price: price, location_id: locationId } = value;
   return {
     set: text(value.set),
     foil: value.foil === true,
@@ -48,6 +51,10 @@ export function readChoices(): QuickAddChoices {
     purchase_price:
       typeof price === 'number' && Number.isFinite(price) && price >= 0 ? price : null,
     selling: value.selling === true,
+    location_id:
+      typeof locationId === 'number' && Number.isInteger(locationId) && locationId > 0
+        ? locationId
+        : null,
   };
 }
 
