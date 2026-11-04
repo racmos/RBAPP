@@ -460,6 +460,44 @@ class DeckDiffQuery(BaseModel, extra='ignore'):
     b: int = Field(..., ge=1)
 
 
+# Deck text import limits (F5-e S5): UTF-8 bytes and lines (a final newline ends a line).
+DECK_TEXT_MAX_BYTES = 64 * 1024
+DECK_TEXT_MAX_LINES = 2000
+
+
+def _deck_text(value):
+    if len(value.encode('utf-8')) > DECK_TEXT_MAX_BYTES:
+        raise PydanticCustomError('too_long', 'text is longer than {max_length} bytes',
+                                  {'max_length': DECK_TEXT_MAX_BYTES})
+    lines = re.split(r'\r\n|\r|\n', value)
+    if len(lines) - (lines[-1] == '') > DECK_TEXT_MAX_LINES:
+        raise PydanticCustomError('too_long', 'text has more than {max_length} lines',
+                                  {'max_length': DECK_TEXT_MAX_LINES})
+    return value
+
+
+class DeckImportPreview(BaseModel, extra='ignore'):
+    """POST /decks/import/preview body (F5-e S5). `format` is checked by the service so an
+    unknown one is `import_format_unknown`, not a validation error."""
+    text: str
+    format: str = 'auto'
+
+    _text = field_validator('text')(lambda cls, v: _deck_text(v))
+
+
+class DeckImport(DeckImportPreview):
+    """POST /decks/import body (F5-e S6): a blank name means "from the legend"."""
+    name: Optional[_DeckName] = None
+    mode: _DeckMode = GAME_MODES[0]
+
+    _name = field_validator('name', mode='before')(lambda cls, v: _deck_name(v) or None)
+
+
+class DeckExportQuery(BaseModel, extra='ignore'):
+    """GET /decks/<id>/export query (F5-e S8)."""
+    format: str = 'text'
+
+
 # ============== Card Prices Query ==============
 
 

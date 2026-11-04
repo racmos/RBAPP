@@ -93,6 +93,9 @@ MATRIX = {
     'api_v1.get_deck_version': 'U',
     'api_v1.restore_deck_version': 'U',
     'api_v1.diff_deck_versions': 'U',
+    'api_v1.preview_deck_import': 'U',       # F5 unit e
+    'api_v1.import_deck': 'U',
+    'api_v1.export_deck': 'U',
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',

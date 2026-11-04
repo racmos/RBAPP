@@ -14,6 +14,8 @@ copies over legend, champion, main, runes, battlefields and sideboard; the workb
 counts (product.md). `value_unpriced` counts the copies without a price (cards missing from
 the catalog included).
 """
+import re
+import unicodedata
 from copy import deepcopy
 
 import sqlalchemy as sa
@@ -25,7 +27,7 @@ from app.models import RbCard, RbCollection, RbDeckHead, RbDeckVersion, RbSet
 from app.schemas.deck_content import empty_content
 from app.schemas.game_domain import GAME_MODES
 from app.services import bans as bans_service
-from app.services import catalog, deck_rules
+from app.services import catalog, deck_rules, deck_text
 from app.services.card_detail import _card_mini
 from app.services.deck_migration import catalog_card
 from app.services.pricing import price_summaries
@@ -57,6 +59,14 @@ class UnknownCards(Exception):
 
 class HardLimitExceeded(Exception):
     """The content breaks hard limits (F5-R9); `args[0]` is `hard_limit_violations`."""
+
+
+class FormatUnknown(Exception):
+    """The import or export format is not one of `deck_text.FORMATS` (F5-e)."""
+
+
+IMPORTED_NAME = 'Imported deck'
+NAME_MAX = 80
 
 
 # --- content helpers -------------------------------------------------------------------------
@@ -338,6 +348,10 @@ def create_deck(user, name, mode):
     """A new private deck with an empty version 1 (its current version)."""
     if _name_taken(user, name):
         raise DuplicateName()
+    return _new_deck(user, name, mode, empty_content(), _Catalog(user))
+
+
+def _new_deck(user, name, mode, content, cat):
     now = clock.utcnow()
     head = RbDeckHead(rbdkh_user_id=user.id, rbdkh_name=name, rbdkh_mode=mode,
                       rbdkh_visibility='private', rbdkh_created_at=now, rbdkh_updated_at=now)
@@ -348,12 +362,12 @@ def create_deck(user, name, mode):
         db.session.rollback()
         raise DuplicateName() from exc
     version = RbDeckVersion(rbdkv_deck_id=head.rbdkh_id, rbdkv_seq=1,
-                            rbdkv_content=empty_content(), rbdkv_created_at=now)
+                            rbdkv_content=content, rbdkv_created_at=now)
     db.session.add(version)
     db.session.flush()
     head.rbdkh_current_version_id = version.rbdkv_id
     _commit()
-    return _detail(head, version, _Catalog(user))
+    return _detail(head, version, cat)
 
 
 def update_deck(user, deck_id, changes):
@@ -431,6 +445,67 @@ def restore(user, deck_id, seq):
     head = _head(user, deck_id, lock=True)
     source = _version(head, seq)
     return _add_version(user, head, source.rbdkv_content, f'Restored from version {seq}.')
+
+
+# --- text import / export (F5-e) -------------------------------------------------------------
+
+def _parse_import(cat, text, fmt):
+    if fmt not in deck_text.FORMATS:
+        raise FormatUnknown(fmt)
+    content, warnings, counts = deck_text.build_content(
+        deck_text.parse_text(text), deck_text.Resolver(cat.rules, cat.base_keys), cat.rules)
+    return normal_content(content), warnings, counts
+
+
+def import_preview(user, text, fmt='auto'):
+    """`{deck_preview, warnings, counts}` of a deck text; writes nothing. `deck_preview` is
+    the content with its cards and analysis, as `get_deck` gives them."""
+    cat = _Catalog(user)
+    content, warnings, counts = _parse_import(cat, text, fmt)
+    cat.load([content])
+    deck = {'content': content, 'cards': cat.cards(ref for _z, _f, ref, _q in _refs(content))}
+    deck.update(_analysis(content, cat))
+    return {'deck_preview': deck, 'warnings': warnings, 'counts': counts}
+
+
+def _free_name(user, name):
+    """`name` (cut to NAME_MAX), or the first free `name (n)` from 2 on."""
+    candidate, n = name[:NAME_MAX].rstrip(), 1
+    while _name_taken(user, candidate):
+        n += 1
+        suffix = f' ({n})'
+        candidate = name[:NAME_MAX - len(suffix)].rstrip() + suffix
+    return candidate
+
+
+def import_deck(user, text, fmt='auto', name=None, mode=GAME_MODES[0]):
+    """A new private deck whose version 1 is the imported content, kept as read: hard limits
+    are not refused here (they are `hard_limit` warnings and legality issues). The name is
+    `name`, else the legend's text name, else IMPORTED_NAME; a taken name gets ` (n)`."""
+    cat = _Catalog(user)
+    content, warnings, _counts = _parse_import(cat, text, fmt)
+    legend = content['legend']
+    if not name and legend:
+        name = deck_text.card_label(cat.rules[_key(legend)])
+    out = _new_deck(user, _free_name(user, name or IMPORTED_NAME), mode, content, cat)
+    out['warnings'] = warnings
+    return out
+
+
+def _slug(name):
+    ascii_name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^a-z0-9]+', '-', ascii_name.lower()).strip('-') or 'deck'
+
+
+def export_text(user, deck_id, fmt='text'):
+    """`(filename, text)` of the deck's current version in the common text format."""
+    if fmt != 'text':
+        raise FormatUnknown(fmt)
+    head = _head(user, deck_id)
+    version = _current(head)
+    content = normal_content(version.rbdkv_content if version else None)
+    cat = _Catalog(user)
+    return f'{_slug(head.rbdkh_name)}.txt', deck_text.format_text(content, cat.rules)
 
 
 def diff(user, deck_id, a, b):
