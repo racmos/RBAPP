@@ -274,6 +274,15 @@ decimals; lines come back as `CollectionLine` plus `set_id` and `card_id`.
   sell_qty_rule: all|none|keep_n, keep: 1-9, sell_price?, purchase_price?}}` -> `{updated: n}`, or
   `{ids, delete: true}` -> `{deleted: [lines]}`. All or nothing: an id that is not the user's -> 404
   and nothing changes. `keep_n` sells `max(0, qty - keep)`.
+  Locations (F16-x): without `set.location_id` every line keeps its locations (the other fields are
+  changed in place). `location_id: <id>` (a location of the user, else the 404 envelope) puts all
+  the copies of each line there (its assignment becomes `{id: quantity}`, unassigned copies
+  included); `location_id: null` makes them all unassigned. `location_id` alone is a non-empty
+  `set` (`null` included) and combines with the other fields in the same transaction. A locked
+  location whose quantity would change on any line (a locked target, or copies of a line in a
+  locked location) -> 409 `location_locked` with `params {codes: "B001-F001-P0002, DECK-001"}`
+  (the user's order, joined with ", ") and nothing changes, the other fields included. A bad
+  `location_id` (0, negative, not an integer) -> 400 `validation_error`.
 - `POST /collection/keep-playset` `{set_id, card_id, keep}` -> `{name, keep_playset, kept,
   playset_size, playset_short}`: inserts or deletes the `rbkeepplayset` row of the card name
   (idempotent). `kept` counts the copies not for sale of every printing of the name.

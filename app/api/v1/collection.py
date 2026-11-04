@@ -9,7 +9,7 @@ from app.schemas.validation import validate_json, validate_query
 from app.schemas.validators import (CollectionBulk, CollectionExportQuery, ImportCommitBody,
                                     ImportPreviewBody, CollectionLineCreate, CollectionLinePatch,
                                     CollectionListQuery, CollectionSplit, KeepPlaysetBody)
-from app.services import collection_export, collection_import, collection_write
+from app.services import collection_export, collection_import, collection_write, locations
 from app.services.collection_read import list_collection
 from app.services.collection_write import (FoilNotAllowed, InsufficientQuantity, LineNotFound,
                                            StaleLine, UnknownCard)
@@ -68,7 +68,11 @@ def _guarded(action):
     except StaleLine:
         return fail('Conflict', 'This line changed in another window. Reload and try again.', 409,
                     code=ErrorCode.STALE_LINE)
-    except LineNotFound:
+    except locations.LocationLocked as exc:
+        codes = ', '.join(entry['code'] for entry in exc.locked)
+        return fail('Conflict', f'Locked locations cannot change: {codes}. Unlock them first.',
+                    409, code=ErrorCode.LOCATION_LOCKED, params={'codes': codes})
+    except (LineNotFound, locations.LocationNotFound):
         abort(404)
 
 

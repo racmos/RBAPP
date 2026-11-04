@@ -426,6 +426,9 @@ export type CollectionBulkSet = Partial<{
   keep: number;
   sell_price: number | null;
   purchase_price: number | null;
+  /** F16-x: absent keeps every line's locations; an id puts all their copies there; `null`
+   * makes them all unassigned. */
+  location_id: number | null;
 }>;
 
 /** `GET /collection/export` formats (F3-d). */

@@ -13,7 +13,8 @@ serves the take into a location (`take_copies`, the mount of F16-e) and the remo
 when a line's quantity drops (`release`, used by `collection_write`).
 
 Public writes are scoped to one user and commit when they succeed, rolling back when they
-raise; `release` and `carry` leave the transaction to the caller. No Flask objects here.
+raise; `release`, `carry` and `place_lines` leave the transaction to the caller. No Flask
+objects here.
 """
 import re
 from dataclasses import dataclass
@@ -57,7 +58,12 @@ class LineNotFound(Exception):
 
 class LocationLocked(Exception):
     """The location is locked: its quantities are read-only, and a locked deck location
-    cannot be deleted."""
+    cannot be deleted. `locked` names the locations (`location_id`, `code`) when the caller
+    needs them (`place_lines`)."""
+
+    def __init__(self, location_ids, locked: list[dict] | None = None):
+        super().__init__(location_ids)
+        self.locked = locked or []
 
 
 class InvalidOrder(Exception):
@@ -441,6 +447,27 @@ def assign_copies(user, line_id, location_id, qty: int) -> None:
         raise LocationOverQuantity(exc.available, qty) from None
 
 
+def _replacement(line: RbCollection, assignments: dict, targets: dict) -> tuple[dict, list]:
+    """What replacing the line's assignment with `assignments` (`{location id: qty}`, the
+    locations already checked as the user's in `targets`) changes: `({location id: delta},
+    [the locked RbLocation among them])`. Writes nothing."""
+    current = {row.rbcll_location_id: row.rbcll_qty for row in db.session.execute(
+        sa.select(RbCollectionLocation).where(
+            RbCollectionLocation.rbcll_line_id == line.rbcol_id)).scalars()}
+    deltas = {location_id: assignments.get(location_id, 0) - current.get(location_id, 0)
+              for location_id in current.keys() | assignments.keys()
+              if current.get(location_id, 0) != assignments.get(location_id, 0)}
+    locked = [location for location in (targets.get(location_id) or
+                                        db.session.get(RbLocation, location_id)
+                                        for location_id in deltas) if location.rbloc_locked]
+    return deltas, locked
+
+
+def _apply(line: RbCollection, deltas: dict) -> None:
+    for location_id, delta in deltas.items():
+        _change(line.rbcol_id, location_id, delta)
+
+
 def set_line_locations(user, line_id, assignments: dict) -> None:
     """Replace where a line's copies are (F16-R4): `assignments` is `{location id: qty}` and
     every location of the line that is not in it loses its copies (they become unassigned).
@@ -452,26 +479,40 @@ def set_line_locations(user, line_id, assignments: dict) -> None:
         line = _owned_line(user, line_id)
         targets = {location_id: _owned_location(user, location_id)
                    for location_id in assignments}
-        current = {row.rbcll_location_id: row.rbcll_qty for row in db.session.execute(
-            sa.select(RbCollectionLocation).where(
-                RbCollectionLocation.rbcll_line_id == line.rbcol_id)).scalars()}
-        changed = [location_id for location_id in current.keys() | assignments.keys()
-                   if current.get(location_id, 0) != assignments.get(location_id, 0)]
-        locked = [location_id for location_id in changed
-                  if (targets.get(location_id) or db.session.get(RbLocation, location_id))
-                  .rbloc_locked]
+        deltas, locked = _replacement(line, assignments, targets)
         if locked:
-            raise LocationLocked(sorted(locked))
+            raise LocationLocked(sorted(location.rbloc_id for location in locked))
         requested = sum(assignments.values())
         if requested > line.rbcol_quantity:
             raise LocationOverQuantity(line.rbcol_quantity, requested)
-        for location_id in changed:
-            _change(line.rbcol_id, location_id,
-                    assignments.get(location_id, 0) - current.get(location_id, 0))
+        _apply(line, deltas)
         db.session.commit()
     except Exception:
         db.session.rollback()
         raise
+
+
+def place_lines(user, lines, location_id) -> None:
+    """Put every copy of each of the user's `lines` in one location (`None` = unassigned):
+    each line's assignment is replaced as `set_line_locations` does, with `{location_id:
+    quantity}` or nothing (F16-x). The location must be the user's (LocationNotFound). A
+    locked location whose quantity would change on any line -> LocationLocked naming them all
+    in the user's order, and nothing is written. The caller commits (one bulk transaction)."""
+    targets = {} if location_id is None else {location_id: _owned_location(user, location_id)}
+    plans, locked = [], {}
+    for line in lines:
+        assignments = {} if location_id is None else {location_id: line.rbcol_quantity}
+        deltas, refused = _replacement(line, assignments, targets)
+        plans.append((line, deltas))
+        locked.update((location.rbloc_id, location) for location in refused)
+    if locked:
+        ordered = sorted(locked.values(), key=lambda location: location.rbloc_position)
+        raise LocationLocked([location.rbloc_id for location in ordered],
+                             [{'location_id': location.rbloc_id, 'code': location.rbloc_code}
+                              for location in ordered])
+    for line, deltas in plans:
+        _apply(line, deltas)
+    db.session.flush()
 
 
 def remove_copies(user, line_id, location_id, qty: int) -> None:

@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CollectionBulkSet, CollectionLineWithCard } from '@/api/types';
+import { ApiError } from '@/api/errors';
+import type {
+  CollectionBulkSet,
+  CollectionLine,
+  CollectionLineWithCard,
+  StorageLocation,
+} from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Select } from '@/components/ui/Select';
@@ -13,11 +19,32 @@ type BulkBarProps = {
   ids: number[];
   conditions: string[];
   languages: string[];
+  /** The selected lines that are loaded (this page): their `locations` say where they are. */
+  lines: CollectionLine[];
+  /** The user's locations in their order (F16). */
+  locations: StorageLocation[];
   offline: boolean;
   onClear: () => void;
 };
 
 type Rule = '' | 'all' | 'none' | 'keep';
+
+/** '' keeps every line's locations, `UNASSIGNED` frees every copy, else a location id. */
+const UNASSIGNED = 'unassigned';
+
+/**
+ * The lines hold copies in more than one place (a location or unassigned). It reads the first 5
+ * locations `GET /collection` lists per line; a line with more is in several places anyway.
+ */
+function mixedPlaces(lines: CollectionLine[]): boolean {
+  const places = new Set<string>();
+  for (const line of lines) {
+    if ((line.locations_more ?? 0) > 0) return true;
+    for (const held of line.locations ?? []) places.add(String(held.location_id));
+    if ((line.unassigned ?? 0) > 0) places.add(UNASSIGNED);
+  }
+  return places.size > 1;
+}
 
 function numberOrNull(text: string): number | null | undefined {
   if (text.trim() === '') return undefined;
@@ -26,7 +53,15 @@ function numberOrNull(text: string): number | null | undefined {
 }
 
 /** The bar that appears while lines are selected: one change for all of them, or delete (F3-h S5). */
-export function BulkBar({ ids, conditions, languages, offline, onClear }: BulkBarProps) {
+export function BulkBar({
+  ids,
+  conditions,
+  languages,
+  lines,
+  locations,
+  offline,
+  onClear,
+}: BulkBarProps) {
   const { t, i18n } = useTranslation('collection');
   const { label } = useEnumLabel();
   const bulkSet = useBulkSet();
@@ -39,6 +74,10 @@ export function BulkBar({ ids, conditions, languages, offline, onClear }: BulkBa
   const [keep, setKeep] = useState('3');
   const [sellPrice, setSellPrice] = useState('');
   const [purchase, setPurchase] = useState('');
+  const [place, setPlace] = useState('');
+  const [locked, setLocked] = useState<string | null>(null);
+  const mixedId = useId();
+  const mixed = mixedPlaces(lines);
   const [confirm, setConfirm] = useState<'apply' | 'delete' | null>(null);
   const [empty, setEmpty] = useState(false);
 
@@ -59,7 +98,16 @@ export function BulkBar({ ids, conditions, languages, offline, onClear }: BulkBa
     if (sale !== undefined) set.sell_price = sale;
     const bought = numberOrNull(purchase);
     if (bought !== undefined) set.purchase_price = bought;
+    if (place === UNASSIGNED) set.location_id = null;
+    else if (place) set.location_id = Number(place);
     return set;
+  };
+
+  const confirmText = () => {
+    const text = t('bulk.confirm.apply', { count: ids.length });
+    if (place === UNASSIGNED) return `${text} ${t('bulk.confirm.unassigned')}`;
+    const target = locations.find((location) => String(location.id) === place);
+    return target ? `${text} ${t('bulk.confirm.location', { code: target.code })}` : text;
   };
 
   const askApply = () => {
@@ -73,11 +121,18 @@ export function BulkBar({ ids, conditions, languages, offline, onClear }: BulkBa
 
   const apply = () => {
     setConfirm(null);
+    setLocked(null);
     bulkSet.mutate(
       { ids, set: change() },
       {
         onSuccess: () => pushToast({ kind: 'success', message: t('bulk.applied') }),
-        onError: (error) => pushToast({ kind: 'error', message: translateError(error, i18n) }),
+        onError: (error) => {
+          if (error instanceof ApiError && error.code === 'location_locked') {
+            setLocked(t('bulk.locationLocked', { codes: String(error.params?.codes ?? '') }));
+            return;
+          }
+          pushToast({ kind: 'error', message: translateError(error, i18n) });
+        },
       },
     );
   };
@@ -205,8 +260,40 @@ export function BulkBar({ ids, conditions, languages, offline, onClear }: BulkBa
           onChange={(e) => setPurchase(e.target.value)}
         />
       </label>
+      <div className={styles.field}>
+        <label>
+          <span>{t('bulk.location')}</span>
+          <Select
+            value={place}
+            disabled={offline}
+            aria-describedby={mixed ? mixedId : undefined}
+            onChange={(e) => {
+              setPlace(e.target.value);
+              setLocked(null);
+            }}
+          >
+            <option value="">{t('bulk.keepLocations')}</option>
+            {locations.map((location) => (
+              <option key={location.id} value={String(location.id)} disabled={location.locked}>
+                {location.code}
+              </option>
+            ))}
+            <option value={UNASSIGNED}>{t('bulk.unassigned')}</option>
+          </Select>
+        </label>
+        {mixed && (
+          <small id={mixedId} className={styles.hint}>
+            {t('bulk.mixedLocations')}
+          </small>
+        )}
+      </div>
       <div className={styles.actions}>
         {empty && <span className={styles.hint}>{t('bulk.nothingToApply')}</span>}
+        {locked && (
+          <span role="alert" className={styles.error}>
+            {locked}
+          </span>
+        )}
         <Button onClick={askApply} disabled={offline} pending={bulkSet.isPending}>
           {t('bulk.apply')}
         </Button>
@@ -225,7 +312,7 @@ export function BulkBar({ ids, conditions, languages, offline, onClear }: BulkBa
       <ConfirmDialog
         open={confirm === 'apply'}
         title={t('bulk.apply')}
-        message={t('bulk.confirm.apply', { count: ids.length })}
+        message={confirmText()}
         confirmLabel={t('bulk.apply')}
         cancelLabel={i18n.t('actions.cancel', { ns: 'common' })}
         onConfirm={apply}
