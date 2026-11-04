@@ -25,5 +25,5 @@ def _any_error(error):
 
 
 # Import for the side effect of registering the routes on `api_v1`.
-from app.api.v1 import (auth, bans, cards, collection, locations, me,  # noqa: E402,F401
-                        me_products, meta, products)
+from app.api.v1 import (auth, bans, cards, collection, decks, locations,  # noqa: E402,F401
+                        me, me_products, meta, products)
