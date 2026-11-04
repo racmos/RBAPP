@@ -689,7 +689,11 @@ layout on a desktop.
   lines" reads the ids page by page (`fetchFilteredLineIds`, at most 1000 lines). `BulkBar` (sticky,
   while something is selected): condition, language, on sale, copies-to-sell rule (all / none / keep N),
   prices; apply and delete go through a `ConfirmDialog`, delete offers "Undo" for 8 s (it posts
-  the deleted lines back).
+  the deleted lines back). "Location" (F16-x): "Keep current locations" (default, sends no
+  `location_id`), the user's locations in order (locked ones disabled) and "Unassigned" (`null`);
+  when the selected lines loaded on the page are in more than one place it says "Mixed: lines keep
+  their locations unless you pick one", the confirmation names the target, a bulk change also
+  refreshes `['locations']` and a 409 `location_locked` shows its codes in the bar (`role="alert"`).
 - From 1600 px `CollectionPanel` (380 px, a `SidePanel`, `collection-detail`) shows the clicked row's card: image, totals, 30-day `PriceChart`
   (foil series for a foil group), lines, the decks using the card (`in_decks`) and a link to the card page.
 - Import and export (F3-i): "Export" (toolbar on the desktop, header on a phone; off offline) opens

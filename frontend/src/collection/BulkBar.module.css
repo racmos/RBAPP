@@ -52,4 +52,20 @@
     color: var(--muted);
     font-size: 12px;
   }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .field .hint {
+    max-width: 220px;
+  }
+
+  .error {
+    color: var(--red-text);
+    font-size: 12px;
+    font-weight: 600;
+  }
 }

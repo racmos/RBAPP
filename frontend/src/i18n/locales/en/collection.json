@@ -211,12 +211,19 @@
       "apply_one": "Apply the changes to {{count}} line?",
       "apply_other": "Apply the changes to {{count}} lines?",
       "delete_one": "Delete {{count}} line?",
-      "delete_other": "Delete {{count}} lines?"
+      "delete_other": "Delete {{count}} lines?",
+      "location": "All their copies go to {{code}}.",
+      "unassigned": "All their copies become unassigned."
     },
     "applied": "Changes applied.",
     "deleted_one": "{{count}} line deleted.",
     "deleted_other": "{{count}} lines deleted.",
-    "nothingToApply": "Choose at least one change."
+    "nothingToApply": "Choose at least one change.",
+    "location": "Location",
+    "keepLocations": "Keep current locations",
+    "unassigned": "Unassigned",
+    "mixedLocations": "Mixed: lines keep their locations unless you pick one",
+    "locationLocked": "Locked locations can't change: {{codes}}. Unlock them first."
   },
   "panel": {
     "title": "Card details",

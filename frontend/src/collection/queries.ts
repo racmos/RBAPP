@@ -90,12 +90,16 @@ export function useKeepPlayset() {
   });
 }
 
+/** A bulk change may move copies between locations (F16-x), so it also refreshes the locations. */
 export function useBulkSet() {
+  const client = useQueryClient();
   const refresh = useRefresh();
   return useMutation({
     mutationFn: ({ ids, set }: { ids: number[]; set: CollectionBulkSet }) =>
       bulkSetCollection(ids, set),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await Promise.all([refresh(), client.invalidateQueries({ queryKey: ['locations'] })]);
+    },
   });
 }
 

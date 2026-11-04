@@ -246,6 +246,9 @@ class CollectionBulkSet(BaseModel, extra='ignore'):
     keep: Optional[Annotated[StrictInt, Field(ge=1, le=9)]] = None
     sell_price: Optional[_Money] = None
     purchase_price: Optional[_Money] = None
+    # F16-x: absent = every line keeps its locations; an id = all the copies of each line go
+    # there; null = all of them become unassigned (sent null is a value: model_fields_set)
+    location_id: Optional[Annotated[StrictInt, Field(ge=1)]] = None
 
     _language = field_validator('language')(lambda cls, v: _language(v))
 

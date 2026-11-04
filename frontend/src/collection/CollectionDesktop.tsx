@@ -339,6 +339,10 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
               ids={[...selection.ids]}
               conditions={gameMeta.data?.conditions ?? []}
               languages={gameMeta.data?.languages ?? []}
+              lines={items.flatMap((group) =>
+                group.lines.filter((line) => selection.ids.has(line.id)),
+              )}
+              locations={locations ?? []}
               offline={offline}
               onClear={selection.clear}
             />

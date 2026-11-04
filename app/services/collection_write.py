@@ -313,9 +313,17 @@ def _owned_all(user, ids) -> list[tuple[RbCollection, RbCard]]:
 
 
 def bulk_set(user, ids, values) -> int:
-    """Apply `values` (a `CollectionBulkSet`) to all the lines or to none (S6)."""
+    """Apply `values` (a `CollectionBulkSet`) to all the lines or to none (S6). Without
+    `location_id` every line keeps its locations; with it all the copies of each line go to
+    that location, or become unassigned with `None` (F16-x, `locations.place_lines`)."""
     pairs = _owned_all(user, ids)
     sent = values.model_fields_set
+    if 'location_id' in sent:
+        try:
+            locations.place_lines(user, [row for row, _ in pairs], values.location_id)
+        except (locations.LocationLocked, locations.LocationNotFound):
+            db.session.rollback()
+            raise
     markets = collection_read.markets_for(card for _, card in pairs) \
         if values.selling else {}
     now = clock.utcnow()
