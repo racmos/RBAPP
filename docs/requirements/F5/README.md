@@ -133,8 +133,8 @@ mazos" + Nuevo/Importar), error, offline read-only, 404 for slugs.
 | F5-a | Deck rules engine (Python) + rule values | F2 done | ~600 | item 3 | Done (#91, `F5-a-deck-rules-engine.md`) | `DECK_RULES` in `/meta/game`, `deck_rules.py`, shared cases JSON + pytest runner |
 | F5-b | Deck rules library (TS) | F5-a | ~500 | item 3 | Done (#92, `F5-b-deck-rules-ts.md`) | `frontend/src/decks/rules/`, vitest runner over the same cases |
 | F5-c | Deck v2 data + migration | F5-a | ~600 | items 1, 3 | Done (#93, `F5-c-decks-v2-data.md`) | Tables, Pydantic content, routing migration + dry-run CLI, Jinja read-only switch |
-| F5-d | Decks API | F5-c | ~600 | items 3, 4 | In review (`F5-d-decks-api.md`) | CRUD, content save with hard limits, versions, restore, diff, legality both modes; R13 Jinja switch deferred to F5-h (L6) |
-| F5-e | Import/export API | F5-d | ~550 | items 3, 6 | Planned | Parsers (rbapp + riftdecks + Piltover; samples needed), preview warnings, export formats |
+| F5-d | Decks API | F5-c | ~600 | items 3, 4 | Done (#94, `F5-d-decks-api.md`) | CRUD, content save with hard limits, versions, restore, diff, legality both modes; R13 Jinja switch deferred to F5-h (L6) |
+| F5-e | Import/export API | F5-d | ~550 | items 3, 6 | In review (`F5-e-decks-import-export.md`) | One common text format (owner, 2026-11-04): preview with per-line warnings, import that always loads, text export (L1-L7) |
 | F5-f | Deck vs collection | F5-d, F3-f | ~350 | item 3 | Planned | Missing/cost per name, missing to wishlist |
 | F5-g | Visibility, share link, public endpoint | F5-d | ~400 | item 2 | Planned | Slugs, public read endpoint with rate limit, authz P |
 | F5-h | Decks UI mobile | F5-b, F5-d | ~650 | none | Planned | List, workspace screen, editing with limits and reasons, nav flip |

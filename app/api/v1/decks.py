@@ -1,5 +1,6 @@
 """Decks v2 endpoints (F5-d): GET/POST /decks, GET/PATCH/DELETE /decks/<id>,
-PUT /decks/<id>/content, versions, restore and diff. Only the owner sees a deck (D-F5-9)."""
+PUT /decks/<id>/content, versions, restore and diff; text import and export (F5-e).
+Only the owner sees a deck (D-F5-9)."""
 from flask import abort, current_app, request
 from flask_login import current_user, login_required
 
@@ -7,11 +8,12 @@ from app.api.error_codes import DetailCode, ErrorCode
 from app.api.responses import fail
 from app.api.v1 import api_v1
 from app.schemas.validation import validate_json, validate_query
-from app.schemas.validators import (DeckContentPut, DeckCreate, DeckDiffQuery, DeckPatch,
+from app.schemas.validators import (DeckContentPut, DeckCreate, DeckDiffQuery, DeckExportQuery,
+                                    DeckImport, DeckImportPreview, DeckPatch,
                                     DeckVersionCreate)
 from app.services import decks
-from app.services.decks import (DeckNotFound, DuplicateName, HardLimitExceeded, UnknownCards,
-                                VersionNotFound)
+from app.services.decks import (DeckNotFound, DuplicateName, FormatUnknown, HardLimitExceeded,
+                                UnknownCards, VersionNotFound)
 
 
 def _json(data, status=200):
@@ -44,6 +46,9 @@ def _guarded(action):
         return fail('Validation Error', 'The deck goes over a limit: '
                     + '; '.join(_limit_message(v) for v in violations) + '.', 400,
                     code=ErrorCode.DECK_LIMIT_EXCEEDED, params=violations[0])
+    except FormatUnknown:
+        return fail('Bad Request', 'The deck format is not recognised. Use the text format.',
+                    400, code=ErrorCode.IMPORT_FORMAT_UNKNOWN)
     except (DeckNotFound, VersionNotFound):
         abort(404)
 
@@ -125,6 +130,40 @@ def get_deck_version(deck_id, seq):
 def restore_deck_version(deck_id, seq):
     """Copy version `seq` into a new version, which becomes the current one."""
     return _guarded(lambda: _json(decks.restore(current_user, deck_id, seq), 201))
+
+
+@api_v1.post('/decks/import/preview')
+@login_required
+@validate_json(DeckImportPreview)
+def preview_deck_import():
+    """What a deck text would load (content, legality, per-line warnings); stores nothing."""
+    data = request.validated_data
+    return _guarded(lambda: _json(decks.import_preview(current_user, data.text, data.format)))
+
+
+@api_v1.post('/decks/import')
+@login_required
+@validate_json(DeckImport)
+def import_deck():
+    """A new deck from a text; it loads even with warnings (hard limits included)."""
+    data = request.validated_data
+    return _guarded(lambda: _json(decks.import_deck(current_user, data.text, data.format,
+                                                    data.name, data.mode), 201))
+
+
+@api_v1.get('/decks/<int:deck_id>/export')
+@login_required
+@validate_query(DeckExportQuery)
+def export_deck(deck_id):
+    """The current version as a text file in the common deck format."""
+    fmt = request.validated_query.format
+
+    def download():
+        filename, text = decks.export_text(current_user, deck_id, fmt)
+        return current_app.response_class(
+            text, mimetype='text/plain', headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'})
+    return _guarded(download)
 
 
 @api_v1.get('/decks/<int:deck_id>/diff')

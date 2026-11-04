@@ -436,8 +436,8 @@ New error codes: `location_over_quantity` (409, `params.max`, `params.requested`
 `app/api/v1/decks.py`, all `U`, logic in `app/services/decks.py`, rules from
 `app/services/deck_rules.py` (F5-a). Only the owner sees a deck (D-F5-9): another user's deck,
 an unknown id or an unknown version seq -> the 404 envelope on every route, never 403;
-anonymous -> 401 `unauthenticated`. Import/export (F5-e), deck vs collection (F5-f) and the share
-link (F5-g) are not here yet.
+anonymous -> 401 `unauthenticated`. Text import/export: "Deck import/export (F5-e)" below; deck
+vs collection (F5-f) and the share link (F5-g) are not here yet.
 
 Shapes (keys in this order):
 
@@ -514,6 +514,84 @@ Routes:
 
 New error code: `deck_limit_exceeded` (400, `params {rule, max, name?}`). Legality issues are
 never HTTP errors.
+
+### Deck import/export (F5-e)
+
+`app/api/v1/decks.py`, all `U`, logic in `app/services/decks.py` over the pure
+`app/services/deck_text.py`. One format only (owner, 2026-11-04): the common text every deck site
+exports (`docs/requirements/F5/samples/deck-export-text-1.txt`):
+
+```
+Legend:
+1 Riven, The Exile
+
+Champion:
+1 Riven, Broken Blade
+
+MainDeck:
+3 Discipline
+...
+
+Battlefields:
+1 Star Spring
+
+Rune Pool:
+7 Chaos Rune
+5 Calm Rune
+
+Sideboard:
+2 Decree of Focus
+```
+
+`format` is `auto` (default) or `text` (the same); anything else -> 400 `import_format_unknown`
+(`The deck format is not recognised. Use the text format.`). `text` is at most 64 KB (UTF-8) and
+2000 lines (a final newline ends a line), else 400 `validation_error` (`details[0]` `{field:
+"text", code: "too_long", params: {max: 65536 | 2000}}`).
+
+**Parser.** Lines split on `\r\n`, `\r` or `\n`, trimmed; blank lines ignored. Headers: case-insensitive,
+with or without a final `:` / `：`, spaces collapsed: `Legend(s)`, `Champion(s)`, `Chosen Champion`,
+`MainDeck`, `Main Deck`, `Main`, `Battlefield(s)`, `Rune Pool`, `Runes`, `Rune`, `Sideboard`,
+`Side Board` (and the prototype's Spanish ones). Card lines: `N Name`, `Nx Name`, `N x Name`; a
+line without a quantity is 1. The same name twice in a block is one line (quantities added).
+Resolution: an explicit id `SET-ID` (the whole text or a final parenthesis, `Name (OGN-247)`) wins
+when it exists; else the `name_key` of the name (case, typographic apostrophes, spaces); else a
+legend written `Tag, Name` (legends store the bare name, the champion is a tag); else the name
+without accents. A name gives its base printing (`is_base`).
+
+`Warning` = `{line: int|null, text, reason_code, params}` (`line` 1-based, `text` the trimmed
+line), in line order, then the hard limits:
+
+| reason_code | When | Effect |
+|---|---|---|
+| `no_zone` | a card line before any header or after an unknown one | placed by type (Legend -> legend, Champion Unit -> champion, Battlefield, Rune, else main) |
+| `zone_unknown` | a `...:` line that is not a known header | its lines get `no_zone` |
+| `quantity_invalid` | quantity outside 1..99 | line skipped |
+| `unknown_card` | no card matches | not in the content |
+| `ambiguous_card` | only the accent-free match, and it fits several names | not in the content |
+| `wrong_zone` (`params {name, zone}`) | the card's type does not belong in the block | **kept in that block**; legality flags it (`card_off_identity`) |
+| `slot_taken` (`params {name, zone, to, qty}`) | a second legend / champion (or qty > 1) | extra legends -> workbench, extra champions -> main |
+| `hard_limit` (`line: null`, `params` = the `deck_limit_exceeded` params) | the content breaks a hard limit (F5-R9) | **imported as is**; legality reports it |
+
+- `POST /decks/import/preview` (`api_v1.preview_deck_import`) `{text, format?}` -> 200
+  `{deck_preview: {content, cards, unknown_cards, domains, counts, value, value_unpriced,
+  legality}, warnings: [Warning], counts: {lines, copies, unresolved}}`. `deck_preview` is what
+  `GET /decks/<id>` gives for that content (legality in both modes with `completeness`).
+  `counts`: card lines after merging, copies placed, copies left out. Writes nothing.
+- `POST /decks/import` (`api_v1.import_deck`) `{text, format?, name?, mode?: 1v1|2v2 (default
+  1v1)}` -> 201 `DeckDetail` + `warnings`: a new private deck whose version 1 (current) is the
+  imported content. Name: `name` (trimmed; blank = none), else the legend's text name (`Riven,
+  The Exile`), else `Imported deck`; a name the caller already has gets ` (2)`, ` (3)`... (cut
+  so it fits 80). It loads with warnings and hard limits: the content is stored **as is**, so
+  `PUT …/content` keeps answering `deck_limit_exceeded` until every hard limit is fixed (F5-e L3).
+- `GET /decks/<id>/export?format=text` (`api_v1.export_deck`, `format` defaults to `text`) ->
+  200 `text/plain; charset=utf-8`, `Content-Disposition: attachment; filename="<slug>.txt"`
+  (deck name, accents folded, lowercase, runs of other characters `-`; `deck` when empty).
+  Blocks in the order above, `Header:` then `N Name` lines, a blank line between blocks, a final
+  newline, empty blocks omitted (an empty deck is an empty file), the workbench never exported.
+  Lines keep the content order (the order the deck was imported or built in), one line per
+  name with the total of its printings; a legend prints `Tag, Name` (first tag) unless its name
+  already starts with a tag; a printing missing from the catalog prints `SET-ID`. Importing the
+  export gives the same content (printings of one name come back as the base printing).
 
 ### GET /cards/<set_id>/<card_id>/prices
 
