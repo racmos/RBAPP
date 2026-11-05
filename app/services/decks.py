@@ -13,12 +13,16 @@ Value (EUR): the market price of each printing (`price_summaries`, non-foil chai
 copies over legend, champion, main, runes, battlefields and sideboard; the workbench never
 counts (product.md). `value_unpriced` counts the copies without a price (cards missing from
 the catalog included).
+
+Share link (F5-g): every `DeckHead` carries `share: {slug, url} | null`; the link itself and
+the public read live in `app/services/deck_share.py`.
 """
 import re
 import unicodedata
 from copy import deepcopy
 
 import sqlalchemy as sa
+from flask import url_for
 from sqlalchemy import tuple_
 from sqlalchemy.exc import IntegrityError
 
@@ -111,7 +115,8 @@ def _iso(moment):
 
 class _Catalog:
     """The catalog, bans, prices and owned copies one response needs, in bounded queries:
-    cards, sets, bans, then (for the cards asked for) prices (two) and the user's copies."""
+    cards, sets, bans, then (for the cards asked for) prices (two) and the user's copies.
+    Without a user (the public deck, F5-g) no copies are read and `owned_total` is null."""
 
     def __init__(self, user):
         rows = db.session.query(RbCard).all()
@@ -120,7 +125,7 @@ class _Catalog:
         self.base_keys = catalog.base_printing_keys(
             rows, catalog.set_order(db.session.query(RbSet).all()))
         self.bans = {key: list(modes) for key, modes in bans_service.ban_map().items()}
-        self.username = user.username
+        self.username = user.username if user is not None else None
         self.prices, self.owned = {}, {}
 
     def load(self, contents):
@@ -134,6 +139,8 @@ class _Catalog:
             for s, i in keys))
         for key in keys:
             self.prices.setdefault(key, None)
+        if self.username is None:
+            return
         rows = db.session.query(RbCollection.rbcol_rbset_id, RbCollection.rbcol_rbcar_id,
                                 RbCollection.rbcol_quantity).filter(
             RbCollection.rbcol_user == self.username,
@@ -147,7 +154,8 @@ class _Catalog:
     def card(self, key):
         """The `DeckCard` of a known printing: `CardMini` plus its `tags`."""
         row = self.rows[key]
-        out = _card_mini(row, market=self.market(key), owned_total=self.owned.get(key, 0),
+        owned = self.owned.get(key, 0) if self.username is not None else None
+        out = _card_mini(row, market=self.market(key), owned_total=owned,
                          is_base=key in self.base_keys)
         out['tags'] = catalog.parse_tags(row.rbcar_tags)
         return out
@@ -217,10 +225,19 @@ def _analysis(content, cat):
             'legality': _legality(clean, cat)}
 
 
+def share_item(slug):
+    """`{slug, url}` of a share link, or None; the URL is the public SPA page on the request's
+    host (F5-g)."""
+    if not slug:
+        return None
+    return {'slug': slug, 'url': url_for('spa.asset', path=f'd/{slug}', _external=True)}
+
+
 def head_item(head):
     return {'id': head.rbdkh_id, 'name': head.rbdkh_name, 'mode': head.rbdkh_mode,
             'visibility': head.rbdkh_visibility, 'created_at': _iso(head.rbdkh_created_at),
-            'updated_at': _iso(head.rbdkh_updated_at)}
+            'updated_at': _iso(head.rbdkh_updated_at),
+            'share': share_item(head.rbdkh_share_slug)}
 
 
 def _detail(head, version, cat):

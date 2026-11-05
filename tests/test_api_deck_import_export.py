@@ -13,8 +13,8 @@ SAMPLE = (Path(__file__).resolve().parents[1]
 PREVIEW_KEYS = ['deck_preview', 'warnings', 'counts']
 DECK_PREVIEW_KEYS = ['content', 'cards', 'unknown_cards', 'domains', 'counts', 'value',
                      'value_unpriced', 'legality']
-DETAIL_KEYS = ['id', 'name', 'mode', 'visibility', 'created_at', 'updated_at', 'current_seq',
-               'content', 'cards', 'unknown_cards', 'domains', 'counts', 'value',
+DETAIL_KEYS = ['id', 'name', 'mode', 'visibility', 'created_at', 'updated_at', 'share',
+               'current_seq', 'content', 'cards', 'unknown_cards', 'domains', 'counts', 'value',
                'value_unpriced', 'legality', 'warnings']
 
 # The owner's sample deck as a synthetic catalog: (id, name, type, domains, tags).
