@@ -238,3 +238,75 @@ describe('DeckView at 390 px (F5-h stage 1)', () => {
     expect(await axe(container)).toHaveNoViolations();
   }, 30000);
 });
+
+describe('workspace tabs List / Stats (F5-i step 4)', () => {
+  const tabs = () => screen.getByRole('tablist', { name: 'Workspace view' });
+  const tab = (name: string) => within(tabs()).getByRole('tab', { name });
+
+  it('opens on List with the deck as before; Stats keeps the header and the summary above', async () => {
+    await openDeck(41);
+    expect(
+      within(tabs())
+        .getAllByRole('tab')
+        .map((t) => t.textContent),
+    ).toEqual(['List', 'Stats']);
+    expect(tab('List')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'List' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Legality' })).toBeVisible();
+    expect(rowNames(section(/^Main deck$/))).toHaveLength(13);
+    expect(screen.queryByRole('figure', { name: 'Energy curve' })).toBeNull();
+
+    await userEvent.click(tab('Stats'));
+    expect(tab('Stats')).toHaveAttribute('aria-selected', 'true');
+    expect(tab('List')).toHaveAttribute('aria-selected', 'false');
+    const panel = screen.getByRole('tabpanel', { name: 'Stats' });
+    expect(within(panel).getByRole('figure', { name: 'Energy curve' })).toBeVisible();
+    expect(within(panel).getByText('Main deck', { selector: 'dt' }).nextSibling).toHaveTextContent(
+      '39',
+    );
+    // the list is out of view, the header, save state and summary stay
+    expect(screen.queryByRole('region', { name: 'Legality' })).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Sections' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Riven, The Exile' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Deck summary' })).toBeVisible();
+    expect(document.querySelector('[data-slot="save-state"]')).toBeVisible();
+
+    await userEvent.click(tab('List'));
+    expect(screen.getByRole('region', { name: 'Legality' })).toBeVisible();
+    expect(rowNames(section(/^Main deck$/))).toHaveLength(13);
+  }, 20000);
+
+  it('moves between the tabs with the arrow keys, Home and End', async () => {
+    await openDeck(41);
+    tab('List').focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(tab('Stats')).toHaveFocus();
+    expect(tab('Stats')).toHaveAttribute('aria-selected', 'true');
+    expect(tab('List')).toHaveAttribute('tabindex', '-1');
+    await userEvent.keyboard('{ArrowRight}');
+    expect(tab('List')).toHaveFocus();
+    expect(tab('List')).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(tab('Stats')).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{Home}');
+    expect(tab('List')).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{End}');
+    expect(tab('Stats')).toHaveFocus();
+    expect(screen.getByRole('figure', { name: 'Energy curve' })).toBeVisible();
+  }, 20000);
+
+  it('at 1280 px the tabs sit in the workspace, next to the card browser', async () => {
+    await openDeck(41, 1280);
+    await screen.findByRole('region', { name: 'Card browser' }, LONG);
+    const workspace = screen.getByRole('region', { name: 'Deck workspace' });
+    await userEvent.click(within(workspace).getByRole('tab', { name: 'Stats' }));
+    expect(within(workspace).getByRole('figure', { name: 'Unit might' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Card browser' })).toBeVisible();
+  }, 20000);
+
+  it('is axe clean on the Stats tab', async () => {
+    const { container } = await openDeck(41);
+    await userEvent.click(tab('Stats'));
+    expect(await axe(container)).toHaveNoViolations();
+  }, 30000);
+});

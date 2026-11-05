@@ -44,6 +44,44 @@
     min-width: 0;
   }
 
+  /* List / Stats (F5-i step 4): the card browser's tab look. */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tab {
+    min-height: 40px;
+    padding: 6px 14px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .tab[aria-selected='true'] {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+  }
+
+  .tab:hover {
+    color: var(--text);
+  }
+
+  .tabPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .tabPanel[hidden] {
+    display: none;
+  }
+
   .back {
     align-self: flex-start;
     color: var(--muted);

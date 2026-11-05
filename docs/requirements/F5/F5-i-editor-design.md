@@ -84,6 +84,16 @@ locations/F5-f; ask the owner).
    Abilities, Legal only and Available to add (need backend filters: `keywords`, `legal_for_deck`,
    the available count), `View` and `Fit`, and the mobile bottom sheet (decision 4).
 4. Stats tab.
+   **Done (frontend, `feat/f5i-stats-tab`):** workspace tabs `List | Stats` (local state; header,
+   save state and summary stay above both; same tabs on phones). Stats: tiles Main deck, Avg
+   energy, Avg might, Power cards (power > 0); Energy curve 0..10+ stacked by Unit / Spell / Gear /
+   Champion (supertype Champion); Power & Runes by domain (cards, power, runes with shares; a
+   multi-domain card counts fully in each of its domains, colourless cards under Colorless); Unit
+   might 0..12+; Keywords by copies with the "approximate" help. Main deck only, live while
+   editing (`decks/deckStats.ts`). Still left in F5-i: Full Art tab (step 5), Versions modal,
+   export menu and the live import panel (step 6), the mobile bottom sheet (decision 4), the
+   browser's `View` / `Fit` and resizable divider, and the backend filters (keywords,
+   `legal_for_deck`, available count).
 5. Full Art tab.
 6. Versions modal (diff, Restore) and export menu; import validation panel live.
 7. Deck list screen (next menu the owner asked for).

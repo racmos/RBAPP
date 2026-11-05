@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import type { DeckCompleteness, DeckDetail, GameMode } from '@/api/types';
@@ -16,6 +16,7 @@ import { NotFound } from '@/shell/NotFound';
 import { CardBrowser } from './CardBrowser';
 import { DeckActions } from './DeckActions';
 import { DeckSections } from './DeckSections';
+import { DeckStats } from './DeckStats';
 import { hardLimitMessage, issueMessage } from './issues';
 import { useDeck } from './queries';
 import { useDeckEditor, type DeckEditor } from './useDeckEditor';
@@ -198,6 +199,77 @@ function SaveState({ editor }: { editor: DeckEditor }) {
   );
 }
 
+const TABS = ['list', 'stats'] as const;
+type Tab = (typeof TABS)[number];
+
+/** The workspace views (F5-i step 4): List (the deck as in F5-h) and Stats. Header, save state
+ *  and summary stay above them; the choice is local (not in the URL). The List panel stays
+ *  mounted, so folded sections survive a visit to Stats. */
+function WorkspaceTabs({ editor, twoPane }: { editor: DeckEditor; twoPane: boolean }) {
+  const { t } = useTranslation('decks');
+  const id = useId();
+  const [tab, setTab] = useState<Tab>('list');
+  const refs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const index = TABS.indexOf(tab);
+    let next: Tab | undefined;
+    if (event.key === 'ArrowRight') next = TABS[(index + 1) % TABS.length];
+    else if (event.key === 'ArrowLeft') next = TABS[(index - 1 + TABS.length) % TABS.length];
+    else if (event.key === 'Home') next = TABS[0];
+    else if (event.key === 'End') next = TABS[TABS.length - 1];
+    if (!next) return;
+    event.preventDefault();
+    setTab(next);
+    refs.current[next]?.focus();
+  };
+  return (
+    <>
+      <div role="tablist" aria-label={t('tabs.label')} className={styles.tabs}>
+        {TABS.map((name) => (
+          <button
+            key={name}
+            ref={(node) => {
+              refs.current[name] = node;
+            }}
+            type="button"
+            role="tab"
+            id={`${id}-tab-${name}`}
+            aria-controls={`${id}-panel-${name}`}
+            aria-selected={tab === name}
+            tabIndex={tab === name ? 0 : -1}
+            className={styles.tab}
+            onClick={() => setTab(name)}
+            onKeyDown={onKeyDown}
+          >
+            {t(`tabs.${name}`)}
+          </button>
+        ))}
+      </div>
+      <div
+        role="tabpanel"
+        id={`${id}-panel-list`}
+        aria-labelledby={`${id}-tab-list`}
+        hidden={tab !== 'list'}
+        className={styles.tabPanel}
+      >
+        <LegalityBlock editor={editor} />
+        <Completeness done={editor.done} />
+        <UnknownCards editor={editor} />
+        <DeckSections editor={editor} pickers={!twoPane} />
+      </div>
+      <div
+        role="tabpanel"
+        id={`${id}-panel-stats`}
+        aria-labelledby={`${id}-tab-stats`}
+        hidden={tab !== 'stats'}
+        className={styles.tabPanel}
+      >
+        {tab === 'stats' && <DeckStats content={editor.content} book={editor.book} />}
+      </div>
+    </>
+  );
+}
+
 /** Two panes from `lg` (960 px): each column keeps about 450 px, the phone width the workspace
  *  already lays out, and the card tiles still fit three or four in a row. */
 const TWO_PANE = up('lg');
@@ -237,10 +309,7 @@ function DeckWorkspace({ deck: loaded, back }: { deck: DeckDetail; back: ReactNo
           <SaveState editor={editor} />
           <SummaryBar editor={editor} />
           <LimitBanner editor={editor} />
-          <LegalityBlock editor={editor} />
-          <Completeness done={editor.done} />
-          <UnknownCards editor={editor} />
-          <DeckSections editor={editor} pickers={!twoPane} />
+          <WorkspaceTabs editor={editor} twoPane={twoPane} />
         </section>
       </div>
     </div>
