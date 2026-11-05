@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import type { DeckCompleteness, DeckDetail, GameMode } from '@/api/types';
@@ -9,8 +9,11 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { translateError, useDocumentTitle } from '@/i18n';
+import { up } from '@/lib/breakpoints';
 import { formatDate, formatMoney } from '@/lib/format';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { NotFound } from '@/shell/NotFound';
+import { CardBrowser } from './CardBrowser';
 import { DeckActions } from './DeckActions';
 import { DeckSections } from './DeckSections';
 import { hardLimitMessage, issueMessage } from './issues';
@@ -195,31 +198,52 @@ function SaveState({ editor }: { editor: DeckEditor }) {
   );
 }
 
-/** The loaded deck: one editor per deck id. */
-function DeckWorkspace({ deck: loaded }: { deck: DeckDetail }) {
+/** Two panes from `lg` (960 px): each column keeps about 450 px, the phone width the workspace
+ *  already lays out, and the card tiles still fit three or four in a row. */
+const TWO_PANE = up('lg');
+
+/** The loaded deck: one editor per deck id. On a wide screen, while editing is possible, the
+ *  card browser sits left of the workspace (F5-i step 2); otherwise one column as in F5-h. The
+ *  workspace keeps its place in the tree so a layout change never resets it. */
+function DeckWorkspace({ deck: loaded, back }: { deck: DeckDetail; back: ReactNode }) {
   const { t } = useTranslation('decks');
   const editor = useDeckEditor(loaded);
+  const wide = useMediaQuery(TWO_PANE);
+  const twoPane = wide && editor.canEdit;
   const { deck } = editor;
   useDocumentTitle(deck.name);
   return (
-    <>
-      <PageHeader
-        title={deck.name}
-        subtitle={[
-          t('version', { seq: deck.current_seq }),
-          t('updated', { date: formatDate(deck.updated_at) }),
-        ].join(' · ')}
-        actions={<Badge tone="accent">{deck.mode}</Badge>}
-      />
-      <DeckActions editor={editor} />
-      <SaveState editor={editor} />
-      <SummaryBar editor={editor} />
-      <LimitBanner editor={editor} />
-      <LegalityBlock editor={editor} />
-      <Completeness done={editor.done} />
-      <UnknownCards editor={editor} />
-      <DeckSections editor={editor} />
-    </>
+    <div
+      className={twoPane ? `${styles.page} ${styles.wide}` : styles.page}
+      data-layout={twoPane ? 'two-pane' : 'single'}
+    >
+      {back}
+      <div className={styles.panes}>
+        {twoPane && (
+          <div className={styles.browserPane}>
+            <CardBrowser editor={editor} />
+          </div>
+        )}
+        <section className={styles.workspace} aria-label={t('workspace')}>
+          <PageHeader
+            title={deck.name}
+            subtitle={[
+              t('version', { seq: deck.current_seq }),
+              t('updated', { date: formatDate(deck.updated_at) }),
+            ].join(' · ')}
+            actions={<Badge tone="accent">{deck.mode}</Badge>}
+          />
+          <DeckActions editor={editor} />
+          <SaveState editor={editor} />
+          <SummaryBar editor={editor} />
+          <LimitBanner editor={editor} />
+          <LegalityBlock editor={editor} />
+          <Completeness done={editor.done} />
+          <UnknownCards editor={editor} />
+          <DeckSections editor={editor} pickers={!twoPane} />
+        </section>
+      </div>
+    </div>
   );
 }
 
@@ -259,10 +283,5 @@ export function DeckView() {
     );
   }
 
-  return (
-    <div className={styles.page}>
-      {back}
-      <DeckWorkspace key={deck.id} deck={deck} />
-    </div>
-  );
+  return <DeckWorkspace key={deck.id} deck={deck} back={back} />;
 }

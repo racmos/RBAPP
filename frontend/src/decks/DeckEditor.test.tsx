@@ -376,3 +376,32 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
     expect(await axe(container)).toHaveNoViolations();
   }, 30000);
 });
+
+describe('Deck editing at 1280 px (F5-i step 2)', () => {
+  it('the card browser replaces the per-section search; Auto runes stays', async () => {
+    signedIn();
+    withDecks();
+    await renderApp({ path: '/decks/41', width: 1280 });
+    await screen.findByRole('region', { name: 'Card browser' }, LONG);
+    // the topbar keeps its own card search; the sections have none
+    const workspace = screen.getByRole('region', { name: 'Deck workspace' });
+    expect(within(workspace).queryAllByRole('combobox')).toEqual([]);
+    await waitFor(
+      () => expect(screen.getByRole('button', { name: 'Auto runes' })).toBeEnabled(),
+      LONG,
+    );
+    expect(screen.getByRole('button', { name: 'Remove a copy of Discipline' })).toBeEnabled();
+  }, 20000);
+
+  it('offline the browser is not shown and every edit stays disabled', async () => {
+    signedIn();
+    withDecks();
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    await renderApp({ path: '/decks/41', width: 1280 });
+    await screen.findByRole('heading', { level: 1 }, LONG);
+    expect(screen.queryByRole('region', { name: 'Card browser' })).toBeNull();
+    const workspace = screen.getByRole('region', { name: 'Deck workspace' });
+    expect(within(workspace).queryAllByRole('combobox')).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Remove a copy of Discipline' })).toBeDisabled();
+  }, 20000);
+});

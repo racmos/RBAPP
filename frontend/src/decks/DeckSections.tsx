@@ -68,6 +68,33 @@ function Guarded({
   );
 }
 
+/** Energy, power and might as short labelled chips; a value the card lacks is left out. */
+function Stats({ card }: { card: DeckCard }) {
+  const { t } = useTranslation('decks');
+  const items = [
+    ['energy', card.energy],
+    ['power', card.power],
+    ['might', card.might],
+  ] as const;
+  return (
+    <>
+      {items.map(([key, value]) =>
+        value === null ? null : (
+          <span
+            key={key}
+            className={styles.stat}
+            data-slot={key}
+            aria-label={t(`row.${key}`, { value })}
+            title={t(`row.${key}`, { value })}
+          >
+            {t(`row.${key}Short`, { value })}
+          </span>
+        ),
+      )}
+    </>
+  );
+}
+
 type RowProps = { card: DeckCard; qty: number; zone: SectionKey; editor?: DeckEditor };
 
 /** One card: thumb, name, copies, type, domains and price; with an editor, its controls. */
@@ -89,6 +116,12 @@ export function CardRow({ card, qty, zone, editor }: RowProps) {
         <span className={styles.rowFacts}>
           <span>{typeLabel(card.supertype, card.type)}</span>
           <DomainPips domains={card.domains} size={16} />
+          <Stats card={card} />
+          {card.variants > 1 && (
+            <span className={styles.altArts} data-slot="alt-arts">
+              {t('row.altArts', { count: card.variants - 1 })}
+            </span>
+          )}
         </span>
       </span>
       <span className={styles.qty} data-slot="qty">
@@ -148,8 +181,9 @@ export function CardRow({ card, qty, zone, editor }: RowProps) {
   );
 }
 
-/** The `GET /cards` filters of each section's search (F5-h stage 2). */
-function pickFilters(zone: SectionKey, editor: DeckEditor): Partial<CardListParams> {
+/** The `GET /cards` filters of each section's search (F5-h stage 2) and of the browser tabs
+ *  (F5-i: the sideboard takes what the main deck takes). */
+export function pickFilters(zone: SectionKey, editor: DeckEditor): Partial<CardListParams> {
   const legend = editor.content.legend ? editor.book[refKey(editor.content.legend)] : undefined;
   switch (zone) {
     case 'legend':
@@ -189,8 +223,32 @@ function AutoRunes({ editor }: { editor: DeckEditor }) {
   );
 }
 
-function Section({ name, editor }: { name: SectionKey; editor: DeckEditor }) {
+type Row = { card: DeckCard; qty: number };
+const TYPE_ORDER = ['Unit', 'Spell', 'Gear'];
+
+/** Rows grouped by card type (Unit, Spell, Gear, then any other), in the order they came. */
+function groupByType(rows: Row[]) {
+  const groups = new Map<string, Row[]>();
+  for (const row of rows) groups.set(row.card.type, [...(groups.get(row.card.type) ?? []), row]);
+  const rank = (type: string) => {
+    const index = TYPE_ORDER.indexOf(type);
+    return index === -1 ? TYPE_ORDER.length : index;
+  };
+  return [...groups.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([type, list]) => ({
+      type,
+      title: type,
+      rows: list,
+      copies: list.reduce((total, row) => total + row.qty, 0),
+    }));
+}
+
+type SectionProps = { name: SectionKey; editor: DeckEditor; pickers: boolean };
+
+function Section({ name, editor, pickers }: SectionProps) {
   const { t } = useTranslation('decks');
+  const { typeLabel } = useEnumLabel();
   const { content, book, done } = editor;
   const lines =
     name === 'legend' || name === 'champion'
@@ -217,6 +275,20 @@ function Section({ name, editor }: { name: SectionKey; editor: DeckEditor }) {
       </summary>
       {rows.length === 0 ? (
         <p className={styles.muted}>{t('emptySection')}</p>
+      ) : name === 'main' || name === 'sideboard' ? (
+        groupByType(rows).map((group) => (
+          <div key={group.type} className={styles.group} role="group" aria-label={group.title}>
+            <h3 className={styles.groupTitle}>
+              {typeLabel(null, group.type)}
+              <span className={styles.groupCount}>{t('group.count', { count: group.copies })}</span>
+            </h3>
+            <ul className={styles.rows}>
+              {group.rows.map((row) => (
+                <CardRow key={row.card.key} {...row} zone={name} editor={editor} />
+              ))}
+            </ul>
+          </div>
+        ))
       ) : (
         <ul className={styles.rows}>
           {rows.map((row) => (
@@ -225,7 +297,7 @@ function Section({ name, editor }: { name: SectionKey; editor: DeckEditor }) {
         </ul>
       )}
       {name === 'runes' && <AutoRunes editor={editor} />}
-      {editor.canEdit && !slotFull && (
+      {pickers && editor.canEdit && !slotFull && (
         <CardCombobox
           className={styles.pick}
           label={t(`edit.pick.${name}`)}
@@ -238,15 +310,22 @@ function Section({ name, editor }: { name: SectionKey; editor: DeckEditor }) {
 }
 
 /** Legend, Champion, Main deck, Battlefields, Runes, Sideboard; the workbench only with cards
- *  (the "To bench" moves fill it). */
-export function DeckSections({ editor }: { editor: DeckEditor }) {
+ *  (the "To bench" moves fill it). `pickers` false leaves out each section's search (the card
+ *  browser of the two-pane editor fills the deck instead). */
+export function DeckSections({
+  editor,
+  pickers = true,
+}: {
+  editor: DeckEditor;
+  pickers?: boolean;
+}) {
   const showBench = editor.content.workbench.length > 0;
   return (
     <div className={styles.sections}>
       {SECTION_ORDER.map((name) => (
-        <Section key={name} name={name} editor={editor} />
+        <Section key={name} name={name} editor={editor} pickers={pickers} />
       ))}
-      {showBench && <Section name="workbench" editor={editor} />}
+      {showBench && <Section name="workbench" editor={editor} pickers={pickers} />}
     </div>
   );
 }

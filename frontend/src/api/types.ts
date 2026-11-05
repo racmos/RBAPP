@@ -682,7 +682,7 @@ export type DeckContentV2 = {
 export type DeckZoneName =
   'legend' | 'champion' | 'main' | 'runes' | 'battlefields' | 'sideboard' | 'workbench';
 
-/** `DeckCard` = the server `CardMini` plus `tags` (docs/api.md "Decks (F5-d)"). */
+/** `DeckCard` = the server `CardMini` plus `tags`, energy, power, might, variants, keywords (docs/api.md "Decks (F5-d)"). */
 export type DeckCard = {
   set_id: string;
   card_id: string;
@@ -700,6 +700,13 @@ export type DeckCard = {
   /** The caller's copies of the printing; null on the public deck. */
   owned_total: number | null;
   tags: string[];
+  energy: number | null;
+  power: number | null;
+  might: number | null;
+  /** Printings in the catalog that share the name; `variants - 1` alt arts. */
+  variants: number;
+  /** Derived from the ability text (approximate). */
+  keywords: string[];
 };
 
 /** One legality issue (`deck_rules.validate`, F5-a S7); codes in `ISSUE_CODES`. */
