@@ -5,9 +5,17 @@ import { CardImage } from '@/components/card';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Pagination } from '@/components/ui/Pagination';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { DebouncedInput, useCardList } from '@/catalog';
+import { DebouncedInput, useCardList, useGameMeta } from '@/catalog';
+import {
+  NO_FILTERS,
+  mergeFilters,
+  pruneFilters,
+  scopeOf,
+  type BrowserFilters,
+} from './browserFilters';
 import { copiesInDeck, toDeckCard } from './editor';
 import { pickFilters } from './DeckSections';
+import { ActiveFilters, FilterPanel } from './FilterPanel';
 import type { DeckEditor } from './useDeckEditor';
 import styles from './CardBrowser.module.css';
 
@@ -17,6 +25,8 @@ type Tab = (typeof TABS)[number];
 const PER_PAGE = 48;
 
 const isSlot = (tab: Tab): tab is 'legend' | 'champion' => tab === 'legend' || tab === 'champion';
+/** The zones of units, spells and gear: the cost and tag filters apply only there. */
+const COSTED: readonly Tab[] = ['champion', 'main', 'sideboard'];
 
 /** One card: a button that adds it to the tab's zone, or says why the rules refuse it. */
 function Tile({ card, tab, editor }: { card: CardSummary; tab: Tab; editor: DeckEditor }) {
@@ -71,6 +81,8 @@ function Tile({ card, tab, editor }: { card: CardSummary; tab: Tab; editor: Deck
 /**
  * The left pane of the desktop editor (F5-i step 2): tabs choose the zone being filled, and the
  * grid lists the cards that zone takes (the same `GET /cards` filters as the section searches).
+ * The filter panel (step 3) narrows that list; the zone and legend filters always apply. A tab
+ * change keeps the filters that apply to the new zone and drops the rest.
  */
 export function CardBrowser({ editor }: { editor: DeckEditor }) {
   const { t } = useTranslation('decks');
@@ -78,20 +90,32 @@ export function CardBrowser({ editor }: { editor: DeckEditor }) {
   const [tab, setTab] = useState<Tab>('main');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [chosen, setChosen] = useState<BrowserFilters>(NO_FILTERS);
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
+  const meta = useGameMeta().data;
+  const scopeFor = (name: Tab) => scopeOf(pickFilters(name, editor), COSTED.includes(name));
+  const base = pickFilters(tab, editor);
+  // pruned on every render too: a new legend may take values away
+  const scope = scopeFor(tab);
+  const filters = pruneFilters(chosen, scope);
   const query = useCardList({
-    ...pickFilters(tab, editor),
+    ...mergeFilters(base, filters),
     ...(q ? { q } : {}),
     sort: 'name',
     per_page: PER_PAGE,
     page,
   });
   const items = query.data?.data.items ?? [];
-  const meta = query.data?.meta;
+  const list = query.data?.meta;
   const zone = t(`section.${tab}`);
 
   const choose = (next: Tab) => {
     setTab(next);
+    setChosen((current) => pruneFilters(current, scopeFor(next)));
+    setPage(1);
+  };
+  const changeFilters = (next: BrowserFilters) => {
+    setChosen(next);
     setPage(1);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -143,20 +167,31 @@ export function CardBrowser({ editor }: { editor: DeckEditor }) {
           <label className="sr-only" htmlFor={`${id}-search`}>
             {t('browser.search', { section: zone })}
           </label>
-          <DebouncedInput
-            id={`${id}-search`}
-            type="search"
-            className={styles.search}
-            placeholder={t('browser.searchPlaceholder', { section: zone })}
-            value={q}
-            onCommit={(next) => {
-              setQ(next.trim());
-              setPage(1);
-            }}
-          />
-          {meta && !query.isPlaceholderData && (
+          <div className={styles.searchRow}>
+            <DebouncedInput
+              id={`${id}-search`}
+              type="search"
+              className={styles.search}
+              placeholder={t('browser.searchPlaceholder', { section: zone })}
+              value={q}
+              onCommit={(next) => {
+                setQ(next.trim());
+                setPage(1);
+              }}
+            />
+            <FilterPanel
+              filters={filters}
+              scope={scope}
+              base={base}
+              facets={list?.facets}
+              meta={meta}
+              onChange={changeFilters}
+            />
+          </div>
+          <ActiveFilters filters={filters} meta={meta} onChange={changeFilters} />
+          {list && !query.isPlaceholderData && (
             <p className={styles.count} aria-live="polite">
-              {t('browser.count', { count: meta.total, section: zone })}
+              {t('browser.count', { count: list.total, section: zone })}
             </p>
           )}
         </div>
@@ -173,8 +208,8 @@ export function CardBrowser({ editor }: { editor: DeckEditor }) {
             ))}
           </ul>
         )}
-        {meta && meta.pages > 1 && (
-          <Pagination page={meta.page} pages={meta.pages} onChange={setPage} />
+        {list && list.pages > 1 && (
+          <Pagination page={list.page} pages={list.pages} onChange={setPage} />
         )}
       </div>
     </section>

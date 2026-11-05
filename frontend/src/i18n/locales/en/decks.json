@@ -290,7 +290,35 @@
     "error": "The cards could not be loaded.",
     "empty": "No cards match.",
     "add": "Add {{name}}",
-    "choose": "Choose {{name}}"
+    "choose": "Choose {{name}}",
+    "filter": {
+      "open": "Filter",
+      "openActive_one": "Filter, {{count}} active",
+      "openActive_other": "Filter, {{count}} active",
+      "title": "Filter cards",
+      "card": "Card",
+      "costs": "Cost & Might",
+      "advanced": "Advanced",
+      "status": "Status",
+      "domain": "Domain",
+      "type": "Type",
+      "rarity": "Rarity",
+      "energy": "Energy",
+      "power": "Power",
+      "might": "Might",
+      "set": "Set",
+      "tags": "Tags",
+      "top": "{{value}}+",
+      "owned": "Owned only",
+      "clear": "Clear filters",
+      "active": "Active filters",
+      "remove": "Remove filter {{label}}",
+      "chip": {
+        "energy": "Energy {{value}}",
+        "power": "Power {{value}}",
+        "might": "Might {{value}}"
+      }
+    }
   },
   "workspace": "Deck workspace"
 }
