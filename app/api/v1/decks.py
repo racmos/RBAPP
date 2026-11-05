@@ -1,19 +1,25 @@
 """Decks v2 endpoints (F5-d): GET/POST /decks, GET/PATCH/DELETE /decks/<id>,
-PUT /decks/<id>/content, versions, restore and diff; text import and export (F5-e).
-Only the owner sees a deck (D-F5-9)."""
+PUT /decks/<id>/content, versions, restore and diff; text import and export (F5-e); share
+link and the public read-only deck (F5-g). Only the owner sees a deck (D-F5-9), except
+through its share link."""
 from flask import abort, current_app, request
 from flask_login import current_user, login_required
+from werkzeug.exceptions import NotFound
 
+from app import limiter
 from app.api.error_codes import DetailCode, ErrorCode
 from app.api.responses import fail
 from app.api.v1 import api_v1
+from app.errors import http_error_response
 from app.schemas.validation import validate_json, validate_query
 from app.schemas.validators import (DeckContentPut, DeckCreate, DeckDiffQuery, DeckExportQuery,
                                     DeckImport, DeckImportPreview, DeckPatch,
                                     DeckVersionCreate)
-from app.services import decks
+from app.services import deck_share, decks
 from app.services.decks import (DeckNotFound, DuplicateName, FormatUnknown, HardLimitExceeded,
                                 UnknownCards, VersionNotFound)
+
+PUBLIC_DECK_RATE_LIMIT = '60 per minute'
 
 
 def _json(data, status=200):
@@ -164,6 +170,33 @@ def export_deck(deck_id):
             text, mimetype='text/plain', headers={
                 'Content-Disposition': f'attachment; filename="{filename}"'})
     return _guarded(download)
+
+
+@api_v1.post('/decks/<int:deck_id>/share')
+@login_required
+def share_deck(deck_id):
+    """The deck's read-only link `{slug, url}`; the same one while it is not revoked."""
+    return _guarded(lambda: _json(deck_share.share(current_user, deck_id)))
+
+
+@api_v1.delete('/decks/<int:deck_id>/share')
+@login_required
+def unshare_deck(deck_id):
+    """Revoke the deck's link: its URL answers 404 from now on."""
+    return _guarded(lambda: _json({'share': deck_share.unshare(current_user, deck_id)}))
+
+
+@api_v1.get('/public/decks/<slug>')
+@limiter.limit(PUBLIC_DECK_RATE_LIMIT)
+def public_deck(slug):
+    """The read-only deck behind a share link (P, no session). Never cached: a revoked link
+    must stop answering at once. Unknown, revoked and malformed slugs get the same 404."""
+    try:
+        response = _json(deck_share.public_deck(slug))
+    except DeckNotFound:
+        response = http_error_response(NotFound())
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @api_v1.get('/decks/<int:deck_id>/diff')

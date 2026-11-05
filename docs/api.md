@@ -436,8 +436,9 @@ New error codes: `location_over_quantity` (409, `params.max`, `params.requested`
 `app/api/v1/decks.py`, all `U`, logic in `app/services/decks.py`, rules from
 `app/services/deck_rules.py` (F5-a). Only the owner sees a deck (D-F5-9): another user's deck,
 an unknown id or an unknown version seq -> the 404 envelope on every route, never 403;
-anonymous -> 401 `unauthenticated`. Text import/export: "Deck import/export (F5-e)" below; deck
-vs collection (F5-f) and the share link (F5-g) are not here yet.
+anonymous -> 401 `unauthenticated`. Text import/export: "Deck import/export (F5-e)" below; the
+share link and the public deck: "Deck sharing (F5-g)" below; deck vs collection (F5-f) is not
+here yet.
 
 Shapes (keys in this order):
 
@@ -451,7 +452,8 @@ Shapes (keys in this order):
   completeness: {legend, champion, main, runes, battlefields, sideboard: {have, need, missing}}}`
   (`deck_rules.validate`, issue codes in `F5-a-deck-rules-engine.md`). Always computed on read,
   with the bans of that moment (`ban_map`, by `name_key`); never stored.
-- `DeckHead` = `{id, name, mode, visibility, created_at, updated_at}` (ISO UTC, `Z`).
+- `DeckHead` = `{id, name, mode, visibility, created_at, updated_at, share}` (ISO UTC, `Z`);
+  `share` = `{slug, url} | null` (F5-g, additive: every shape built on `DeckHead` carries it).
 - `DeckListItem` = `DeckHead` + `{legend: DeckCard|null, champion: DeckCard|null, domains,
   counts: {main, runes, battlefields, sideboard, workbench}, value, value_unpriced, legal:
   {"1v1": bool, "2v2": bool}, issues: {"1v1": [code], "2v2": [code]}}`. `counts` sum the copies
@@ -592,6 +594,50 @@ line), in line order, then the hard limits:
   name with the total of its printings; a legend prints `Tag, Name` (first tag) unless its name
   already starts with a tag; a printing missing from the catalog prints `SET-ID`. Importing the
   export gives the same content (printings of one name come back as the base printing).
+
+### Deck sharing (F5-g)
+
+`app/api/v1/decks.py` over `app/services/deck_share.py`. A deck can have one read-only share
+link (`rbdeckheads.rbdkh_share_slug`); `visibility` only decides whether the public view names
+the owner (D-F5-4). There is no public index of decks: a deck is reachable only through its
+link.
+
+- `POST /decks/<id>/share` (`api_v1.share_deck`, U, no body) -> 200 `{slug, url}`. `slug` = 22
+  url-safe random characters (`secrets.token_urlsafe(16)`, 128 bits; `[A-Za-z0-9_-]{22}`),
+  unique (a taken slug is drawn again). `url` = `<request host>/riftbound/app/d/<slug>` (the
+  F5-m page; built with `url_for`, never a fixed host). Idempotent: a deck that already has a
+  slug gets the same one. The deck's `updated_at` does not change.
+- `DELETE /decks/<id>/share` (`api_v1.unshare_deck`, U) -> 200 `{share: null}`; the slug is
+  cleared and its URL answers 404 at once. A deck without a link answers the same (no-op).
+  Sharing again draws a **new** slug; the old one stays dead. Deleting the deck kills its link.
+- Both: owner only; another user's deck or an unknown id -> 404 envelope, nothing changes;
+  anonymous -> 401 `unauthenticated`.
+- `GET /decks` items and every `DeckDetail` carry `share` (`DeckHead`).
+
+`GET /public/decks/<slug>` (`api_v1.public_deck`, **P**): no login, never touches the session
+(no `Set-Cookie`), rate limited **60 per minute per IP** (Flask-Limiter, in-memory per worker;
+over it -> 429 `rate_limited` with `Retry-After`, unknown slugs count too), `Cache-Control:
+no-store` on every answer (a revoked link must stop working at once). An unknown, revoked or
+malformed slug -> the same 404 envelope (`The requested resource was not found`), no hint of
+which. 200 -> `PublicDeck` (keys in this order):
+
+```
+{name, mode, visibility, owner: {username} | null, updated_at,
+ content: {v, legend, champion, main, runes, battlefields, sideboard},
+ cards: {"<set>-<id>": DeckCard}, unknown_cards, domains,
+ counts: {main, runes, battlefields, sideboard}, value, value_unpriced, legality}
+```
+
+- `owner` is `{username}` only when `visibility` is `public`; a shared private deck is
+  anonymous (`null`).
+- The **workbench is left out** everywhere: not in `content`, `cards`, `counts`, `value` or
+  `legality` (legality is computed on the shown content, so a workbench card never shows up
+  in an issue). Everything else is computed on read as in `GET /decks/<id>` (both modes, bans
+  of the moment, non-foil market prices).
+- `DeckCard.owned_total` is `null`: neither the owner's nor the viewer's collection is read.
+- Never returned: deck id, user id, email, `created_at`, `current_seq`, versions and notes, the
+  slug itself or any other deck's slug.
+- 7 SQL statements (head + owner username, current version, cards, sets, bans, prices ×2).
 
 ### GET /cards/<set_id>/<card_id>/prices
 

@@ -10,7 +10,7 @@ from tests.deck_api_helpers import (AZIR, BASE, NOT_FOUND, content, data, error,
                                     line, make_deck, ref, seed_catalog, user_id, versions)
 from tests.product_helpers import count_statements
 
-HEAD_KEYS = ['id', 'name', 'mode', 'visibility', 'created_at', 'updated_at']
+HEAD_KEYS = ['id', 'name', 'mode', 'visibility', 'created_at', 'updated_at', 'share']  # share: F5-g
 LIST_KEYS = HEAD_KEYS + ['legend', 'champion', 'domains', 'counts', 'value', 'value_unpriced',
                          'legal', 'issues']
 DETAIL_KEYS = HEAD_KEYS + ['current_seq', 'content', 'cards', 'unknown_cards', 'domains',
@@ -42,6 +42,7 @@ class TestCreate:
         assert list(deck) == DETAIL_KEYS
         assert deck['name'] == 'Azir' and deck['mode'] == '2v2'
         assert deck['visibility'] == 'private' and deck['current_seq'] == 1
+        assert deck['share'] is None
         assert deck['created_at'] == deck['updated_at'] == '2030-01-01T12:00:00Z'
         assert deck['content'] == empty_content() and deck['cards'] == {}
         assert deck['counts'] == EMPTY_COUNTS and deck['domains'] == []

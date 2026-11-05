@@ -46,6 +46,7 @@ MATRIX = {
     'api_v1.auth_captcha': 'P',
     'api_v1.auth_login': 'P',
     'api_v1.auth_register': 'P',
+    'api_v1.public_deck': 'P',              # read-only deck behind a share link (F5-g)
     'spa.*': 'P',                           # SPA shell (F1 unit b): the SPA hosts the login screen
     # --- authenticated ----------------------------------------------------
     'auth.logout': 'U',
@@ -96,6 +97,8 @@ MATRIX = {
     'api_v1.preview_deck_import': 'U',       # F5 unit e
     'api_v1.import_deck': 'U',
     'api_v1.export_deck': 'U',
+    'api_v1.share_deck': 'U',                # F5 unit g
+    'api_v1.unshare_deck': 'U',
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',
