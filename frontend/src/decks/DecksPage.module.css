@@ -178,4 +178,40 @@
   .preview ul {
     padding-left: 18px;
   }
+
+  .preview .sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    padding: 0;
+    list-style: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .short {
+    font-weight: 700;
+  }
+
+  /* The import dialog: the text and its fields, then the validation panel below them on a phone
+     and to their right from 860 px. */
+  .importBody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .importFields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  @media (min-width: 860px) {
+    .importBody {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      align-items: start;
+    }
+  }
 }

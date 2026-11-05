@@ -555,10 +555,20 @@ with or without a final `:` / `：`, spaces collapsed: `Legend(s)`, `Champion(s)
 `MainDeck`, `Main Deck`, `Main`, `Battlefield(s)`, `Rune Pool`, `Runes`, `Rune`, `Sideboard`,
 `Side Board` (and the prototype's Spanish ones). Card lines: `N Name`, `Nx Name`, `N x Name`; a
 line without a quantity is 1. The same name twice in a block is one line (quantities added).
-Resolution: an explicit id `SET-ID` (the whole text or a final parenthesis, `Name (OGN-247)`) wins
-when it exists; else the `name_key` of the name (case, typographic apostrophes, spaces); else a
-legend written `Tag, Name` (legends store the bare name, the champion is a tag); else the name
-without accents. A name gives its base printing (`is_base`).
+Resolution: an explicit id `SET-ID` (the whole text, a final parenthesis `Name (OGN-247)` or a
+final square bracket `Name [OGN-247]`) wins when it exists; else the `name_key` of the name (case,
+typographic apostrophes, spaces); else a legend written `Tag, Name` (legends store the bare name,
+the champion is a tag); else the name without accents. A name gives its base printing (`is_base`).
+Ids ignore the case of the set and of the suffix and the leading zeros of the number: `[RAD-043]`,
+`[rad-43]` and `(RAD-0043)` are `RAD` `43`, `[VEN-044A]` is `44a`, `[VEN-T04]` is `t04`.
+
+**Square brackets** (owner, 2026-11-05: the export of the deck sites the owner uses ends each line
+with its printing, `1 Riven, Broken Blade [RAD-043]`) are always a printing, never silently
+replaced by another one: a bracket id that is not in the catalog loads the base printing of the
+written name with `printing_unknown`, or nothing with `unknown_card` `params {id}` when the name
+is not known either; an id whose card has another name than the written one loads that printing
+with `name_mismatch` (also for a parenthesis id). A parenthesis that is not an id (`(Alt Art)`)
+is not a warning: the name before it is read. The export never writes brackets (unchanged).
 
 `Warning` = `{line: int|null, text, reason_code, params}` (`line` 1-based, `text` the trimmed
 line), in line order, then the hard limits:
@@ -568,7 +578,9 @@ line), in line order, then the hard limits:
 | `no_zone` | a card line before any header or after an unknown one | placed by type (Legend -> legend, Champion Unit -> champion, Battlefield, Rune, else main) |
 | `zone_unknown` | a `...:` line that is not a known header | its lines get `no_zone` |
 | `quantity_invalid` | quantity outside 1..99 | line skipped |
-| `unknown_card` | no card matches | not in the content |
+| `unknown_card` (`params {id}` when written `Name [SET-NNN]`, else `{}`) | no card matches | not in the content |
+| `printing_unknown` (`params {id, name}`) | the `[SET-NNN]` printing is not in the catalog, the name is | the base printing of the name |
+| `name_mismatch` (`params {written, found}`) | the explicit printing exists but its card is not the written name (`found` = its text name) | **that printing** |
 | `ambiguous_card` | only the accent-free match, and it fits several names | not in the content |
 | `wrong_zone` (`params {name, zone}`) | the card's type does not belong in the block | **kept in that block**; legality flags it (`card_off_identity`) |
 | `slot_taken` (`params {name, zone, to, qty}`) | a second legend / champion (or qty > 1) | extra legends -> workbench, extra champions -> main |

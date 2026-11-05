@@ -148,6 +148,24 @@ class TestPreview:
         assert body['counts'] == {'lines': 4, 'copies': 6, 'unresolved': 2}
 
 
+    def test_bracket_printings_owner_feedback_2026_11_05(self, api):
+        text = ('Legend:\n1 Riven, The Exile [OGN-001]\n\nChampion:\n'
+                '1 Riven, Broken Blade [ogn-002]\n\nMainDeck:\n3 Discipline [SFD-200]\n'
+                '2 Defy [OGN-999]\n1 Nope [OGN-998]\n1 Gust [OGN-008]\n')
+        body = data(preview(api, text))
+        assert body['deck_preview']['content'] == content(
+            legend=o('1'), champion=o('2'),
+            main=[line('SFD', '200', 3), o('10', 2), o('8', 1)])
+        assert body['warnings'] == [
+            {'line': 9, 'text': '2 Defy [OGN-999]', 'reason_code': 'printing_unknown',
+             'params': {'id': 'OGN-999', 'name': 'Defy'}},
+            {'line': 10, 'text': '1 Nope [OGN-998]', 'reason_code': 'unknown_card',
+             'params': {'id': 'OGN-998'}},
+            {'line': 11, 'text': '1 Gust [OGN-008]', 'reason_code': 'name_mismatch',
+             'params': {'written': 'Gust', 'found': 'Astral Heron'}}]
+        assert body['counts'] == {'lines': 6, 'copies': 8, 'unresolved': 1}
+
+
 class TestLimits:
     def test_text_over_64_kb_is_a_validation_error(self, api):
         text = 'MainDeck:\n' + '1 ' + 'x' * (64 * 1024)

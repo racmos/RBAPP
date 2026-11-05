@@ -110,6 +110,17 @@ none
 - L7 (agent): Battlefield copies are all kept (`2 Star Spring` = two refs; legality says
   `battlefields_duplicate`); a printing missing from the catalog exports as `SET-ID`, which the
   import resolves back.
+- L8 (owner feedback 2026-11-05, branch `feat/f5-import-one-button`): the owner's deck site
+  ends every line with its printing in square brackets, zero-padded (`1 Riven, Broken Blade
+  [RAD-043]`). The resolver reads a final `[SET-NNN]` (set and suffix case-insensitive, leading
+  zeros of the number ignored, also for the other id forms) and never loads another printing
+  silently: an unknown bracket id loads the name's base printing with the new `printing_unknown`
+  (`params {id, name}`), or nothing with `unknown_card` `params {id}`; an existing id whose card
+  is not the written name loads that printing with the new `name_mismatch` (`params {written,
+  found}`, also for a parenthesis id; a parenthesis that is not an id stays silent, it may hold
+  other words). The export is unchanged (no brackets). UI (F5-h import sheet): one "Import deck"
+  button, no Preview: the first press checks, a clean text imports at once, a text with
+  warnings stops with the validation panel and "Import anyway" (`docs/frontend.md`).
 
 ## Delivery
 

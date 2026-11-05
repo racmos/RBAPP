@@ -3,7 +3,7 @@
 Single source of status. Every unit updates this file in its own PR (section "Units" and, when relevant,
 "Pending checks", "Follow-ups" and "Known issues"). A unit is **done** when its PR is merged into `main`.
 
-Last update: 2026-11-05 (F5-h, decks UI mobile: stage 1 read-only list and deck view and stage 2 editing implemented, nav `decks` → `spa`; F5-g, deck share link and public read-only deck, in review; F5-e, deck text import/export API, done (#95); F5-d, decks v2 JSON API, done (#94); F5-c, decks v2 tables and legacy deck migration, done (#93); F5-a done (#91); F5-b, the TypeScript deck rules library, done (#92); F16-c/d deployed; F16-x, bulk location of the selected lines, done (#90, deployed)).
+Last update: 2026-11-05 (deck import owner feedback, `feat/f5-import-one-button`: `Name [SET-NNN]` printings with the new warnings `printing_unknown` and `name_mismatch`, and one "Import deck" button that checks first and stops on warnings with "Import anyway" (F5-e L8); F5-h, decks UI mobile: stage 1 read-only list and deck view and stage 2 editing implemented, nav `decks` → `spa`; F5-g, deck share link and public read-only deck, in review; F5-e, deck text import/export API, done (#95); F5-d, decks v2 JSON API, done (#94); F5-c, decks v2 tables and legacy deck migration, done (#93); F5-a done (#91); F5-b, the TypeScript deck rules library, done (#92); F16-c/d deployed; F16-x, bulk location of the selected lines, done (#90, deployed)).
 
 ## Phases
 
