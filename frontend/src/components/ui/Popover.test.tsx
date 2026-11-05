@@ -1,8 +1,10 @@
+import { join } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 import { createI18n } from '@/i18n';
+import { SRC_DIR, declsFor, readCss } from '@/test/css';
 import { Popover } from './Popover';
 
 async function renderPopover() {
@@ -60,5 +62,11 @@ describe('Popover (F5-i step 3)', () => {
     await userEvent.click(trigger);
     await userEvent.click(screen.getByText('Outside'));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('has an opaque panel, so the cards behind it never show through the text', () => {
+    const css = readCss(join(SRC_DIR, 'components/ui/Popover.module.css'));
+    const background = declsFor(css, '.panel').find((decl) => decl.prop === 'background')?.value;
+    expect(background).toBe('var(--table-head)');
   });
 });

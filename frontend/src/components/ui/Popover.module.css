@@ -38,7 +38,7 @@
     padding: 12px 14px 14px;
     border: 1px solid var(--line-2);
     border-radius: var(--radius);
-    background: var(--panel);
+    background: var(--table-head);
     box-shadow: var(--shadow-pop);
     overflow-y: auto;
   }
