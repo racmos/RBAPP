@@ -177,7 +177,11 @@ export function useDeckEditor(deck: DeckDetail) {
   };
   const moveReason = (ref: DeckRef, from: LineZone, to: LineZone) => {
     if (!rules || from === 'runes' || to === 'runes') return t('edit.needRules');
-    return refusal(canMove(known, cards, ref, from, to, rules));
+    // a card entering the deck from the workbench meets the same legend rule as an added one
+    return (
+      refusal(canMove(known, cards, ref, from, to, rules)) ??
+      (from === 'workbench' ? identityReason(ref, to, cards) : null)
+    );
   };
 
   const add = (ref: DeckRef, zone: EditZone) => {
