@@ -10,7 +10,10 @@ import {
   deckDetail,
   deckDetails,
   draftDeck,
+  furyBench,
+  line,
   listItemOf,
+  benchCard,
   mainCards,
   rivenContent,
   rivenDeck,
@@ -121,6 +124,32 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
     });
     expect(blocked).toBeDisabled();
     expect(blocked).toHaveAccessibleDescription('The sideboard has 11 of 10 cards (1 too many).');
+  }, 20000);
+
+  it('a workbench card outside the legend cannot go to the main deck or the sideboard', async () => {
+    const withBench = deckDetail(
+      { id: 41, name: 'Riven, The Exile', updated_at: '2026-11-04T18:30:00Z' },
+      { ...rivenContent, workbench: [line(furyBench, 1), line(benchCard, 1)] },
+    );
+    const { sent } = await openDeck(41, [withBench]);
+    const reason = "This card is outside the legend's domains.";
+    for (const to of ['the main deck', 'the sideboard']) {
+      const blocked = screen.getByRole('button', {
+        name: `Move a copy of Fury Brawler to ${to}`,
+      });
+      expect(blocked).toBeDisabled();
+      expect(blocked).toHaveAccessibleDescription(reason);
+    }
+    // a colourless card moves as before, and so does a Fury card between the zones it is in
+    expect(
+      screen.getByRole('button', { name: 'Move a copy of Baron Nashor to the sideboard' }),
+    ).toBeEnabled();
+    // nothing with the Fury card was saved (a save of the previous test may arrive late)
+    const zones = puts(sent).flatMap((put) => {
+      const content = (put.body as { content: DeckContentV2 }).content;
+      return [...content.main, ...content.sideboard];
+    });
+    expect(zones.filter((entry) => entry.id === furyBench.card_id)).toEqual([]);
   }, 20000);
 
   it('removing the last copy offers an undo', async () => {

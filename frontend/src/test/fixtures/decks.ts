@@ -114,6 +114,15 @@ export const sideCards = [
 );
 export const benchCard = card({ card_id: '350', name: 'Baron Nashor', type: 'Unit', market: 3 });
 
+/** A Fury unit on a Calm/Chaos legend's workbench: outside the legend's domains. */
+export const furyBench = card({
+  card_id: '351',
+  name: 'Fury Brawler',
+  type: 'Unit',
+  domains: ['Fury'],
+  market: 1,
+});
+
 export const deckCatalog: DeckCard[] = [
   rivenLegend,
   rivenChampion,
@@ -123,10 +132,11 @@ export const deckCatalog: DeckCard[] = [
   ...battlefields,
   ...sideCards,
   benchCard,
+  furyBench,
 ];
 
 const ref = (c: DeckCard) => ({ set: c.set_id, id: c.card_id });
-const line = (c: DeckCard, qty: number) => ({ ...ref(c), qty });
+export const line = (c: DeckCard, qty: number) => ({ ...ref(c), qty });
 
 export const emptyContent: DeckContentV2 = {
   v: 2,
