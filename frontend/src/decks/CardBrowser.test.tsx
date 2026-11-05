@@ -40,7 +40,31 @@ const summaryOf = (card: DeckCard): CardSummary => ({
   image_thumb_src: card.image_thumb_src,
 });
 const discipline = summaryOf(mainCards[0]);
-const ITEMS = [discipline, emberWisp, ayla];
+/** Ember Wisp of the deck's domains (the fixture is Fury, outside The Exile's Calm and Chaos). */
+const wisp: CardSummary = { ...emberWisp, domains: ['Chaos'] };
+const ITEMS = [discipline, wisp, ayla];
+
+/** A card of the list fixture under another printing. */
+const extra = (id: string, overrides: Partial<CardSummary>): CardSummary => ({
+  ...emberWisp,
+  card_id: id,
+  key: `OGN-${id}`,
+  ...overrides,
+});
+const furyBolt = extra('70', { name: 'Fury Bolt', domains: ['Fury'] });
+const relic = extra('71', { name: 'Plain Relic', type: 'Gear', domains: ['Colorless'] });
+const yasuoSignature = extra('72', {
+  name: 'Wind Wall',
+  supertype: 'Signature',
+  domains: ['Chaos'],
+  tags: ['Yasuo'],
+});
+const rivenSignature = extra('73', {
+  name: 'Exile Blade',
+  supertype: 'Signature',
+  domains: ['Chaos'],
+  tags: ['Riven'],
+});
 
 /** `GET /cards` answers `items` (filtered by `q`) in `pages` pages; the browser's queries are kept. */
 function cardServer({ items = ITEMS, pages = 1 } = {}) {
@@ -92,6 +116,7 @@ const filtersOf = (search: URLSearchParams) => ({
   exclude_supertype: search.getAll('exclude_supertype'),
   tag: search.getAll('tag'),
   domain: search.getAll('domain').sort(),
+  domain_match: search.get('domain_match'),
 });
 const section = (name: RegExp) =>
   screen.getByText(name, { selector: 'summary *' }).closest('details') as HTMLElement;
@@ -101,6 +126,9 @@ const rowOf = (details: HTMLElement, name: string) =>
     .find((row) => row.querySelector('[data-slot="name"]')?.textContent === name);
 const puts = (sent: ReturnType<typeof recordDeckRequests>) =>
   writes(sent).filter((r) => r.method === 'PUT' && r.path === '/decks/41/content');
+/** Every card id the autosaves sent in `zone`. */
+const sentIds = (sent: ReturnType<typeof recordDeckRequests>, zone: 'main' | 'sideboard') =>
+  puts(sent).flatMap((r) => (r.body as { content: DeckContentV2 }).content[zone].map((l) => l.id));
 
 describe('Card browser of the two-pane editor (F5-i step 2)', () => {
   it('opens on the main deck; each tab asks for the cards of its zone', async () => {
@@ -124,7 +152,9 @@ describe('Card browser of the two-pane editor (F5-i step 2)', () => {
       supertype: [],
       exclude_supertype: ['Token'],
       tag: [],
-      domain: [],
+      // the deck has a legend: only cards of its domains (or colourless) are listed
+      domain: ['Calm', 'Chaos', 'Colorless'],
+      domain_match: 'subset',
     });
     expect(last(seen).get('sort')).toBe('name');
     expect(last(seen).get('q')).toBeNull();
@@ -139,9 +169,15 @@ describe('Card browser of the two-pane editor (F5-i step 2)', () => {
       type: ['Unit'],
       supertype: ['Champion'],
       tag: ['Riven'],
+      domain: ['Calm', 'Chaos', 'Colorless'],
+      domain_match: 'subset',
     });
     expect(within(browser).getByRole('button', { name: 'Choose Ember Wisp' })).toBeVisible();
-    expect(await choose('Runes')).toMatchObject({ type: ['Rune'], domain: ['Calm', 'Chaos'] });
+    expect(await choose('Runes')).toMatchObject({
+      type: ['Rune'],
+      domain: ['Calm', 'Chaos'],
+      domain_match: null,
+    });
     expect(await choose('Battlefields')).toMatchObject({ type: ['Battlefield'], tag: [] });
     // the sideboard takes what the main deck takes: the same query, served from the cache
     const asked = seen.length;
@@ -221,6 +257,57 @@ describe('Card browser of the two-pane editor (F5-i step 2)', () => {
     expect(within(browser).getByRole('button', { name: 'Add Ember Wisp' })).not.toHaveAttribute(
       'aria-disabled',
     );
+  }, 30000);
+
+  it('a card outside the legend domains is refused; a colourless one is added', async () => {
+    const { browser, sent } = await openBrowser({ items: [...ITEMS, furyBolt, relic] });
+    const reason = "This card is outside the legend's domains.";
+    const bolt = within(browser).getByRole('button', { name: 'Add Fury Bolt' });
+    expect(bolt).toHaveAttribute('aria-disabled', 'true');
+    expect(bolt).toHaveAttribute('title', reason);
+    expect(bolt).toHaveAccessibleDescription(reason);
+    await userEvent.click(bolt);
+    expect(rowOf(section(/^Main deck$/), 'Fury Bolt')).toBeUndefined();
+
+    const plain = within(browser).getByRole('button', { name: 'Add Plain Relic' });
+    expect(plain).not.toHaveAttribute('aria-disabled');
+    await userEvent.click(plain);
+    expect(rowOf(section(/^Main deck$/), 'Plain Relic')).toBeDefined();
+    await waitFor(() => expect(puts(sent).length).toBeGreaterThan(0), SAVE);
+    const body = puts(sent).at(-1)?.body as { content: DeckContentV2 };
+    expect(sentIds(sent, 'main')).not.toContain('70');
+    expect(body.content.main.at(-1)).toEqual({ set: 'OGN', id: '71', qty: 1 });
+  }, 30000);
+
+  it('a signature card needs a tag shared with the legend', async () => {
+    const { browser, sent } = await openBrowser({
+      items: [...ITEMS, yasuoSignature, rivenSignature],
+    });
+    const reason = 'Signature cards need a tag shared with the legend.';
+    const foreign = within(browser).getByRole('button', { name: 'Add Wind Wall' });
+    expect(foreign).toHaveAttribute('aria-disabled', 'true');
+    expect(foreign).toHaveAttribute('title', reason);
+    expect(foreign).toHaveAccessibleDescription(reason);
+    await userEvent.click(foreign);
+    expect(rowOf(section(/^Main deck$/), 'Wind Wall')).toBeUndefined();
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+    // (the previous test may still flush its own save on unmount)
+    expect(sentIds(sent, 'main')).not.toContain('72');
+
+    // the sideboard refuses it the same way
+    await userEvent.click(within(browser).getByRole('tab', { name: 'Sideboard' }));
+    await within(browser).findByText('5 cards for Sideboard', {}, LONG);
+    expect(within(browser).getByRole('button', { name: 'Add Wind Wall' })).toHaveAttribute(
+      'title',
+      reason,
+    );
+
+    await userEvent.click(within(browser).getByRole('tab', { name: 'Main deck' }));
+    const own = await within(browser).findByRole('button', { name: 'Add Exile Blade' }, LONG);
+    expect(own).not.toHaveAttribute('aria-disabled');
+    await userEvent.click(own);
+    expect(rowOf(section(/^Main deck$/), 'Exile Blade')).toBeDefined();
+    await waitFor(() => expect(sentIds(sent, 'main')).toContain('73'), SAVE);
   }, 30000);
 
   it('pages the results; a new tab or search goes back to page 1', async () => {

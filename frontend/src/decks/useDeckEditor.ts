@@ -29,9 +29,12 @@ import {
   autoRunes,
   canAdd,
   canMove,
+  cardKey,
   completeness,
+  fitReason,
   hardLimitViolations,
   identity,
+  type Cards,
   type CheckResult,
 } from './rules';
 
@@ -150,11 +153,27 @@ export function useDeckEditor(deck: DeckDetail) {
 
   const refusal = (check: CheckResult) => (check.ok ? null : issueMessage(t, check));
 
+  /** The owner's rule for the editor (F5-i): with a legend, the main deck and the sideboard
+   *  only take cards of its domains, and Signature cards that share a tag with it. The rules
+   *  library keeps both soft (`validate` reports them) so imports and versions still load. */
+  const identityReason = (ref: DeckRef, zone: EditZone, rulesCards: Cards) => {
+    if ((zone !== 'main' && zone !== 'sideboard') || !known.legend) return null;
+    const card = rulesCards.get(cardKey(ref));
+    const legend = rulesCards.get(cardKey(known.legend));
+    if (!card || !legend) return null;
+    const reason = fitReason(card, zone, legend, identity(known, rulesCards));
+    if (reason === 'tag') return t('edit.signatureTag');
+    if (reason === 'domain') return t('edit.offDomain');
+    return null;
+  };
+
   /** Why a copy cannot be added to `zone` (null when it can). */
   const addReason = (ref: DeckRef, zone: EditZone, withBook: CardBook = book) => {
     if (!rules) return t('edit.needRules');
     const rulesCards = withBook === book ? cards : rulesCardsOf(withBook);
-    return refusal(canAdd(known, rulesCards, ref, zone, rules));
+    return (
+      refusal(canAdd(known, rulesCards, ref, zone, rules)) ?? identityReason(ref, zone, rulesCards)
+    );
   };
   const moveReason = (ref: DeckRef, from: LineZone, to: LineZone) => {
     if (!rules || from === 'runes' || to === 'runes') return t('edit.needRules');
@@ -200,7 +219,7 @@ export function useDeckEditor(deck: DeckDetail) {
       else edit(next);
       return;
     }
-    const reason = refusal(canAdd(known, rulesCards, ref, zone, rules));
+    const reason = addReason(ref, zone, withBook);
     if (reason) return fail(reason);
     setBook(withBook);
     edit(addCopy(content, zone, ref));

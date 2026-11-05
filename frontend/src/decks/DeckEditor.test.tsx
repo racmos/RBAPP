@@ -4,7 +4,7 @@ import { http } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import type { CardSummary, DeckContentV2 } from '@/api/types';
-import { champion as aylaChampion } from '@/test/fixtures/cards';
+import { champion as aylaChampion, foilCommon as emberWisp } from '@/test/fixtures/cards';
 import { recordDeckRequests, withDecks } from '@/test/decks';
 import {
   deckDetail,
@@ -185,6 +185,14 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
   }, 20000);
 
   it('adds a searched card to the sideboard after the rules allow it', async () => {
+    // the search asks for the legend domains only; Ember Wisp of those domains is listed
+    const seen: URLSearchParams[] = [];
+    server.use(
+      http.get(`${API}/cards`, ({ request }) => {
+        seen.push(new URL(request.url).searchParams);
+        return ok({ items: [{ ...emberWisp, domains: ['Chaos'] }] });
+      }),
+    );
     const { sent } = await openDeck();
     const pick = screen.getByRole('combobox', { name: 'Add to the sideboard' });
     await userEvent.type(pick, 'Ember');
@@ -195,7 +203,45 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
     await waitFor(() => expect(puts(sent).length).toBeGreaterThan(0), SAVE);
     const body = puts(sent).at(-1)?.body as { content: DeckContentV2 };
     expect(body.content.sideboard.at(-1)).toEqual({ set: 'OGN', id: '12', qty: 1 });
+    const search = seen.find((params) => params.get('q') === 'Ember') as URLSearchParams;
+    expect(search.getAll('domain')).toEqual(['Calm', 'Chaos', 'Colorless']);
+    expect(search.get('domain_match')).toBe('subset');
   }, 20000);
+
+  it('a searched card the legend does not allow is refused with the reason', async () => {
+    const signature: CardSummary = {
+      ...emberWisp,
+      card_id: '72',
+      key: 'OGN-72',
+      name: 'Wind Wall',
+      supertype: 'Signature',
+      domains: ['Chaos'],
+      tags: ['Yasuo'],
+    };
+    // a stale or foreign answer: the editor still checks every card it is given
+    server.use(http.get(`${API}/cards`, () => ok({ items: [emberWisp, signature] })));
+    const { sent } = await openDeck();
+    const pick = screen.getByRole('combobox', { name: 'Add to the main deck' });
+    await userEvent.type(pick, 'Ember');
+    await userEvent.click(await screen.findByRole('option', { name: /Ember Wisp/ }, LONG));
+    await toast("This card is outside the legend's domains.");
+    expect(rowOf(section(/^Main deck$/), 'Ember Wisp')).toBeUndefined();
+
+    const side = screen.getByRole('combobox', { name: 'Add to the sideboard' });
+    await userEvent.type(side, 'Wind');
+    await userEvent.click(await screen.findByRole('option', { name: /Wind Wall/ }, LONG));
+    await toast('Signature cards need a tag shared with the legend.');
+    expect(rowOf(section(/^Sideboard$/), 'Wind Wall')).toBeUndefined();
+    expect(within(section(/^Sideboard$/)).getByText('8/10')).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+    // (the previous test may still flush its own save on unmount)
+    const ids = (zone: 'main' | 'sideboard') =>
+      puts(sent).flatMap((r) =>
+        (r.body as { content: DeckContentV2 }).content[zone].map((line) => line.id),
+      );
+    expect(ids('main')).not.toContain('12');
+    expect(ids('sideboard')).not.toContain('72');
+  }, 30000);
 
   it('a new legend purges the runes and champion outside it, with an undo', async () => {
     const furyLegend: CardSummary = {

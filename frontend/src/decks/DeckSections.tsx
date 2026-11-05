@@ -5,6 +5,7 @@ import { CardImage, DomainPips } from '@/components/card';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { CardCombobox } from '@/catalog';
+import { COLORLESS } from './rules';
 import { useEnumLabel } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import type { EditZone } from './editor';
@@ -182,14 +183,18 @@ export function CardRow({ card, qty, zone, editor }: RowProps) {
 }
 
 /** The `GET /cards` filters of each section's search (F5-h stage 2) and of the browser tabs
- *  (F5-i: the sideboard takes what the main deck takes). */
+ *  (F5-i: the sideboard takes what the main deck takes). With a legend, the champion and the
+ *  cards only list its domains (colourless cards fit any legend). */
 export function pickFilters(zone: SectionKey, editor: DeckEditor): Partial<CardListParams> {
   const legend = editor.content.legend ? editor.book[refKey(editor.content.legend)] : undefined;
+  const identity: Partial<CardListParams> = legend
+    ? { domain: [...editor.identityDomains, COLORLESS], domain_match: 'subset' }
+    : {};
   switch (zone) {
     case 'legend':
       return { type: ['Legend'] };
     case 'champion':
-      return { type: ['Unit'], supertype: ['Champion'], tag: legend?.tags ?? [] };
+      return { type: ['Unit'], supertype: ['Champion'], tag: legend?.tags ?? [], ...identity };
     case 'runes':
       return { type: ['Rune'], domain: editor.identityDomains };
     case 'battlefields':
@@ -197,7 +202,7 @@ export function pickFilters(zone: SectionKey, editor: DeckEditor): Partial<CardL
     case 'workbench':
       return {};
     default:
-      return { type: ['Unit', 'Spell', 'Gear'], exclude_supertype: ['Token'] };
+      return { type: ['Unit', 'Spell', 'Gear'], exclude_supertype: ['Token'], ...identity };
   }
 }
 
