@@ -16,7 +16,8 @@ LIST_KEYS = HEAD_KEYS + ['legend', 'champion', 'domains', 'counts', 'value', 'va
 DETAIL_KEYS = HEAD_KEYS + ['current_seq', 'content', 'cards', 'unknown_cards', 'domains',
                            'counts', 'value', 'value_unpriced', 'legality']
 CARD_KEYS = ['set_id', 'card_id', 'key', 'name', 'domains', 'type', 'supertype', 'rarity',
-             'image_src', 'image_thumb_src', 'is_base', 'market', 'owned_total', 'tags']
+             'image_src', 'image_thumb_src', 'is_base', 'market', 'owned_total', 'tags',
+             'energy', 'power', 'might', 'variants', 'keywords']  # F5-i
 EMPTY_COUNTS = {'main': 0, 'runes': 0, 'battlefields': 0, 'sideboard': 0, 'workbench': 0}
 AZIR_COUNTS = {'main': 6, 'runes': 12, 'battlefields': 2, 'sideboard': 2, 'workbench': 4}
 

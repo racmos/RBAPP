@@ -13,6 +13,9 @@ from app.services.bans import card_bans, name_key
 
 _LEADING_DIGITS = re.compile(r'\d+')
 _SPLIT_WORDS = re.compile(r'[\s,]+')
+_REMINDER = re.compile(r'\([^()]*\)')
+_BRACKET = re.compile(r'\[([^\[\]]*)\]')
+_KEYWORD = re.compile(r"([A-Za-z][A-Za-z' -]*[A-Za-z])(?:\s+\+?\d+)?")
 
 _COMMON_ORDER = ('common', 'uncommon')
 
@@ -87,6 +90,31 @@ def parse_tags(text):
         tag = tag.strip()
         if tag and tag not in seen:
             seen.append(tag)
+    return seen
+
+
+def keywords_of(ability):
+    """Game keywords of an ability text (F5-i), approximate: no column stores them.
+
+    A keyword is a `[Name]` marker (`[Tank]`, `[Show Off]`), a trailing number dropped
+    (`[Assault 2]` -> `Assault`). Reminder text in parentheses is skipped, and so are markers
+    that are not two or more letters (`[2]`, `[>]`, `[A]`) and the `:rb_*:` symbols. Each
+    word gets a capital first letter; distinct, in order of first appearance.
+    """
+    if not ability:
+        return []
+    text, previous = ability, None
+    while text != previous:
+        previous, text = text, _REMINDER.sub(' ', text)
+    seen = []
+    for inner in _BRACKET.findall(text):
+        match = _KEYWORD.fullmatch(' '.join(inner.split()))
+        if not match:
+            continue
+        keyword = ' '.join(word[:1].upper() + word[1:].lower()
+                           for word in match.group(1).split())
+        if keyword not in seen:
+            seen.append(keyword)
     return seen
 
 

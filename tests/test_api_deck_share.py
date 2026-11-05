@@ -17,7 +17,8 @@ PUBLIC_KEYS = ['name', 'mode', 'visibility', 'owner', 'updated_at', 'content', '
                'unknown_cards', 'domains', 'counts', 'value', 'value_unpriced', 'legality']
 PUBLIC_CONTENT_KEYS = ['v', 'legend', 'champion', 'main', 'runes', 'battlefields', 'sideboard']
 CARD_KEYS = ['set_id', 'card_id', 'key', 'name', 'domains', 'type', 'supertype', 'rarity',
-             'image_src', 'image_thumb_src', 'is_base', 'market', 'owned_total', 'tags']
+             'image_src', 'image_thumb_src', 'is_base', 'market', 'owned_total', 'tags',
+             'energy', 'power', 'might', 'variants', 'keywords']  # F5-i
 
 
 @pytest.fixture

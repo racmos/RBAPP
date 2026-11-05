@@ -157,3 +157,34 @@ def test_card_summary_defaults(app):
 def test_card_summary_uses_name_key_grouping(app):
     card = _card('OGN', '1', rbcar_name='  Kai’Sa,  Daughter of the Void ')
     assert name_key(card.rbcar_name) == "kai'sa, daughter of the void"
+
+
+# --- F5-i: keywords derived from the ability text (approximate) ---------------
+
+def test_keywords_of_empty_text():
+    assert catalog.keywords_of(None) == []
+    assert catalog.keywords_of('') == []
+    assert catalog.keywords_of('When I attack, deal 2 to an enemy unit here.') == []
+
+
+def test_keywords_of_real_looking_abilities():
+    assert catalog.keywords_of('[Accelerate] When I attack, deal 2.') == ['Accelerate']
+    assert catalog.keywords_of(
+        '[Assault 2] When Ayla attacks, she deals 2 damage to the defending player. '
+        'Pay :rb_energy_2: (then :rb_exhaust:).') == ['Assault']
+    assert catalog.keywords_of(
+        '[Show Off] [Deathknell] When I die, draw 1. [Level 16] I have +2 :rb_might:.') == [
+        'Show Off', 'Deathknell', 'Level']
+    assert catalog.keywords_of('[Reaction] Give a unit [Tank] this turn.') == [
+        'Reaction', 'Tank']
+
+
+def test_keywords_of_dedupes_in_order_of_first_appearance_with_canonical_case():
+    assert catalog.keywords_of('[tank] [Hidden] [TANK] [ Tank ] [show  off] [Show Off]') == [
+        'Tank', 'Hidden', 'Show Off']
+
+
+def test_keywords_of_ignores_bracket_noise_symbols_and_reminders():
+    assert catalog.keywords_of('[2] [>] [] [ ] [A] [+1] :rb_rune_fury: :rb_power:') == []
+    assert catalog.keywords_of(
+        '[Hidden] (Hide now for [A] to react with [Reaction] later for [0].)') == ['Hidden']
