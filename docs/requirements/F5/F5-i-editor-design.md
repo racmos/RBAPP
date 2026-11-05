@@ -69,9 +69,15 @@ locations/F5-f; ask the owner).
 6. Versions modal (diff, Restore) and export menu; import validation panel live.
 7. Deck list screen (next menu the owner asked for).
 
-## Open questions for the owner
+## Decisions (owner, 2026-11-05)
 
-1. Keywords: derive from ability text (approximate) or leave out for now?
-2. "Available to add": define it, or skip the switch.
-3. Stats: the sample counts "Power Cards"; confirm the definition (cards with a power cost).
-4. Mobile: keep the F5-h single-column editor, add the card browser as a bottom sheet?
+1. **Keywords**: derived from the ability text (approximate; documented as such in the UI help).
+2. **"Available to add"**: copies of the card (by name, any printing) that the owner has in the collection
+   and can use for this deck, **whether or not they sit in a storage location** (a location, locked or not,
+   is only where they are kept). Copies only leave the collection when the owner **confirms mounting the
+   deck** (F16-e: a locked location is created for the deck), not while editing. So available = owned
+   copies of the name minus the copies this deck already uses; copies inside a **locked deck location**
+   (another mounted deck) are not available. To confirm with the owner when F16-e is built.
+3. **Power Cards** = cards with a power cost greater than 0.
+4. **Mobile**: the card browser and its filters open as a **bottom sheet** from each section.
+
