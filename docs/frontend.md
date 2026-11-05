@@ -840,6 +840,22 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   legend's `subset` match, where they would not match the result; costs have none). The choice shows
   as removable chips under the search ("Active filters") with Clear filters. No keyword, ability,
   legal-only or available-to-add controls until the API serves them.
+- Workspace tabs (F5-i step 4): under the header, actions, save state, limit banner and sticky
+  summary, a "Workspace view" tablist `List | Stats` (arrows, Home, End; local state, not in the URL;
+  the same on phones and in two panes). List holds Legality, Sections, Cards not in the catalog and
+  `DeckSections` as before (kept mounted, so folded sections survive); Stats renders `DeckStats`
+  from `editor.content` and `editor.book`, so it follows every edit. `decks/deckStats.ts` (pure)
+  counts the main deck by copies, skipping printings the book lacks: tiles Main deck, Avg energy and
+  Avg might (over the copies that have the value, "—" when none), Power cards (power > 0, owner
+  decision); Energy curve 0..9 and 10+ stacked by Unit / Spell / Gear / Champion (Champion =
+  supertype `Champion`; no energy or another type = no bucket); Power & runes by domain (cards,
+  power, runes from the runes zone, each with its share of the column's sum; a multi-domain card
+  counts fully in each domain, a card without a colour under Colorless); Unit might 0..11 and 12+
+  (units only); Keywords by copies (`DeckCard.keywords`, from the ability text, approximate: the UI
+  says so). Each chart is a `figure` named by its title, its bars `aria-hidden`, with the values in a
+  visually hidden list; bar colours are tokens (`--cyan`, `--orange`, `--muted-2`, `--gold`) and the
+  domain colours of `lib/domains.ts`. An empty main deck shows "Add cards to the main deck to see
+  its stats.". No Full Art tab until step 5.
 - Tests: `src/test/fixtures/decks.ts` builds the decks with the rules library (legality as the server
   computes it), including the shape of the owner's migrated deck (legend, champion, 39 main, 12 runes,
   3 battlefields, 8 sideboard); `src/test/decks.ts` installs them (`withDecks`) and records requests

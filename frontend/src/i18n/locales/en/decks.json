@@ -320,5 +320,45 @@
       }
     }
   },
-  "workspace": "Deck workspace"
+  "workspace": "Deck workspace",
+  "tabs": {
+    "label": "Workspace view",
+    "list": "List",
+    "stats": "Stats"
+  },
+  "stats": {
+    "title": "Deck stats",
+    "empty": "Add cards to the main deck to see its stats.",
+    "mainCount": "Main deck",
+    "avgEnergy": "Avg energy",
+    "avgMight": "Avg might",
+    "powerCards": "Power cards",
+    "noValue": "No value",
+    "energyCurve": "Energy curve",
+    "energyValues": "Energy curve values",
+    "energyBucket_one": "Energy {{value}}: {{count}} card",
+    "energyBucket_other": "Energy {{value}}: {{count}} cards",
+    "groupsLabel": "Card groups",
+    "groupCount": "{{group}} {{count}}",
+    "withGroups": "{{text}} ({{groups}})",
+    "group": {
+      "unit": "Unit",
+      "spell": "Spell",
+      "gear": "Gear",
+      "champion": "Champion"
+    },
+    "top": "{{value}}+",
+    "domains": "Power & runes by domain",
+    "domainsHint": "A card of several domains counts in each of its domains.",
+    "domainCards": "Cards {{count}} ({{share}}%)",
+    "domainPower": "Power {{count}} ({{share}}%)",
+    "domainRunes": "Runes {{count}} ({{share}}%)",
+    "might": "Unit might",
+    "mightValues": "Unit might values",
+    "mightBucket_one": "Might {{value}}: {{count}} unit",
+    "mightBucket_other": "Might {{value}}: {{count}} units",
+    "keywords": "Keywords",
+    "keywordsHint": "Read from the ability text, so the counts are approximate.",
+    "noKeywords": "No keywords found."
+  }
 }

@@ -1,0 +1,231 @@
+@layer components {
+  .stats {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .empty,
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .tile dt {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tile dd {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .figure {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 12px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .title {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .bars {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .column {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .count,
+  .axis {
+    min-height: 16px;
+    color: var(--muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .track {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100%;
+    height: 110px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* bottom to top: Unit, Spell, Gear, Champion */
+  .stack {
+    display: flex;
+    flex-direction: column-reverse;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .segment {
+    flex: 1 1 0;
+    min-height: 2px;
+  }
+
+  .segment[data-group='unit'],
+  .swatch[data-group='unit'] {
+    background: var(--cyan);
+  }
+
+  .segment[data-group='spell'],
+  .swatch[data-group='spell'] {
+    background: var(--orange);
+  }
+
+  .segment[data-group='gear'],
+  .swatch[data-group='gear'] {
+    background: var(--muted-2);
+  }
+
+  .segment[data-group='champion'],
+  .swatch[data-group='champion'] {
+    background: var(--gold);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+
+  .domains {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .domain {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .domainName {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .shares {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .shares li {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .shareText {
+    color: var(--muted);
+  }
+
+  .shareTrack {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--line);
+  }
+
+  .shareFill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+  }
+
+  .keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .keywords li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 4px 2px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .keywordCount {
+    min-width: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+}

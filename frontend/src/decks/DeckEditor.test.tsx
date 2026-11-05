@@ -480,3 +480,19 @@ describe('Deck editing at 1280 px (F5-i step 2)', () => {
     expect(screen.getByRole('button', { name: 'Remove a copy of Discipline' })).toBeDisabled();
   }, 20000);
 });
+
+describe('Stats tab while editing (F5-i step 4)', () => {
+  it('the stats follow the edits made in the list', async () => {
+    await openDeck();
+    const tile = (name: string) =>
+      screen.getByText(name, { selector: 'dt' }).parentElement?.querySelector('dd')?.textContent;
+    await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
+    expect(tile('Main deck')).toBe('39');
+    expect(tile('Power cards')).toBe('3');
+    await userEvent.click(screen.getByRole('tab', { name: 'List' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove a copy of Discipline' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
+    expect(tile('Main deck')).toBe('38');
+    expect(tile('Power cards')).toBe('2');
+  }, 20000);
+});
