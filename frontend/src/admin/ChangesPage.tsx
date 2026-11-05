@@ -130,7 +130,7 @@ export function ChangesPage() {
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
   // latest search asked for, not the rendered one: quick changes in a row must all stay (L6)
-  const { setSearchParams: setParams } = useSearchNavigation();
+  const { current, setSearchParams: setParams } = useSearchNavigation();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [selected, setSelected] = useState<number[]>([]);
   const [detail, setDetail] = useState<AdminChange | null>(null);
@@ -140,21 +140,18 @@ export function ChangesPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setParams(
-        (previous) => {
-          const next = new URLSearchParams(previous);
-          if (search) next.set('q', search);
-          else next.delete('q');
-          next.delete('page');
-          // Skip no-op navigations: they remount and drop element handles.
-          if (next.toString() === previous.toString()) return previous;
-          return next;
-        },
-        { replace: true },
-      );
+      const previous = current();
+      const next = new URLSearchParams(previous);
+      if (search) next.set('q', search);
+      else next.delete('q');
+      next.delete('page');
+      // Navigating to the same search is still a navigation (a new location, a re-render, the
+      // loaders run again), landing late under load: skip it.
+      if (next.toString() === previous.toString()) return;
+      setParams(next, { replace: true });
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, setParams]);
+  }, [search, current, setParams]);
 
   const query = useQuery({
     queryKey: ['admin', 'changes', params.toString()],
@@ -519,89 +516,94 @@ export function ChangesPage() {
       />
     </>
   );
+}
 
-  function RowActions({
-    item,
-    disabled,
-    onDecide,
-  }: {
-    item: AdminChange;
-    disabled: boolean;
-    onDecide: (id: number, action: 'approve' | 'reject') => void;
-  }) {
-    if (item.status !== 'pending') return null;
-    return (
-      <>
-        <Button
-          disabled={disabled}
-          onClick={() => onDecide(item.id, 'approve')}
-          aria-label={t('changes.approveOne', { name: item.card_name ?? item.card_id })}
-        >
-          {t('changes.approve')}
-        </Button>
-        <Button
-          disabled={disabled}
-          variant="danger"
-          onClick={() => onDecide(item.id, 'reject')}
-          aria-label={t('changes.rejectOne', { name: item.card_name ?? item.card_id })}
-        >
-          {t('changes.reject')}
-        </Button>
-      </>
-    );
-  }
+// Components live at module level: one declared inside ChangesPage is a new type on every render,
+// so React remounts it and an open dialog is replaced under the pointer (the click is lost).
+function RowActions({
+  item,
+  disabled,
+  onDecide,
+}: {
+  item: AdminChange;
+  disabled: boolean;
+  onDecide: (id: number, action: 'approve' | 'reject') => void;
+}) {
+  const { t } = useTranslation('admin');
+  if (item.status !== 'pending') return null;
+  return (
+    <>
+      <Button
+        disabled={disabled}
+        onClick={() => onDecide(item.id, 'approve')}
+        aria-label={t('changes.approveOne', { name: item.card_name ?? item.card_id })}
+      >
+        {t('changes.approve')}
+      </Button>
+      <Button
+        disabled={disabled}
+        variant="danger"
+        onClick={() => onDecide(item.id, 'reject')}
+        aria-label={t('changes.rejectOne', { name: item.card_name ?? item.card_id })}
+      >
+        {t('changes.reject')}
+      </Button>
+    </>
+  );
+}
 
-  function ChangeDetail({ item }: { item: AdminChange }) {
-    return (
-      <div>
-        {item.image_src && <img src={item.image_src} alt="" className={styles.detailImage} />}
-        <h2 className={styles.editorTitle}>{item.card_name}</h2>
-        <p className={styles.cardMeta}>
-          {item.set_id} · #{item.card_id}
-        </p>
-        <ValueDiff
-          oldValue={item.old_value}
-          newValue={item.new_value}
-          layout={LONG_FIELDS.includes(item.field) ? 'side' : 'stacked'}
-        />
-      </div>
-    );
-  }
-
-  function BulkConfirm({
-    open,
-    action,
-    count,
-    onClose,
-    onConfirm,
-  }: {
-    open: boolean;
-    action: 'approve' | 'reject';
-    count: number;
-    onClose: () => void;
-    onConfirm: (action: 'approve' | 'reject') => void;
-  }) {
-    const title =
-      action === 'approve'
-        ? count === 1
-          ? t('changes.confirm.approve_one', { count })
-          : t('changes.confirm.approve_other', { count })
-        : count === 1
-          ? t('changes.confirm.reject_one', { count })
-          : t('changes.confirm.reject_other', { count });
-    return (
-      <ConfirmDialog
-        open={open}
-        title={title}
-        message={t('changes.confirm.body')}
-        confirmLabel={
-          action === 'approve' ? t('changes.approveSelected') : t('changes.rejectSelected')
-        }
-        cancelLabel={common('actions.cancel')}
-        danger={action === 'reject'}
-        onConfirm={() => onConfirm(action)}
-        onCancel={onClose}
+function ChangeDetail({ item }: { item: AdminChange }) {
+  return (
+    <div>
+      {item.image_src && <img src={item.image_src} alt="" className={styles.detailImage} />}
+      <h2 className={styles.editorTitle}>{item.card_name}</h2>
+      <p className={styles.cardMeta}>
+        {item.set_id} · #{item.card_id}
+      </p>
+      <ValueDiff
+        oldValue={item.old_value}
+        newValue={item.new_value}
+        layout={LONG_FIELDS.includes(item.field) ? 'side' : 'stacked'}
       />
-    );
-  }
+    </div>
+  );
+}
+
+function BulkConfirm({
+  open,
+  action,
+  count,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  action: 'approve' | 'reject';
+  count: number;
+  onClose: () => void;
+  onConfirm: (action: 'approve' | 'reject') => void;
+}) {
+  const { t } = useTranslation('admin');
+  const { t: common } = useTranslation('common');
+  const title =
+    action === 'approve'
+      ? count === 1
+        ? t('changes.confirm.approve_one', { count })
+        : t('changes.confirm.approve_other', { count })
+      : count === 1
+        ? t('changes.confirm.reject_one', { count })
+        : t('changes.confirm.reject_other', { count });
+  return (
+    <ConfirmDialog
+      open={open}
+      title={title}
+      message={t('changes.confirm.body')}
+      confirmLabel={
+        action === 'approve' ? t('changes.approveSelected') : t('changes.rejectSelected')
+      }
+      cancelLabel={common('actions.cancel')}
+      danger={action === 'reject'}
+      onConfirm={() => onConfirm(action)}
+      onCancel={onClose}
+    />
+  );
 }

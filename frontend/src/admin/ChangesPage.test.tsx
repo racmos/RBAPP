@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { axe } from 'vitest-axe';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { API, adminSession, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { readFileSync } from 'node:fs';
@@ -255,6 +255,80 @@ describe('ChangesPage (F13-g S1-S7, S10)', () => {
       expect(router.state.location.search).toBe('');
     },
   );
+
+  it(
+    'the bulk confirm dialog survives a page re-render while it is open',
+    { timeout: 30000 },
+    async () => {
+      // A refetch or a navigation re-renders the page under the open dialog: the button the
+      // user is about to press must stay the same element (CI flake: the click hit a dialog
+      // that a re-render had just replaced, so nothing was posted and no toast showed).
+      let setsCalls = 0;
+      let posted: unknown = null;
+      server.use(
+        http.get(`${API}/auth/session`, () => adminSession()),
+        http.get(`${API}/admin/sets`, () => {
+          setsCalls += 1;
+          return ok(
+            setsCalls === 1
+              ? []
+              : [
+                  {
+                    id: 'OGN',
+                    name: 'Origins',
+                    card_count: 1,
+                    declared_count: 1,
+                    window: 'monthly',
+                    next_run_at: null,
+                    release_date: '2025-10-31',
+                  },
+                ],
+          );
+        }),
+        http.get(`${API}/admin/riot/changes`, () => ok(PAGE)),
+        http.post(`${API}/admin/riot/changes/bulk`, async ({ request }) => {
+          posted = await request.json();
+          return ok({
+            results: [],
+            counts: { approved: 2, rejected: 0, stale: 0, decided: 0, not_found: 0 },
+          });
+        }),
+      );
+      const { queryClient } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
+      await screen.findByRole('table', { name: 'Detected changes' }, LONG);
+      await userEvent.click(
+        screen.getByRole('checkbox', { name: 'Select the pending ones on this page' }),
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Approve selected' }));
+      const dialog = await screen.findByRole('dialog', undefined, LONG);
+      const confirm = within(dialog).getByRole('button', { name: 'Approve selected' });
+
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'sets'] });
+      await within(screen.getByRole('combobox', { name: 'Set' })).findByRole(
+        'option',
+        { name: 'OGN' },
+        LONG,
+      );
+      expect(dialog.isConnected).toBe(true);
+      expect(confirm.isConnected).toBe(true);
+
+      await userEvent.click(confirm);
+      expect(await screen.findAllByText(/Approved: 2/, undefined, LONG)).not.toHaveLength(0);
+      expect(posted).toMatchObject({ ids: [1, 2], action: 'approve' });
+    },
+  );
+
+  it('an unchanged search does not navigate', { timeout: 30000 }, async () => {
+    changesApi();
+    const { router } = await renderApp({ path: '/admin/riot/changes', width: 1280 });
+    const navigate = vi.spyOn(router, 'navigate');
+    await screen.findByRole('table', { name: 'Detected changes' }, LONG);
+    // the search debounce (300 ms from the page's first render) has fired before this timer
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    // a navigation to the same URL still re-renders the page, late under load (CI flake)
+    expect(navigate).not.toHaveBeenCalled();
+    expect(router.state.location.key).toBe('default');
+  });
 
   it('status filter and search land in the URL', { timeout: 30000 }, async () => {
     changesApi();
