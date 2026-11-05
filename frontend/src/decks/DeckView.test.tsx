@@ -93,14 +93,20 @@ describe('DeckView at 390 px (F5-h stage 1)', () => {
     const main = section(/^Main deck$/);
     expect(main).toHaveAttribute('open');
     expect(rowNames(main)).toHaveLength(13);
-    const discipline = within(main).getAllByRole('listitem')[0];
+    const rowOf = (name: string) =>
+      within(main)
+        .getAllByRole('listitem')
+        .find(
+          (row) => row.querySelector('[data-slot="name"]')?.textContent === name,
+        ) as HTMLElement;
+    const discipline = rowOf('Discipline');
     expect(within(discipline).getByText('Discipline')).toBeVisible();
     expect(within(discipline).getByText('×3')).toBeVisible();
     expect(within(discipline).getByText('Spell')).toBeVisible();
     expect(within(discipline).getByRole('img', { name: 'Calm' })).toBeVisible();
     expect(within(discipline).getByText('0.25 €')).toBeVisible();
     expect(within(discipline).getByRole('img', { name: 'Discipline' })).toBeInTheDocument();
-    const herder = within(main).getAllByRole('listitem')[4];
+    const herder = rowOf('Stellacorn Herder');
     expect(within(herder).getByText('No price')).toBeVisible();
 
     expect(rowNames(section(/^Legend$/))).toEqual(['Riven, The Exile']);
@@ -119,6 +125,39 @@ describe('DeckView at 390 px (F5-h stage 1)', () => {
     expect(main).not.toHaveAttribute('open');
     await userEvent.click(summary);
     expect(main).toHaveAttribute('open');
+  }, 20000);
+
+  it('groups the main deck by type with the copies of each, Units first', async () => {
+    await openDeck(41);
+    const main = section(/^Main deck$/);
+    const groups = within(main).getAllByRole('group');
+    expect(groups.map((group) => group.querySelector('h3')?.firstChild?.textContent)).toEqual([
+      'Unit',
+      'Spell',
+    ]);
+    const copies = groups.map((group) => group.querySelector('h3')?.textContent);
+    expect(copies[0]).toMatch(/^Unit\d+ cards?$/);
+    expect(rowNames(groups[1] as HTMLElement)).toContain('Discipline');
+    // the other sections keep one flat list
+    expect(within(section(/^Runes$/)).queryAllByRole('group')).toHaveLength(0);
+  }, 20000);
+
+  it('shows energy, power, might and the alt arts on a row, leaving out what a card lacks', async () => {
+    await openDeck(41);
+    const main = section(/^Main deck$/);
+    const rows = within(main).getAllByRole('listitem');
+    const find = (name: string) =>
+      rows.find(
+        (row) => row.querySelector('[data-slot="name"]')?.textContent === name,
+      ) as HTMLElement;
+    const discipline = find('Discipline');
+    expect(within(discipline).getByLabelText('Energy 2')).toHaveTextContent('E2');
+    expect(within(discipline).getByLabelText('Power 1')).toHaveTextContent('P1');
+    expect(within(discipline).queryByLabelText(/^Might/)).toBeNull();
+    expect(within(discipline).getByText('2 alt arts')).toBeVisible();
+    const gust = find('Gust');
+    expect(gust.querySelector('[data-slot="alt-arts"]')).toBeNull();
+    expect(gust.querySelector('[data-slot="energy"]')).toBeNull();
   }, 20000);
 
   it('has a sticky summary bar with main, runes and legality chips', async () => {
@@ -162,6 +201,36 @@ describe('DeckView at 390 px (F5-h stage 1)', () => {
     await openDeck(41, 1280);
     expect(screen.getByRole('region', { name: 'Legality' })).toBeVisible();
     expect(rowNames(section(/^Main deck$/))).toHaveLength(13);
+  }, 20000);
+
+  it('at 390 px there is no card browser: one column, the sections keep their search', async () => {
+    await openDeck(41);
+    await screen.findByRole('combobox', { name: 'Add to the main deck' }, LONG);
+    expect(screen.queryByRole('region', { name: 'Card browser' })).toBeNull();
+    expect(document.querySelector('[data-layout]')).toHaveAttribute('data-layout', 'single');
+  }, 20000);
+
+  it('at 1280 px the editor has two panes: the card browser, then the workspace', async () => {
+    await openDeck(41, 1280);
+    const browser = await screen.findByRole('region', { name: 'Card browser' }, LONG);
+    const page = document.querySelector('[data-layout]') as HTMLElement;
+    expect(page).toHaveAttribute('data-layout', 'two-pane');
+    const workspace = screen.getByRole('region', { name: 'Deck workspace' });
+    expect(
+      browser.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(workspace).getByRole('heading', { level: 1 })).toBeVisible();
+    expect(within(workspace).getByRole('region', { name: 'Legality' })).toBeVisible();
+    expect(within(workspace).getByRole('list', { name: 'Sections' })).toBeVisible();
+    expect(rowNames(section(/^Main deck$/))).toHaveLength(13);
+  }, 20000);
+
+  it('at 1280 px offline it stays one column without the browser', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    await openDeck(41, 1280);
+    expect(screen.getByText('Offline: editing is disabled.')).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Card browser' })).toBeNull();
+    expect(document.querySelector('[data-layout]')).toHaveAttribute('data-layout', 'single');
   }, 20000);
 
   it('is axe clean', async () => {

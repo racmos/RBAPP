@@ -29,6 +29,11 @@ const card = (overrides: Partial<DeckCard> & Pick<DeckCard, 'card_id' | 'name'>)
     market: 0.5,
     owned_total: 0,
     tags: [],
+    energy: null,
+    power: null,
+    might: null,
+    variants: 1,
+    keywords: [],
     ...overrides,
   };
 };
@@ -76,6 +81,8 @@ export const mainCards = mainNames.map((name, index) =>
     domains: [index % 3 === 0 ? 'Calm' : 'Chaos'],
     // one unpriced printing, so the value says so
     market: index === 4 ? null : 0.25 * (index + 1),
+    // the first one shows every card fact of a row
+    ...(index === 0 ? { energy: 2, power: 1, might: null, variants: 3 } : {}),
   }),
 );
 export const chaosRune = card({

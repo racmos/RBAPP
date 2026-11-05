@@ -764,7 +764,7 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   `completeness`, a "Cards not in the catalog" region for `unknown_cards`, then `DeckSections`:
   collapsible `details` in the order Legend, Champion, Main deck, Battlefields, Runes, Sideboard and
   "Workbench (not counted)" only when it has cards; rows show thumb, name, `×qty`, type, domain pips
-  and price (`DeckCard` has no energy/power yet: F5-h L1).
+  and price (energy, power and might chips, alt-arts badge; Main and Sideboard grouped by type).
 - `issues.ts` — `issueMessage(t, {code, params})` (`decks:issue.<code>`, i18next `context` `missing` /
   `over` for the sized codes and the `reason` of `card_off_identity`; zones as `decks:zoneIn.<zone>`),
   `issueShort(t, code)` and `hardLimitMessage(t, {rule, max, name?})` (`decks:limit.<rule>`, the
@@ -807,6 +807,23 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   hard limits with `decks:limit`), and the button becomes "Import anyway" (the import always loads).
   Editing the text turns it back into "Import deck" and the panel says the text changed.
   Offline disables every write.
+- Two-pane editor (F5-i step 2, `docs/requirements/F5/F5-i-editor-design.md`): from `lg` (960 px,
+  `useMediaQuery(up('lg'))`) and only while editing is possible (`editor.canEdit`: rules loaded,
+  online, no unknown cards) `DeckView` puts `CardBrowser` left of the workspace (`data-layout=
+  "two-pane"`, page max 1500 px; the browser column is sticky under the 56 px topbar, as tall as the
+  rest of the viewport, with its own scroll). The workspace keeps its place in the React tree, so the
+  layout can flip without resetting it; below 960 px, offline or before the rules load everything
+  stays one column (760 px) as in F5-h. In two panes `DeckSections` gets `pickers={false}`: no
+  per-section `CardCombobox` (Auto runes and the row controls stay). `CardBrowser`: tabs Legend,
+  Champion, Main deck, Battlefields, Sideboard, Runes (arrows, Home, End; Main by default), "N cards
+  for <section>", a debounced search (`DebouncedInput`, 300 ms, sent as `q`), a grid of 48 tiles per
+  page from `useCardList` with `pickFilters(zone)` (exported by `DeckSections.tsx`; the sideboard
+  uses the main deck filters) and `sort=name`, and `Pagination`; tab or search changes go back to
+  page 1. A tile is one button ("Add <name>", "Choose <name>" on Legend and Champion) with energy
+  (top left) and might (top right) badges and the copies already in the deck (`copiesInDeck`, "×2");
+  a click calls `editor.pick(card, zone)`. On the other tabs a tile the rules refuse
+  (`editor.addReason` with the card added to the book) is `aria-disabled` with the reason as `title`
+  and description, and does nothing. The filter popover is step 3.
 - Tests: `src/test/fixtures/decks.ts` builds the decks with the rules library (legality as the server
   computes it), including the shape of the owner's migrated deck (legend, champion, 39 main, 12 runes,
   3 battlefields, 8 sideboard); `src/test/decks.ts` installs them (`withDecks`) and records requests

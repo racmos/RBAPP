@@ -65,6 +65,11 @@ locations/F5-f; ask the owner).
 2. Desktop two-pane shell: workspace List tab restyled to the rows of image 1 (keeps prices/workbench) +
    browser pane with tabs, search, grid; add/remove from the grid and the rows through the existing editor
    hook and rules. (largest)
+   **Done (frontend, `feat/f5i-editor-two-pane`):** rows with energy/power/might, alt arts and Main/Sideboard
+   grouped by type; `CardBrowser` left of the workspace from 960 px while editing is possible (tabs, search,
+   48-tile grid with energy/might/copies badges, refusals with the rules' reason, paging). Not yet: the
+   resizable divider, `View`, `Fit` and the workspace tabs (List / Full Art / Stats); the filter popover is
+   step 3.
 3. Filter popover + facets. 
 4. Stats tab.
 5. Full Art tab.

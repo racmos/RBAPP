@@ -10,6 +10,40 @@
     padding-bottom: 32px;
   }
 
+  /* Two panes (F5-i step 2): the page grows; JS decides the layout (useMediaQuery), so no @media. */
+  .wide {
+    max-width: 1500px;
+  }
+
+  .panes {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .wide .panes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 20px;
+  }
+
+  /* Under the sticky topbar (56 px), as tall as the rest of the viewport, scrolling on its own. */
+  .browserPane {
+    position: sticky;
+    top: calc(56px + var(--safe-top, 0px) + 8px);
+    height: calc(100dvh - 56px - var(--safe-top, 0px) - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+
   .back {
     align-self: flex-start;
     color: var(--muted);
@@ -188,6 +222,40 @@
     gap: 6px;
     color: var(--muted);
     font-size: 12px;
+  }
+
+  .stat {
+    padding: 0 5px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .altArts {
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .group {
+    margin-top: 6px;
+  }
+
+  .groupTitle {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 6px 0 4px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .groupCount {
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   .qty,

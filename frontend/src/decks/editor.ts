@@ -43,6 +43,12 @@ export function toDeckCard(card: CardSummary): DeckCard {
     market: card.price?.market ?? null,
     owned_total: card.owned.total,
     tags: card.tags,
+    energy: card.energy,
+    power: card.power,
+    might: card.might,
+    // the list endpoint does not count printings; the saved deck reports the real values
+    variants: 1,
+    keywords: [],
   };
 }
 
@@ -100,6 +106,16 @@ const ZONES = [
   'sideboard',
   'workbench',
 ] as const;
+
+/** Copies of one printing in the deck (every zone but the workbench), for the browser tiles. */
+export function copiesInDeck(content: DeckContentV2, ref: DeckRef): number {
+  const slots = [content.legend, content.champion, ...content.battlefields];
+  const lines = [...content.main, ...content.runes, ...content.sideboard];
+  return (
+    slots.filter((slot) => slot !== null && same(slot, ref)).length +
+    lines.filter((line) => same(line, ref)).reduce((total, line) => total + line.qty, 0)
+  );
+}
 
 /** Printings of the content the catalog does not have (`unknown_cards` shape, zone order). */
 export function unknownRefs(content: DeckContentV2, book: CardBook): DeckUnknownCard[] {

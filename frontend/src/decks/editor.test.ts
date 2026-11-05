@@ -7,12 +7,14 @@ import {
   mainCards,
   rivenContent,
   rivenDeck,
+  rivenLegend,
   sideCards,
 } from '@/test/fixtures/decks';
 import {
   addCopy,
   bookOf,
   contentValue,
+  copiesInDeck,
   knownContent,
   moveCopy,
   removeCopy,
@@ -89,5 +91,17 @@ describe('deck editor operations (F5-h stage 2)', () => {
     });
     const cards = rulesCardsOf({ [card.key]: card });
     expect(cards.get(cardKey(ref(ayla)))?.name).toBe("Ayla, Fury's Champion");
+  });
+
+  it('counts the copies of a printing in the deck, the workbench left out', () => {
+    expect(copiesInDeck(rivenContent, ref(mainCards[0]))).toBe(3);
+    expect(copiesInDeck(rivenContent, ref(calmRune))).toBe(5);
+    expect(copiesInDeck(rivenContent, rivenContent.battlefields[0])).toBe(1);
+    expect(copiesInDeck(rivenContent, ref(rivenLegend))).toBe(1);
+    const moved = moveCopy(rivenContent, 'main', 'sideboard', ref(mainCards[0]));
+    expect(copiesInDeck(moved, ref(mainCards[0]))).toBe(3);
+    const benched = moveCopy(rivenContent, 'main', 'workbench', ref(mainCards[0]));
+    expect(copiesInDeck(benched, ref(mainCards[0]))).toBe(2);
+    expect(copiesInDeck(rivenContent, ref(benchCard))).toBe(0);
   });
 });

@@ -63,7 +63,15 @@
   "emptySection": "No cards.",
   "row": {
     "qty": "×{{qty}}",
-    "noPrice": "No price"
+    "noPrice": "No price",
+    "energy": "Energy {{value}}",
+    "energyShort": "E{{value}}",
+    "power": "Power {{value}}",
+    "powerShort": "P{{value}}",
+    "might": "Might {{value}}",
+    "mightShort": "M{{value}}",
+    "altArts_one": "{{count}} alt art",
+    "altArts_other": "{{count}} alt arts"
   },
   "unknown": {
     "title": "Cards not in the catalog",
@@ -263,5 +271,24 @@
     "wrong_zone": "{{name}} does not belong in {{zone}}: kept there",
     "slot_taken": "{{name}} went to {{to}}: the slot was taken",
     "unknown": "{{code}}"
-  }
+  },
+  "group": {
+    "count_one": "{{count}} card",
+    "count_other": "{{count}} cards"
+  },
+  "browser": {
+    "title": "Card browser",
+    "zones": "Zone to fill",
+    "search": "Search {{section}} cards",
+    "searchPlaceholder": "Search {{section}} cards…",
+    "count_one": "{{count}} card for {{section}}",
+    "count_other": "{{count}} cards for {{section}}",
+    "results": "Cards for {{section}}",
+    "loading": "Loading the cards",
+    "error": "The cards could not be loaded.",
+    "empty": "No cards match.",
+    "add": "Add {{name}}",
+    "choose": "Choose {{name}}"
+  },
+  "workspace": "Deck workspace"
 }
