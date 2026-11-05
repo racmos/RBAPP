@@ -10,7 +10,12 @@ type PopoverProps = {
   trigger: ReactNode;
   /** Accessible name of the trigger when its content is not enough (a count, an icon). */
   triggerLabel?: string;
-  children: ReactNode;
+  /** The trigger cannot be pressed (offline, for example). */
+  disabled?: boolean;
+  /** `sm`: a narrow panel for a short list of actions. */
+  size?: 'md' | 'sm';
+  /** The content, or a function of `close` (closes the panel and focuses the trigger). */
+  children: ReactNode | ((close: () => void) => ReactNode);
 };
 
 /**
@@ -18,7 +23,14 @@ type PopoverProps = {
  * a labelled dialog. Opening moves focus into the panel; Escape and the close button close it and
  * focus goes back to the trigger; a press outside closes it too.
  */
-export function Popover({ title, trigger, triggerLabel, children }: PopoverProps) {
+export function Popover({
+  title,
+  trigger,
+  triggerLabel,
+  disabled = false,
+  size = 'md',
+  children,
+}: PopoverProps) {
   const { t } = useTranslation('common');
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -46,6 +58,16 @@ export function Popover({ title, trigger, triggerLabel, children }: PopoverProps
     };
   }, [open]);
 
+  // Closing from the content focuses the trigger after the render (no ref read while rendering).
+  const [refocus, setRefocus] = useState(0);
+  useEffect(() => {
+    if (refocus > 0) triggerRef.current?.focus();
+  }, [refocus]);
+  const close = () => {
+    setOpen(false);
+    setRefocus((count) => count + 1);
+  };
+
   return (
     <div ref={wrapRef} className={styles.wrap}>
       <button
@@ -55,6 +77,7 @@ export function Popover({ title, trigger, triggerLabel, children }: PopoverProps
         aria-expanded={open}
         aria-controls={open ? `${id}-panel` : undefined}
         aria-label={triggerLabel}
+        disabled={disabled}
         onClick={() => setOpen((value) => !value)}
       >
         {trigger}
@@ -66,7 +89,7 @@ export function Popover({ title, trigger, triggerLabel, children }: PopoverProps
           role="dialog"
           aria-labelledby={`${id}-title`}
           tabIndex={-1}
-          className={styles.panel}
+          className={[styles.panel, size === 'sm' && styles.sm].filter(Boolean).join(' ')}
         >
           <div className={styles.header}>
             <h3 id={`${id}-title`} className={styles.title}>
@@ -76,15 +99,12 @@ export function Popover({ title, trigger, triggerLabel, children }: PopoverProps
               type="button"
               className={styles.close}
               aria-label={t('actions.close')}
-              onClick={() => {
-                setOpen(false);
-                triggerRef.current?.focus();
-              }}
+              onClick={close}
             >
               <Icon name="close" size={16} />
             </button>
           </div>
-          {children}
+          {typeof children === 'function' ? children(close) : children}
         </div>
       )}
     </div>

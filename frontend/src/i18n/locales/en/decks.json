@@ -13,6 +13,51 @@
     "title": "No decks yet",
     "body": "Create a deck or import one from its text."
   },
+  "noMatch": {
+    "title": "No decks match",
+    "body": "Try another search or clear the filters."
+  },
+  "toolbar": {
+    "label": "Find decks",
+    "search": "Search decks",
+    "searchPlaceholder": "Deck name…",
+    "mode": "Mode",
+    "allModes": "All modes",
+    "legality": "Legality",
+    "anyLegality": "Any legality",
+    "legalInMode": "Legal in its mode",
+    "notLegalInMode": "Not legal in its mode",
+    "sort": "Sort",
+    "sortBy": {
+      "updated": "Updated, newest first",
+      "updated_asc": "Updated, oldest first",
+      "name": "Name, A to Z",
+      "value": "Value, highest first"
+    },
+    "clear": "Clear filters",
+    "shown_one": "{{shown}} of {{count}} deck",
+    "shown_other": "{{shown}} of {{count}} decks"
+  },
+  "sharing": {
+    "private": "Private",
+    "public": "Public",
+    "shared": "Shared"
+  },
+  "card": {
+    "open": "Open",
+    "openLabel": "Open {{name}}",
+    "more": "More actions for {{name}}",
+    "actions": "Actions for {{name}}",
+    "duplicate": "Duplicate",
+    "duplicated": "Duplicated as {{name}}.",
+    "openCopy": "Open",
+    "copyText": "Copy deck text",
+    "textCopied": "Deck text copied.",
+    "textCopyFailed": "Could not copy the deck text.",
+    "download": "Download text",
+    "copyLink": "Copy share link",
+    "deleted": "Deleted {{name}}."
+  },
   "back": "All decks",
   "noLegend": "No legend",
   "noChampion": "No champion",

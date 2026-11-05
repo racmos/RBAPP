@@ -3,6 +3,8 @@ import {
   createDeck,
   createDeckVersion,
   deleteDeck,
+  duplicateDeck,
+  exportDeckText,
   getDeck,
   getDeckVersion,
   importDeck,
@@ -138,6 +140,20 @@ export function useDeleteDeck(id: number) {
       await client.invalidateQueries({ queryKey: DECK_LIST_KEY });
     },
   });
+}
+
+/** `POST /decks/:id/duplicate`: a private copy, `<name> (copy)` unless a name is given. */
+export function useDuplicateDeck() {
+  const refresh = useRefreshList();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name?: string }) => duplicateDeck(id, name),
+    onSuccess: refresh,
+  });
+}
+
+/** The deck as text, the same file the export link downloads. */
+export function useExportDeckText() {
+  return useMutation({ mutationFn: (id: number) => exportDeckText(id) });
 }
 
 export function useSaveVersion(id: number) {

@@ -751,13 +751,30 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
 - `queries.ts` — `useDecks` (`['decks', 'list']`), `useDeck(id)` (`['decks', 'detail', id]`, no retry on
   404), `useDeckVersions`, `useDeckVersion` (for F5-j) and `useDeckRules` (`rulesFromMeta` of
   `/meta/game`: rule values are never hardcoded).
-- `DecksPage` (`/decks`): one column (max 760 px) on every width. Each deck: name (link), mode badge,
+- `DecksPage` (`/decks`): one column (max 760 px) below 860 px, a grid from there (see "Deck list
+  grid" below). Each deck: name (link), mode badge,
   legend as `Tag, Name` (`labels.ts::cardLabel`, like the text export) and champion, deck domain pips,
   "Main n/39 · Runes n/12 · Battlefields n/3 · Sideboard n/10", one legality badge per mode ("1v1:
   Legal"; a not legal one is a button that shows "Why it is not legal in <mode>" with the first three
   `issueShort` texts and "And N more", since `GET /decks` sends codes only), value and "N cards without
   price", "Updated <date>". States: skeleton, error with retry, "No decks yet", offline (cached list,
   creation disabled). A "Classic version" link keeps the Jinja page (`/riftbound/deck`) reachable.
+- Deck list grid (`DecksPage`, `DeckListToolbar`, `DeckCardActions`, pure `deckListParams.ts`): from
+  860 px (`up('md')`, `data-layout="grid"`) the decks are a grid of cards
+  (`repeat(auto-fill, minmax(280px, 1fr))`, page up to 1480 px); below it the same cards in one column
+  (`data-layout="column"`). Each card adds the legend art (`CardImage` tile, decorative; a placeholder
+  without a legend) and "Private" / "Public" / "Shared" (`share` first). A toolbar above the cards
+  filters the loaded list on the client: "Search decks" (debounced, name without case or accents),
+  Mode, Legality ("Legal in its mode" / "Not legal in its mode", `legal[deck.mode]`) and Sort (updated
+  newest/oldest, name, value), in the URL as `q`, `mode`, `legal`, `sort` through
+  `useSearchNavigation` (the search replaces the entry, the selects push one, so back and forward
+  step through them); "Clear filters", "N of M decks", and "No decks match" (with Clear filters) apart
+  from "No decks yet" (no toolbar). Per card: "Open <name>" and "More actions for <name>" (a small
+  `Popover`, disabled offline) with Duplicate (`POST /decks/<id>/duplicate`, #107; toast "Duplicated as
+  <name>." with Open), Copy deck text (the export read as text and copied), Download text (the export
+  link), Copy share link (creates the link when missing, then copies it and shows it), Stop sharing
+  and Delete deck (the editor's confirmation; toast "Deleted <name>.", no undo). No action leaves
+  the list. `Popover` gained `size="sm"`, `disabled` and a `children(close)` form.
 - `DeckView` (`/decks/:id`, unknown or another user's id → the not found page): header (name, mode,
   version, date), sticky "Deck summary" bar under the topbar (main, runes, legality chips, value),
   "Legality" region with one group per mode listing every issue as a sentence, "Sections" list from
