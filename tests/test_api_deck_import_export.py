@@ -16,6 +16,9 @@ DECK_PREVIEW_KEYS = ['content', 'cards', 'unknown_cards', 'domains', 'counts', '
 DETAIL_KEYS = ['id', 'name', 'mode', 'visibility', 'created_at', 'updated_at', 'share',
                'current_seq', 'content', 'cards', 'unknown_cards', 'domains', 'counts', 'value',
                'value_unpriced', 'legality', 'warnings']
+CARD_KEYS = ['set_id', 'card_id', 'key', 'name', 'domains', 'type', 'supertype', 'rarity',
+             'image_src', 'image_thumb_src', 'is_base', 'market', 'owned_total', 'tags',
+             'energy', 'power', 'might', 'variants', 'keywords']  # F5-i
 
 # The owner's sample deck as a synthetic catalog: (id, name, type, domains, tags).
 _SAMPLE_CARDS = [
@@ -108,6 +111,8 @@ class TestPreview:
         assert list(deck) == DECK_PREVIEW_KEYS
         assert deck['content'] == SAMPLE_CONTENT
         assert deck['cards']['OGN-1']['name'] == 'The Exile'
+        assert list(deck['cards']['OGN-1']) == CARD_KEYS
+        assert deck['cards']['OGN-3']['variants'] == 2     # SFD-200 is a later printing
         assert deck['counts'] == {'main': 39, 'runes': 12, 'battlefields': 3, 'sideboard': 10,
                                   'workbench': 0}
         assert deck['domains'] == ['Calm', 'Chaos']

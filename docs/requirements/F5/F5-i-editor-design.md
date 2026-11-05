@@ -48,6 +48,8 @@ locations/F5-f; ask the owner).
 
 ## Backend gaps this needs (no migration expected)
 
+> **Step 1 done (backend):** every deck card now carries `energy`, `power`, `might`, `variants` (printings of the same name) and `keywords` (derived from the ability text, approximate); `rarity`, `domains` and `tags` were already there. Still open below: `GET /cards` filters for the browser, `legal_for_deck`, and the `available` flag.
+
 - Deck card payload (`GET /decks/<id>`, public deck) must carry **energy, power and might** (and rarity,
   domains, tags) so the rows and the stats can be drawn.
 - **Keywords** (Reaction, Hidden…): not stored as a column; either derive from the ability text or leave the

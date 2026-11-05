@@ -116,12 +116,17 @@ def _iso(moment):
 class _Catalog:
     """The catalog, bans, prices and owned copies one response needs, in bounded queries:
     cards, sets, bans, then (for the cards asked for) prices (two) and the user's copies.
-    Without a user (the public deck, F5-g) no copies are read and `owned_total` is null."""
+    Without a user (the public deck, F5-g) no copies are read and `owned_total` is null.
+    `variants` (printings per `name_key`) come from the cards already read (F5-i)."""
 
     def __init__(self, user):
         rows = db.session.query(RbCard).all()
         self.rows = {(c.rbcar_rbset_id, c.rbcar_id): c for c in rows}
         self.rules = {key: catalog_card(c) for key, c in self.rows.items()}
+        self.variants = {}
+        for c in rows:
+            name = bans_service.name_key(c.rbcar_name)
+            self.variants[name] = self.variants.get(name, 0) + 1
         self.base_keys = catalog.base_printing_keys(
             rows, catalog.set_order(db.session.query(RbSet).all()))
         self.bans = {key: list(modes) for key, modes in bans_service.ban_map().items()}
@@ -152,12 +157,16 @@ class _Catalog:
         return (self.prices.get(key) or {}).get('market')
 
     def card(self, key):
-        """The `DeckCard` of a known printing: `CardMini` plus its `tags`."""
+        """The `DeckCard` of a known printing: `CardMini` plus its `tags`, energy, power,
+        might, `variants` and `keywords` (F5-i)."""
         row = self.rows[key]
         owned = self.owned.get(key, 0) if self.username is not None else None
         out = _card_mini(row, market=self.market(key), owned_total=owned,
                          is_base=key in self.base_keys)
-        out['tags'] = catalog.parse_tags(row.rbcar_tags)
+        out.update(tags=catalog.parse_tags(row.rbcar_tags), energy=row.rbcar_energy,
+                   power=row.rbcar_power, might=row.rbcar_might,
+                   variants=self.variants[bans_service.name_key(row.rbcar_name)],
+                   keywords=catalog.keywords_of(row.rbcar_ability))
         return out
 
     def cards(self, refs):

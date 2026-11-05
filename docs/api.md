@@ -446,8 +446,16 @@ Shapes (keys in this order):
   champion: ref|null, main: [line], runes: [line], battlefields: [ref], sideboard: [line],
   workbench: [line]}`, `ref = {set, id}`, `line = {set, id, qty ≥ 1}`. Printings are kept.
 - `DeckCard` = `CardMini` (`set_id, card_id, key, name, domains, type, supertype, rarity,
-  image_src, image_thumb_src, is_base, market, owned_total`) + `tags`. `market` is the non-foil
-  price chain of the printing; `owned_total` the caller's copies of that printing.
+  image_src, image_thumb_src, is_base, market, owned_total`) + `tags, energy, power, might,
+  variants, keywords` (the last five added by F5-i). `market` is the non-foil price chain of the
+  printing; `owned_total` the caller's copies of that printing. `energy`, `power`, `might` are
+  `int | null` as stored; `variants` (≥ 1) counts the catalog printings that share the card's
+  `name_key`, every set included (the "N alt arts" badge is `variants - 1`); `keywords` are the
+  `[Name]` markers of the ability text (`catalog.keywords_of`, **approximate**: no column stores
+  them): a trailing number dropped (`[Assault 2]` -> `Assault`), reminder text in parentheses,
+  markers of fewer than two letters (`[2]`, `[>]`, `[A]`) and `:rb_*:` symbols skipped, each word
+  capitalised, distinct, in order of first appearance. They come from the card rows the request
+  already reads: no extra SQL statement.
 - `Legality` = `{"1v1": Result, "2v2": Result}`, `Result = {legal, issues: [{code, params}],
   completeness: {legend, champion, main, runes, battlefields, sideboard: {have, need, missing}}}`
   (`deck_rules.validate`, issue codes in `F5-a-deck-rules-engine.md`). Always computed on read,
