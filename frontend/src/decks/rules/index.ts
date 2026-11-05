@@ -2,6 +2,7 @@
 // pure functions for instant feedback in the editor; the server stays authoritative.
 export {
   ADD_ZONES,
+  COLORLESS,
   DEFAULT_RULES,
   HARD_RULES,
   ISSUE_CODES,
@@ -16,6 +17,7 @@ export {
   UnknownCard,
   cardKey,
   copies,
+  fitReason,
   identity,
   isChampionUnit,
   isToken,

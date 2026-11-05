@@ -160,6 +160,8 @@
       "workbench": "Add to the workbench"
     },
     "needRules": "Loading the game rules.",
+    "offDomain": "This card is outside the legend's domains.",
+    "signatureTag": "Signature cards need a tag shared with the legend.",
     "autoRunes": "Auto runes",
     "autoRunesHint": "Balances the 12 runes by the domains your cards use.",
     "removed": "{{name}} removed.",

@@ -70,6 +70,11 @@ locations/F5-f; ask the owner).
    48-tile grid with energy/might/copies badges, refusals with the rules' reason, paging). Not yet: the
    resizable divider, `View`, `Fit` and the workspace tabs (List / Full Art / Stats); the filter popover is
    step 3.
+   **Legend identity (owner rule, `fix/f5i-browser-identity`):** once a legend is chosen the editor offers
+   only legal choices: the browser and the section searches list main, sideboard and champion cards of the
+   legend's domains (`domain_match=subset`, colourless included), and adding refuses an off-domain card or a
+   Signature card that shares no tag with the legend, with the reason. The rules engine stays soft on
+   purpose (`validate` reports colour and Signature tag) so imports and versions keep loading.
 3. Filter popover + facets. 
 4. Stats tab.
 5. Full Art tab.
