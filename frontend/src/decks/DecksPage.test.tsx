@@ -27,6 +27,51 @@ async function openPage(width = PHONE) {
   return renderApp({ path: '/decks', width });
 }
 
+const clean = {
+  deck_preview: rivenDeck,
+  warnings: [],
+  counts: { lines: 33, copies: 66, unresolved: 0 },
+};
+const withProblems = {
+  deck_preview: rivenDeck,
+  warnings: [
+    { line: 4, text: '2 Mystery Card', reason_code: 'unknown_card', params: {} },
+    { line: 5, text: '1 Nope [OGN-998]', reason_code: 'unknown_card', params: { id: 'OGN-998' } },
+    {
+      line: 6,
+      text: '2 Defy [OGN-999]',
+      reason_code: 'printing_unknown',
+      params: { id: 'OGN-999', name: 'Defy' },
+    },
+    {
+      line: 7,
+      text: '1 Gust [OGN-008]',
+      reason_code: 'name_mismatch',
+      params: { written: 'Gust', found: 'Astral Heron' },
+    },
+    {
+      line: 9,
+      text: '1 Star Spring',
+      reason_code: 'wrong_zone',
+      params: { name: 'Star Spring', zone: 'main' },
+    },
+    {
+      line: null,
+      text: '',
+      reason_code: 'hard_limit',
+      params: { rule: 'copies', max: 3, name: 'Discipline' },
+    },
+  ],
+  counts: { lines: 31, copies: 63, unresolved: 2 },
+};
+
+async function openImport() {
+  await list();
+  await userEvent.click(screen.getByRole('button', { name: 'Import' }));
+  return screen.findByRole('dialog', { name: 'Import a deck' });
+}
+const textbox = (dialog: HTMLElement) => within(dialog).getByRole('textbox', { name: 'Deck text' });
+
 describe('DecksPage at 390 px (F5-h stage 1)', () => {
   it('lists the decks newest first with mode, legend, champion, counts, value and date', async () => {
     withDecks();
@@ -155,71 +200,136 @@ describe('DecksPage at 390 px (F5-h stage 1)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Fresh' }, LONG)).toBeVisible();
   }, 30000);
 
-  it('Import: previews the text with its warnings, then imports and opens the deck', async () => {
+  it('Import: one button and no Preview; a clean text imports in one press', async () => {
     withDecks(deckList, [rivenDeck]);
     server.use(
-      http.post(`${API}/decks/import/preview`, () =>
-        ok({
-          deck_preview: rivenDeck,
-          warnings: [
-            { line: 4, text: '2 Mystery Card', reason_code: 'unknown_card', params: {} },
-            {
-              line: 9,
-              text: '1 Star Spring',
-              reason_code: 'wrong_zone',
-              params: { name: 'Star Spring', zone: 'main' },
-            },
-            {
-              line: null,
-              text: '',
-              reason_code: 'hard_limit',
-              params: { rule: 'copies', max: 3, name: 'Discipline' },
-            },
-          ],
-          counts: { lines: 31, copies: 63, unresolved: 2 },
-        }),
-      ),
+      http.post(`${API}/decks/import/preview`, () => ok(clean)),
+      http.post(`${API}/decks/import`, () => ok({ ...rivenDeck, warnings: [] }, 201)),
+    );
+    const sent = recordDeckRequests();
+    const { where } = await openPage();
+    const dialog = await openImport();
+    expect(within(dialog).queryByRole('button', { name: 'Preview' })).toBeNull();
+    const submit = within(dialog).getByRole('button', { name: 'Import deck' });
+    await userEvent.click(submit);
+    expect(within(dialog).getByText('Paste the deck text.')).toBeVisible();
+    expect(writes(sent)).toEqual([]);
+
+    await userEvent.type(textbox(dialog), 'Legend:{Enter}1 Riven, The Exile [[RAD-149]');
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Name (optional)' }), 'Cup');
+    await userEvent.click(submit);
+    await waitFor(() => expect(where()).toBe('/decks/41'), LONG);
+    const text = 'Legend:\n1 Riven, The Exile [RAD-149]';
+    expect(writes(sent).map((r) => [r.path, r.body])).toEqual([
+      ['/decks/import/preview', { text }],
+      ['/decks/import', { text, mode: '1v1', name: 'Cup' }],
+    ]);
+    expect((await screen.findAllByText('Deck imported.', {}, LONG)).length).toBeGreaterThan(0);
+  }, 30000);
+
+  it('Import: a text with problems stops at the first press and shows them; a second press imports', async () => {
+    withDecks(deckList, [rivenDeck]);
+    server.use(
+      http.post(`${API}/decks/import/preview`, () => ok(withProblems)),
       http.post(`${API}/decks/import`, () => ok({ ...rivenDeck, warnings: [{}] }, 201)),
     );
     const sent = recordDeckRequests();
     const { where } = await openPage();
-    await list();
-    await userEvent.click(screen.getByRole('button', { name: 'Import' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Import a deck' });
-    const submit = within(dialog).getByRole('button', { name: 'Import deck' });
-    expect(submit).toBeDisabled();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Preview' }));
-    expect(within(dialog).getByText('Paste the deck text.')).toBeVisible();
-    await userEvent.type(
-      within(dialog).getByRole('textbox', { name: 'Deck text' }),
-      'Legend:{Enter}1 Riven, The Exile',
-    );
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Preview' }));
-    const preview = await within(dialog).findByRole('region', { name: 'Preview' }, LONG);
-    expect(within(preview).getByText('31 lines, 63 copies placed, 2 left out.')).toBeVisible();
+    const dialog = await openImport();
+    const panel = within(dialog).getByRole('region', { name: 'Validation' });
+    expect(within(panel).getByText('Press Import deck to check the text.')).toBeVisible();
+    await userEvent.type(textbox(dialog), 'Legend:{Enter}1 Riven, The Exile');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Import deck' }));
+
+    const anyway = await within(dialog).findByRole('button', { name: 'Import anyway' }, LONG);
+    expect(within(dialog).queryByRole('button', { name: 'Import deck' })).toBeNull();
+    expect(writes(sent).map((r) => r.path)).toEqual(['/decks/import/preview']);
+    expect(where()).toBe('/decks');
+    expect(within(panel).getByText('31 lines, 63 copies placed, 2 left out.')).toBeVisible();
     expect(
-      within(preview).getByText('Main 39 · Runes 12 · Battlefields 3 · Sideboard 8'),
-    ).toBeVisible();
-    const warnings = within(preview).getByRole('list', { name: 'Warnings' });
+      within(within(panel).getByRole('list', { name: 'Sections' }))
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual([
+      '1/1 legend',
+      '1/1 champion',
+      '39/39 main deck',
+      '3/3 battlefields',
+      '12/12 runes',
+      '8/10 sideboard cards',
+    ]);
     expect(
-      within(warnings)
+      within(within(panel).getByRole('list', { name: 'Warnings' }))
         .getAllByRole('listitem')
         .map((li) => li.textContent),
     ).toEqual([
       'Line 4: 2 Mystery Card (card not found: left out)',
+      'Line 5: 1 Nope [OGN-998] (OGN-998 not found: left out)',
+      'Line 6: 2 Defy [OGN-999] (printing OGN-999 not found: loaded Defy)',
+      'Line 7: 1 Gust [OGN-008] (that printing is Astral Heron, not Gust: loaded Astral Heron)',
       'Line 9: 1 Star Spring (Star Spring does not belong in the main deck: kept there)',
       'Discipline: more than 3 copies.',
     ]);
-    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Name (optional)' }), 'Cup');
-    await userEvent.click(submit);
+    expect(
+      within(panel).getByText('Fix the text, or press Import anyway to load the deck as it is.'),
+    ).toBeVisible();
+
+    await userEvent.click(anyway);
     await waitFor(() => expect(where()).toBe('/decks/41'), LONG);
-    expect(writes(sent).map((r) => [r.path, r.body])).toEqual([
-      ['/decks/import/preview', { text: 'Legend:\n1 Riven, The Exile' }],
-      ['/decks/import', { text: 'Legend:\n1 Riven, The Exile', mode: '1v1', name: 'Cup' }],
-    ]);
+    expect(writes(sent).map((r) => r.path)).toEqual(['/decks/import/preview', '/decks/import']);
     expect(
       (await screen.findAllByText('Deck imported with 1 warning.', {}, LONG)).length,
     ).toBeGreaterThan(0);
+  }, 30000);
+
+  it('Import: editing the text resets the button and the next press checks again', async () => {
+    withDecks(deckList, [rivenDeck]);
+    server.use(http.post(`${API}/decks/import/preview`, () => ok(withProblems)));
+    const sent = recordDeckRequests();
+    await openPage();
+    const dialog = await openImport();
+    await userEvent.type(textbox(dialog), '1 Gust');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Import deck' }));
+    await within(dialog).findByRole('button', { name: 'Import anyway' }, LONG);
+
+    await userEvent.type(textbox(dialog), 'x');
+    const again = within(dialog).getByRole('button', { name: 'Import deck' });
+    expect(within(dialog).queryByRole('button', { name: 'Import anyway' })).toBeNull();
+    expect(
+      within(dialog).getByText('The text changed: press Import deck to check it again.'),
+    ).toBeVisible();
+    await userEvent.click(again);
+    await within(dialog).findByRole('button', { name: 'Import anyway' }, LONG);
+    expect(writes(sent).map((r) => [r.path, r.body])).toEqual([
+      ['/decks/import/preview', { text: '1 Gust' }],
+      ['/decks/import/preview', { text: '1 Gustx' }],
+    ]);
+  }, 30000);
+
+  it('Import: offline the button is disabled', async () => {
+    withDecks();
+    await openPage();
+    const dialog = await openImport();
+    await userEvent.type(textbox(dialog), '1 Gust');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    window.dispatchEvent(new Event('offline'));
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Import deck' })).toBeDisabled(),
+    );
+    // back online, so the query client of the next tests is not paused
+    vi.restoreAllMocks();
+    window.dispatchEvent(new Event('online'));
+  }, 20000);
+
+  it('Import: the dialog with its validation panel is axe clean', async () => {
+    withDecks();
+    server.use(http.post(`${API}/decks/import/preview`, () => ok(withProblems)));
+    const { container } = await openPage(1280);
+    const dialog = await openImport();
+    await userEvent.type(textbox(dialog), '1 Gust');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Import deck' }));
+    await within(dialog).findByRole('button', { name: 'Import anyway' }, LONG);
+    expect(await axe(container)).toHaveNoViolations();
   }, 30000);
 
   it('loading shows a skeleton', async () => {

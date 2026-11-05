@@ -799,8 +799,13 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   `POST`/`DELETE …/share`; the public page `/d/:slug` is F5-m), "Export text" (plain download link
   to `GET …/export?format=text`), "Delete deck" (`ConfirmDialog`, then back to `/decks`). On `/decks`
   (`DeckCreate.tsx`): "New deck" (name + mode, `POST /decks`, opens it) and "Import" (textarea, name,
-  mode; "Preview" shows the counts, the per-section counts and every warning in words
-  (`decks:importReason.<code>`, hard limits with `decks:limit`), then "Import deck" opens the new deck).
+  mode and one button, owner feedback 2026-11-05: there is no Preview button). "Import deck" checks
+  the text first (`POST /decks/import/preview`): no warnings imports at once (`POST /decks/import`)
+  and opens the new deck; any warning (hard limits included) stops there, the validation panel (to
+  the right of the fields from 860 px, below them on a phone) shows the counts, the sections in the
+  chosen mode (`39/39 main deck`, ...) and every warning in words (`decks:importReason.<code>`,
+  hard limits with `decks:limit`), and the button becomes "Import anyway" (the import always loads).
+  Editing the text turns it back into "Import deck" and the panel says the text changed.
   Offline disables every write.
 - Tests: `src/test/fixtures/decks.ts` builds the decks with the rules library (legality as the server
   computes it), including the shape of the owner's migrated deck (legend, champion, 39 main, 12 runes,

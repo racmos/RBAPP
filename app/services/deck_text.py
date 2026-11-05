@@ -12,6 +12,12 @@ its type does not belong to stays in that block (`wrong_zone`, legality flags it
 limits are kept and reported (`hard_limit`). Only unknown or ambiguous names stay out of the
 content (a content ref must name a printing).
 
+A line may end with its printing in square brackets (owner, 2026-11-05: `1 Riven, Broken Blade
+[RAD-043]`): set code in any case, number with or without leading zeros. A bracket printing
+that is not in the catalog never loads another printing silently: the name's base printing with
+`printing_unknown`, or `unknown_card` with the id; a printing whose name is not the written one
+loads that printing with `name_mismatch`.
+
 Export: blocks in the order above, a blank line between blocks, empty blocks omitted, the
 workbench never exported. Lines keep the content order (the order the deck was imported or
 built in), one line per name with its total; a legend prints `Tag, Name` (the catalog stores
@@ -25,7 +31,8 @@ from app.services.bans import name_key
 
 FORMATS = ('auto', 'text')
 REASON_CODES = ('no_zone', 'zone_unknown', 'quantity_invalid', 'unknown_card',
-                'ambiguous_card', 'wrong_zone', 'slot_taken', 'hard_limit')
+                'ambiguous_card', 'wrong_zone', 'slot_taken', 'hard_limit', 'printing_unknown',
+                'name_mismatch')
 # Export order and header of each block.
 BLOCKS = (('legend', 'Legend'), ('champion', 'Champion'), ('main', 'MainDeck'),
           ('battlefields', 'Battlefields'), ('runes', 'Rune Pool'), ('sideboard', 'Sideboard'))
@@ -44,6 +51,7 @@ _HEADERS = {
 _HEADER_ZONE = {alias: zone for zone, aliases in _HEADERS.items() for alias in aliases}
 _QTY_LINE = re.compile(r'^(\d+)\s*[xX]?\s+(.+)$')
 _PAREN = re.compile(r'^(.*?)\s*\(([^()]*)\)\s*$')
+_BRACKET = re.compile(r'^(.*?)\s*\[([^\[\]]*)\]\s*$')
 _CARD_ID = re.compile(r'^([A-Za-z0-9]+)[- ]([A-Za-z0-9*]+)$')
 _COLONS = ':：'
 _LINES = re.compile(r'\r\n|\r|\n')
@@ -111,16 +119,26 @@ def _fold(key):
                    if not unicodedata.combining(c))
 
 
+def _number(card_id):
+    """A card id without the leading zeros of its number (`043` -> `43`, `043a` -> `43a`;
+    `t04` stays), case-folded."""
+    match = re.match(r'^(\d+)(.*)$', card_id)
+    return (str(int(match.group(1))) + match.group(2) if match else card_id).casefold()
+
+
 class Resolver:
-    """Card text -> printing: an explicit id (`SET-ID`, also in a final parenthesis), else the
-    `name_key` of the name, else a legend written `Tag, Name`, else the name without accents.
-    A name gives its base printing (`base_keys`), else its first printing by (set, id)."""
+    """Card text -> printing: an explicit id (`SET-ID`, the whole text, a final parenthesis or
+    a final square bracket), else the `name_key` of the name, else a legend written `Tag, Name`,
+    else the name without accents. A name gives its base printing (`base_keys`), else its first
+    printing by (set, id). Ids ignore case and the leading zeros of the number."""
 
     def __init__(self, cards, base_keys):
-        self.by_id, self.by_name, self.by_fold, self.legends = {}, {}, {}, {}
+        self.cards = cards
+        self.by_id, self.by_number, self.by_name, self.by_fold, self.legends = {}, {}, {}, {}, {}
         for key in sorted(cards):
             card = cards[key]
             self.by_id[(key[0].casefold(), key[1].casefold())] = key
+            self.by_number.setdefault((key[0].casefold(), _number(key[1])), key)
             nkey = name_key(card['name'])
             self.by_name.setdefault(nkey, []).append(key)
             self.by_fold.setdefault(_fold(nkey), set()).add(nkey)
@@ -135,20 +153,59 @@ class Resolver:
 
     def _id(self, text):
         match = _CARD_ID.match(text.strip())
-        return self.by_id.get((match.group(1).casefold(), match.group(2).casefold())) \
-            if match else None
+        if not match:
+            return None
+        set_id, card_id = match.group(1).casefold(), match.group(2)
+        return self.by_id.get((set_id, card_id.casefold())) \
+            or self.by_number.get((set_id, _number(card_id)))
 
-    def resolve(self, text):
-        """`(key, None)` or `(None, 'unknown_card' | 'ambiguous_card')`."""
+    def _same_name(self, written, key):
+        """Whether `written` names the card of `key` (also as a legend `Tag, Name`)."""
+        nkey, found = name_key(written), name_key(self.cards[key]['name'])
+        if nkey == found or _fold(nkey) == _fold(found):
+            return True
+        tag, _, rest = nkey.partition(',')
+        return bool(rest) and self.legends.get((tag.strip(), rest.strip())) == found
+
+    def _explicit(self, key, written):
+        if written and not self._same_name(written, key):
+            return key, 'name_mismatch', {'written': written,
+                                          'found': card_label(self.cards[key])}
+        return key, None, {}
+
+    def match(self, text):
+        """`(key, reason_code, params)`: `(key, None, {})` when the text names a printing as
+        written; `(key, 'printing_unknown' | 'name_mismatch', params)` when it loads with a
+        warning; `(None, 'unknown_card' | 'ambiguous_card', params)` when nothing loads."""
+        bracket = _BRACKET.match(text)
+        if bracket:
+            written, wanted = bracket.group(1).strip(), bracket.group(2).strip()
+            key = self._id(wanted)
+            if key:
+                return self._explicit(key, written)
+            key, problem = self._by_name(written) if written else (None, 'unknown_card')
+            if key is None:
+                return None, problem, {'id': wanted}
+            return key, 'printing_unknown', {'id': wanted, 'name': card_label(self.cards[key])}
         paren = _PAREN.match(text)
         if paren:
             key = self._id(paren.group(2))
             if key:
-                return key, None
+                return self._explicit(key, paren.group(1).strip())
             text = paren.group(1) or text
         key = self._id(text)
         if key:
-            return key, None
+            return key, None, {}
+        key, problem = self._by_name(text)
+        return key, problem, {}
+
+    def resolve(self, text):
+        """`(key, None)` or `(None, 'unknown_card' | 'ambiguous_card')` (`match` without the
+        warnings of a loaded printing)."""
+        key, problem, _params = self.match(text)
+        return (key, None) if key else (None, problem)
+
+    def _by_name(self, text):
         nkey = name_key(text)
         if nkey in self.by_name:
             return self._pick(nkey), None
@@ -201,9 +258,10 @@ def build_content(parsed, resolver, cards):
     content, warnings = _empty(), list(parsed['warnings'])
     copies = unresolved = 0
     for item in parsed['lines']:
-        key, problem = resolver.resolve(item['name'])
+        key, problem, params = resolver.match(item['name'])
+        if problem:
+            warnings.append(_warning(item['line'], item['text'], problem, params))
         if key is None:
-            warnings.append(_warning(item['line'], item['text'], problem))
             unresolved += item['qty']
             continue
         card = cards[key]

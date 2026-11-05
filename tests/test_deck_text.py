@@ -249,8 +249,126 @@ class TestFormat:
         assert build(format_text(content, CARDS))[0] == content
 
 
+# Owner feedback 2026-11-05: a line may end with its printing in square brackets, the set code
+# upper-case and the number zero-padded (`1 Riven, Broken Blade [RAD-043]`).
+BR_CARDS = {
+    ('RAD', '149'): card('The Exile', 'Legend', ['Chaos', 'Calm'], ['Riven'], 'Champion'),
+    ('RAD', '43'): card('Riven, Broken Blade', 'Unit', ['Chaos'], ['Riven'], 'Champion'),
+    ('OGN', '8'): card('Astral Heron', 'Unit', ['Calm']),
+    ('VEN', '44'): card('Astral Heron', 'Unit', ['Calm']),
+    ('VEN', '44a'): card('Astral Heron', 'Unit', ['Calm']),
+    ('VEN', 't04'): card('Sand Soldier', 'Unit', ['Calm'], supertype='Token'),
+    ('VEN', '007'): card('Old Padded', 'Spell', ['Calm']),
+}
+BR_BASE = {('RAD', '149'), ('RAD', '43'), ('OGN', '8'), ('VEN', 't04'), ('VEN', '007')}
+OWNER_BRACKETS = ('Legend:\n1 Riven, The Exile [RAD-149]\n\n'
+                  'Champion:\n1 Riven, Broken Blade [RAD-043]\n\n'
+                  'MainDeck:\n3 Astral Heron [VEN-044]\n')
+
+
+def br_match(text):
+    return Resolver(BR_CARDS, BR_BASE).match(text)
+
+
+def br_build(text):
+    return build_content(parse_text(text), Resolver(BR_CARDS, BR_BASE), BR_CARDS)
+
+
+class TestBracketPrinting:
+    def test_the_owner_lines_load_the_written_printings(self):
+        content, warnings, counts = br_build(OWNER_BRACKETS)
+        assert content['legend'] == {'set': 'RAD', 'id': '149'}
+        assert content['champion'] == {'set': 'RAD', 'id': '43'}
+        # VEN-44 as written, not the base printing OGN-8
+        assert content['main'] == [{'set': 'VEN', 'id': '44', 'qty': 3}]
+        assert warnings == []
+        assert counts == {'lines': 3, 'copies': 5, 'unresolved': 0}
+
+    @pytest.mark.parametrize('text,key', [
+        ('Riven, Broken Blade [RAD-043]', ('RAD', '43')),
+        ('Riven, Broken Blade [rad-43]', ('RAD', '43')),
+        ('riven, broken blade  [ RAD-0043 ] ', ('RAD', '43')),
+        ('The Exile [RAD-149]', ('RAD', '149')),
+        ('Riven, The Exile [RAD-149]', ('RAD', '149')),
+        ('Astral Heron [VEN-044a]', ('VEN', '44a')),
+        ('Astral Heron [VEN-44A]', ('VEN', '44a')),
+        ('Astral Heron [VEN 044]', ('VEN', '44')),
+        ('Sand Soldier [VEN-T04]', ('VEN', 't04')),
+        ('Sand Soldier [ven-t04]', ('VEN', 't04')),
+        ('Old Padded [VEN-007]', ('VEN', '007')),
+        ('Old Padded [VEN-7]', ('VEN', '007')),
+        ('[VEN-044]', ('VEN', '44')),
+        ('Astral Heron (VEN-044)', ('VEN', '44')),
+        ('VEN-044', ('VEN', '44'))])
+    def test_set_case_and_leading_zeros_do_not_matter(self, text, key):
+        assert br_match(text) == (key, None, {})
+
+    def test_an_unknown_printing_of_a_known_name_loads_the_base_printing_with_a_warning(self):
+        assert br_match('Astral Heron [VEN-999]') == (
+            ('OGN', '8'), 'printing_unknown', {'id': 'VEN-999', 'name': 'Astral Heron'})
+        assert br_match('Riven, The Exile [OGN-001]') == (
+            ('RAD', '149'), 'printing_unknown', {'id': 'OGN-001', 'name': 'Riven, The Exile'})
+        assert br_match('Astral Heron [foil]') == (
+            ('OGN', '8'), 'printing_unknown', {'id': 'foil', 'name': 'Astral Heron'})
+
+    def test_an_unknown_printing_of_an_unknown_name_is_left_out_with_the_id(self):
+        assert br_match('Nope [VEN-999]') == (None, 'unknown_card', {'id': 'VEN-999'})
+        assert br_match('[VEN-999]') == (None, 'unknown_card', {'id': 'VEN-999'})
+
+    def test_a_known_printing_with_another_name_loads_the_printing_with_a_warning(self):
+        assert br_match('Astral Heron [RAD-043]') == (
+            ('RAD', '43'), 'name_mismatch',
+            {'written': 'Astral Heron', 'found': 'Riven, Broken Blade'})
+        assert br_match('Riven, Broken Blade [RAD-149]') == (
+            ('RAD', '149'), 'name_mismatch',
+            {'written': 'Riven, Broken Blade', 'found': 'Riven, The Exile'})
+
+    def test_warnings_carry_the_line_and_unknown_cards_stay_out(self):
+        content, warnings, counts = br_build(
+            'MainDeck:\n2 Astral Heron [VEN-999]\n1 Nope [VEN-998]\n'
+            '1 Astral Heron [RAD-043]\n')
+        assert content['main'] == [{'set': 'OGN', 'id': '8', 'qty': 2},
+                                   {'set': 'RAD', 'id': '43', 'qty': 1}]
+        assert warnings == [
+            {'line': 2, 'text': '2 Astral Heron [VEN-999]', 'reason_code': 'printing_unknown',
+             'params': {'id': 'VEN-999', 'name': 'Astral Heron'}},
+            {'line': 3, 'text': '1 Nope [VEN-998]', 'reason_code': 'unknown_card',
+             'params': {'id': 'VEN-998'}},
+            {'line': 4, 'text': '1 Astral Heron [RAD-043]', 'reason_code': 'name_mismatch',
+             'params': {'written': 'Astral Heron', 'found': 'Riven, Broken Blade'}}]
+        assert counts == {'lines': 3, 'copies': 3, 'unresolved': 1}
+
+    def test_two_printings_of_a_name_stay_two_lines(self):
+        content, warnings, _ = br_build('MainDeck:\n1 Astral Heron [VEN-044]\n'
+                                        '1 Astral Heron [VEN-044a]\n1 Astral Heron [VEN-44]\n')
+        assert content['main'] == [{'set': 'VEN', 'id': '44', 'qty': 2},
+                                   {'set': 'VEN', 'id': '44a', 'qty': 1}]
+        assert warnings == []
+
+    def test_the_export_has_no_brackets(self):
+        content, _, _ = br_build(OWNER_BRACKETS)
+        assert format_text(content, BR_CARDS) == (
+            'Legend:\n1 Riven, The Exile\n\nChampion:\n1 Riven, Broken Blade\n\n'
+            'MainDeck:\n3 Astral Heron\n')
+
+    def test_the_parenthesis_form_warns_a_name_mismatch_but_never_a_missing_printing(self):
+        # A parenthesis may hold other words (`(Alt Art)`), so a missing id there is not a warning.
+        assert resolver().match('Shurima Guard (OGN-S1)') == (
+            ('OGN', 'S1'), 'name_mismatch',
+            {'written': 'Shurima Guard', 'found': "Zhonya's Hourglass"})
+        assert resolver().match('Star-Crossed (XXX-1)') == (('OGN', 'S2'), None, {})
+        assert resolver().match('Shurima Guard (SFD-U1)') == (('SFD', 'U1'), None, {})
+
+    def test_resolve_keeps_its_two_values(self):
+        resolver = Resolver(BR_CARDS, BR_BASE)
+        assert resolver.resolve('Astral Heron [VEN-044]') == (('VEN', '44'), None)
+        assert resolver.resolve('Astral Heron [VEN-999]') == (('OGN', '8'), None)
+        assert resolver.resolve('Nope [VEN-999]') == (None, 'unknown_card')
+
+
 def test_module_constants():
     assert deck_text.FORMATS == ('auto', 'text')
     assert deck_text.REASON_CODES == ('no_zone', 'zone_unknown', 'quantity_invalid',
                                       'unknown_card', 'ambiguous_card', 'wrong_zone',
-                                      'slot_taken', 'hard_limit')
+                                      'slot_taken', 'hard_limit', 'printing_unknown',
+                                      'name_mismatch')
