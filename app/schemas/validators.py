@@ -442,6 +442,14 @@ class DeckPatch(BaseModel, extra='ignore'):
         lambda cls, v, info: _not_null(v, info))
 
 
+class DeckDuplicate(BaseModel, extra='ignore'):
+    """POST /decks/<id>/duplicate body: an optional name (trimmed; blank or null = the
+    default `<name> (copy)`)."""
+    name: Optional[_DeckName] = None
+
+    _name = field_validator('name', mode='before')(lambda cls, v: _deck_name(v) or None)
+
+
 class DeckContentPut(BaseModel, extra='ignore'):
     """PUT /decks/<id>/content body (F5-d S7): the whole content v2 of the current version."""
     content: DeckContentV2
