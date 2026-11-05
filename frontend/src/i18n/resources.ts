@@ -3,6 +3,7 @@ import enAuth from './locales/en/auth.json';
 import enCards from './locales/en/cards.json';
 import enCollection from './locales/en/collection.json';
 import enCommon from './locales/en/common.json';
+import enDecks from './locales/en/decks.json';
 import enEnums from './locales/en/enums.json';
 import enErrors from './locales/en/errors.json';
 import enLocations from './locales/en/locations.json';
@@ -27,6 +28,7 @@ export const resources = {
     collection: enCollection,
     products: enProducts,
     locations: enLocations,
+    decks: enDecks,
   },
 };
 
@@ -42,5 +44,6 @@ export const NAMESPACES = [
   'collection',
   'products',
   'locations',
+  'decks',
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];

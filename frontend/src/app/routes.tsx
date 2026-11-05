@@ -117,6 +117,18 @@ export function createAppRoutes(
                   }),
                 },
                 {
+                  path: '/decks',
+                  lazy: async () => ({
+                    Component: (await import('@/decks')).DecksPage,
+                  }),
+                },
+                {
+                  path: '/decks/:id',
+                  lazy: async () => ({
+                    Component: (await import('@/decks')).DeckView,
+                  }),
+                },
+                {
                   path: '/locations',
                   lazy: async () => ({
                     Component: (await import('@/locations/LocationsPage')).LocationsPage,

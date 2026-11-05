@@ -659,3 +659,138 @@ export type LineLocationMove = {
   to_location_id: number | null;
   qty: number;
 };
+
+// --- Decks v2 (F5-d, F5-e, F5-g) ---
+
+/** A printing in a deck: `{set, id}`. */
+export type DeckRef = { set: string; id: string };
+/** A printing with its copies (`qty` ≥ 1). */
+export type DeckRefLine = DeckRef & { qty: number };
+
+/** Content v2 (F5-R6): the shape `PUT /decks/:id/content` takes and every detail returns. */
+export type DeckContentV2 = {
+  v: 2;
+  legend: DeckRef | null;
+  champion: DeckRef | null;
+  main: DeckRefLine[];
+  runes: DeckRefLine[];
+  battlefields: DeckRef[];
+  sideboard: DeckRefLine[];
+  workbench: DeckRefLine[];
+};
+
+export type DeckZoneName =
+  'legend' | 'champion' | 'main' | 'runes' | 'battlefields' | 'sideboard' | 'workbench';
+
+/** `DeckCard` = the server `CardMini` plus `tags` (docs/api.md "Decks (F5-d)"). */
+export type DeckCard = {
+  set_id: string;
+  card_id: string;
+  key: string;
+  name: string;
+  domains: string[];
+  type: string;
+  supertype: string | null;
+  rarity: string;
+  image_src: string | null;
+  image_thumb_src: string | null;
+  is_base: boolean;
+  /** Non-foil market price (EUR) of the printing, null when unpriced. */
+  market: number | null;
+  /** The caller's copies of the printing; null on the public deck. */
+  owned_total: number | null;
+  tags: string[];
+};
+
+/** One legality issue (`deck_rules.validate`, F5-a S7); codes in `ISSUE_CODES`. */
+export type DeckIssue = { code: string; params: Record<string, string | number> };
+
+export type DeckSectionCount = { have: number; need: number; missing: number };
+export type DeckCompleteness = Record<
+  'legend' | 'champion' | 'main' | 'runes' | 'battlefields' | 'sideboard',
+  DeckSectionCount
+>;
+
+export type DeckLegalityResult = {
+  legal: boolean;
+  issues: DeckIssue[];
+  completeness: DeckCompleteness;
+};
+export type DeckLegality = Record<GameMode, DeckLegalityResult>;
+
+export type DeckShare = { slug: string; url: string };
+export type DeckVisibility = 'private' | 'public';
+
+export type DeckHead = {
+  id: number;
+  name: string;
+  mode: GameMode;
+  visibility: DeckVisibility;
+  created_at: string;
+  updated_at: string;
+  share: DeckShare | null;
+};
+
+export type DeckCounts = {
+  main: number;
+  runes: number;
+  battlefields: number;
+  sideboard: number;
+  workbench: number;
+};
+
+/** One item of `GET /decks`: issues are codes only (no params). */
+export type DeckListItem = DeckHead & {
+  legend: DeckCard | null;
+  champion: DeckCard | null;
+  domains: string[];
+  counts: DeckCounts;
+  value: number;
+  value_unpriced: number;
+  legal: Record<GameMode, boolean>;
+  issues: Record<GameMode, string[]>;
+};
+
+export type DeckUnknownCard = { zone: DeckZoneName; set: string; id: string };
+
+/** What a detail, a version and an import preview share. */
+export type DeckBody = {
+  content: DeckContentV2;
+  /** Every known printing, keyed `"<set>-<id>"`. */
+  cards: Record<string, DeckCard>;
+  unknown_cards: DeckUnknownCard[];
+  domains: string[];
+  counts: DeckCounts;
+  value: number;
+  value_unpriced: number;
+  legality: DeckLegality;
+};
+
+export type DeckDetail = DeckHead & { current_seq: number } & DeckBody;
+
+export type DeckVersionItem = {
+  seq: number;
+  note: string | null;
+  created_at: string;
+  is_current: boolean;
+};
+export type DeckVersionDetail = DeckVersionItem & DeckBody;
+
+export type DeckCreateBody = { name: string; mode: GameMode };
+export type DeckPatchBody = Partial<{ name: string; mode: GameMode; visibility: DeckVisibility }>;
+
+/** One warning of the text import (F5-e). */
+export type DeckImportWarning = {
+  line: number | null;
+  text: string;
+  reason_code: string;
+  params: Record<string, string | number>;
+};
+
+export type DeckImportPreview = {
+  deck_preview: DeckBody;
+  warnings: DeckImportWarning[];
+  counts: { lines: number; copies: number; unresolved: number };
+};
+
+export type DeckImportBody = { text: string; name?: string; mode?: GameMode };

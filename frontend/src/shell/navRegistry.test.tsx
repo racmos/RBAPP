@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { legacyHref } from './legacyRoutes';
 import { NAV, entryHref, isSpa, navEntries } from './navRegistry';
 
 describe('navRegistry (F2-h S13)', () => {
@@ -58,5 +59,21 @@ describe('navRegistry (F2-h S13)', () => {
     expect(navEntries('bottom', { isAdmin: false }).map((entry) => entry.id)).not.toContain(
       'locations',
     );
+  });
+
+  it('flips decks to spa at /decks; the classic page stays in the legacy routes (F5-h)', () => {
+    const decks = NAV.find((entry) => entry.id === 'decks');
+    expect(decks).toEqual({
+      id: 'decks',
+      icon: 'decks',
+      status: 'spa',
+      to: '/decks',
+      placements: ['top', 'bottom', 'hub', 'more'],
+    });
+    expect(decks && entryHref(decks)).toBe('/decks');
+    for (const placement of ['top', 'bottom', 'hub', 'more'] as const) {
+      expect(navEntries(placement, { isAdmin: false }).map((entry) => entry.id)).toContain('decks');
+    }
+    expect(legacyHref('decks')).toBe('/riftbound/deck');
   });
 });
