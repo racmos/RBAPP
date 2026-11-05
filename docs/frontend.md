@@ -739,6 +739,74 @@ feedback in the deck editor; the server stays authoritative. Import it through `
 - ESLint: `decks` may import everything below `app`, like `catalog`; `decks/rules` (tests apart) may
   import only its sibling modules (no `@/` alias, no package, no `node:`) and no DOM globals.
 
+## Decks UI (F5-h)
+
+`frontend/src/decks/` holds the decks screens (nav entry `decks` flipped to `spa` at `/decks`, icon
+`decks`, top, bottom, hub and "More"; strings in the `decks` namespace). API: `docs/api.md` → "Decks
+(F5-d)", "Deck import/export (F5-e)", "Deck sharing (F5-g)". Unit doc:
+`docs/requirements/F5/F5-h-decks-ui-mobile.md` (stage 1 read-only, stage 2 editing). Not here:
+desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5-l), public page
+(F5-m).
+
+- `queries.ts` — `useDecks` (`['decks', 'list']`), `useDeck(id)` (`['decks', 'detail', id]`, no retry on
+  404), `useDeckVersions`, `useDeckVersion` (for F5-j) and `useDeckRules` (`rulesFromMeta` of
+  `/meta/game`: rule values are never hardcoded).
+- `DecksPage` (`/decks`): one column (max 760 px) on every width. Each deck: name (link), mode badge,
+  legend as `Tag, Name` (`labels.ts::cardLabel`, like the text export) and champion, deck domain pips,
+  "Main n/39 · Runes n/12 · Battlefields n/3 · Sideboard n/10", one legality badge per mode ("1v1:
+  Legal"; a not legal one is a button that shows "Why it is not legal in <mode>" with the first three
+  `issueShort` texts and "And N more", since `GET /decks` sends codes only), value and "N cards without
+  price", "Updated <date>". States: skeleton, error with retry, "No decks yet", offline (cached list,
+  creation disabled). A "Classic version" link keeps the Jinja page (`/riftbound/deck`) reachable.
+- `DeckView` (`/decks/:id`, unknown or another user's id → the not found page): header (name, mode,
+  version, date), sticky "Deck summary" bar under the topbar (main, runes, legality chips, value),
+  "Legality" region with one group per mode listing every issue as a sentence, "Sections" list from
+  `completeness`, a "Cards not in the catalog" region for `unknown_cards`, then `DeckSections`:
+  collapsible `details` in the order Legend, Champion, Main deck, Battlefields, Runes, Sideboard and
+  "Workbench (not counted)" only when it has cards; rows show thumb, name, `×qty`, type, domain pips
+  and price (`DeckCard` has no energy/power yet: F5-h L1).
+- `issues.ts` — `issueMessage(t, {code, params})` (`decks:issue.<code>`, i18next `context` `missing` /
+  `over` for the sized codes and the `reason` of `card_off_identity`; zones as `decks:zoneIn.<zone>`),
+  `issueShort(t, code)` and `hardLimitMessage(t, {rule, max, name?})` (`decks:limit.<rule>`, the
+  `deck_limit_exceeded` params). `issues.test.ts` fails when an `ISSUE_CODES` code or a `HARD_RULES`
+  rule has no message: a new code needs its texts in `decks.json`.
+- Editing (stage 2, `useDeckEditor.ts` + pure `editor.ts`): the local content is the truth while
+  editing; `editor.ts` holds the plain operations (`addCopy`, `removeCopy`, `moveCopy`,
+  `knownContent`, `unknownRefs`, `contentValue`, `toDeckCard`) and never checks a rule. Every control
+  asks the rules library first (`canAdd`, `canMove`, `applyLegend`, `applyChampion`, `autoRunes`,
+  `hardLimitViolations`, `completeness`, with `useDeckRules` values): a refused "+" or move button is
+  disabled with the reason (`issueMessage`) as `title` and `aria-describedby`, so a hard limit is never
+  reachable. Rows: "−"/"+" (main, sideboard, workbench, runes), "To main / To side / To bench" moves
+  (one copy), "Remove" for legend, champion and battlefields. Removing a line, a battlefield or a slot
+  pushes a toast with "Undo" (the deck goes back to how it was). Each section has a `CardCombobox`
+  search with its filters (legend `type=Legend`; champion `type=Unit&supertype=Champion&tag=<legend
+  tags>`; runes `type=Rune&domain=<identity>`; battlefields `type=Battlefield`; main and sideboard
+  `type=Unit|Spell|Gear` without tokens); a picked card is checked first and refused with a toast. A
+  new legend that purges runes or the champion says so with "Undo". "Auto runes" loads the base runes
+  of the identity (`useRuneCards`) and calls `autoRunes`. The completeness, summary counts and value
+  update at once; the legality shown is the server's, as of the last save ("Legality as of the last
+  save." while unsaved).
+- Autosave (D-F5-3): 1 s after the last change `PUT /decks/:id/content`; status line "Not saved yet." /
+  "Saving…" / "All changes saved." / "Changes not saved: <reason>" + "Try again" (a
+  `deck_limit_exceeded` reason comes from `decks:limit.<rule>`; the local deck is kept) / "Offline:
+  editing is disabled.". Leaving the screen inside the debounce still sends the last change. A content
+  over a hard limit is never sent (decision A): a banner lists the violations until they are fixed. A
+  deck with cards missing from the catalog cannot be edited or saved until "Remove cards not in the
+  catalog" (never removed silently).
+- Actions (`DeckActions.tsx`): "Rename or change mode" (`PATCH`, only the changed keys; a taken name
+  shows "You already have a deck with this name."), "Save as version" (optional note, `POST
+  …/versions`; disabled until everything is saved), "Share link" (create / copy / stop sharing,
+  `POST`/`DELETE …/share`; the public page `/d/:slug` is F5-m), "Export text" (plain download link
+  to `GET …/export?format=text`), "Delete deck" (`ConfirmDialog`, then back to `/decks`). On `/decks`
+  (`DeckCreate.tsx`): "New deck" (name + mode, `POST /decks`, opens it) and "Import" (textarea, name,
+  mode; "Preview" shows the counts, the per-section counts and every warning in words
+  (`decks:importReason.<code>`, hard limits with `decks:limit`), then "Import deck" opens the new deck).
+  Offline disables every write.
+- Tests: `src/test/fixtures/decks.ts` builds the decks with the rules library (legality as the server
+  computes it), including the shape of the owner's migrated deck (legend, champion, 39 main, 12 runes,
+  3 battlefields, 8 sideboard); `src/test/decks.ts` installs them (`withDecks`) and records requests
+  (`recordDeckRequests`).
+
 ## Charts
 
 Charts are hand-made SVG components in `frontend/src/components/charts/`. There is no chart

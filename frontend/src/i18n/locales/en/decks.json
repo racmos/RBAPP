@@ -1,0 +1,252 @@
+{
+  "title": "Decks",
+  "subtitle": "Your decks and their legality in each game mode.",
+  "loading": "Loading decks",
+  "loadingDeck": "Loading the deck",
+  "error": "Your decks could not be loaded.",
+  "errorDeck": "This deck could not be loaded.",
+  "classic": "Classic version",
+  "list": "Your decks",
+  "new": "New deck",
+  "import": "Import",
+  "empty": {
+    "title": "No decks yet",
+    "body": "Create a deck or import one from its text."
+  },
+  "back": "All decks",
+  "noLegend": "No legend",
+  "noChampion": "No champion",
+  "counts": {
+    "main": "Main {{have}}/{{need}}",
+    "runes": "Runes {{have}}/{{need}}",
+    "battlefields": "Battlefields {{have}}/{{need}}",
+    "sideboard": "Sideboard {{have}}/{{need}}"
+  },
+  "value": "Value",
+  "unpriced_one": "{{count}} card without price",
+  "unpriced_other": "{{count}} cards without price",
+  "updated": "Updated {{date}}",
+  "version": "Version {{seq}}",
+  "legal": {
+    "yes": "{{mode}}: Legal",
+    "no": "{{mode}}: Not legal",
+    "reasons": "Why it is not legal in {{mode}}",
+    "more_one": "And {{count}} more",
+    "more_other": "And {{count}} more"
+  },
+  "legality": {
+    "title": "Legality",
+    "group": "{{mode}}: {{status}}",
+    "groupDeckMode": "{{mode}}: {{status}} (deck mode)",
+    "legal": "Legal",
+    "notLegal": "Not legal",
+    "legalIn": "Legal in {{mode}}."
+  },
+  "completeness": {
+    "title": "Sections",
+    "line": "{{section}}: {{have}}/{{need}}",
+    "missing": "{{section}}: {{have}}/{{need}} ({{missing}} missing)",
+    "over": "{{section}}: {{have}}/{{need}} ({{over}} too many)"
+  },
+  "summary": {
+    "label": "Deck summary"
+  },
+  "section": {
+    "legend": "Legend",
+    "champion": "Champion",
+    "main": "Main deck",
+    "battlefields": "Battlefields",
+    "runes": "Runes",
+    "sideboard": "Sideboard",
+    "workbench": "Workbench (not counted)"
+  },
+  "emptySection": "No cards.",
+  "row": {
+    "qty": "×{{qty}}",
+    "noPrice": "No price"
+  },
+  "unknown": {
+    "title": "Cards not in the catalog",
+    "body": "These printings stay in the deck, but they are left out of the legality and the value.",
+    "item": "{{key}} ({{zone}})"
+  },
+  "zoneIn": {
+    "legend": "the legend slot",
+    "champion": "the champion slot",
+    "main": "the main deck",
+    "runes": "the runes",
+    "battlefields": "the battlefields",
+    "sideboard": "the sideboard",
+    "workbench": "the workbench"
+  },
+  "issue": {
+    "unknown": "Rule not met: {{code}}.",
+    "legend_missing": "Choose a legend.",
+    "champion_missing": "Choose a champion.",
+    "champion_tag": "{{name}} shares no tag with the legend.",
+    "main_size": "The main deck has {{have}} of {{need}} cards.",
+    "main_size_missing": "The main deck has {{have}} of {{need}} cards ({{missing}} missing).",
+    "main_size_over": "The main deck has {{have}} of {{need}} cards ({{over}} too many).",
+    "runes_count": "The deck has {{have}} of {{need}} runes.",
+    "runes_count_missing": "The deck has {{have}} of {{need}} runes ({{missing}} missing).",
+    "runes_count_over": "The deck has {{have}} of {{need}} runes ({{over}} too many).",
+    "rune_off_identity": "{{name}} is not of the legend's domains.",
+    "battlefields_count": "The deck has {{have}} of {{need}} battlefields.",
+    "battlefields_count_missing": "The deck has {{have}} of {{need}} battlefields ({{missing}} missing).",
+    "battlefields_count_over": "The deck has {{have}} of {{need}} battlefields ({{over}} too many).",
+    "battlefields_duplicate": "{{name}} is repeated in the battlefields.",
+    "sideboard_size": "The sideboard has {{have}} of {{need}} cards.",
+    "sideboard_size_missing": "The sideboard has {{have}} of {{need}} cards ({{missing}} missing).",
+    "sideboard_size_over": "The sideboard has {{have}} of {{need}} cards ({{over}} too many).",
+    "copies_over": "{{name}} has {{count}} copies (max {{max}}).",
+    "workbench_over": "The workbench has {{count}} cards (max {{max}}).",
+    "card_off_identity": "{{name}} does not fit in {{zone}}.",
+    "card_off_identity_type": "{{name}} cannot go in {{zone}}: wrong card type.",
+    "card_off_identity_domain": "{{name}} has a domain outside the legend's domains ({{zone}}).",
+    "card_off_identity_tag": "{{name}} is a signature card that shares no tag with the legend ({{zone}}).",
+    "token_in_deck": "{{name}} is a token: it can only go in the workbench (now in {{zone}}).",
+    "banned": "{{name}} is banned in {{mode}}."
+  },
+  "issueShort": {
+    "legend_missing": "No legend",
+    "champion_missing": "No champion",
+    "champion_tag": "Champion without a shared tag",
+    "main_size": "Main deck size",
+    "runes_count": "Number of runes",
+    "rune_off_identity": "A rune outside the domains",
+    "battlefields_count": "Number of battlefields",
+    "battlefields_duplicate": "A repeated battlefield",
+    "sideboard_size": "Sideboard size",
+    "copies_over": "Too many copies of a card",
+    "workbench_over": "Workbench too big",
+    "card_off_identity": "A card that does not fit its section",
+    "token_in_deck": "A token outside the workbench",
+    "banned": "A banned card"
+  },
+  "limit": {
+    "copies": "{{name}}: more than {{max}} copies.",
+    "sideboard": "More than {{max}} cards in the sideboard.",
+    "workbench": "More than {{max}} cards in the workbench.",
+    "battlefields": "More than {{max}} battlefields.",
+    "runes": "More than {{max}} runes.",
+    "token": "{{name}} is a token: it can only go in the workbench.",
+    "unknown": "The deck goes over a limit (maximum {{max}})."
+  },
+  "edit": {
+    "addCopy": "Add a copy of {{name}}",
+    "removeCopy": "Remove a copy of {{name}}",
+    "remove": "Remove {{name}}",
+    "move": "Move a copy of {{name}} to {{zone}}",
+    "moveShort": {
+      "main": "To main",
+      "sideboard": "To side",
+      "workbench": "To bench"
+    },
+    "pick": {
+      "legend": "Choose a legend",
+      "champion": "Choose the champion",
+      "main": "Add to the main deck",
+      "battlefields": "Add a battlefield",
+      "runes": "Add runes",
+      "sideboard": "Add to the sideboard",
+      "workbench": "Add to the workbench"
+    },
+    "needRules": "Loading the game rules.",
+    "autoRunes": "Auto runes",
+    "autoRunesHint": "Balances the 12 runes by the domains your cards use.",
+    "removed": "{{name}} removed.",
+    "legendChanged": "Legend changed: runes and champion outside it were removed.",
+    "undo": "Undo",
+    "added": "{{name}} added."
+  },
+  "save": {
+    "pending": "Not saved yet.",
+    "saving": "Saving…",
+    "saved": "All changes saved.",
+    "error": "Changes not saved: {{reason}}",
+    "retry": "Try again",
+    "offline": "Offline: editing is disabled.",
+    "staleLegality": "Legality as of the last save."
+  },
+  "blocked": {
+    "limits": "This deck goes over a limit, so it is not saved until you fix it:",
+    "unknown": "Remove the cards that are not in the catalog to edit and save this deck.",
+    "removeUnknown": "Remove cards not in the catalog"
+  },
+  "actions": {
+    "label": "Deck actions",
+    "settings": "Rename or change mode",
+    "version": "Save as version",
+    "versionWait": "Wait until the changes are saved.",
+    "share": "Share link",
+    "export": "Export text",
+    "delete": "Delete deck"
+  },
+  "settings": {
+    "title": "Deck settings",
+    "name": "Name",
+    "mode": "Mode",
+    "save": "Save",
+    "nameRequired": "Enter a name.",
+    "nameTaken": "You already have a deck with this name.",
+    "saved": "Deck saved."
+  },
+  "versionForm": {
+    "title": "Save as version",
+    "note": "Note (optional)",
+    "noteHint": "Up to 200 characters.",
+    "save": "Save version",
+    "saved": "Saved as version {{seq}}."
+  },
+  "share": {
+    "title": "Share link",
+    "body": "Anyone with the link can see this deck, read-only. The page that opens it comes in a later update.",
+    "none": "This deck has no link yet.",
+    "create": "Create link",
+    "url": "Link",
+    "copy": "Copy link",
+    "copied": "Link copied.",
+    "copyFailed": "Could not copy: select the link and copy it.",
+    "stop": "Stop sharing",
+    "stopped": "The link no longer works."
+  },
+  "remove": {
+    "title": "Delete {{name}}?",
+    "body": "The deck and all its versions are deleted. This cannot be undone.",
+    "confirm": "Delete",
+    "done": "Deck deleted."
+  },
+  "create": {
+    "title": "New deck",
+    "submit": "Create",
+    "done": "Deck created."
+  },
+  "importForm": {
+    "title": "Import a deck",
+    "text": "Deck text",
+    "textHint": "Paste the text a deck site exports (Legend:, Champion:, MainDeck:, ...).",
+    "textRequired": "Paste the deck text.",
+    "name": "Name (optional)",
+    "preview": "Preview",
+    "submit": "Import deck",
+    "summary": "{{lines}} lines, {{copies}} copies placed, {{unresolved}} left out.",
+    "sections": "Main {{main}} · Runes {{runes}} · Battlefields {{battlefields}} · Sideboard {{sideboard}}",
+    "warnings": "Warnings",
+    "noWarnings": "No warnings: every line was read.",
+    "warning": "Line {{line}}: {{text}} ({{reason}})",
+    "warningNoLine": "{{reason}}",
+    "done": "Deck imported.",
+    "doneWarnings_one": "Deck imported with {{count}} warning.",
+    "doneWarnings_other": "Deck imported with {{count}} warnings."
+  },
+  "importReason": {
+    "no_zone": "no section: placed by its type",
+    "zone_unknown": "unknown section header",
+    "quantity_invalid": "invalid quantity: line skipped",
+    "unknown_card": "card not found: left out",
+    "ambiguous_card": "several cards match: left out",
+    "wrong_zone": "{{name}} does not belong in {{zone}}: kept there",
+    "slot_taken": "{{name}} went to {{to}}: the slot was taken",
+    "unknown": "{{code}}"
+  }
+}

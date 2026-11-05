@@ -1,4 +1,4 @@
-import { getSession, request, requestFile, requestWithMeta } from './client';
+import { API_BASE, getSession, request, requestFile, requestWithMeta } from './client';
 import type {
   AdminCatalog,
   CaptchaData,
@@ -13,6 +13,18 @@ import type {
   CollectionMeta,
   CollectionPatchBody,
   CollectionSplitBody,
+  DeckContentV2,
+  DeckCreateBody,
+  DeckDetail,
+  DeckHead,
+  DeckImportBody,
+  DeckImportPreview,
+  DeckImportWarning,
+  DeckListItem,
+  DeckPatchBody,
+  DeckShare,
+  DeckVersionDetail,
+  DeckVersionItem,
   GameMeta,
   ImportMode,
   ImportPreview,
@@ -400,3 +412,55 @@ export const putLineLocations = (
 
 export const moveLineLocations = (lineId: number, body: LineLocationMove) =>
   request<LineLocations>(`/collection/${lineId}/locations/move`, { method: 'POST', body });
+
+// --- Decks v2 (F5-d, F5-e, F5-g) ---
+
+export const listDecks = (signal?: AbortSignal) =>
+  request<{ items: DeckListItem[] }>('/decks', { signal });
+
+export const getDeck = (id: number, signal?: AbortSignal) =>
+  request<DeckDetail>(`/decks/${id}`, { signal });
+
+export const createDeck = (body: DeckCreateBody) =>
+  request<DeckDetail>('/decks', { method: 'POST', body });
+
+export const patchDeck = (id: number, body: DeckPatchBody) =>
+  request<DeckDetail>(`/decks/${id}`, { method: 'PATCH', body });
+
+export const deleteDeck = (id: number) =>
+  request<{ deleted: DeckHead }>(`/decks/${id}`, { method: 'DELETE' });
+
+/** Autosave of the current version; a hard limit answers 400 `deck_limit_exceeded`. */
+export const putDeckContent = (id: number, content: DeckContentV2) =>
+  request<DeckDetail>(`/decks/${id}/content`, { method: 'PUT', body: { content } });
+
+export const listDeckVersions = (id: number, signal?: AbortSignal) =>
+  request<{ items: DeckVersionItem[] }>(`/decks/${id}/versions`, { signal });
+
+export const getDeckVersion = (id: number, seq: number, signal?: AbortSignal) =>
+  request<DeckVersionDetail>(`/decks/${id}/versions/${seq}`, { signal });
+
+/** Snapshot of the current content as a new version (`{}` without a note). */
+export const createDeckVersion = (id: number, note?: string) =>
+  request<DeckVersionDetail>(`/decks/${id}/versions`, {
+    method: 'POST',
+    body: note ? { note } : {},
+  });
+
+export const previewDeckImport = (text: string) =>
+  request<DeckImportPreview>('/decks/import/preview', { method: 'POST', body: { text } });
+
+export const importDeck = (body: DeckImportBody) =>
+  request<DeckDetail & { warnings: DeckImportWarning[] }>('/decks/import', {
+    method: 'POST',
+    body,
+  });
+
+/** The text download (`Content-Disposition: attachment`), for a plain link. */
+export const deckExportHref = (id: number) => `${API_BASE}/decks/${id}/export?format=text`;
+
+export const shareDeck = (id: number) =>
+  request<DeckShare>(`/decks/${id}/share`, { method: 'POST' });
+
+export const unshareDeck = (id: number) =>
+  request<{ share: null }>(`/decks/${id}/share`, { method: 'DELETE' });

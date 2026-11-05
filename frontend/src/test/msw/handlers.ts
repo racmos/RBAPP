@@ -294,6 +294,8 @@ export const handlers = [
   http.get(`${API}/collection/:id/locations`, () => ok(aylaLineLocations)),
   http.put(`${API}/collection/:id/locations`, () => ok(aylaLineLocations)),
   http.post(`${API}/collection/:id/locations/move`, () => ok(aylaLineLocations)),
+  // Decks v2 (F5-d): by default the user has none; the deck tests install their own.
+  http.get(`${API}/decks`, () => ok({ items: [] })),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {
     const url = new URL(request.url);

@@ -1,0 +1,181 @@
+@layer components {
+  /* One readable column on every width; the desktop and wide layouts come with F5-i. */
+  .page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--pad);
+    padding-bottom: 32px;
+  }
+
+  .note,
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .name {
+    min-width: 0;
+    margin: 0;
+    font-size: 17px;
+    overflow-wrap: anywhere;
+  }
+
+  .name a {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .name a:hover,
+  .name a:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  .identity,
+  .counts,
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .counts {
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .legality {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .notLegal {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid rgba(220, 74, 49, 0.45);
+    border-radius: var(--radius-sm);
+    background: rgba(220, 74, 49, 0.16);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .notLegal:hover {
+    border-color: var(--accent);
+  }
+
+  .reasons {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .classic {
+    align-self: center;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+  }
+
+  .classic:hover {
+    color: var(--accent);
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .formActions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .textarea {
+    width: 100%;
+    min-height: 180px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-3);
+    color: var(--text);
+    font: inherit;
+    font-family: var(--font-mono, monospace);
+    font-size: 13px;
+    resize: vertical;
+  }
+
+  .preview {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    font-size: 14px;
+  }
+
+  .preview p,
+  .preview ul {
+    margin: 0;
+  }
+
+  .preview ul {
+    padding-left: 18px;
+  }
+}

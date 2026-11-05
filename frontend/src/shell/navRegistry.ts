@@ -100,8 +100,8 @@ export const NAV: readonly NavEntry[] = [
   {
     id: 'decks',
     icon: 'decks',
-    status: 'legacy',
-    legacy: 'decks',
+    status: 'spa',
+    to: '/decks',
     placements: ['top', 'bottom', 'hub', 'more'],
   },
   {

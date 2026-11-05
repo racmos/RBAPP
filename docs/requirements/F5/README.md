@@ -137,7 +137,7 @@ mazos" + Nuevo/Importar), error, offline read-only, 404 for slugs.
 | F5-e | Import/export API | F5-d | ~550 | items 3, 6 | Done (#95, `F5-e-decks-import-export.md`) | One common text format (owner, 2026-11-04): preview with per-line warnings, import that always loads, text export (L1-L7) |
 | F5-f | Deck vs collection | F5-d, F3-f | ~350 | item 3 | Planned | Missing/cost per name, missing to wishlist |
 | F5-g | Visibility, share link, public endpoint | F5-d | ~400 | item 2 | In review (`F5-g-deck-share.md`) | Slugs, public read endpoint with rate limit, authz P; `share` on `DeckHead`, the public payload leaves the workbench out (L1) |
-| F5-h | Decks UI mobile | F5-b, F5-d | ~650 | none | Planned | List, workspace screen, editing with limits and reasons, nav flip |
+| F5-h | Decks UI mobile | F5-b, F5-d | ~650 | none | In progress (`F5-h-decks-ui-mobile.md`; stage 1 read-only and stage 2 editing implemented; the R13 Jinja switch waits for a final `flask decks migrate`) | List, workspace screen, editing with limits and reasons, nav flip |
 | F5-i | Decks UI desktop/wide + analysis | F5-h | ~650 | none | Planned | Columns, analysis panel, `MiniCurve`, `Donut` |
 | F5-j | Import/export + versions UI | F5-e, F5-h | ~550 | none | Planned | Modals, preview, versions, diff |
 | F5-k | Opening hands + mulligan (split out, after production) | F5-i, F15 (order), official rules (owner) | ~500 | item 3 | Planned | Opening-hand and mulligan rule values, `HandSimulator` in the analysis panel and the public page (F5-R21) |
