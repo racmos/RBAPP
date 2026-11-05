@@ -1,12 +1,21 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import type { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
-import type { CardSummary, DeckCard, DeckContentV2 } from '@/api/types';
+import type { CardFacets, CardSummary, DeckCard, DeckContentV2 } from '@/api/types';
 import { cardList, champion as ayla, foilCommon as emberWisp } from '@/test/fixtures/cards';
 import { recordDeckRequests, withDecks } from '@/test/decks';
-import { deckDetail, deckDetails, listItemOf, mainCards, rivenDeck } from '@/test/fixtures/decks';
+import {
+  deckDetail,
+  deckDetails,
+  emptyContent,
+  line,
+  listItemOf,
+  mainCards,
+  rivenDeck,
+} from '@/test/fixtures/decks';
 import { signedIn, writes } from '@/test/locations';
 import { API, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
@@ -67,7 +76,11 @@ const rivenSignature = extra('73', {
 });
 
 /** `GET /cards` answers `items` (filtered by `q`) in `pages` pages; the browser's queries are kept. */
-function cardServer({ items = ITEMS, pages = 1 } = {}) {
+function cardServer({
+  items = ITEMS,
+  pages = 1,
+  facets = cardList.meta.facets,
+}: { items?: CardSummary[]; pages?: number; facets?: CardFacets } = {}) {
   const seen: URLSearchParams[] = [];
   server.use(
     http.get(`${API}/cards`, ({ request }) => {
@@ -80,7 +93,7 @@ function cardServer({ items = ITEMS, pages = 1 } = {}) {
       return HttpResponse.json({
         success: true,
         data: { items: found },
-        meta: { ...cardList.meta, page, per_page: 48, total: found.length, pages },
+        meta: { ...cardList.meta, page, per_page: 48, total: found.length, pages, facets },
       });
     }),
   );
@@ -97,13 +110,17 @@ function savingServer() {
   );
 }
 
-async function openBrowser(options: Parameters<typeof cardServer>[0] = {}) {
+async function openBrowser({
+  deck = rivenDeck,
+  ...options
+}: Parameters<typeof cardServer>[0] & { deck?: typeof rivenDeck } = {}) {
   signedIn();
-  withDecks(deckDetails.map(listItemOf), deckDetails);
+  const details = [...deckDetails.filter((d) => d.id !== deck.id), deck];
+  withDecks(details.map(listItemOf), details);
   savingServer();
   const seen = cardServer(options);
   const sent = recordDeckRequests();
-  const app = await renderApp({ path: '/decks/41', width: DESKTOP });
+  const app = await renderApp({ path: `/decks/${deck.id}`, width: DESKTOP });
   const browser = await screen.findByRole('region', { name: 'Card browser' }, LONG);
   await within(browser).findByRole('button', { name: 'Add Ember Wisp' }, LONG);
   return { ...app, browser, seen, sent };
@@ -363,6 +380,247 @@ describe('Card browser of the two-pane editor (F5-i step 2)', () => {
 
   it('is axe clean', async () => {
     const { browser } = await openBrowser();
+    expect(await axe(browser)).toHaveNoViolations();
+  }, 30000);
+});
+
+/** Facets of the browser's answer (disjunctive, like the catalog). */
+const FACETS: CardFacets = {
+  set: { OGN: 8 },
+  domain: { Fury: 6, Calm: 4, Chaos: 2, Colorless: 1 },
+  type: { Unit: 5, Spell: 2, Gear: 1 },
+  rarity: { Common: 3, Rare: 2 },
+  tag: [
+    { tag: 'Riven', count: 2 },
+    { tag: 'Yasuo', count: 1 },
+  ],
+};
+/** A deck without a legend (and nothing outside the catalog, so it can be edited). */
+const noLegendDeck = deckDetail(
+  { id: 44, name: 'No legend yet', updated_at: '2026-11-05T10:00:00Z' },
+  { ...emptyContent, main: [line(mainCards[0], 2)] },
+);
+
+const filterButton = (browser: HTMLElement) =>
+  within(browser).getByRole('button', { name: /^Filter/ });
+async function openFilters(browser: HTMLElement) {
+  await userEvent.click(filterButton(browser));
+  return within(browser).getByRole('dialog', { name: 'Filter cards' });
+}
+const group = (panel: HTMLElement, name: string) => within(panel).getByRole('group', { name });
+const names = (scope: HTMLElement) =>
+  within(scope)
+    .getAllByRole('button')
+    .map((button) => button.getAttribute('aria-label') ?? button.textContent);
+/** The filters of the browser's query on screen (an answer from the cache sends no request). */
+const shown = (queryClient: QueryClient) => {
+  const active = queryClient
+    .getQueryCache()
+    .findAll({ queryKey: ['cards', 'list'], type: 'active' })
+    .map((query) => new URLSearchParams(String(query.queryKey[2])))
+    // Auto runes keeps its own query (`base_only`): not the browser
+    .filter((search) => search.get('base_only') === null);
+  expect(active).toHaveLength(1);
+  return active[0];
+};
+const press = (panel: HTMLElement, groupName: string, value: string) =>
+  userEvent.click(within(group(panel, groupName)).getByRole('button', { name: value }));
+
+describe('Filter popover of the card browser (F5-i step 3)', () => {
+  it('opens the groups of the zone; Escape closes it and focus goes back', async () => {
+    const { browser } = await openBrowser({ facets: FACETS });
+    const button = filterButton(browser);
+    expect(button).toHaveAccessibleName('Filter');
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    const panel = await openFilters(browser);
+    expect(panel).toContainElement(document.activeElement as HTMLElement);
+    expect(
+      within(panel)
+        .getAllByRole('heading')
+        .map((h) => h.textContent),
+    ).toEqual(['Filter cards', 'Card', 'Cost & Might', 'Advanced', 'Status']);
+    // the legend's domains (and colourless): the API counts do not match a subset, so none shown
+    expect(names(group(panel, 'Domain'))).toEqual(['Calm', 'Chaos', 'Colorless']);
+    // only the types the main deck takes, with their counts
+    expect(names(group(panel, 'Type'))).toEqual(['Unit (5)', 'Spell (2)', 'Gear (1)']);
+    expect(names(group(panel, 'Rarity'))).toEqual([
+      'Common (3)',
+      'Uncommon (0)',
+      'Rare (2)',
+      'Epic (0)',
+      'Showcase (0)',
+    ]);
+    expect(names(group(panel, 'Energy'))).toEqual(['0', '1', '2', '3', '4', '5', '6', '7+']);
+    expect(names(group(panel, 'Power'))).toEqual(['0', '1', '2', '3+']);
+    expect(names(group(panel, 'Might'))).toEqual(['0', '1', '2', '3', '4', '5', '6', '7+']);
+    expect(names(group(panel, 'Set'))).toEqual(['Origins (8)']);
+    expect(names(group(panel, 'Tags'))).toEqual(['Riven (2)', 'Yasuo (1)']);
+    expect(within(panel).getByRole('switch', { name: 'Owned only' })).not.toBeChecked();
+    // no control the API cannot serve yet
+    expect(within(panel).queryByText(/keyword|abilit|legal only|available/i)).toBeNull();
+
+    await userEvent.keyboard('{Escape}');
+    expect(within(browser).queryByRole('dialog')).toBeNull();
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+  }, 30000);
+
+  it('each group sends its parameters over the zone filters', async () => {
+    const { browser, seen } = await openBrowser({ facets: FACETS });
+    const panel = await openFilters(browser);
+    const sent = async (key: string, values: string[]) =>
+      waitFor(() => expect(last(seen).getAll(key)).toEqual(values), LONG);
+
+    await press(panel, 'Domain', 'Calm');
+    await sent('domain', ['Calm']);
+    expect(last(seen).get('domain_match')).toBe('subset');
+    await press(panel, 'Type', 'Unit (5)');
+    await sent('type', ['Unit']);
+    expect(last(seen).getAll('exclude_supertype')).toEqual(['Token']);
+    await press(panel, 'Rarity', 'Rare (2)');
+    await sent('rarity', ['Rare']);
+    await press(panel, 'Energy', '3');
+    await sent('energy_min', ['3']);
+    expect(last(seen).get('energy_max')).toBe('3');
+    await press(panel, 'Energy', '7+');
+    await sent('energy_min', ['7']);
+    expect(last(seen).get('energy_max')).toBeNull();
+    await press(panel, 'Power', '3+');
+    await sent('power_min', ['3']);
+    expect(last(seen).get('power_max')).toBeNull();
+    await press(panel, 'Might', '2');
+    await sent('might_max', ['2']);
+    await press(panel, 'Set', 'Origins (8)');
+    await sent('set', ['OGN']);
+    await press(panel, 'Tags', 'Yasuo (1)');
+    await sent('tag', ['Yasuo']);
+    await userEvent.click(within(panel).getByRole('switch', { name: 'Owned only' }));
+    await sent('owned', ['owned']);
+    expect(filterButton(browser)).toHaveAccessibleName('Filter, 9 active');
+    expect(within(group(panel, 'Energy')).getByRole('button', { name: '7+' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    // a pressed value lets go
+    await press(panel, 'Energy', '7+');
+    await waitFor(() => expect(last(seen).get('energy_min')).toBeNull(), LONG);
+    expect(filterButton(browser)).toHaveAccessibleName('Filter, 8 active');
+  }, 30000);
+
+  it('a deck without a legend offers every domain, with its count', async () => {
+    const { browser, seen } = await openBrowser({ facets: FACETS, deck: noLegendDeck });
+    const panel = await openFilters(browser);
+    expect(names(group(panel, 'Domain'))).toEqual([
+      'Fury (6)',
+      'Calm (4)',
+      'Mind (0)',
+      'Body (0)',
+      'Chaos (2)',
+      'Order (0)',
+      'Colorless (1)',
+    ]);
+    await press(panel, 'Domain', 'Fury (6)');
+    await waitFor(() => expect(last(seen).getAll('domain')).toEqual(['Fury']), LONG);
+    expect(last(seen).get('domain_match')).toBeNull();
+  }, 30000);
+
+  it('shows the filters as chips; a chip or Clear filters removes them', async () => {
+    const { browser, seen, queryClient } = await openBrowser({ facets: FACETS });
+    const panel = await openFilters(browser);
+    await press(panel, 'Domain', 'Calm');
+    await press(panel, 'Rarity', 'Rare (2)');
+    await press(panel, 'Energy', '3');
+    await press(panel, 'Power', '3+');
+    await userEvent.click(within(panel).getByRole('switch', { name: 'Owned only' }));
+    await userEvent.keyboard('{Escape}');
+
+    const chips = within(browser).getByRole('list', { name: 'Active filters' });
+    expect(
+      within(chips)
+        .getAllByRole('listitem')
+        .map((chip) => chip.textContent),
+    ).toEqual(['Calm', 'Rare', 'Energy 3', 'Power 3+', 'Owned only']);
+    expect(await within(browser).findByText('3 cards for Main deck', {}, LONG)).toBeVisible();
+
+    await userEvent.click(within(chips).getByRole('button', { name: 'Remove filter Rare' }));
+    await waitFor(() => expect(last(seen).getAll('rarity')).toEqual([]), LONG);
+    expect(last(seen).get('energy_min')).toBe('3');
+    expect(filterButton(browser)).toHaveAccessibleName('Filter, 4 active');
+
+    await userEvent.click(within(browser).getByRole('button', { name: 'Clear filters' }));
+    // back to the zone filters alone (the first answer, from the cache)
+    await waitFor(() => expect(shown(queryClient).get('owned')).toBeNull(), LONG);
+    expect(filtersOf(shown(queryClient))).toEqual(filtersOf(seen[0]));
+    expect(shown(queryClient).get('energy_min')).toBeNull();
+    expect(shown(queryClient).get('power_min')).toBeNull();
+    expect(within(browser).queryByRole('list', { name: 'Active filters' })).toBeNull();
+    expect(filterButton(browser)).toHaveAccessibleName('Filter');
+
+    // the panel has its own Clear filters
+    const again = await openFilters(browser);
+    await press(again, 'Set', 'Origins (8)');
+    await waitFor(() => expect(last(seen).getAll('set')).toEqual(['OGN']), LONG);
+    await userEvent.click(within(again).getByRole('button', { name: 'Clear filters' }));
+    await waitFor(() => expect(shown(queryClient).getAll('set')).toEqual([]), LONG);
+  }, 30000);
+
+  it('never widens the zone or the legend; a tab keeps only the filters that apply', async () => {
+    const { browser, seen } = await openBrowser({ facets: FACETS });
+    let panel = await openFilters(browser);
+    await press(panel, 'Domain', 'Colorless');
+    await press(panel, 'Domain', 'Calm');
+    await press(panel, 'Type', 'Unit (5)');
+    await press(panel, 'Energy', '2');
+    await press(panel, 'Rarity', 'Rare (2)');
+    await press(panel, 'Tags', 'Yasuo (1)');
+    await userEvent.keyboard('{Escape}');
+
+    // runes: only the legend's domains, no type, cost or free tag choice
+    await userEvent.click(within(browser).getByRole('tab', { name: 'Runes' }));
+    await waitFor(() => expect(last(seen).getAll('type')).toEqual(['Rune']), LONG);
+    expect(filtersOf(last(seen))).toMatchObject({ domain: ['Calm'], tag: [], domain_match: null });
+    expect(last(seen).getAll('rarity')).toEqual(['Rare']);
+    expect(last(seen).get('energy_min')).toBeNull();
+    panel = await openFilters(browser);
+    expect(names(group(panel, 'Domain'))).toEqual(['Calm (4)', 'Chaos (2)']);
+    expect(within(panel).queryByRole('group', { name: 'Type' })).toBeNull();
+    expect(within(panel).queryByRole('group', { name: 'Energy' })).toBeNull();
+    await userEvent.keyboard('{Escape}');
+
+    // back on the main deck the dropped filters stay dropped
+    await userEvent.click(within(browser).getByRole('tab', { name: 'Main deck' }));
+    await waitFor(() => expect(last(seen).getAll('type')).toEqual(['Unit', 'Spell', 'Gear']), LONG);
+    expect(filtersOf(last(seen))).toMatchObject({ domain: ['Calm'], domain_match: 'subset' });
+
+    // the champion takes the legend's tags only
+    await userEvent.click(within(browser).getByRole('tab', { name: 'Champion' }));
+    await waitFor(() => expect(last(seen).getAll('supertype')).toEqual(['Champion']), LONG);
+    panel = await openFilters(browser);
+    expect(names(group(panel, 'Tags'))).toEqual(['Riven (2)']);
+    expect(within(panel).queryByRole('group', { name: 'Type' })).toBeNull();
+    await press(panel, 'Domain', 'Chaos');
+    await waitFor(() => expect(filtersOf(last(seen)).domain).toEqual(['Calm', 'Chaos']), LONG);
+    expect(filtersOf(last(seen))).toMatchObject({ type: ['Unit'], tag: ['Riven'] });
+  }, 40000);
+
+  it('a filter change goes back to page 1', async () => {
+    const { browser, seen } = await openBrowser({ facets: FACETS, pages: 2 });
+    await userEvent.click(within(browser).getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(last(seen).get('page')).toBe('2'), LONG);
+    const panel = await openFilters(browser);
+    await press(panel, 'Rarity', 'Common (3)');
+    await waitFor(() => expect(last(seen).getAll('rarity')).toEqual(['Common']), LONG);
+    expect(last(seen).get('page')).toBeNull();
+  }, 30000);
+
+  it('is axe clean with the panel open and with chips', async () => {
+    const { browser } = await openBrowser({ facets: FACETS });
+    const panel = await openFilters(browser);
+    await press(panel, 'Domain', 'Calm');
+    await press(panel, 'Energy', '3');
+    expect(await axe(browser)).toHaveNoViolations();
+    await userEvent.keyboard('{Escape}');
     expect(await axe(browser)).toHaveNoViolations();
   }, 30000);
 });

@@ -823,7 +823,23 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   (top left) and might (top right) badges and the copies already in the deck (`copiesInDeck`, "×2");
   a click calls `editor.pick(card, zone)`. On the other tabs a tile the rules refuse
   (`editor.addReason` with the card added to the book) is `aria-disabled` with the reason as `title`
-  and description, and does nothing. The filter popover is step 3.
+  and description, and does nothing.
+- Browser filters (F5-i step 3): a `Filter` button next to the search ("Filter, N active" when
+  filters are on) opens a `components/ui/Popover` (non-modal dialog under the button: focus moves in,
+  Escape and the close button return it to the button, a press outside closes it) with the groups
+  Card (Domain, Type, Rarity), Cost & Might (Energy 0..7+, Power 0..3+, Might 0..7+: one value per
+  group, `min=max=value`, the top value is `min` only), Advanced (Set, Tags) and Status (Owned only =
+  `owned=owned`), plus Clear filters. `decks/browserFilters.ts` (pure) merges the choice over
+  `pickFilters(zone)`: a list only narrows the zone's list (values outside it are ignored, never
+  widened; `domain_match` stays the zone's, so with a legend a domain choice means "cards of these
+  domains only"). The zone limits the values: Type only when the zone takes several types, Domain =
+  the legend's domains (and Colorless) or every game domain without a legend, Tags = the legend's
+  on Champion, else the answer's top tags; costs and tags only on Champion, Main and Sideboard. A
+  tab change keeps the filters that apply to the new zone and drops the rest; any change goes back to
+  page 1. Counts come from `meta.facets` of the same answer (domain counts are hidden under the
+  legend's `subset` match, where they would not match the result; costs have none). The choice shows
+  as removable chips under the search ("Active filters") with Clear filters. No keyword, ability,
+  legal-only or available-to-add controls until the API serves them.
 - Tests: `src/test/fixtures/decks.ts` builds the decks with the rules library (legality as the server
   computes it), including the shape of the owner's migrated deck (legend, champion, 39 main, 12 runes,
   3 battlefields, 8 sideboard); `src/test/decks.ts` installs them (`withDecks`) and records requests

@@ -50,8 +50,67 @@
     gap: 6px;
   }
 
+  .searchRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
   .search {
+    flex: 1;
+    min-width: 0;
     width: 100%;
+  }
+
+  .filterCount {
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .filterSection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .filterHeading {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .filterFooter {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .activeFilters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
   .count,

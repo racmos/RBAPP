@@ -75,7 +75,14 @@ locations/F5-f; ask the owner).
    legend's domains (`domain_match=subset`, colourless included), and adding refuses an off-domain card or a
    Signature card that shares no tag with the legend, with the reason. The rules engine stays soft on
    purpose (`validate` reports colour and Signature tag) so imports and versions keep loading.
-3. Filter popover + facets. 
+3. Filter popover + facets.
+   **Done (frontend, `feat/f5i-browser-filters`):** `Filter` button with the active count and a
+   popover with Card (domain, type, rarity), Cost & Might (energy 0..7+, power 0..3+, might 0..7+, one
+   value each), Advanced (set, tags) and Status (owned only), counts from the same answer's facets,
+   removable chips and Clear filters. The zone and legend filters always apply (a choice only narrows
+   them); a tab change keeps the filters that apply to the new zone. Left for later: Keywords,
+   Abilities, Legal only and Available to add (need backend filters: `keywords`, `legal_for_deck`,
+   the available count), `View` and `Fit`, and the mobile bottom sheet (decision 4).
 4. Stats tab.
 5. Full Art tab.
 6. Versions modal (diff, Restore) and export menu; import validation panel live.
