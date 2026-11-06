@@ -918,3 +918,87 @@ Timestamps are naive UTC ISO strings, as in `GET /admin/jobs`.
   allow-listed URLs, no params) → 202 `{job_id, job: {id, status, queued_at, started_at,
   finished_at, message}}`. A `daily_prices` job already queued or running → 409
   `job_running`, nothing written. Audit `cardmarket.load` (target `job`, id the job id).
+
+### Cardmarket matching (CM-b)
+
+`app/api/admin/cardmarket_matching.py`, logic in `app/services/cardmarket_matching.py`. Port of
+the legacy Jinja admin endpoints of `price_bp` (`/riftbound/price/cardmarket-*`, `ignored/*`;
+behaviour pinned in `tests/test_legacy_price_characterization.py`, the legacy file is unchanged).
+A **link** is one `rbcm_product_card_map` row: a Cardmarket product id to a card and a foil slot
+(`N`, `S` or `null`; two `null`s are the same slot, `null` and `N` are not). **Products are
+linked by Cardmarket id**: `rbproducts` is keyed by the Cardmarket id and `products_refresh`
+creates the product of every non-single, so there is no product link to write
+(`kind: "product"` → 400 `validation_error` on `kind`); creating a missing card or product from
+a Cardmarket item is CM-c. **Unmatched** has one definition
+(`cardmarket_log.unmatched_clauses`): a product of the latest product date that is neither
+linked nor ignored (same id and name in `rbcm_ignored`); the `type=single` total equals
+`unmatched` of `GET /admin/cardmarket/status`. **Clear / doubtful** is the decision of the
+daily job (`daily_prices.classify_unmapped`, the read-only half of `match_clear_cases`). Writes
+are audited in the same transaction (target type `cardmarket_product`, id the Cardmarket id).
+Dates are `YYYY-MM-DD`. No job kind (it would need a migration of `ck_rbjobs_kind`): the
+apply runs synchronously and is bounded.
+
+- `GET /admin/cardmarket/unmatched` with `q` (name or id, substring), `type`
+  (`single`|`nonsingle`; default both, like the legacy list), `category` (substring), `page`,
+  `per_page` (25|50|100|200, default 50) → `{items, meta: {page, per_page, total, pages, date
+  (latest product date | null)}}`, by name then id. Item `{id_product, name, type, category,
+  expansion: {id, name, set_id} | null, low_price (low at the newest `rbcm_price` date, as the
+  legacy list), first_seen_date, suggestions}`; `suggestions` (at most 3) `{kind: "card",
+  id: "SET-ID", name, set, number, score, free_foils}` by normalised name (the matcher's index,
+  legends also as `tags, name`): exact name 1.0, a close name its similarity (≥ 0.75), ×0.9 for
+  a card outside the set of the product's expansion; `free_foils` are the slots still free
+  (`["N","S"]`, `[null]` or `[]`). A non-single gets `{kind: "product", id, name, set,
+  number: null, score: 1.0, free_foils: []}` when the product of the same id exists. Nine SQL
+  statements (session user included) whatever the page size.
+- `GET /admin/cardmarket/unmatched/<id_product>/candidates` with `q` (2-100 chars) →
+  `{product: {id_product, name, type, category, expansion, date (newest row), link: {set_id,
+  card_id, foil, match_type} | null}, cards: [{set_id, card_id, name, rarity, type, image_src,
+  links: [{id_product, foil}]}], products: [{id, name, set_id, kind, category}]}`. With `q`:
+  cards whose name or `SET-ID` contains it (20, by name); without: the suggested cards (20).
+  `products` only for a non-single (by name with `q`, else the product of the same id). Any
+  Cardmarket id of any date; an unknown one → 404.
+- `POST /admin/cardmarket/links` `{id_product, kind?: "card", card: {set_id, card_id}, foil:
+  "N"|"S"|null}` → 201 `Link` (`match_type: "manual"`, confidence 1.0). Unknown Cardmarket id →
+  404; unknown card → 400 `validation_error` on `card`; already linked → 409 `already_exists`
+  `params {field: "id_product", set_id, card_id, foil}` ("Unlink it first"; the legacy map
+  silently moved it: use `PUT`); the slot belongs to another product → 409 `already_exists`
+  `params {field: "card", linked_id_product}`. Audit `cardmarket.link` `{set_id, card_id, foil}`.
+  `Link` = `{id_product, product_name, product_type (newest row), in_latest_load, set_id,
+  card_id, card_name, foil, match_type, confidence, low_price, price_date (the product's newest
+  price)}`.
+- `PUT /admin/cardmarket/links/<id_product>` `{card, foil}` → `{link, previous}`: unlink and
+  link in one transaction (its own slot is not a conflict); no link → 404, unknown card → 400,
+  slot of another product → 409 as above; any failure leaves the old link. Audit
+  `cardmarket.relink` `{from, to}`.
+- `DELETE /admin/cardmarket/links/<id_product>` → `{link}` (the removed `Link`, so the client
+  can post it back); no link → 404. Audit `cardmarket.unlink` `{set_id, card_id, foil,
+  match_type}`.
+- `GET /admin/cardmarket/links` with `q` (product name, id, card name or number), `set`
+  (substring), `foil` (`N`|`S`|`none`), `match_type` (`auto`|`manual`), `conflicts` (`true`:
+  only the slots held by more than one product, the legacy conflict rule), `page`, `per_page`
+  → `{items: [Link], meta: {page, per_page, total, pages, conflict_slots}}`; by product name
+  (conflicts: by slot). Every link, also of products gone from the latest load. Five SQL
+  statements whatever the page size.
+- `GET /admin/cardmarket/ignored` → `{items: [{id_product, name, low_price, ignored_at}]}`,
+  newest first. `POST` `{id_product, name}` → 201 `{item, created: true}`, or 200 `created:
+  false` when already ignored (audit `cardmarket.ignore` only when created). `DELETE
+  /ignored/<id_product>?name=` restores that name, or every name of the id → `{removed:
+  [{id_product, name}]}`; none → 404. Audit `cardmarket.unignore` `{names}`.
+- `POST /admin/cardmarket/auto-match/preview` (no body) → `{date, proposed (pairs the matcher
+  proposes), clear, doubtful, links: [{id_product, product_name, low_price, set_id, card_id,
+  card_name, foil}], review (first 200), review_total}`; writes nothing.
+- `POST /admin/cardmarket/auto-match/apply` `{max_groups?: 1-200 (default 200)}` → `{date,
+  linked, clear, remaining_clear, doubtful, links}`: links the first `max_groups` clear cases
+  as the daily job does (`auto`, 0.7). The doubtful ones are never linked (the legacy
+  auto-match links every proposal; that stays only in the legacy page). Audit
+  `cardmarket.auto_match` (target `cardmarket`, id the date) `{linked, clear, doubtful,
+  max_groups}`.
+- `GET /admin/cardmarket/review` with `reason` (`ignored_pair`|`no_candidates`|`conflict`|
+  `ambiguous`), `page`, `per_page` → `{items, meta: {page, per_page, total, pages, date,
+  reasons: {reason: count}}}`: the doubtful cases of the latest load, computed now with the
+  daily job's rule (the job result keeps only 200 and goes stale after manual links). Item as
+  in the job result: `{product_id, name, expansion_id, reason, candidates: [{set, id, name}]}`.
+
+Not ported: the legacy unmap by card (`rbset_id` + `rbcar_id`; unlink by Cardmarket id
+instead), the legacy unified mapped + unmapped browser (split into `unmatched` and `links`),
+card/product upsert (CM-c), unmapped expansions (CM-d), the price CSV (dropped).

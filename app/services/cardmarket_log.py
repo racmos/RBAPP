@@ -168,17 +168,24 @@ def _new_products(previous: dict, cap: int) -> tuple[dict, dict]:
     return counts, lists
 
 
-def unmatched_count() -> int:
-    """Singles of the latest product date that are neither mapped nor ignored (the
-    ignore list is keyed by id and name): the current unmatched count."""
+def unmatched_clauses() -> tuple:
+    """The one definition of an unmatched Cardmarket product (any type): a row of the
+    latest product date that is neither mapped nor ignored (the ignore list is keyed by
+    id and name). `unmatched_count` and the CM-b unmatched list both use it."""
     latest = sa.select(sa.func.max(RbcmProduct.rbprd_date)).scalar_subquery()
+    return (
+        RbcmProduct.rbprd_date == latest,
+        ~sa.exists().where(
+            RbcmProductCardMap.rbpcm_id_product == RbcmProduct.rbprd_id_product),
+        ~sa.exists().where(RbcmIgnored.rbig_id_product == RbcmProduct.rbprd_id_product,
+                           RbcmIgnored.rbig_name == RbcmProduct.rbprd_name))
+
+
+def unmatched_count() -> int:
+    """Unmatched singles (`unmatched_clauses`): the current unmatched count."""
     return db.session.execute(
         sa.select(sa.func.count()).select_from(RbcmProduct).where(
-            RbcmProduct.rbprd_date == latest, RbcmProduct.rbprd_type == 'single',
-            ~sa.exists().where(
-                RbcmProductCardMap.rbpcm_id_product == RbcmProduct.rbprd_id_product),
-            ~sa.exists().where(RbcmIgnored.rbig_id_product == RbcmProduct.rbprd_id_product,
-                               RbcmIgnored.rbig_name == RbcmProduct.rbprd_name))
+            *unmatched_clauses(), RbcmProduct.rbprd_type == 'single')
     ).scalar_one()
 
 
