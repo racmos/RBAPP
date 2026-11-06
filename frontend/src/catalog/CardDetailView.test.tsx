@@ -61,6 +61,8 @@ describe('CardDetailView (F2-f S7)', () => {
       'href',
       '/cards/OGS/12',
     );
+    // each printing shows its own non-foil market price
+    expect(screen.getByRole('link', { name: 'OGS · #12, Rare' })).toHaveTextContent('3.40 €');
     expect(screen.getByRole('listitem', { current: 'page' })).toHaveAttribute(
       'aria-label',
       'OGN · #79, Rare',

@@ -74,17 +74,25 @@ export type CardPrice = {
   as_of: string | null;
 };
 
-/** Mini card shape used for printings and related cards (F2-d). */
+/** Mini card shape used for printings and related cards (F2-d), as `card_detail._card_mini`
+ *  sends it: no `number` and no price block, the non-foil `market` and the caller's copies. */
 export type CardMini = {
   set_id: string;
   card_id: string;
   key: string;
-  number: string | null;
   name: string;
+  domains: string[];
+  type: string;
+  supertype: string | null;
   rarity: string;
   image_src: string | null;
+  /** Always null today: the image falls back to `image_src`. */
   image_thumb_src: string | null;
-  price: CardPrice | null;
+  is_base: boolean;
+  /** Non-foil market price (EUR), null when unpriced. */
+  market: number | null;
+  /** The caller's copies of this printing. */
+  owned_total: number;
 };
 
 /** Latest Cardmarket price row for a card (F2-d). */

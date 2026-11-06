@@ -6,6 +6,7 @@ import {
   type PointerEvent,
   type ReactNode,
   type RefObject,
+  type SyntheticEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
@@ -85,7 +86,9 @@ export function Modal({
   }, [open]);
 
   // Native close, from Escape, the close button or the backdrop; or our own dialog.close().
-  const handleClose = () => {
+  // React passes a nested modal's close up the tree: only this dialog's own close counts.
+  const handleClose = (event: SyntheticEvent<HTMLDialogElement>) => {
+    if (event.target !== event.currentTarget) return;
     const target = returnFocusRef?.current ?? opener.current;
     opener.current = null;
     if (latest.current.open) latest.current.onClose();
@@ -95,6 +98,7 @@ export function Modal({
   const handleKeyDown = (event: KeyboardEvent<HTMLDialogElement>) => {
     if (event.key !== 'Escape') return;
     event.preventDefault(); // we close it ourselves, the same way in every browser
+    event.stopPropagation(); // a modal under this one stays open
     event.currentTarget.close();
   };
 

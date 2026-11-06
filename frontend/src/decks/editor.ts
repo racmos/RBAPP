@@ -1,4 +1,5 @@
 import type {
+  CardMini,
   CardSummary,
   DeckCard,
   DeckContentV2,
@@ -52,6 +53,24 @@ export function toDeckCard(card: CardSummary): DeckCard {
   };
 }
 
+/** The deck card of another printing of `card` (a `printings` item of `GET /cards/<set>/<id>`):
+ *  the game facts are the card's, the printing's own are its set, id, art, rarity, price and the
+ *  caller's copies. */
+export function printingCard(card: DeckCard, printing: CardMini): DeckCard {
+  return {
+    ...card,
+    set_id: printing.set_id,
+    card_id: printing.card_id,
+    key: printing.key,
+    rarity: printing.rarity,
+    image_src: printing.image_src,
+    image_thumb_src: printing.image_thumb_src,
+    is_base: printing.is_base,
+    market: printing.market,
+    owned_total: printing.owned_total,
+  };
+}
+
 const same = (a: DeckRef, b: DeckRef) => a.set === b.set && a.id === b.id;
 const copy = (content: DeckContentV2): DeckContentV2 => ({
   ...content,
@@ -96,6 +115,45 @@ export const moveCopy = (
   to: LineZone,
   ref: DeckRef,
 ): DeckContentV2 => addCopy(removeCopy(content, from, ref), to, ref);
+
+/**
+ * `n` copies of printing `from` in `zone` become printing `to`, another printing of the same card
+ * (the art switch). The copies of the name never change, so no rule is asked: in a zone of lines
+ * the copies leave the `from` line (dropped at 0) for the `to` line, merged when the zone has one,
+ * else a new line right after `from`; a battlefield, the legend or the champion is replaced in
+ * place. The same printing, no copies or a `from` the zone lacks leave the content as it is.
+ */
+export function setPrinting(
+  content: DeckContentV2,
+  zone: EditZone | 'legend' | 'champion',
+  from: DeckRef,
+  to: DeckRef,
+  n = 1,
+): DeckContentV2 {
+  if (same(from, to) || n < 1) return content;
+  const target = { set: to.set, id: to.id };
+  if (zone === 'legend' || zone === 'champion') {
+    const slot = content[zone];
+    return slot && same(slot, from) ? { ...copy(content), [zone]: target } : content;
+  }
+  const next = copy(content);
+  if (zone === 'battlefields') {
+    const index = next.battlefields.findIndex((ref) => same(ref, from));
+    if (index < 0) return content;
+    next.battlefields[index] = target;
+    return next;
+  }
+  const lines: DeckRefLine[] = next[zone];
+  const index = lines.findIndex((line) => same(line, from));
+  if (index < 0) return content;
+  const moved = Math.min(n, lines[index].qty);
+  const existing = lines.find((line) => same(line, to));
+  if (existing) existing.qty += moved;
+  else lines.splice(index + 1, 0, { ...target, qty: moved });
+  lines[index].qty -= moved;
+  if (lines[index].qty <= 0) lines.splice(index, 1);
+  return next;
+}
 
 const ZONES = [
   'legend',

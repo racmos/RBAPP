@@ -133,3 +133,16 @@ locations/F5-f; ask the owner).
    browser's `View` / `Fit` and resizable divider, and the backend filters (keywords,
    `legal_for_deck`, available count).
 
+## Card zoom and art switch (owner, 2026-11-06)
+
+**Done (frontend, `feat/f5-card-zoom-printings`):** a tap on a deck row's thumbnail (or on the
+magnifier of a card browser tile, which keeps its click-to-add) opens the full card in a modal so
+it can be read. The "N alt arts" badge opens "Choose art for <name> (<section>)": every printing of
+the card with set-number, rarity, price and "You own N"; in a zone of lines a −/+ stepper per
+printing moves copies from (and back to) the row's printing, so the section keeps its copies; a
+legend, champion or battlefield chooses one printing. A deck line is one printing, so 3 copies can
+use 3 different arts and show as 3 rows (side by side, each with its code); the copies limit still
+counts by name. See `docs/frontend.md` → "Card zoom and art switch".
+
+From now on a deck states the exact printing of every copy: **mounting a deck (F16-e) must take
+from the collection the exact printing (set and id) of each line**, not any copy of the name.

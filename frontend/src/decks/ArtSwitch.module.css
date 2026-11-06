@@ -1,0 +1,90 @@
+@layer components {
+  .hint {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+
+  .item[data-source='true'] {
+    border-color: var(--accent);
+  }
+
+  /* A radio choice: the input, then the same facts. */
+  label.item {
+    grid-template-columns: auto 48px minmax(0, 1fr);
+    cursor: pointer;
+  }
+
+  .radio {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+  }
+
+  .thumb {
+    width: 48px;
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .code {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .source {
+    color: var(--muted);
+  }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .count {
+    min-width: 64px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+}

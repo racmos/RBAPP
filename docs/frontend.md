@@ -873,6 +873,28 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   inline: the `Filter` button (`FilterToggle`, `aria-expanded`) shows the "Filter cards" group under
   the search (`InlineFilters`), because the `Popover` panel would be clipped by the sheet's scrolling
   body and its Escape would also close the sheet. Desktop two panes are unchanged.
+- Card zoom and art switch (owner request 2026-11-06; frontend only, no API change). Every deck
+  row's thumbnail is a button "View <name>" (`decks/CardZoom.tsx`) that opens a `Modal` with the
+  full image (`CardImage size="full"`, the placeholder when there is none), the name as title, the
+  printing code (`OGN-310`) and Close; Escape and the backdrop close it and focus returns to the
+  thumb. Card browser tiles keep their click-to-add and get a magnifier "View <name>" in the bottom
+  left corner, a sibling of the tile button inside its `li` (no nested buttons; the click never adds).
+  A deck line is one printing, so a row whose card has alt arts (`variants > 1`) or whose name has
+  another row in the section shows its printing code (`data-slot="printing"`), and rows of one name
+  sit side by side (first appearance, then code). With an editor the "N alt arts" badge is a button
+  "Change art of <name>" (disabled with the reason offline, before the rules load or with unknown
+  cards; a plain badge without an editor) that opens "Choose art for <name> (<section>)"
+  (`decks/ArtSwitch.tsx`): the printings of `GET /cards/<set>/<id>` (`useCardDetail`; each
+  `CardMini` has `market` and the caller's `owned_total`) with thumb, code, rarity, price and "You
+  own N". In main, runes, sideboard and workbench each other printing has a −/+ stepper: + moves one
+  copy from the row's printing, − moves it back, so the section keeps its copies ("This section
+  keeps 3 copies of Discipline."; + is disabled with "OGN-310 has no copies left to move."). Legend,
+  champion and battlefields choose one printing with radios. Apply is one `editor.changeArt(zone,
+  moves)` edit (pure `setPrinting` in `editor.ts`, no rule asked because the copies per name do not
+  change; the new printings join the book via `printingCard`, so rows, legality and value read them),
+  autosaved, with an "Art of <name> changed." toast and Undo; Cancel changes nothing. The copies
+  limit still counts by name, so 3 copies over 3 printings are legal and a 4th is refused. A
+  `Modal` over a `Modal` (a zoom inside the phone card browser sheet) closes only the top one.
 - Browser filters (F5-i step 3): a `Filter` button next to the search ("Filter, N active" when
   filters are on) opens a `components/ui/Popover` (non-modal dialog under the button: focus moves in,
   Escape and the close button return it to the button, a press outside closes it) with the groups

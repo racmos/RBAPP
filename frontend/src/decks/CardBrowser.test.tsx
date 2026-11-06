@@ -247,7 +247,7 @@ describe('Card browser of the two-pane editor (F5-i step 2)', () => {
 
   it('shows no energy or might circle (the art has them), only the copies already in the deck', async () => {
     const { browser } = await openBrowser();
-    const tile = within(browser).getByRole('button', { name: /Ayla/ });
+    const tile = within(browser).getByRole('button', { name: /^Add Ayla/ });
     expect(tile.querySelector('[data-slot="energy"]')).toBeNull();
     expect(tile.querySelector('[data-slot="might"]')).toBeNull();
     const copies = within(browser)

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import { withDecks } from '@/test/decks';
-import { rivenDeck } from '@/test/fixtures/decks';
+import { mainCards, rivenDeck } from '@/test/fixtures/decks';
 import { signedIn } from '@/test/locations';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
@@ -105,7 +105,9 @@ describe('DeckView at 390 px (F5-h stage 1)', () => {
     expect(within(discipline).getByText('Spell')).toBeVisible();
     expect(within(discipline).getByRole('img', { name: 'Calm' })).toBeVisible();
     expect(within(discipline).getByText('0.25 €')).toBeVisible();
-    expect(within(discipline).getByRole('img', { name: 'Discipline' })).toBeInTheDocument();
+    // the thumbnail is the button that zooms the card
+    const thumb = within(discipline).getByRole('button', { name: 'View Discipline' });
+    expect(thumb.querySelector('img')).toHaveAttribute('src', mainCards[0].image_src);
     const herder = rowOf('Stellacorn Herder');
     expect(within(herder).getByText('No price')).toBeVisible();
 

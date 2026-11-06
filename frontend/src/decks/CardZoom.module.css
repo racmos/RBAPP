@@ -1,0 +1,26 @@
+@layer components {
+  .figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+
+  /* As big as the dialog allows while the whole card stays in view (352 x 492 ratio). */
+  .image {
+    width: min(100%, 420px, calc((100dvh - 200px) * 352 / 492));
+  }
+
+  .code {
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+}

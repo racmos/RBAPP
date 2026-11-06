@@ -1,5 +1,7 @@
 import { join } from 'node:path';
-import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { SRC_DIR, declsFor, readCss } from '@/test/css';
 import { createI18n } from '@/i18n';
@@ -43,6 +45,55 @@ describe('Modal (F2-f S10)', () => {
     await renderModal({ size: 'xl' });
     expect(screen.getByRole('heading', { name: 'Test modal' })).toBeVisible();
     expect(screen.getByText('Content')).toBeVisible();
+  });
+});
+
+/** A sheet with a button that opens a second modal over it (a card zoom in the card browser). */
+function Nested() {
+  const [outer, setOuter] = useState(true);
+  const [inner, setInner] = useState(false);
+  return (
+    <>
+      <p>{outer ? 'outer open' : 'outer closed'}</p>
+      <Modal open={outer} title="Outer" onClose={() => setOuter(false)}>
+        <button type="button" onClick={() => setInner(true)}>
+          Open inner
+        </button>
+        <Modal open={inner} title="Inner" onClose={() => setInner(false)}>
+          Inner content
+        </Modal>
+      </Modal>
+    </>
+  );
+}
+
+describe('Modal over a modal', () => {
+  async function renderNested() {
+    const i18n = await createI18n();
+    const { I18nextProvider } = await import('react-i18next');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Nested />
+      </I18nextProvider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Open inner' }));
+    return screen.getByRole('dialog', { name: 'Inner' });
+  }
+
+  it('Escape closes only the top one, and focus goes back to its opener', async () => {
+    const inner = await renderNested();
+    await userEvent.keyboard('{Escape}');
+    expect(inner).not.toHaveAttribute('open');
+    expect(screen.getByRole('dialog', { name: 'Outer' })).toHaveAttribute('open');
+    expect(screen.getByText('outer open')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open inner' })).toHaveFocus();
+  });
+
+  it('its close button closes only the top one', async () => {
+    const inner = await renderNested();
+    await userEvent.click(within(inner).getByRole('button', { name: 'Close' }));
+    expect(inner).not.toHaveAttribute('open');
+    expect(screen.getByText('outer open')).toBeInTheDocument();
   });
 });
 

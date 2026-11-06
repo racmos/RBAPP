@@ -1,6 +1,6 @@
 import { http } from 'msw';
-import type { DeckDetail, DeckListItem } from '@/api/types';
-import { deckDetails, deckList } from './fixtures/decks';
+import type { DeckCard, DeckDetail, DeckListItem } from '@/api/types';
+import { deckDetails, deckList, printingDetail } from './fixtures/decks';
 import { API, failure, ok } from './msw/handlers';
 import { server } from './msw/server';
 import type { Sent } from './locations';
@@ -38,4 +38,14 @@ export function recordDeckRequests() {
     });
   });
   return sent;
+}
+
+/** `GET /cards/:set/:id` of any of `printings` lists them all as its printings (one name). */
+export function withPrintings(printings: DeckCard[]) {
+  server.use(
+    http.get(`${API}/cards/:setId/:cardId`, ({ params }) => {
+      const of = printings.find((c) => c.set_id === params.setId && c.card_id === params.cardId);
+      return of ? ok(printingDetail(of, printings)) : failure(404, { error: 'Not Found' });
+    }),
+  );
 }
