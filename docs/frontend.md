@@ -304,6 +304,25 @@ selected the bulk bar sticks to the bottom of the viewport (opaque, above the he
 page" picks 50 / 100 / 200 rows (`per_page` in the URL, 50 is not written; a change goes back
 to page 1).
 
+**Cardmarket (CM-a).** `/admin/cardmarket` (`src/admin/cardmarket/`, nav entry `cardmarket`
+between Products and Riot) is the log of the daily Cardmarket price load (`docs/api.md` →
+"Cardmarket load log (CM-a)"). The status header (`GET /admin/cardmarket/status`) shows the last
+load and its status, "Loaded today" or the "No load today yet" warning, prices as of, the latest
+`daily_prices` job (times, error message) and the unmatched products / unmapped expansions counts
+(plain text until the matching screens exist). "Load now" asks first, then
+`POST /admin/cardmarket/load` ("Load queued."; 409 `job_running` → "A Cardmarket load is already
+queued or running."); it is disabled offline and while a job is queued or running, and the
+status is polled every 3 s meanwhile; when the job ends the days, the open day and the recent
+jobs are refetched. The load days (`GET /admin/cardmarket/loads`, 30 then "Show more" to 120) are
+a table from 860 px and cards below (date, status, the three files with rows and status,
+products, new products highlighted when > 0, unmatched on the newest day, duration, "Details").
+"Details" opens the day (`GET /admin/cardmarket/loads/<date>`) in a side drawer (bottom sheet on
+phones): every file run, the new products ("N more" when truncated), the job and the known
+numbers of its result (`format.ts::resultRows`, defensive) plus the raw result in a collapsed
+`<details>`. "Recent jobs" lists the last 10 `daily_prices` jobs (`GET /admin/jobs?kind=daily_prices&limit=10`)
+so a failed load, which leaves no history row, is visible with its message. API timestamps are
+naive UTC and are read as UTC (`format.ts::asUtc`).
+
 ## Products (F14-e)
 
 `frontend/src/products/` is the products section (nav entry `products`, `spa`, icon `gift`, after

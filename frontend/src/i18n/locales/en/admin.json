@@ -6,6 +6,7 @@
     "sets": "Sets",
     "cards": "Cards",
     "products": "Products",
+    "cardmarket": "Cardmarket",
     "riot": "Riot",
     "changes": "Changes",
     "changesCount": "Changes ({{count}})"
@@ -189,6 +190,98 @@
       "schedule": "Scheduled",
       "manual": "Manual"
     }
+  },
+  "cardmarket": {
+    "title": "Cardmarket",
+    "subtitle": "The daily Cardmarket price load: what ran, what was loaded and what is new.",
+    "statusTitle": "Status",
+    "lastLoad": "Last load",
+    "noLoad": "No load yet.",
+    "loadedToday": "Loaded today",
+    "notToday": "No load today yet",
+    "pricesAsOf": "Prices as of",
+    "latestJob": "Latest job",
+    "noJob": "No load job yet.",
+    "unmatched": "Unmatched products: {{count}}",
+    "unmappedExpansions": "Unmapped expansions: {{count}}",
+    "times": {
+      "queued": "Queued {{time}}",
+      "started": "Started {{time}}",
+      "finished": "Finished {{time}}",
+      "took": "Took {{duration}}"
+    },
+    "loadNow": "Load now",
+    "confirm": {
+      "title": "Load the Cardmarket files now?",
+      "body": "The price guide, singles and non-singles files are downloaded and loaded, then the clear matches are linked. It takes a few minutes."
+    },
+    "queued": "Load queued.",
+    "loadRunning": "A Cardmarket load is already queued or running.",
+    "daysTitle": "Load days",
+    "caption": "Cardmarket load days",
+    "emptyTitle": "No loads yet",
+    "emptyBody": "The daily load runs at 06:30 (Madrid time). Use Load now to run it.",
+    "showMore": "Show more",
+    "columns": {
+      "date": "Date",
+      "status": "Status",
+      "files": "Files",
+      "products": "Products",
+      "newProducts": "New products",
+      "unmatched": "Unmatched",
+      "duration": "Duration",
+      "actions": "Actions"
+    },
+    "details": "Details",
+    "detailsOf": "Details of {{date}}",
+    "dayStatus": {
+      "success": "Success",
+      "partial": "Partial",
+      "error": "Error",
+      "skipped": "Skipped"
+    },
+    "fileType": {
+      "price_guide": "Price guide",
+      "singles": "Singles",
+      "nonsingles": "Non-singles"
+    },
+    "fileRows": "{{rows}} rows",
+    "duration": {
+      "seconds": "{{s}} s",
+      "minutes": "{{m}} min {{s}} s",
+      "hours": "{{h}} h {{m}} min"
+    },
+    "detail": {
+      "title": "Load of {{date}}",
+      "files": "Files",
+      "newProducts": "New products",
+      "noNewProducts": "No new products.",
+      "more": "{{count}} more",
+      "job": "Job",
+      "noJob": "No job is linked to this day.",
+      "result": "Result",
+      "rawResult": "Raw result"
+    },
+    "result": {
+      "priceRows": "Price rows",
+      "productsToday": "Products loaded",
+      "newProducts": "New products",
+      "linked": "Auto-linked",
+      "proposed": "Proposed matches",
+      "review": "To review",
+      "queued": "Follow-up jobs"
+    },
+    "jobFields": {
+      "status": "Status",
+      "queued": "Queued at",
+      "started": "Started at",
+      "finished": "Finished at",
+      "message": "Message"
+    },
+    "recentTitle": "Recent jobs",
+    "recentEmpty": "No runs yet.",
+    "requestedBy": "By {{user}}",
+    "scheduled": "Scheduled"
   },
   "job": {
     "status": {

@@ -104,6 +104,21 @@ describe('AdminLayout (F13-a S6)', () => {
     );
   });
 
+  it('lists the sections in order, Cardmarket after Products (CM-a)', async () => {
+    adminApi();
+    await renderApp({ path: '/admin', width: 1280 });
+    const nav = await screen.findByRole('navigation', { name: NAV_LABEL }, { timeout: 10000 });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Overview', 'Sets', 'Cards', 'Products', 'Cardmarket', 'Riot', 'Changes']);
+    expect(within(nav).getByRole('link', { name: 'Cardmarket' })).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/cardmarket',
+    );
+  });
+
   it('shows no count when nothing is pending', async () => {
     adminApi();
     await renderApp({ path: '/admin', width: 1280 });
