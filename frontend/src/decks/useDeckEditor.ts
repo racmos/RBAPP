@@ -216,14 +216,18 @@ export function useDeckEditor(deck: DeckDetail) {
     if (canEdit && moveReason(ref, from, to) === null) edit(moveCopy(content, from, to, ref));
   };
 
-  /** A card picked in a section's search: checked, then added (or refused with the reason). */
-  const pick = (found: CardSummary, zone: EditZone | 'legend' | 'champion') => {
-    if (!canEdit || !rules) return;
+  /** A card picked in the card browser: checked, then added (or refused with the reason).
+   *  True when the deck took it. */
+  const pick = (found: CardSummary, zone: EditZone | 'legend' | 'champion'): boolean => {
+    if (!canEdit || !rules) return false;
     const card: DeckCard = toDeckCard(found);
     const ref = { set: card.set_id, id: card.card_id };
     const withBook = { ...book, [card.key]: card };
     const rulesCards = rulesCardsOf(withBook);
-    const fail = (message: string) => pushToast({ kind: 'error', message });
+    const fail = (message: string) => {
+      pushToast({ kind: 'error', message });
+      return false;
+    };
     if (zone === 'legend' || zone === 'champion') {
       const result =
         zone === 'legend'
@@ -238,12 +242,13 @@ export function useDeckEditor(deck: DeckDetail) {
           (content.champion !== null && next.champion === null));
       if (purged) removeWithUndo(next, t('edit.legendChanged'));
       else edit(next);
-      return;
+      return true;
     }
     const reason = addReason(ref, zone, withBook);
     if (reason) return fail(reason);
     setBook(withBook);
     edit(addCopy(content, zone, ref));
+    return true;
   };
 
   const clearSlot = (slot: 'legend' | 'champion') => {

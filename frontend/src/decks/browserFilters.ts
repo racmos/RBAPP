@@ -1,4 +1,7 @@
 import type { CardListParams } from '@/api/types';
+import { refKey } from './labels';
+import { COLORLESS } from './rules';
+import type { DeckEditor } from './useDeckEditor';
 
 /** The cost groups of the filter panel; the top value means "and more" (`7+`). */
 export const RANGES = { energy: 7, power: 3, might: 7 } as const;
@@ -115,4 +118,32 @@ export function countFilters(filters: BrowserFilters): number {
     RANGE_KEYS.filter((key) => filters[key] !== null).length +
     (filters.owned ? 1 : 0)
   );
+}
+
+/** A zone of the deck that cards can be picked for. */
+export type PickZone =
+  'legend' | 'champion' | 'main' | 'battlefields' | 'runes' | 'sideboard' | 'workbench';
+
+/** The `GET /cards` filters of each zone of the card browser, in its desktop tabs and in the
+ *  mobile sheet (F5-i: the sideboard takes what the main deck takes). With a legend, the
+ *  champion and the cards only list its domains (colourless cards fit any legend). */
+export function pickFilters(zone: PickZone, editor: DeckEditor): Partial<CardListParams> {
+  const legend = editor.content.legend ? editor.book[refKey(editor.content.legend)] : undefined;
+  const identity: Partial<CardListParams> = legend
+    ? { domain: [...editor.identityDomains, COLORLESS], domain_match: 'subset' }
+    : {};
+  switch (zone) {
+    case 'legend':
+      return { type: ['Legend'] };
+    case 'champion':
+      return { type: ['Unit'], supertype: ['Champion'], tag: legend?.tags ?? [], ...identity };
+    case 'runes':
+      return { type: ['Rune'], domain: editor.identityDomains };
+    case 'battlefields':
+      return { type: ['Battlefield'] };
+    case 'workbench':
+      return {};
+    default:
+      return { type: ['Unit', 'Spell', 'Gear'], exclude_supertype: ['Token'], ...identity };
+  }
 }

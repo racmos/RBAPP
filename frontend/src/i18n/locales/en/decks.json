@@ -194,15 +194,6 @@
       "sideboard": "To side",
       "workbench": "To bench"
     },
-    "pick": {
-      "legend": "Choose a legend",
-      "champion": "Choose the champion",
-      "main": "Add to the main deck",
-      "battlefields": "Add a battlefield",
-      "runes": "Add runes",
-      "sideboard": "Add to the sideboard",
-      "workbench": "Add to the workbench"
-    },
     "needRules": "Loading the game rules.",
     "offDomain": "This card is outside the legend's domains.",
     "signatureTag": "Signature cards need a tag shared with the legend.",
@@ -393,6 +384,12 @@
         "might": "Might {{value}}"
       }
     }
+  },
+  "sheet": {
+    "open": "Add cards",
+    "openIn": "Add cards to {{zone}}",
+    "title": "Add to {{section}}",
+    "done": "Done"
   },
   "workspace": "Deck workspace",
   "tabs": {

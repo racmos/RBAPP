@@ -255,7 +255,7 @@ function WorkspaceTabs({ editor, twoPane }: { editor: DeckEditor; twoPane: boole
         <LegalityBlock editor={editor} />
         <Completeness done={editor.done} />
         <UnknownCards editor={editor} />
-        <DeckSections editor={editor} pickers={!twoPane} />
+        <DeckSections editor={editor} addCards={!twoPane} />
       </div>
       <div
         role="tabpanel"

@@ -1,14 +1,12 @@
-import { useId, useMemo, type ReactNode } from 'react';
+import { useId, useMemo, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CardListParams, DeckCard, DeckRef } from '@/api/types';
+import type { DeckCard, DeckRef } from '@/api/types';
 import { CardImage, DomainPips } from '@/components/card';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
-import { CardCombobox } from '@/catalog';
-import { COLORLESS } from './rules';
 import { useEnumLabel } from '@/i18n';
 import { formatMoney } from '@/lib/format';
-import type { EditZone } from './editor';
+import { AddCardsSheet } from './AddCardsSheet';
 import { cardLabel, refKey } from './labels';
 import { useRuneCards } from './queries';
 import type { DeckEditor } from './useDeckEditor';
@@ -182,30 +180,6 @@ export function CardRow({ card, qty, zone, editor }: RowProps) {
   );
 }
 
-/** The `GET /cards` filters of each section's search (F5-h stage 2) and of the browser tabs
- *  (F5-i: the sideboard takes what the main deck takes). With a legend, the champion and the
- *  cards only list its domains (colourless cards fit any legend). */
-export function pickFilters(zone: SectionKey, editor: DeckEditor): Partial<CardListParams> {
-  const legend = editor.content.legend ? editor.book[refKey(editor.content.legend)] : undefined;
-  const identity: Partial<CardListParams> = legend
-    ? { domain: [...editor.identityDomains, COLORLESS], domain_match: 'subset' }
-    : {};
-  switch (zone) {
-    case 'legend':
-      return { type: ['Legend'] };
-    case 'champion':
-      return { type: ['Unit'], supertype: ['Champion'], tag: legend?.tags ?? [], ...identity };
-    case 'runes':
-      return { type: ['Rune'], domain: editor.identityDomains };
-    case 'battlefields':
-      return { type: ['Battlefield'] };
-    case 'workbench':
-      return {};
-    default:
-      return { type: ['Unit', 'Spell', 'Gear'], exclude_supertype: ['Token'], ...identity };
-  }
-}
-
 function AutoRunes({ editor }: { editor: DeckEditor }) {
   const { t } = useTranslation('decks');
   const runes = useRuneCards(editor.canEdit ? editor.identityDomains : []);
@@ -249,9 +223,9 @@ function groupByType(rows: Row[]) {
     }));
 }
 
-type SectionProps = { name: SectionKey; editor: DeckEditor; pickers: boolean };
+type SectionProps = { name: SectionKey; editor: DeckEditor; addCards: boolean };
 
-function Section({ name, editor, pickers }: SectionProps) {
+function Section({ name, editor, addCards }: SectionProps) {
   const { t } = useTranslation('decks');
   const { typeLabel } = useEnumLabel();
   const { content, book, done } = editor;
@@ -272,9 +246,10 @@ function Section({ name, editor, pickers }: SectionProps) {
     ? `${sectionDone.have}/${sectionDone.need}`
     : String(rows.reduce((total, row) => total + row.qty, 0));
   const slotFull = (name === 'legend' || name === 'champion') && rows.length > 0;
+  const summary = useRef<HTMLElement>(null);
   return (
     <details className={styles.section} open>
-      <summary>
+      <summary ref={summary}>
         <span className={styles.sectionName}>{t(`section.${name}`)}</span>
         <span className={styles.sectionCount}>{count}</span>
       </summary>
@@ -302,35 +277,31 @@ function Section({ name, editor, pickers }: SectionProps) {
         </ul>
       )}
       {name === 'runes' && <AutoRunes editor={editor} />}
-      {pickers && editor.canEdit && !slotFull && (
-        <CardCombobox
-          className={styles.pick}
-          label={t(`edit.pick.${name}`)}
-          filters={pickFilters(name, editor)}
-          onSelect={(card) => editor.pick(card, name as EditZone | 'legend' | 'champion')}
-        />
+      {addCards && editor.canEdit && name !== 'workbench' && (
+        <AddCardsSheet zone={name} editor={editor} full={slotFull} fallbackFocus={summary} />
       )}
     </details>
   );
 }
 
 /** Legend, Champion, Main deck, Battlefields, Runes, Sideboard; the workbench only with cards
- *  (the "To bench" moves fill it). `pickers` false leaves out each section's search (the card
- *  browser of the two-pane editor fills the deck instead). */
+ *  (the "To bench" moves fill it). `addCards` gives each deck section an `Add cards` button that
+ *  opens the card browser in a sheet (one column); false leaves them out (the card browser of
+ *  the two-pane editor fills the deck instead). */
 export function DeckSections({
   editor,
-  pickers = true,
+  addCards = true,
 }: {
   editor: DeckEditor;
-  pickers?: boolean;
+  addCards?: boolean;
 }) {
   const showBench = editor.content.workbench.length > 0;
   return (
     <div className={styles.sections}>
       {SECTION_ORDER.map((name) => (
-        <Section key={name} name={name} editor={editor} pickers={pickers} />
+        <Section key={name} name={name} editor={editor} addCards={addCards} />
       ))}
-      {showBench && <Section name="workbench" editor={editor} pickers={pickers} />}
+      {showBench && <Section name="workbench" editor={editor} addCards={addCards} />}
     </div>
   );
 }
