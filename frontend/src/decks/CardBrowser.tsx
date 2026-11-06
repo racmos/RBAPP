@@ -59,16 +59,6 @@ function Tile({ card, tab, editor, onChosen }: TileProps) {
         }}
       >
         <CardImage card={card} size="tile" decorative />
-        {card.energy !== null && (
-          <span className={styles.energy} data-slot="energy">
-            {card.energy}
-          </span>
-        )}
-        {card.might !== null && (
-          <span className={styles.might} data-slot="might">
-            {card.might}
-          </span>
-        )}
         {copies > 0 && (
           <span className={styles.copies} data-slot="copies">
             {t('row.qty', { qty: copies })}
