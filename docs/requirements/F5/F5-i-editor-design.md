@@ -96,11 +96,20 @@ locations/F5-f; ask the owner).
    `legal_for_deck`, available count).
 5. Full Art tab.
 6. Versions modal (diff, Restore) and export menu; import validation panel live.
+   **Versions + export (clipboard) done (frontend, `feat/f5-versions-export`):** a `Versions` modal
+   (newest first, Current badge, date, note, per-version diff against the previous one by zone,
+   "First version." for the oldest, Restore with confirmation that also refreshes the open editor)
+   and an `Export` menu in the editor: Copy decklist (the text export to the clipboard, read-only
+   textarea fallback) and Share deck (the share link dialog). Owner, 2026-11-06: export goes to the
+   clipboard, never a file, so the editor's download link and the deck list's "Download text" are
+   gone. Still left in F5-i: the Full Art tab (step 5), the live import validation panel, the mobile
+   bottom sheet (decision 4), the deck-list popover placement near the bottom of the viewport. Not
+   planned: Copy deck code and Download wallpaper.
 7. Deck list screen (next menu the owner asked for).
    **Deck list grid done (frontend, `feat/f5-deck-list-grid`):** `/decks` is a grid of cards from 860 px
    and one column below, with a toolbar (search, mode, legality, sort in the URL, Clear filters,
-   "N of M decks") and per-deck Open, Duplicate, Copy/Download text, Copy share link / Stop sharing and
-   Delete; Duplicate needs `POST /decks/<id>/duplicate` (#107) deployed. See `docs/frontend.md` →
+   "N of M decks") and per-deck Open, Duplicate, Copy text (Download text removed in step 6), Copy share
+   link / Stop sharing and Delete; Duplicate needs `POST /decks/<id>/duplicate` (#107) deployed. See `docs/frontend.md` →
    "Decks UI (F5-h)".
 
 ## Decisions (owner, 2026-11-05)

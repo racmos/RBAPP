@@ -771,8 +771,8 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   step through them); "Clear filters", "N of M decks", and "No decks match" (with Clear filters) apart
   from "No decks yet" (no toolbar). Per card: "Open <name>" and "More actions for <name>" (a small
   `Popover`, disabled offline) with Duplicate (`POST /decks/<id>/duplicate`, #107; toast "Duplicated as
-  <name>." with Open), Copy deck text (the export read as text and copied), Download text (the export
-  link), Copy share link (creates the link when missing, then copies it and shows it), Stop sharing
+  <name>." with Open), Copy deck text (the export read as text and copied; there is no download, owner
+  2026-11-06), Copy share link (creates the link when missing, then copies it and shows it), Stop sharing
   and Delete deck (the editor's confirmation; toast "Deleted <name>.", no undo). No action leaves
   the list. `Popover` gained `size="sm"`, `disabled` and a `children(close)` form.
 - `DeckView` (`/decks/:id`, unknown or another user's id → the not found page): header (name, mode,
@@ -812,10 +812,14 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   catalog" (never removed silently).
 - Actions (`DeckActions.tsx`): "Rename or change mode" (`PATCH`, only the changed keys; a taken name
   shows "You already have a deck with this name."), "Save as version" (optional note, `POST
-  …/versions`; disabled until everything is saved), "Share link" (create / copy / stop sharing,
-  `POST`/`DELETE …/share`; the public page `/d/:slug` is F5-m), "Export text" (plain download link
-  to `GET …/export?format=text`), "Delete deck" (`ConfirmDialog`, then back to `/decks`). On `/decks`
-  (`DeckCreate.tsx`): "New deck" (name + mode, `POST /decks`, opens it) and "Import" (textarea, name,
+  …/versions`; disabled until everything is saved; refreshes the versions list), "Versions" (the
+  modal below), "Export" (a `Popover` menu, disabled offline; owner 2026-11-06: export goes to the
+  clipboard, never a downloaded file): "Copy decklist" reads `GET …/export?format=text` and writes
+  it with `navigator.clipboard.writeText` ("Decklist copied."); when the clipboard refuses, a
+  "Copy decklist" modal shows the text in a read-only, labelled textarea ("Could not copy: select
+  the text and copy it."); "Share deck" opens the "Share link" dialog (create / copy / stop
+  sharing, `POST`/`DELETE …/share`; the public page `/d/:slug` is F5-m), "Delete deck"
+  (`ConfirmDialog`, then back to `/decks`). On `/decks` (`DeckCreate.tsx`): "New deck" (name + mode, `POST /decks`, opens it) and "Import" (textarea, name,
   mode and one button, owner feedback 2026-11-05: there is no Preview button). "Import deck" checks
   the text first (`POST /decks/import/preview`): no warnings imports at once (`POST /decks/import`)
   and opens the new deck; any warning (hard limits included) stops there, the validation panel (to
@@ -824,6 +828,21 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   hard limits with `decks:limit`), and the button becomes "Import anyway" (the import always loads).
   Editing the text turns it back into "Import deck" and the panel says the text changed.
   Offline disables every write.
+- Versions modal (`DeckVersions.tsx`, F5-i step 6): `GET …/versions` newest first, each row
+  "Version N" with a "Current" badge on the current one, date and note ("Restored from version
+  3."). A disclosure button ("Changes in version N", `aria-expanded`) opens a region with the diff
+  against the next older version (`GET …/diff?a=<older>&b=<seq>`, `useDeckDiff`, never cached as
+  fresh because autosave rewrites the current version): one block per zone with changes, "+1
+  Rakelstake", "−1 Hush", "Discipline 2 → 3" (names from the diff's `cards`), "No changes." when
+  nothing changed and "First version." for the oldest (no request). Older rows have "Restore"
+  ("Restore version N", disabled offline and with "Wait until the changes are saved." while the
+  editor is not saved), a `ConfirmDialog` "Restore version N?" / "Your current deck stays in the
+  history as a version.", then `POST …/versions/<seq>/restore`: the 201 `VersionDetail` plus the
+  head becomes the editor's deck through `editor.reset(detail)` (content, book and server deck
+  replaced, the revision marked saved, `deckKey` seeded), so the open editor shows the restored
+  cards and the autosave never sends the replaced content; the modal closes with "Version N
+  restored as version M.". Errors are toasts; the list has loading, error with retry and empty
+  states. `Popover` gained `headingLevel` (the Export menu uses an `h2` under the page `h1`).
 - Two-pane editor (F5-i step 2, `docs/requirements/F5/F5-i-editor-design.md`): from `lg` (960 px,
   `useMediaQuery(up('lg'))`) and only while editing is possible (`editor.canEdit`: rules loaded,
   online, no unknown cards) `DeckView` puts `CardBrowser` left of the workspace (`data-layout=

@@ -783,6 +783,21 @@ export type DeckVersionItem = {
 };
 export type DeckVersionDetail = DeckVersionItem & DeckBody;
 
+/** One printing whose copies differ between two versions (1 for legend, champion, battlefield). */
+export type DeckDiffEntry = { set: string; id: string; before: number; after: number };
+export type DeckDiffZone = {
+  added: DeckDiffEntry[];
+  removed: DeckDiffEntry[];
+  changed: DeckDiffEntry[];
+};
+/** `GET /decks/:id/diff?a=&b=`: per zone from `a` to `b`; `cards` names the known printings. */
+export type DeckDiff = {
+  a: number;
+  b: number;
+  zones: Record<DeckZoneName, DeckDiffZone>;
+  cards: Record<string, DeckCard>;
+};
+
 export type DeckCreateBody = { name: string; mode: GameMode };
 export type DeckPatchBody = Partial<{ name: string; mode: GameMode; visibility: DeckVisibility }>;
 

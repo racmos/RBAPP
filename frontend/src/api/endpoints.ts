@@ -1,4 +1,4 @@
-import { API_BASE, getSession, request, requestFile, requestWithMeta } from './client';
+import { getSession, request, requestFile, requestWithMeta } from './client';
 import type {
   AdminCatalog,
   CaptchaData,
@@ -16,6 +16,7 @@ import type {
   DeckContentV2,
   DeckCreateBody,
   DeckDetail,
+  DeckDiff,
   DeckHead,
   DeckImportBody,
   DeckImportPreview,
@@ -447,6 +448,14 @@ export const createDeckVersion = (id: number, note?: string) =>
     body: note ? { note } : {},
   });
 
+/** Version `seq` copied into a new current version (note `Restored from version <seq>.`). */
+export const restoreDeckVersion = (id: number, seq: number) =>
+  request<DeckVersionDetail>(`/decks/${id}/versions/${seq}/restore`, { method: 'POST' });
+
+/** What changed from version `a` to version `b`, per zone and printing. */
+export const diffDeckVersions = (id: number, a: number, b: number, signal?: AbortSignal) =>
+  request<DeckDiff>(`/decks/${id}/diff?a=${a}&b=${b}`, { signal });
+
 export const previewDeckImport = (text: string) =>
   request<DeckImportPreview>('/decks/import/preview', { method: 'POST', body: { text } });
 
@@ -456,10 +465,7 @@ export const importDeck = (body: DeckImportBody) =>
     body,
   });
 
-/** The text download (`Content-Disposition: attachment`), for a plain link. */
-export const deckExportHref = (id: number) => `${API_BASE}/decks/${id}/export?format=text`;
-
-/** The same export read as text (to copy it). */
+/** The text export read as text (the app copies it, never downloads it). */
 export const exportDeckText = async (id: number, signal?: AbortSignal) =>
   (await requestFile(`/decks/${id}/export?format=text`, { signal })).blob.text();
 

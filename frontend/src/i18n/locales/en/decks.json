@@ -54,7 +54,6 @@
     "copyText": "Copy deck text",
     "textCopied": "Deck text copied.",
     "textCopyFailed": "Could not copy the deck text.",
-    "download": "Download text",
     "copyLink": "Copy share link",
     "deleted": "Deleted {{name}}."
   },
@@ -233,8 +232,8 @@
     "settings": "Rename or change mode",
     "version": "Save as version",
     "versionWait": "Wait until the changes are saved.",
-    "share": "Share link",
-    "export": "Export text",
+    "versions": "Versions",
+    "export": "Export",
     "delete": "Delete deck"
   },
   "settings": {
@@ -252,6 +251,36 @@
     "noteHint": "Up to 200 characters.",
     "save": "Save version",
     "saved": "Saved as version {{seq}}."
+  },
+  "versions": {
+    "title": "Versions",
+    "list": "Versions of the deck",
+    "loading": "Loading the versions",
+    "error": "The versions could not be loaded.",
+    "empty": "No versions yet.",
+    "current": "Current",
+    "changes": "Changes in version {{seq}}",
+    "loadingChanges": "Loading the changes",
+    "changesError": "The changes could not be loaded.",
+    "first": "First version.",
+    "none": "No changes.",
+    "added": "+{{qty}} {{name}}",
+    "removed": "−{{qty}} {{name}}",
+    "changed": "{{name}} {{before}} → {{after}}",
+    "restore": "Restore",
+    "restoreLabel": "Restore version {{seq}}",
+    "confirmTitle": "Restore version {{seq}}?",
+    "confirmBody": "Your current deck stays in the history as a version.",
+    "restored": "Version {{seq}} restored as version {{current}}."
+  },
+  "export": {
+    "title": "Export deck",
+    "copy": "Copy decklist",
+    "copied": "Decklist copied.",
+    "share": "Share deck",
+    "copyTitle": "Copy decklist",
+    "copyFailed": "Could not copy: select the text and copy it.",
+    "text": "Decklist"
   },
   "share": {
     "title": "Share link",

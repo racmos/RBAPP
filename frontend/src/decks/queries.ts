@@ -3,6 +3,7 @@ import {
   createDeck,
   createDeckVersion,
   deleteDeck,
+  diffDeckVersions,
   duplicateDeck,
   exportDeckText,
   getDeck,
@@ -13,6 +14,7 @@ import {
   listDecks,
   patchDeck,
   previewDeckImport,
+  restoreDeckVersion,
   shareDeck,
   unshareDeck,
 } from '@/api/endpoints';
@@ -51,7 +53,7 @@ export function useDeck(id: number) {
   });
 }
 
-/** The versions of a deck, newest first (the versions screen itself is F5-j). */
+/** The versions of a deck, newest first (the Versions modal, F5-i step 6). */
 export function useDeckVersions(id: number, enabled = true) {
   return useQuery({
     queryKey: versionsKey(id),
@@ -69,6 +71,18 @@ export function useDeckVersion(id: number, seq: number) {
     staleTime: STALE_MS,
     retry,
     enabled: validId(id) && Number.isInteger(seq) && seq > 0,
+  });
+}
+
+/** What changed from version `a` to `b`. Never cached as fresh: autosave rewrites the current
+ *  version in place, so a diff that ends there changes while the deck is edited. */
+export function useDeckDiff(id: number, a: number, b: number) {
+  return useQuery({
+    queryKey: [...versionsKey(id), 'diff', a, b] as const,
+    queryFn: ({ signal }) => diffDeckVersions(id, a, b, signal),
+    staleTime: 0,
+    retry,
+    enabled: validId(id) && a > 0 && b > 0,
   });
 }
 
@@ -151,7 +165,7 @@ export function useDuplicateDeck() {
   });
 }
 
-/** The deck as text, the same file the export link downloads. */
+/** The deck as text (`GET /decks/:id/export?format=text`), to copy it. */
 export function useExportDeckText() {
   return useMutation({ mutationFn: (id: number) => exportDeckText(id) });
 }
@@ -161,6 +175,19 @@ export function useSaveVersion(id: number) {
   return useMutation({
     mutationFn: (note?: string) => createDeckVersion(id, note),
     onSuccess: () => client.invalidateQueries({ queryKey: versionsKey(id) }),
+  });
+}
+
+/** `POST …/versions/:seq/restore`: a new current version with that content (201). */
+export function useRestoreVersion(id: number) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (seq: number) => restoreDeckVersion(id, seq),
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: versionsKey(id) }),
+        client.invalidateQueries({ queryKey: DECK_LIST_KEY }),
+      ]),
   });
 }
 

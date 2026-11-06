@@ -14,6 +14,8 @@ type PopoverProps = {
   disabled?: boolean;
   /** `sm`: a narrow panel for a short list of actions. */
   size?: 'md' | 'sm';
+  /** Level of the panel heading, to follow the page outline (default 3). */
+  headingLevel?: 2 | 3;
   /** The content, or a function of `close` (closes the panel and focuses the trigger). */
   children: ReactNode | ((close: () => void) => ReactNode);
 };
@@ -29,8 +31,10 @@ export function Popover({
   triggerLabel,
   disabled = false,
   size = 'md',
+  headingLevel = 3,
   children,
 }: PopoverProps) {
+  const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const { t } = useTranslation('common');
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -92,9 +96,9 @@ export function Popover({
           className={[styles.panel, size === 'sm' && styles.sm].filter(Boolean).join(' ')}
         >
           <div className={styles.header}>
-            <h3 id={`${id}-title`} className={styles.title}>
+            <Heading id={`${id}-title`} className={styles.title}>
               {title}
-            </h3>
+            </Heading>
             <button
               type="button"
               className={styles.close}

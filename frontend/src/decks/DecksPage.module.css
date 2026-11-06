@@ -108,8 +108,7 @@
     padding-top: 4px;
   }
 
-  .open,
-  .actionLink {
+  .open {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -124,18 +123,9 @@
   }
 
   .open:hover,
-  .open:focus-visible,
-  .actionLink:hover,
-  .actionLink:focus-visible {
+  .open:focus-visible {
     border-color: var(--accent);
     color: var(--accent);
-  }
-
-  .actionLink {
-    min-height: 34px;
-    padding: 0 10px;
-    border-color: transparent;
-    font-size: 13px;
   }
 
   .cardActions {

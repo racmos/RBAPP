@@ -337,20 +337,109 @@
     gap: 6px;
   }
 
-  .exportLink {
+  /* The Export menu (F5-i step 6). */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .menu > button {
+    justify-content: flex-start;
+  }
+
+  .exportText {
+    width: 100%;
+    min-height: 220px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-3);
+    color: var(--text);
+    font-family: var(--font-mono, monospace);
+    font-size: 13px;
+    resize: vertical;
+  }
+
+  /* The Versions modal (F5-i step 6). */
+  .versionList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .versionRow {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+
+  .versionHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .versionToggle {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 32px;
-    padding: 0 10px;
+    min-height: 40px;
+    padding: 0 6px;
+    border: 0;
+    background: none;
     color: var(--text);
-    font-size: 13px;
+    font: inherit;
     font-weight: 700;
-    text-decoration: underline;
+    cursor: pointer;
   }
 
-  .exportLink:hover {
-    color: var(--accent);
+  .versionChevron {
+    transition: transform 0.15s ease;
+  }
+
+  .versionToggle[aria-expanded='true'] .versionChevron {
+    transform: rotate(90deg);
+  }
+
+  .versionRestore {
+    margin-left: auto;
+  }
+
+  .versionNote {
+    margin: 2px 0 0 26px;
+  }
+
+  .diff {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0 0 26px;
+  }
+
+  .diffZone h3 {
+    margin: 0 0 4px;
+    font-size: 13px;
+  }
+
+  .diffZone ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .diffZone li[data-kind='added'] {
+    color: var(--green-text);
+  }
+
+  .diffZone li[data-kind='removed'] {
+    color: var(--red-text);
   }
 
   .saveState {
