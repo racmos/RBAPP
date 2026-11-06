@@ -152,6 +152,14 @@ class AdminJobsQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
 
 
+class AdminCardmarketLoadsQuery(BaseModel):
+    """GET /admin/cardmarket/loads query (CM-a)."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    limit: int = Field(default=30, ge=1, le=120)
+
+
 class AdminBulkBody(BaseModel):
     """POST /admin/riot/changes/bulk body (S6)."""
 
