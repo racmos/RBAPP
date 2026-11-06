@@ -871,3 +871,50 @@ extension inside `PRODUCT_IMAGES_DIR`, cached a week, no `Set-Cookie`; anything 
 - `GET /admin/overview` gains `riot`: `{pending_changes, active_sets: [{id, name, window,
   next_run_at}], last_sync: {job_id, status, finished_at, trigger} | null,
   placeholder_sets: [codes whose name equals their id and have no release date]}`.
+
+### Cardmarket load log (CM-a)
+
+`app/api/admin/cardmarket.py`, logic in `app/services/cardmarket_log.py`. Computed on read from
+`rbcm_load_history`, `rbcm_products`, `rbcm_price`, the matching tables and the `daily_prices`
+jobs; no table of its own. A load day is a date of `rbcm_load_history` (the loader's UTC date).
+Timestamps are naive UTC ISO strings, as in `GET /admin/jobs`.
+
+- `GET /admin/cardmarket/loads` with `limit` (1-120, default 30; anything else or an unknown
+  parameter → 400 `validation_error`) → `{items: [LoadDay]}`, newest day first. `LoadDay` =
+  `{date ("YYYY-MM-DD"), files: [{type, rows, status, message, loaded_at}], status,
+  products_total, new_products, new_products_sample, unmatched_singles, duration_seconds,
+  job_id}`:
+  - `files`: the latest history row of each file type (a re-run adds rows), in the order
+    `price_guide`, `singles`, `nonsingles`.
+  - `status` from those files: all `skipped` → `skipped`; a file in `error` or missing →
+    `partial` when another one is `success`, else `error`; otherwise `success` (a skipped
+    file only means it had not changed).
+  - `products_total`: `rbcm_products` rows of the day (0 when the products were not loaded).
+  - `new_products`: products of the day absent on the previous date with products (a
+    product that left and came back counts again; removed products are not counted);
+    `null` when the day has no products or no earlier date has any (the first load).
+    `new_products_sample`: the first 20 by name, `{id_product, name, category, type,
+    low_price (rbcm_price low of the day | null)}`.
+  - `unmatched_singles`: only on the newest day, the current count of singles of the latest
+    product date that are neither mapped (`rbcm_product_card_map`) nor ignored (same id and
+    name in `rbcm_ignored`); `null` on older days.
+  - `job_id` / `duration_seconds` (finished − started, rounded): the newest `daily_prices`
+    job whose `result.validation.date` is the day, else the newest one that was running when
+    a file of the day was loaded; `null` when none.
+  Seven SQL statements (the session user included) whatever `limit`.
+- `GET /admin/cardmarket/loads/<YYYY-MM-DD>` → the `LoadDay` of that day without
+  `new_products_sample`, plus `new_products_list` (every new product, at most 500, same item
+  shape), `truncated` (more than 500) and `job` (`{id, status, queued_at, started_at,
+  finished_at, message, result}` | null; `result` is the stored job result untouched:
+  `validation`, `auto_match`, `review`, `review_total`, `queued`). Here `files` lists every
+  history row of the day in order (each run); `status` still uses the latest of each type.
+  A day without a load, or a value that is not a real `YYYY-MM-DD` date → 404.
+- `GET /admin/cardmarket/status` → `{last_load: {date, status, loaded_at (latest file)} |
+  null, loaded_today (the newest day is today's UTC date), job: {id, status, queued_at,
+  started_at, finished_at, message} | null (the latest `daily_prices` job), unmatched (same
+  count as `unmatched_singles`), unmapped_expansions (`rbcm_expansions` without a set),
+  prices_as_of ("YYYY-MM-DD" of the newest `rbcm_price` row | null)}`.
+- `POST /admin/cardmarket/load` (no body) queues the `daily_prices` job (default
+  allow-listed URLs, no params) → 202 `{job_id, job: {id, status, queued_at, started_at,
+  finished_at, message}}`. A `daily_prices` job already queued or running → 409
+  `job_running`, nothing written. Audit `cardmarket.load` (target `job`, id the job id).
