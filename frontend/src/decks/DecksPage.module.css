@@ -1,5 +1,6 @@
 @layer components {
-  /* One readable column on every width; the desktop and wide layouts come with F5-i. */
+  /* One readable column below 860 px; from there the cards fill a grid (`.wide` + `.grid`,
+     chosen by the page from `up('md')`). */
   .page {
     display: flex;
     flex-direction: column;
@@ -9,6 +10,10 @@
     margin: 0 auto;
     padding: var(--pad);
     padding-bottom: 32px;
+  }
+
+  .wide {
+    max-width: 1480px;
   }
 
   .note,
@@ -27,21 +32,148 @@
     list-style: none;
   }
 
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
   .item {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-width: 0;
     padding: 12px 14px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--panel-2);
   }
 
-  .top {
+  /* Legend art beside the name, mode, sharing, legend and champion. */
+  .head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .art {
+    flex: none;
+    width: 72px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .noArt {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 352 / 492;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+  }
+
+  .headText {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 0;
+  }
+
+  .sharing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* Open and the actions panel, at the bottom of the card. */
+  .footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 4px;
+  }
+
+  .open,
+  .actionLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .open:hover,
+  .open:focus-visible,
+  .actionLink:hover,
+  .actionLink:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .actionLink {
+    min-height: 34px;
+    padding: 0 10px;
+    border-color: transparent;
+    font-size: 13px;
+  }
+
+  .cardActions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .cardActions > button {
+    justify-content: flex-start;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 12px;
+  }
+
+  .search {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+
+  .toolbarEnd {
+    display: flex;
+    align-items: center;
     gap: 10px;
+    margin-left: auto;
+  }
+
+  .shown {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .name {

@@ -20,7 +20,12 @@
     cursor: pointer;
   }
 
-  .trigger:hover,
+  .trigger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .trigger:hover:not(:disabled),
   .trigger[aria-expanded='true'] {
     background: rgba(120, 205, 228, 0.12);
   }
@@ -41,6 +46,11 @@
     background: var(--table-head);
     box-shadow: var(--shadow-pop);
     overflow-y: auto;
+  }
+
+  .sm {
+    gap: 10px;
+    width: min(280px, calc(100vw - 2 * var(--pad)));
   }
 
   .panel:focus {

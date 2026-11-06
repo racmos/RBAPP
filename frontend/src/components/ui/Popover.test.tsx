@@ -64,6 +64,52 @@ describe('Popover (F5-i step 3)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('a function child gets a close that closes the panel and focuses the trigger', async () => {
+    const i18n = await createI18n();
+    const { I18nextProvider } = await import('react-i18next');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Popover title="Deck actions" trigger={<>More</>} size="sm">
+          {(close) => (
+            <button type="button" onClick={close}>
+              Run
+            </button>
+          )}
+        </Popover>
+      </I18nextProvider>,
+    );
+    const trigger = screen.getByRole('button', { name: 'More' });
+    await userEvent.click(trigger);
+    expect(screen.getByRole('dialog', { name: 'Deck actions' }).className).toMatch(/sm/);
+    await userEvent.click(screen.getByRole('button', { name: 'Run' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('a disabled trigger does not open', async () => {
+    const i18n = await createI18n();
+    const { I18nextProvider } = await import('react-i18next');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Popover title="Deck actions" trigger={<>More</>} disabled>
+          <p>Inside</p>
+        </Popover>
+      </I18nextProvider>,
+    );
+    const trigger = screen.getByRole('button', { name: 'More' });
+    expect(trigger).toBeDisabled();
+    await userEvent.click(trigger);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('the small panel is narrower, never wider than the screen', () => {
+    const css = readCss(join(SRC_DIR, 'components/ui/Popover.module.css'));
+    expect(declsFor(css, '.sm')).toContainEqual({
+      prop: 'width',
+      value: 'min(280px, calc(100vw - 2 * var(--pad)))',
+    });
+  });
+
   it('has an opaque panel, so the cards behind it never show through the text', () => {
     const css = readCss(join(SRC_DIR, 'components/ui/Popover.module.css'));
     const background = declsFor(css, '.panel').find((decl) => decl.prop === 'background')?.value;

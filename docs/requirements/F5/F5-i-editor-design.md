@@ -97,6 +97,11 @@ locations/F5-f; ask the owner).
 5. Full Art tab.
 6. Versions modal (diff, Restore) and export menu; import validation panel live.
 7. Deck list screen (next menu the owner asked for).
+   **Deck list grid done (frontend, `feat/f5-deck-list-grid`):** `/decks` is a grid of cards from 860 px
+   and one column below, with a toolbar (search, mode, legality, sort in the URL, Clear filters,
+   "N of M decks") and per-deck Open, Duplicate, Copy/Download text, Copy share link / Stop sharing and
+   Delete; Duplicate needs `POST /decks/<id>/duplicate` (#107) deployed. See `docs/frontend.md` →
+   "Decks UI (F5-h)".
 
 ## Decisions (owner, 2026-11-05)
 

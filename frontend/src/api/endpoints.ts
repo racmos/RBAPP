@@ -459,6 +459,17 @@ export const importDeck = (body: DeckImportBody) =>
 /** The text download (`Content-Disposition: attachment`), for a plain link. */
 export const deckExportHref = (id: number) => `${API_BASE}/decks/${id}/export?format=text`;
 
+/** The same export read as text (to copy it). */
+export const exportDeckText = async (id: number, signal?: AbortSignal) =>
+  (await requestFile(`/decks/${id}/export?format=text`, { signal })).blob.text();
+
+/** A new private deck with the current content; `name` defaults to `<name> (copy)` (#107). */
+export const duplicateDeck = (id: number, name?: string) =>
+  request<DeckDetail>(`/decks/${id}/duplicate`, {
+    method: 'POST',
+    body: name ? { name } : {},
+  });
+
 export const shareDeck = (id: number) =>
   request<DeckShare>(`/decks/${id}/share`, { method: 'POST' });
 

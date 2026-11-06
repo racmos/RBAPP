@@ -376,11 +376,12 @@ describe('DecksPage at 390 px (F5-h stage 1)', () => {
     }
   }, 20000);
 
-  it('at 1280 px the list keeps one readable column', async () => {
+  it('at 1280 px the decks are a grid of cards (deck list grid)', async () => {
     withDecks();
     await openPage(1280);
-    expect(await list()).toBeVisible();
-    await waitFor(() => expect(screen.getAllByRole('link', { name: /Riven/ }).length).toBe(2));
+    expect(await list()).toHaveAttribute('data-layout', 'grid');
+    // the title links; each card also has its "Open <name>" link
+    await waitFor(() => expect(screen.getAllByRole('link', { name: /^Riven/ }).length).toBe(2));
   }, 20000);
 
   it('is axe clean', async () => {
