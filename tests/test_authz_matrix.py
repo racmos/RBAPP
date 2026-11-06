@@ -99,6 +99,7 @@ MATRIX = {
     'api_v1.export_deck': 'U',
     'api_v1.share_deck': 'U',                # F5 unit g
     'api_v1.unshare_deck': 'U',
+    'api_v1.duplicate_deck': 'U',            # F5 duplicate
     'main.dashboard': 'U',
     'sets.sets': 'U',
     'cards.cards': 'U',

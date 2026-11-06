@@ -377,7 +377,9 @@ def create_deck(user, name, mode):
     return _new_deck(user, name, mode, empty_content(), _Catalog(user))
 
 
-def _new_deck(user, name, mode, content, cat):
+def _new_deck(user, name, mode, content, cat=None):
+    """Insert the head and its version 1. Without `cat` the catalog is read after the commit,
+    so the card rows are not expired by it (one query each otherwise)."""
     now = clock.utcnow()
     head = RbDeckHead(rbdkh_user_id=user.id, rbdkh_name=name, rbdkh_mode=mode,
                       rbdkh_visibility='private', rbdkh_created_at=now, rbdkh_updated_at=now)
@@ -393,7 +395,37 @@ def _new_deck(user, name, mode, content, cat):
     db.session.flush()
     head.rbdkh_current_version_id = version.rbdkv_id
     _commit()
-    return _detail(head, version, cat)
+    return _detail(head, version, cat or _Catalog(user))
+
+
+def _copy_name(user, name):
+    """The first free `name (copy)`, `name (copy 2)`, ... of the user, `name` cut so the
+    whole fits NAME_MAX; the user's names are read in one query."""
+    taken = set(db.session.execute(sa.select(RbDeckHead.rbdkh_name).where(
+        RbDeckHead.rbdkh_user_id == user.id)).scalars())
+    n = 1
+    while True:
+        suffix = ' (copy)' if n == 1 else f' (copy {n})'
+        candidate = name[:NAME_MAX - len(suffix)].rstrip() + suffix
+        if candidate not in taken:
+            return candidate
+        n += 1
+
+
+def duplicate_deck(user, deck_id, name=None):
+    """A new private, unshared deck of the user with the mode and the current content of one
+    of their decks, as stored (cards missing from the catalog and hard limits included). The
+    version history and its notes are not copied: the copy starts at its own version 1. The
+    name is `name` (a taken one raises `DuplicateName`), else the first free `<name> (copy)`,
+    `<name> (copy 2)`, ... The source is not changed."""
+    head = _head(user, deck_id)
+    current = _current(head)
+    content = normal_content(current.rbdkv_content if current else None)
+    if name is None:
+        name = _copy_name(user, head.rbdkh_name)
+    elif _name_taken(user, name):
+        raise DuplicateName()
+    return _new_deck(user, name, head.rbdkh_mode, content)
 
 
 def update_deck(user, deck_id, changes):

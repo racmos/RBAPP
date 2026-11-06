@@ -1,6 +1,6 @@
 """Decks v2 endpoints (F5-d): GET/POST /decks, GET/PATCH/DELETE /decks/<id>,
-PUT /decks/<id>/content, versions, restore and diff; text import and export (F5-e); share
-link and the public read-only deck (F5-g). Only the owner sees a deck (D-F5-9), except
+PUT /decks/<id>/content, versions, restore and diff; duplicate; text import and export (F5-e);
+share link and the public read-only deck (F5-g). Only the owner sees a deck (D-F5-9), except
 through its share link."""
 from flask import abort, current_app, request
 from flask_login import current_user, login_required
@@ -12,8 +12,8 @@ from app.api.responses import fail
 from app.api.v1 import api_v1
 from app.errors import http_error_response
 from app.schemas.validation import validate_json, validate_query
-from app.schemas.validators import (DeckContentPut, DeckCreate, DeckDiffQuery, DeckExportQuery,
-                                    DeckImport, DeckImportPreview, DeckPatch,
+from app.schemas.validators import (DeckContentPut, DeckCreate, DeckDiffQuery, DeckDuplicate,
+                                    DeckExportQuery, DeckImport, DeckImportPreview, DeckPatch,
                                     DeckVersionCreate)
 from app.services import deck_share, decks
 from app.services.decks import (DeckNotFound, DuplicateName, FormatUnknown, HardLimitExceeded,
@@ -97,6 +97,25 @@ def update_deck(deck_id):
 def delete_deck(deck_id):
     """Delete a deck and all its versions; answers with the deleted head."""
     return _guarded(lambda: _json({'deleted': decks.delete_deck(current_user, deck_id)}))
+
+
+def _duplicate(deck_id, name=None):
+    return _guarded(lambda: _json(decks.duplicate_deck(current_user, deck_id, name), 201))
+
+
+@validate_json(DeckDuplicate)
+def _duplicate_named(deck_id):
+    return _duplicate(deck_id, request.validated_data.name)
+
+
+@api_v1.post('/decks/<int:deck_id>/duplicate')
+@login_required
+def duplicate_deck(deck_id):
+    """A new private deck with the current content and mode of this one (its own version 1).
+    The body is optional: none means the default `<name> (copy)` name."""
+    if not request.get_data():
+        return _duplicate(deck_id)
+    return _duplicate_named(deck_id)
 
 
 @api_v1.put('/decks/<int:deck_id>/content')

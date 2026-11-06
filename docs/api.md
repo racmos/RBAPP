@@ -492,6 +492,18 @@ Routes:
   `DeckDetail`. Only the sent keys change, none is nullable (400); a taken name -> 409
   `already_exists`. No version is created; `updated_at` is refreshed.
 - `DELETE /decks/<id>` (`api_v1.delete_deck`) -> `{deleted: DeckHead}`; every version goes too.
+- `POST /decks/<id>/duplicate` (`api_v1.duplicate_deck`) optional JSON body `{name?}` (no body,
+  `{}`, `null` or a blank name = the default name; otherwise trimmed, 1-80 like `POST /decks`)
+  -> 201 `DeckDetail` of a **new** deck of the caller: same `mode`, the source's **current**
+  content copied as stored (every zone, workbench included; cards missing from the catalog and
+  hard limits kept, no rules check), `visibility` private, no share link, its own version 1
+  (`current_seq` 1, note null). Not copied: the version history and the version notes. Default
+  name: the first free `<name> (copy)`, `<name> (copy 2)`, `<name> (copy 3)`... among the
+  caller's decks, the source name cut (trailing spaces dropped) so the whole fits 80. An
+  explicit name the caller already has -> 409 `already_exists` (as `POST /decks`); an invalid
+  one -> 400 `validation_error`; a body that is not JSON -> 400. The source is not changed
+  (`updated_at` and current version kept). Another user's deck or an unknown id -> 404. No
+  audit row (deck writes are not audited). 16 SQL statements whatever the number of cards.
 - `PUT /decks/<id>/content` (`api_v1.put_deck_content`) `{content: Content}` -> `DeckDetail`.
   Autosave (D-F5-3): rewrites the **current** version in place, refreshes the head's
   `updated_at`, creates no version. The shape is `DeckContentV2` (400 `validation_error`, fields
