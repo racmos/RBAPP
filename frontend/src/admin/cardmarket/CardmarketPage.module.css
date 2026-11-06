@@ -1,0 +1,253 @@
+@layer components {
+  .section {
+    margin-bottom: calc(var(--gap) * 1.5);
+  }
+
+  .sectionTitle {
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+
+  .muted {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .error {
+    color: var(--red-text);
+    font-size: 14px;
+  }
+
+  .status {
+    display: grid;
+    gap: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 12px;
+  }
+
+  .facts {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .fact {
+    display: grid;
+    gap: 2px;
+  }
+
+  .fact dt {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .fact dd {
+    margin: 0;
+  }
+
+  .factValue {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .counters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+    vertical-align: top;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .chipType {
+    color: var(--muted);
+  }
+
+  .highlight {
+    color: var(--green-text);
+    font-weight: 700;
+  }
+
+  .more {
+    margin-top: 12px;
+  }
+
+  .cards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  .card {
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 12px;
+  }
+
+  .cardHead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cardFacts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .cardFacts dt {
+    color: var(--muted);
+  }
+
+  .cardFacts dd {
+    margin: 0;
+  }
+
+  .jobs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+  }
+
+  .job {
+    display: grid;
+    gap: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+    padding: 10px 12px;
+  }
+
+  .jobHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    font-size: 14px;
+  }
+
+  .detail {
+    display: grid;
+    gap: var(--gap);
+  }
+
+  .detailTitle {
+    margin: 0 0 8px;
+    font-size: 15px;
+  }
+
+  .detailSubtitle {
+    margin: 12px 0 8px;
+    font-size: 14px;
+  }
+
+  .detailList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+  }
+
+  .detailItem {
+    display: grid;
+    gap: 2px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .detailHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pairs {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: minmax(10ch, 14ch) 1fr;
+    gap: 8px;
+  }
+
+  .pair dt {
+    color: var(--muted);
+  }
+
+  .pair dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .raw {
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .raw pre {
+    overflow: auto;
+    max-height: 320px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}

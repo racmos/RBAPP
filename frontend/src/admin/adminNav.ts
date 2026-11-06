@@ -1,12 +1,13 @@
-/** Admin navigation (F13-a S6, F13-f S3, F14-d S5): one entry per section, in display order. */
+/** Admin navigation (F13-a S6, F13-f S3, F14-d S5, CM-a): one entry per section, in display order. */
 export type AdminNavEntry = {
-  id: 'overview' | 'sets' | 'cards' | 'products' | 'riot' | 'changes';
+  id: 'overview' | 'sets' | 'cards' | 'products' | 'cardmarket' | 'riot' | 'changes';
   to: string;
   labelKey:
     | 'nav.overview'
     | 'nav.sets'
     | 'nav.cards'
     | 'nav.products'
+    | 'nav.cardmarket'
     | 'nav.riot'
     | 'nav.changes'
     | 'nav.changesCount';
@@ -17,6 +18,7 @@ export const ADMIN_NAV: readonly AdminNavEntry[] = [
   { id: 'sets', to: '/admin/sets', labelKey: 'nav.sets' },
   { id: 'cards', to: '/admin/cards', labelKey: 'nav.cards' },
   { id: 'products', to: '/admin/products', labelKey: 'nav.products' },
+  { id: 'cardmarket', to: '/admin/cardmarket', labelKey: 'nav.cardmarket' },
   { id: 'riot', to: '/admin/riot', labelKey: 'nav.riot' },
   { id: 'changes', to: '/admin/riot/changes', labelKey: 'nav.changes' },
 ];

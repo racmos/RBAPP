@@ -230,6 +230,71 @@ export const startRiotSync = (sets: string[]) =>
     body: sets.length > 0 ? { sets } : {},
   });
 
+/** Cardmarket load log (CM-a). Timestamps are naive UTC ISO strings. */
+export type CardmarketFile = {
+  type: string;
+  rows: number | null;
+  status: string;
+  message: string | null;
+  loaded_at: string | null;
+};
+export type CardmarketNewProduct = {
+  id_product: number;
+  name: string;
+  category: string | null;
+  type: string | null;
+  low_price: number | null;
+};
+export type CardmarketJobBrief = {
+  id: number;
+  status: string;
+  queued_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  message: string | null;
+};
+export type CardmarketLoadDay = {
+  date: string;
+  files: CardmarketFile[];
+  status: string;
+  products_total: number;
+  new_products: number | null;
+  new_products_sample: CardmarketNewProduct[];
+  unmatched_singles: number | null;
+  duration_seconds: number | null;
+  job_id: number | null;
+};
+export type CardmarketLoadDetail = Omit<CardmarketLoadDay, 'new_products_sample'> & {
+  new_products_list: CardmarketNewProduct[];
+  truncated: boolean;
+  job: (CardmarketJobBrief & { result: unknown }) | null;
+};
+export type CardmarketStatus = {
+  last_load: { date: string; status: string; loaded_at: string | null } | null;
+  loaded_today: boolean;
+  job: CardmarketJobBrief | null;
+  unmatched: number;
+  unmapped_expansions: number;
+  prices_as_of: string | null;
+};
+
+export const listCardmarketLoads = (limit: number, signal?: AbortSignal) =>
+  request<{ items: CardmarketLoadDay[] }>(`/admin/cardmarket/loads?limit=${limit}`, { signal });
+
+export const getCardmarketLoad = (date: string, signal?: AbortSignal) =>
+  request<CardmarketLoadDetail>(`/admin/cardmarket/loads/${encodeURIComponent(date)}`, {
+    signal,
+  });
+
+export const getCardmarketStatus = (signal?: AbortSignal) =>
+  request<CardmarketStatus>('/admin/cardmarket/status', { signal });
+
+/** Queues the `daily_prices` job; 409 `job_running` while one is queued or running. */
+export const startCardmarketLoad = () =>
+  request<{ job_id: number; job: CardmarketJobBrief }>('/admin/cardmarket/load', {
+    method: 'POST',
+  });
+
 /** `GET /admin/overview` (F13-a, extended in F13-e with the `riot` block). */
 export type AdminRiotActive = {
   id: string;

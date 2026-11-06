@@ -166,6 +166,13 @@ export function createAppRoutes(
                       }),
                     },
                     {
+                      path: 'cardmarket',
+                      lazy: async () => ({
+                        Component: (await import('@/admin/cardmarket/CardmarketPage'))
+                          .CardmarketPage,
+                      }),
+                    },
+                    {
                       path: 'riot',
                       lazy: async () => ({
                         Component: (await import('@/admin/RiotPage')).RiotPage,
