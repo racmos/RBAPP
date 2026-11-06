@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { deckExportHref } from '@/api/endpoints';
 import type { DeckListItem } from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -21,8 +20,8 @@ import {
 import styles from './DecksPage.module.css';
 
 /**
- * The actions of one deck card in a small panel: duplicate, copy or download the text, the
- * share link and delete. None of them leaves the list; the duplicate's toast offers to open it.
+ * The actions of one deck card in a small panel: duplicate, copy the text (never a download,
+ * owner 2026-11-06), the share link and delete. None of them leaves the list; the duplicate's toast offers to open it.
  */
 export function DeckCardActions({ deck, offline }: { deck: DeckListItem; offline: boolean }) {
   const { t, i18n } = useTranslation('decks');
@@ -112,15 +111,6 @@ export function DeckCardActions({ deck, offline }: { deck: DeckListItem; offline
               <Icon name="export" size={16} />
               {t('card.copyText')}
             </Button>
-            <a
-              className={styles.actionLink}
-              href={deckExportHref(deck.id)}
-              download
-              onClick={close}
-            >
-              <Icon name="export" size={16} />
-              {t('card.download')}
-            </a>
             {deck.share && (
               <Field label={t('share.url')}>
                 {(control) => (

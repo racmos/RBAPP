@@ -36,6 +36,26 @@ describe('Popover (F5-i step 3)', () => {
     expect(await axe(document.body)).toHaveNoViolations();
   });
 
+  it('titles the panel with an h3 unless another heading level is asked for', async () => {
+    const i18n = await createI18n();
+    const { I18nextProvider } = await import('react-i18next');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <h1>Page</h1>
+        <Popover title="Export deck" trigger={<>Export</>} headingLevel={2}>
+          <button type="button">Copy</button>
+        </Popover>
+        <Popover title="Filter cards" trigger={<>Filter</>}>
+          <button type="button">Inside</button>
+        </Popover>
+      </I18nextProvider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Export' }));
+    expect(screen.getByRole('heading', { name: 'Export deck' }).tagName).toBe('H2');
+    await userEvent.click(screen.getByRole('button', { name: 'Filter' }));
+    expect(screen.getByRole('heading', { name: 'Filter cards' }).tagName).toBe('H3');
+  });
+
   it('Escape closes it and focus goes back to the trigger', async () => {
     await renderPopover();
     const trigger = screen.getByRole('button', { name: 'Filter, 2 active' });

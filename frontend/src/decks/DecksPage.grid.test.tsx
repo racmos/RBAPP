@@ -228,7 +228,7 @@ describe('DecksPage card actions (F5 deck list grid)', () => {
     await toast('An item with that identifier already exists.');
   }, 20000);
 
-  it('Copy deck text reads the export and copies it; the download link stays', async () => {
+  it('Copy deck text reads the export and copies it; there is no download', async () => {
     withDecks();
     const text = 'Legend:\n1 Riven, The Exile\n';
     server.use(
@@ -240,10 +240,9 @@ describe('DecksPage card actions (F5 deck list grid)', () => {
     const sent = recordDeckRequests();
     await openPage();
     const panel = await actionsOf('Riven, The Exile');
-    expect(within(panel).getByRole('link', { name: 'Download text' })).toHaveAttribute(
-      'href',
-      '/riftbound/api/v1/decks/41/export?format=text',
-    );
+    expect(within(panel).queryByRole('link')).toBeNull();
+    expect(within(panel).queryByText('Download text')).toBeNull();
+    expect(document.querySelector('a[download]')).toBeNull();
     await userEvent.click(within(panel).getByRole('button', { name: 'Copy deck text' }));
     await toast('Deck text copied.');
     expect(writeText).toHaveBeenCalledWith(text);

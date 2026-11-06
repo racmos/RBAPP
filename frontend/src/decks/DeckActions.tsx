@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { deckExportHref } from '@/api/endpoints';
 import { ApiError } from '@/api/errors';
 import type { GameMode } from '@/api/types';
 import { Button } from '@/components/ui/Button';
@@ -10,11 +9,14 @@ import { Field } from '@/components/ui/Field';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { Popover } from '@/components/ui/Popover';
 import { Select } from '@/components/ui/Select';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
+import { DeckVersions } from './DeckVersions';
 import {
   useDeleteDeck,
+  useExportDeckText,
   usePatchDeck,
   useSaveVersion,
   useShareDeck,
@@ -23,7 +25,7 @@ import {
 import type { DeckEditor } from './useDeckEditor';
 import styles from './DeckView.module.css';
 
-type Open = null | 'settings' | 'version' | 'share' | 'delete';
+type Open = null | 'settings' | 'version' | 'versions' | 'share' | 'delete';
 
 const nameTaken = (error: unknown) => error instanceof ApiError && error.code === 'already_exists';
 
@@ -197,16 +199,58 @@ function SharePanel({ editor }: { editor: DeckEditor }) {
   );
 }
 
-/** Rename / mode, save as version, share, export and delete (F5-h stage 2). */
+/** The decklist when the clipboard refuses it: read-only, selected on focus, to copy by hand. */
+function ManualCopy({ text }: { text: string }) {
+  const { t } = useTranslation('decks');
+  return (
+    <div className={styles.form}>
+      <p>{t('export.copyFailed')}</p>
+      <Field label={t('export.text')}>
+        {(control) => (
+          <textarea
+            {...control}
+            className={styles.exportText}
+            readOnly
+            rows={12}
+            value={text}
+            data-autofocus
+            onFocus={(e) => e.target.select()}
+          />
+        )}
+      </Field>
+    </div>
+  );
+}
+
+/**
+ * Rename / mode, save as version, versions, the Export menu and delete (F5-h stage 2, F5-i
+ * step 6). Export goes to the clipboard only (owner, 2026-11-06): Copy decklist copies the text
+ * export, Share deck opens the share link; nothing is downloaded.
+ */
 export function DeckActions({ editor }: { editor: DeckEditor }) {
   const { t, i18n } = useTranslation('decks');
   const { t: tCommon } = useTranslation('common');
   const navigate = useNavigate();
   const { deck, offline, status } = editor;
   const [open, setOpen] = useState<Open>(null);
+  const [manual, setManual] = useState<string | null>(null);
   const remove = useDeleteDeck(deck.id);
+  const exportText = useExportDeckText();
   const close = () => setOpen(null);
   const versionWait = status !== 'saved' ? t('actions.versionWait') : null;
+
+  const copyDecklist = () =>
+    exportText.mutate(deck.id, {
+      onSuccess: async (text) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          pushToast({ kind: 'success', message: t('export.copied') });
+        } catch {
+          setManual(text);
+        }
+      },
+      onError: (failure) => pushToast({ kind: 'error', message: translateError(failure, i18n) }),
+    });
 
   return (
     <div className={styles.actionsRow} role="group" aria-label={t('actions.label')}>
@@ -223,14 +267,50 @@ export function DeckActions({ editor }: { editor: DeckEditor }) {
       >
         {t('actions.version')}
       </Button>
-      <Button variant="ghost" size="sm" disabled={offline} onClick={() => setOpen('share')}>
-        <Icon name="link" size={16} />
-        {t('actions.share')}
+      <Button variant="ghost" size="sm" disabled={offline} onClick={() => setOpen('versions')}>
+        <Icon name="clock" size={16} />
+        {t('actions.versions')}
       </Button>
-      <a className={styles.exportLink} href={deckExportHref(deck.id)} download>
-        <Icon name="export" size={16} />
-        {t('actions.export')}
-      </a>
+      <Popover
+        title={t('export.title')}
+        trigger={
+          <>
+            <Icon name="export" size={16} />
+            {t('actions.export')}
+          </>
+        }
+        disabled={offline}
+        size="sm"
+        headingLevel={2}
+      >
+        {(closeMenu) => (
+          <div className={styles.menu}>
+            <Button
+              variant="ghost"
+              size="sm"
+              pending={exportText.isPending}
+              onClick={() => {
+                closeMenu();
+                copyDecklist();
+              }}
+            >
+              <Icon name="copy" size={16} />
+              {t('export.copy')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                closeMenu();
+                setOpen('share');
+              }}
+            >
+              <Icon name="link" size={16} />
+              {t('export.share')}
+            </Button>
+          </div>
+        )}
+      </Popover>
       <Button variant="ghost" size="sm" disabled={offline} onClick={() => setOpen('delete')}>
         <Icon name="trash" size={16} />
         {t('actions.delete')}
@@ -242,8 +322,12 @@ export function DeckActions({ editor }: { editor: DeckEditor }) {
       <Modal open={open === 'version'} onClose={close} title={t('versionForm.title')}>
         <VersionForm editor={editor} onClose={close} />
       </Modal>
+      <DeckVersions editor={editor} open={open === 'versions'} onClose={close} />
       <Modal open={open === 'share'} onClose={close} title={t('share.title')}>
         <SharePanel editor={editor} />
+      </Modal>
+      <Modal open={manual !== null} onClose={() => setManual(null)} title={t('export.copyTitle')}>
+        <ManualCopy text={manual ?? ''} />
       </Modal>
       <ConfirmDialog
         open={open === 'delete'}

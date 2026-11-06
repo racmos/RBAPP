@@ -363,7 +363,7 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
     ).toBeVisible();
   }, 20000);
 
-  it('creates, copies and revokes the share link; exports the text', async () => {
+  it('creates, copies and revokes the share link from the Export menu', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const url = 'http://localhost/riftbound/app/d/abcdefghijklmnopqrstuv';
@@ -372,11 +372,9 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
       http.delete(`${API}/decks/:id/share`, () => ok({ share: null })),
     );
     const { sent } = await openDeck();
-    expect(screen.getByRole('link', { name: 'Export text' })).toHaveAttribute(
-      'href',
-      '/riftbound/api/v1/decks/41/export?format=text',
-    );
-    await userEvent.click(screen.getByRole('button', { name: 'Share link' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Export' }));
+    const menu = await screen.findByRole('dialog', { name: 'Export deck' });
+    await userEvent.click(within(menu).getByRole('button', { name: 'Share deck' }));
     const dialog = await screen.findByRole('dialog', { name: 'Share link' });
     expect(within(dialog).getByText('This deck has no link yet.')).toBeVisible();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create link' }));
@@ -441,7 +439,13 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
     expect(screen.queryAllByRole('combobox')).toEqual([]);
     expect(screen.getByRole('button', { name: 'Remove a copy of Discipline' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Remove Star Spring' })).toBeDisabled();
-    for (const name of ['Rename or change mode', 'Save as version', 'Share link', 'Delete deck']) {
+    for (const name of [
+      'Rename or change mode',
+      'Save as version',
+      'Versions',
+      'Export',
+      'Delete deck',
+    ]) {
       expect(screen.getByRole('button', { name })).toBeDisabled();
     }
   }, 20000);

@@ -118,10 +118,27 @@ export function useDeckEditor(deck: DeckDetail) {
   }, [dirty, blocked, offline, saving, error, save, content, revision]);
 
   // Leaving the screen within the debounce still saves the last change.
-  const latest = useRef({ dirty, blocked, offline, content });
+  const latest = useRef({ dirty, blocked, offline, content, revision });
   useEffect(() => {
-    latest.current = { dirty, blocked, offline, content };
+    latest.current = { dirty, blocked, offline, content, revision };
   });
+
+  /** Another version became the current one on the server (a restore): the editor takes it as
+   *  saved, so the autosave never sends the content it replaced. The caller restores only while
+   *  everything is saved (`status === 'saved'`), so no local change is lost. */
+  const reset = useCallback(
+    (next: DeckDetail) => {
+      const at = latest.current.revision;
+      setContent(next.content);
+      setBook(bookOf(next.cards));
+      setServer(next);
+      setRevision(at);
+      setSavedRevision(at);
+      setError(null);
+      client.setQueryData(deckKey(deck.id), next);
+    },
+    [client, deck.id],
+  );
   useEffect(
     () => () => {
       const last = latest.current;
@@ -260,6 +277,7 @@ export function useDeckEditor(deck: DeckDetail) {
     t,
     deck: server,
     setServer,
+    reset,
     content,
     book,
     done,
