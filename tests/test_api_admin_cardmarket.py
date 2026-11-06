@@ -115,7 +115,7 @@ class TestAuthorization:
         found = {(rule.rule, method) for rule in app.url_map.iter_rules()
                  for method in rule.methods if rule.rule.startswith(BASE)
                  and method not in ('HEAD', 'OPTIONS')}
-        assert found == wanted
+        assert wanted <= found        # CM-b adds the matching rules under the same prefix
         assert {classify(rule) for rule in app.url_map.iter_rules()
                 if rule.rule.startswith(BASE)} == {'A'}
 

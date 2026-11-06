@@ -15,5 +15,5 @@ api_admin.before_request(require_admin)
 api_admin.register_error_handler(Exception, _any_error)
 
 # Import for the side effect of registering the routes on `api_admin`.
-from app.api.admin import (cardmarket, cards, jobs, overview, products, riot,  # noqa: E402,F401
-                           sets)
+from app.api.admin import (cardmarket, cardmarket_matching, cards, jobs,  # noqa: E402,F401
+                           overview, products, riot, sets)

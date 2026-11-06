@@ -274,3 +274,117 @@ class AdminProductPatch(BaseModel):
         if value is None:
             raise ValueError('hidden must be true or false')
         return value
+
+
+def _page_to_int(value):
+    if isinstance(value, str) and value.lstrip('-').isdigit():
+        return int(value)
+    return value
+
+
+class AdminUnmatchedQuery(BaseModel):
+    """GET /admin/cardmarket/unmatched query (CM-b)."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    q: Optional[str] = Field(default=None, max_length=100)
+    type: Optional[Literal['single', 'nonsingle']] = None
+    category: Optional[str] = Field(default=None, max_length=100)
+    page: int = Field(default=1, ge=1)
+    per_page: Literal[25, 50, 100, 200] = 50
+
+    _ints = field_validator('page', 'per_page', mode='before')(_page_to_int)
+
+
+class AdminCandidatesQuery(BaseModel):
+    """GET /admin/cardmarket/unmatched/<id>/candidates query (CM-b)."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    q: Optional[str] = Field(default=None, min_length=2, max_length=100)
+
+
+class AdminCardRef(BaseModel):
+    """A card of the catalog: set id and card id."""
+
+    model_config = STRIPPED
+
+    set_id: str = Field(min_length=1, max_length=20)
+    card_id: str = Field(min_length=1, max_length=20)
+
+
+class AdminRelinkBody(BaseModel):
+    """PUT /admin/cardmarket/links/<id> body (CM-b): the new target of the link.
+
+    `kind: "product"` is refused in the view: products are linked by Cardmarket id."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    kind: Literal['card', 'product'] = 'card'
+    card: Optional[AdminCardRef] = None
+    product_id: Optional[int] = Field(default=None, ge=1)
+    foil: Optional[Literal['N', 'S']] = None
+
+
+class AdminLinkBody(AdminRelinkBody):
+    """POST /admin/cardmarket/links body (CM-b)."""
+
+    id_product: int = Field(ge=1)
+
+
+class AdminLinksQuery(BaseModel):
+    """GET /admin/cardmarket/links query (CM-b)."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    q: Optional[str] = Field(default=None, max_length=100)
+    set: Optional[str] = Field(default=None, max_length=20)
+    foil: Optional[Literal['N', 'S', 'none']] = None
+    match_type: Optional[Literal['auto', 'manual']] = None
+    conflicts: bool = False
+    page: int = Field(default=1, ge=1)
+    per_page: Literal[25, 50, 100, 200] = 50
+
+    _ints = field_validator('page', 'per_page', mode='before')(_page_to_int)
+
+    @field_validator('conflicts', mode='before')
+    @classmethod
+    def _to_bool(cls, value):
+        return _query_bool(value)
+
+
+class AdminIgnoreBody(BaseModel):
+    """POST /admin/cardmarket/ignored body (CM-b): the ignore list is keyed by id and name."""
+
+    model_config = STRIPPED
+
+    id_product: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=500)
+
+
+class AdminUnignoreQuery(BaseModel):
+    """DELETE /admin/cardmarket/ignored/<id> query (CM-b): one name, or every name."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    name: Optional[str] = Field(default=None, min_length=1, max_length=500)
+
+
+class AdminAutoMatchApplyBody(BaseModel):
+    """POST /admin/cardmarket/auto-match/apply body (CM-b)."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    max_groups: int = Field(default=200, ge=1, le=200)
+
+
+class AdminReviewQuery(BaseModel):
+    """GET /admin/cardmarket/review query (CM-b)."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    reason: Optional[Literal['ignored_pair', 'no_candidates', 'conflict', 'ambiguous']] = None
+    page: int = Field(default=1, ge=1)
+    per_page: Literal[25, 50, 100, 200] = 50
+
+    _ints = field_validator('page', 'per_page', mode='before')(_page_to_int)

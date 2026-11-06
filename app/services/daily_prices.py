@@ -120,14 +120,14 @@ def _review_item(product, reason: str, candidates) -> dict:
     }
 
 
-def match_clear_cases(date: str) -> dict:
-    """Link the clear cases among the unmapped singles of `date` and list the
-    rest for review (F4-b S4/S5).
+def classify_unmapped(date: str) -> dict:
+    """Decide, without writing, what `match_clear_cases` does with the unmapped
+    singles of `date`: `{links: [(product id, (set, card, foil))], review: [every
+    review item], proposed: pairs auto_match proposes}` (CM-b preview and review).
 
     Clear case: the only unmapped product of its metacard group, with exactly
     one candidate card that still has a free slot, and a slot proposed by
-    `auto_match` for no other product. It is linked to that proposal
-    (`match_type='auto'`, confidence 0.7). Every other unmapped single gets a
+    `auto_match` for no other product. Every other unmapped single gets a
     review reason: `ignored_pair`, `no_candidates`, `conflict` (slot taken or
     proposed twice) or `ambiguous` (several products or candidate cards).
     """
@@ -174,14 +174,32 @@ def match_clear_cases(date: str) -> dict:
             links.append((p.rbprd_id_product, slot))
             continue
         review.append(_review_item(p, reason, cards))
+    return {'links': links, 'review': review, 'proposed': proposed}
 
+
+def add_links(links) -> None:
+    """Add the clear-case links `[(product id, (set, card, foil))]` to the session
+    (`match_type='auto'`, confidence 0.7); the caller commits."""
     for id_product, (set_id, car_id, foil) in links:
         db.session.add(RbcmProductCardMap(
             rbpcm_id_product=id_product, rbpcm_rbset_id=set_id, rbpcm_rbcar_id=car_id,
             rbpcm_foil=foil, rbpcm_match_type='auto', rbpcm_confidence=MATCHER_CONFIDENCE))
+
+
+def match_clear_cases(date: str) -> dict:
+    """Link the clear cases among the unmapped singles of `date` and list the
+    rest for review (F4-b S4/S5); the decision is `classify_unmapped`.
+
+    A clear case is linked to the `auto_match` proposal (`match_type='auto'`,
+    confidence 0.7).
+    """
+    decided = classify_unmapped(date)
+    links, review = decided['links'], decided['review']
+    add_links(links)
     db.session.commit()
     return {
-        'auto_match': {'linked': len(links), 'proposed': proposed, 'review': len(review)},
+        'auto_match': {'linked': len(links), 'proposed': decided['proposed'],
+                       'review': len(review)},
         'review': review[:REVIEW_LIMIT],
         'review_total': len(review),
     }

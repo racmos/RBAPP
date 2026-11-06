@@ -177,3 +177,22 @@ def test_the_review_list_holds_at_most_200_items(catalog):
     assert result['review_total'] == 205
     assert len(result['review']) == 200
     assert [item['product_id'] for item in result['review']] == list(range(1, 201))
+
+
+def test_classify_unmapped_decides_like_match_clear_cases_and_writes_nothing(catalog):
+    """CM-b: the read-only half of `match_clear_cases` (preview and review list)."""
+    catalog('010', 'Lone Wolf')
+    catalog('012', 'Twin Blade', rarity='common')
+    product(1, 'Lone Wolf (Showcase)', metacard=10)
+    product(3, 'Twin Blade V.1', metacard=12, price=0.1)
+    product(4, 'Twin Blade V.2', metacard=12, price=2.0)
+    product(6, 'Nobody Known', metacard=14)
+    decided = daily_prices.classify_unmapped(DATE)
+    assert decided['links'] == [(1, ('OGN', '010', None))]
+    assert decided['proposed'] == 3
+    assert [(item['product_id'], item['reason']) for item in decided['review']] == [
+        (3, 'ambiguous'), (4, 'ambiguous'), (6, 'no_candidates')]
+    assert mappings() == []
+    result = daily_prices.match_clear_cases(DATE)
+    assert [(row[0], row[1:4]) for row in mappings()] == decided['links']
+    assert result['review'] == decided['review']
