@@ -59,12 +59,35 @@ function tagOptions(filters: BrowserFilters, scope: FilterScope, facets: CardFac
   return [...listed, ...filters.tag.filter((tag) => !listed.includes(tag))];
 }
 
+/** The `Filter` button's content: the icon, the word and the active count. */
+function FilterLabel({ count }: { count: number }) {
+  const { t } = useTranslation('decks');
+  return (
+    <>
+      <Icon name="filter" size={16} />
+      {t('browser.filter.open')}
+      {count > 0 && (
+        <span className={styles.filterCount} aria-hidden="true">
+          {count}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** The accessible name of the `Filter` button when filters are active ("Filter, 2 active"). */
+function useFilterLabel(filters: BrowserFilters) {
+  const { t } = useTranslation('decks');
+  const count = countFilters(filters);
+  return { count, label: count > 0 ? t('browser.filter.openActive', { count }) : undefined };
+}
+
 /**
- * The `Filter` button of the card browser and its panel (F5-i step 3): groups Card, Cost &
- * Might, Advanced and Status of the owner's reference, limited to what the zone allows. Values
- * show the count of the current answer's facets when the API sends one.
+ * The groups Card, Cost & Might, Advanced and Status of the owner's reference (F5-i step 3),
+ * limited to what the zone allows, and Clear filters. Values show the count of the current
+ * answer's facets when the API sends one.
  */
-export function FilterPanel({ filters, scope, base, facets, meta, onChange }: FilterProps) {
+function FilterGroups({ filters, scope, base, facets, meta, onChange }: FilterProps) {
   const { t } = useTranslation('decks');
   const { label } = useEnumLabel();
   const count = countFilters(filters);
@@ -79,21 +102,7 @@ export function FilterPanel({ filters, scope, base, facets, meta, onChange }: Fi
   const tagCount = (tag: string) => facets?.tag?.find((item) => item.tag === tag)?.count;
 
   return (
-    <Popover
-      title={t('browser.filter.title')}
-      triggerLabel={count > 0 ? t('browser.filter.openActive', { count }) : undefined}
-      trigger={
-        <>
-          <Icon name="filter" size={16} />
-          {t('browser.filter.open')}
-          {count > 0 && (
-            <span className={styles.filterCount} aria-hidden="true">
-              {count}
-            </span>
-          )}
-        </>
-      }
-    >
+    <>
       <Section title={t('browser.filter.card')}>
         <ChipGroup legend={t('browser.filter.domain')}>
           {domains.map((domain) => (
@@ -194,7 +203,65 @@ export function FilterPanel({ filters, scope, base, facets, meta, onChange }: Fi
           {t('browser.filter.clear')}
         </Button>
       </div>
+    </>
+  );
+}
+
+/** The `Filter` button of the desktop card browser and its popover panel. */
+export function FilterPanel(props: FilterProps) {
+  const { t } = useTranslation('decks');
+  const { count, label } = useFilterLabel(props.filters);
+  return (
+    <Popover
+      title={t('browser.filter.title')}
+      triggerLabel={label}
+      trigger={<FilterLabel count={count} />}
+    >
+      <FilterGroups {...props} />
     </Popover>
+  );
+}
+
+/** The `Filter` button of the browser in the mobile sheet: it shows or hides the inline panel. */
+export function FilterToggle({
+  filters,
+  expanded,
+  controls,
+  onToggle,
+}: {
+  filters: BrowserFilters;
+  expanded: boolean;
+  controls: string;
+  onToggle: () => void;
+}) {
+  const { count, label } = useFilterLabel(filters);
+  return (
+    <button
+      type="button"
+      className={styles.filterToggle}
+      aria-expanded={expanded}
+      aria-controls={expanded ? controls : undefined}
+      aria-label={label}
+      onClick={onToggle}
+    >
+      <FilterLabel count={count} />
+    </button>
+  );
+}
+
+/**
+ * The filter panel inline, under the search of the mobile sheet: a popover there would be
+ * clipped by the sheet's scrolling body, and its Escape would also close the sheet.
+ */
+export function InlineFilters({ id, ...props }: FilterProps & { id: string }) {
+  const { t } = useTranslation('decks');
+  return (
+    <div id={id} role="group" aria-labelledby={`${id}-title`} className={styles.inlineFilters}>
+      <h3 id={`${id}-title`} className={styles.inlineTitle}>
+        {t('browser.filter.title')}
+      </h3>
+      <FilterGroups {...props} />
+    </div>
   );
 }
 

@@ -318,8 +318,21 @@
     gap: 4px;
   }
 
-  .pick {
-    margin-top: 8px;
+  .addCards {
+    margin: 8px 0 0;
+  }
+
+  /* Done stays in reach while the sheet's grid scrolls under it. */
+  .sheetFooter {
+    position: sticky;
+    bottom: calc(-1 * var(--pad));
+    display: flex;
+    justify-content: flex-end;
+    margin: var(--pad) calc(-1 * var(--pad)) calc(-1 * var(--pad));
+    padding: 10px var(--pad);
+    border-top: 1px solid var(--line);
+    background-color: var(--bg-0);
+    background-image: linear-gradient(var(--panel-3), var(--panel-3));
   }
 
   .autoRunes {

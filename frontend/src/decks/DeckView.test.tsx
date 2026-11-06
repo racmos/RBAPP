@@ -203,9 +203,9 @@ describe('DeckView at 390 px (F5-h stage 1)', () => {
     expect(rowNames(section(/^Main deck$/))).toHaveLength(13);
   }, 20000);
 
-  it('at 390 px there is no card browser: one column, the sections keep their search', async () => {
+  it('at 390 px there is no card browser pane: one column, the sections open it in a sheet', async () => {
     await openDeck(41);
-    await screen.findByRole('combobox', { name: 'Add to the main deck' }, LONG);
+    await screen.findByRole('button', { name: 'Add cards to the main deck' }, LONG);
     expect(screen.queryByRole('region', { name: 'Card browser' })).toBeNull();
     expect(document.querySelector('[data-layout]')).toHaveAttribute('data-layout', 'single');
   }, 20000);

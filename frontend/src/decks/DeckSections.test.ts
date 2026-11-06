@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bookOf } from './editor';
-import { pickFilters } from './DeckSections';
+import { pickFilters } from './browserFilters';
 import type { DeckEditor } from './useDeckEditor';
 import { deckCatalog, emptyContent, rivenContent } from '@/test/fixtures/decks';
 

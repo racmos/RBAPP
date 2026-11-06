@@ -795,10 +795,11 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   disabled with the reason (`issueMessage`) as `title` and `aria-describedby`, so a hard limit is never
   reachable. Rows: "−"/"+" (main, sideboard, workbench, runes), "To main / To side / To bench" moves
   (one copy), "Remove" for legend, champion and battlefields. Removing a line, a battlefield or a slot
-  pushes a toast with "Undo" (the deck goes back to how it was). Each section has a `CardCombobox`
-  search with its filters (legend `type=Legend`; champion `type=Unit&supertype=Champion&tag=<legend
+  pushes a toast with "Undo" (the deck goes back to how it was). Cards come from the card browser
+  (the desktop pane, or the mobile sheet below) with the filters of `pickFilters` (legend `type=Legend`; champion `type=Unit&supertype=Champion&tag=<legend
   tags>`; runes `type=Rune&domain=<identity>`; battlefields `type=Battlefield`; main and sideboard
-  `type=Unit|Spell|Gear` without tokens); a picked card is checked first and refused with a toast. A
+  `type=Unit|Spell|Gear` without tokens); a picked card is checked first (`editor.pick` returns
+  whether the deck took it) and refused with a toast. A
   new legend that purges runes or the champion says so with "Undo". "Auto runes" loads the base runes
   of the identity (`useRuneCards`) and calls `autoRunes`. The completeness, summary counts and value
   update at once; the legality shown is the server's, as of the last save ("Legality as of the last
@@ -849,17 +850,29 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   "two-pane"`, page max 1500 px; the browser column is sticky under the 56 px topbar, as tall as the
   rest of the viewport, with its own scroll). The workspace keeps its place in the React tree, so the
   layout can flip without resetting it; below 960 px, offline or before the rules load everything
-  stays one column (760 px) as in F5-h. In two panes `DeckSections` gets `pickers={false}`: no
-  per-section `CardCombobox` (Auto runes and the row controls stay). `CardBrowser`: tabs Legend,
+  stays one column (760 px) as in F5-h. In two panes `DeckSections` gets `addCards={false}`: no
+  per-section `Add cards` button (Auto runes and the row controls stay). `CardBrowser`: tabs Legend,
   Champion, Main deck, Battlefields, Sideboard, Runes (arrows, Home, End; Main by default), "N cards
   for <section>", a debounced search (`DebouncedInput`, 300 ms, sent as `q`), a grid of 48 tiles per
-  page from `useCardList` with `pickFilters(zone)` (exported by `DeckSections.tsx`; the sideboard
+  page from `useCardList` with `pickFilters(zone)` (exported by `browserFilters.ts`; the sideboard
   uses the main deck filters) and `sort=name`, and `Pagination`; tab or search changes go back to
   page 1. A tile is one button ("Add <name>", "Choose <name>" on Legend and Champion) with energy
   (top left) and might (top right) badges and the copies already in the deck (`copiesInDeck`, "×2");
   a click calls `editor.pick(card, zone)`. On the other tabs a tile the rules refuse
   (`editor.addReason` with the card added to the book) is `aria-disabled` with the reason as `title`
   and description, and does nothing.
+- Mobile card browser sheet (F5-i decision 4, `AddCardsSheet.tsx`): in the one-column editor, while
+  `editor.canEdit`, each section (Legend, Champion, Main deck, Battlefields, Runes, Sideboard; not
+  the workbench) has an "Add cards" button ("Add cards to the main deck"; none while the legend or
+  champion slot is full, none offline or with unknown cards) that opens a `Sheet` "Add to <section>"
+  with `CardBrowser zone=<section>`: the same browser without the zone tabs (counter, search,
+  filters, chips, tiles, pagination). Adding keeps the sheet open, the tiles' copies and the section
+  behind follow at once (the editor is shared); choosing a legend or champion closes it (`onChosen`).
+  "Done" (sticky at the bottom), Escape and the backdrop close it and focus returns to the button
+  (to the section's summary when a filled slot took the button away). In the sheet the filters are
+  inline: the `Filter` button (`FilterToggle`, `aria-expanded`) shows the "Filter cards" group under
+  the search (`InlineFilters`), because the `Popover` panel would be clipped by the sheet's scrolling
+  body and its Escape would also close the sheet. Desktop two panes are unchanged.
 - Browser filters (F5-i step 3): a `Filter` button next to the search ("Filter, N active" when
   filters are on) opens a `components/ui/Popover` (non-modal dialog under the button: focus moves in,
   Escape and the close button return it to the button, a press outside closes it) with the groups

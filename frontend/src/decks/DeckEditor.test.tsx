@@ -50,8 +50,8 @@ async function openDeck(id = 41, details = deckDetails) {
   const sent = recordDeckRequests();
   const app = await renderApp({ path: `/decks/${id}`, width: PHONE });
   await screen.findByRole('heading', { level: 1 }, LONG);
-  // the rule values come from /meta/game
-  await waitFor(() => expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0), LONG);
+  // the rule values come from /meta/game: the sections offer Add cards once they are in
+  await screen.findByRole('button', { name: 'Add cards to the main deck' }, LONG);
   return { ...app, sent };
 }
 
@@ -60,6 +60,13 @@ const section = (name: RegExp) =>
 const qtyOf = (row: HTMLElement) =>
   row.querySelector('[data-slot="qty"]')?.textContent?.replace('×', '');
 const saveState = () => document.querySelector('[data-slot="save-state"]') as HTMLElement;
+/** Opens a section's card browser sheet (F5-i decision 4) and waits for its tiles. */
+async function openSheet(label: string, title: string) {
+  await userEvent.click(screen.getByRole('button', { name: label }));
+  const sheet = await screen.findByRole('dialog', { name: title });
+  await within(sheet).findByRole('list', { name: /^Cards for / }, LONG);
+  return sheet;
+}
 const toast = async (text: string) =>
   expect((await screen.findAllByText(text, {}, LONG)).length).toBeGreaterThan(0);
 const rowOf = (details: HTMLElement, name: string) =>
@@ -223,12 +230,18 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
       }),
     );
     const { sent } = await openDeck();
-    const pick = screen.getByRole('combobox', { name: 'Add to the sideboard' });
-    await userEvent.type(pick, 'Ember');
-    await userEvent.click(await screen.findByRole('option', { name: /Ember Wisp/ }, LONG));
+    const sheet = await openSheet('Add cards to the sideboard', 'Add to Sideboard');
+    await userEvent.type(
+      within(sheet).getByRole('searchbox', { name: 'Search Sideboard cards' }),
+      'Ember',
+    );
+    await waitFor(() => expect(seen.at(-1)?.get('q')).toBe('Ember'), LONG);
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Add Ember Wisp' }));
+    // the sheet stays open for the next card
+    expect(screen.getByRole('dialog', { name: 'Add to Sideboard' })).toBeVisible();
     const side = section(/^Sideboard$/);
     expect(rowOf(side, 'Ember Wisp')).toBeDefined();
-    expect(within(side).getByText('9/10')).toBeVisible();
+    expect(within(side).getByText('9/10')).toBeInTheDocument();
     await waitFor(() => expect(puts(sent).length).toBeGreaterThan(0), SAVE);
     const body = puts(sent).at(-1)?.body as { content: DeckContentV2 };
     expect(body.content.sideboard.at(-1)).toEqual({ set: 'OGN', id: '12', qty: 1 });
@@ -250,18 +263,21 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
     // a stale or foreign answer: the editor still checks every card it is given
     server.use(http.get(`${API}/cards`, () => ok({ items: [emberWisp, signature] })));
     const { sent } = await openDeck();
-    const pick = screen.getByRole('combobox', { name: 'Add to the main deck' });
-    await userEvent.type(pick, 'Ember');
-    await userEvent.click(await screen.findByRole('option', { name: /Ember Wisp/ }, LONG));
-    await toast("This card is outside the legend's domains.");
+    const main = await openSheet('Add cards to the main deck', 'Add to Main deck');
+    const fury = within(main).getByRole('button', { name: 'Add Ember Wisp' });
+    expect(fury).toHaveAttribute('aria-disabled', 'true');
+    expect(fury).toHaveAccessibleDescription("This card is outside the legend's domains.");
+    await userEvent.click(fury);
     expect(rowOf(section(/^Main deck$/), 'Ember Wisp')).toBeUndefined();
+    await userEvent.click(within(main).getByRole('button', { name: 'Done' }));
 
-    const side = screen.getByRole('combobox', { name: 'Add to the sideboard' });
-    await userEvent.type(side, 'Wind');
-    await userEvent.click(await screen.findByRole('option', { name: /Wind Wall/ }, LONG));
-    await toast('Signature cards need a tag shared with the legend.');
+    const side = await openSheet('Add cards to the sideboard', 'Add to Sideboard');
+    const wall = within(side).getByRole('button', { name: 'Add Wind Wall' });
+    expect(wall).toHaveAttribute('aria-disabled', 'true');
+    expect(wall).toHaveAccessibleDescription('Signature cards need a tag shared with the legend.');
+    await userEvent.click(wall);
     expect(rowOf(section(/^Sideboard$/), 'Wind Wall')).toBeUndefined();
-    expect(within(section(/^Sideboard$/)).getByText('8/10')).toBeVisible();
+    expect(within(section(/^Sideboard$/)).getByText('8/10')).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 1300));
     // (the previous test may still flush its own save on unmount)
     const ids = (zone: 'main' | 'sideboard') =>
@@ -296,9 +312,10 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
       { ...rivenContent, legend: null },
     );
     await openDeck(45, [noLegend]);
-    const pick = screen.getByRole('combobox', { name: 'Choose a legend' });
-    await userEvent.type(pick, 'Fury');
-    await userEvent.click(await screen.findByRole('option', { name: /Fury Queen/ }, LONG));
+    const sheet = await openSheet('Add cards to the legend slot', 'Add to Legend');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Choose Fury Queen' }));
+    // a slot holds one card: the sheet closes
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(seen.some((search) => search.includes('type=Legend'))).toBe(true);
     expect(within(section(/^Legend$/)).getByText('Ayla, Fury Queen')).toBeVisible();
     await toast('Legend changed: runes and champion outside it were removed.');
@@ -419,6 +436,7 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
       ),
     ).toBeVisible();
     expect(screen.queryAllByRole('combobox')).toEqual([]);
+    expect(screen.queryAllByRole('button', { name: /^Add cards/ })).toEqual([]);
     expect(screen.getByRole('button', { name: 'Remove a copy of Discipline' })).toBeDisabled();
     await userEvent.click(
       within(warning).getByRole('button', { name: 'Remove cards not in the catalog' }),
@@ -437,6 +455,7 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
     await screen.findByRole('heading', { level: 1 }, LONG);
     expect(saveState()).toHaveTextContent('Offline: editing is disabled.');
     expect(screen.queryAllByRole('combobox')).toEqual([]);
+    expect(screen.queryAllByRole('button', { name: /^Add cards/ })).toEqual([]);
     expect(screen.getByRole('button', { name: 'Remove a copy of Discipline' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Remove Star Spring' })).toBeDisabled();
     for (const name of [
@@ -457,7 +476,7 @@ describe('Deck editing at 390 px (F5-h stage 2)', () => {
 });
 
 describe('Deck editing at 1280 px (F5-i step 2)', () => {
-  it('the card browser replaces the per-section search; Auto runes stays', async () => {
+  it("the card browser replaces the sections' Add cards; Auto runes stays", async () => {
     signedIn();
     withDecks();
     await renderApp({ path: '/decks/41', width: 1280 });
@@ -465,6 +484,7 @@ describe('Deck editing at 1280 px (F5-i step 2)', () => {
     // the topbar keeps its own card search; the sections have none
     const workspace = screen.getByRole('region', { name: 'Deck workspace' });
     expect(within(workspace).queryAllByRole('combobox')).toEqual([]);
+    expect(screen.queryAllByRole('button', { name: /^Add cards/ })).toEqual([]);
     await waitFor(
       () => expect(screen.getByRole('button', { name: 'Auto runes' })).toBeEnabled(),
       LONG,

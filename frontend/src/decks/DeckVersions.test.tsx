@@ -110,7 +110,11 @@ async function openDeck(width = 390) {
   const sent = recordDeckRequests();
   const app = await renderApp({ path: '/decks/41', width });
   await screen.findByRole('heading', { level: 1 }, LONG);
-  await waitFor(() => expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0), LONG);
+  // the rule values come from /meta/game: editing waits for them
+  await waitFor(
+    () => expect(screen.getByRole('button', { name: 'Remove a copy of Discipline' })).toBeEnabled(),
+    LONG,
+  );
   return { ...app, sent, state };
 }
 

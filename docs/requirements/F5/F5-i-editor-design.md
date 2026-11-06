@@ -123,4 +123,13 @@ locations/F5-f; ask the owner).
    (another mounted deck) are not available. To confirm with the owner when F16-e is built.
 3. **Power Cards** = cards with a power cost greater than 0.
 4. **Mobile**: the card browser and its filters open as a **bottom sheet** from each section.
+   **Done (frontend, `feat/f5-mobile-browser-sheet`):** below 960 px each editable section (Legend,
+   Champion, Main deck, Battlefields, Runes, Sideboard) has an `Add cards` button that opens a
+   bottom sheet "Add to <section>" with the card browser fixed to that zone (no tabs): counter,
+   search, filters inline under the search (a popover would be clipped by the sheet), chips, tiles,
+   paging. It stays open while adding, a legend or champion choice closes it, Done/Escape close it.
+   The per-section searches are gone. Still left in F5-i: the Full Art tab (step 5), the live
+   import validation panel, the deck-list popover placement near the bottom of the viewport, the
+   browser's `View` / `Fit` and resizable divider, and the backend filters (keywords,
+   `legal_for_deck`, available count).
 
