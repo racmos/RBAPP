@@ -1,4 +1,6 @@
 import type {
+  CardDetail,
+  CardMini,
   DeckCard,
   DeckContentV2,
   DeckDetail,
@@ -9,6 +11,7 @@ import type {
   GameMode,
 } from '@/api/types';
 import { DEFAULT_RULES, ISSUE_CODES, makeCards, validate, type Bans } from '@/decks/rules';
+import { cardDetail } from './cards';
 
 /**
  * Decks v2 fixtures (F5-d shapes). Legality is computed with the deck rules library over the
@@ -123,6 +126,32 @@ export const furyBench = card({
   market: 1,
 });
 
+/** Another printing (alt art) of a card: same name and game facts, its own set, id, image,
+ *  rarity, price and owned copies. */
+const altArt = (base: DeckCard, set_id: string, card_id: string, extra: Partial<DeckCard> = {}) =>
+  card({
+    ...base,
+    set_id,
+    card_id,
+    key: `${set_id}-${card_id}`,
+    image_src: `/riftbound/media/cards/${set_id.toLowerCase()}/${card_id}.png`,
+    is_base: false,
+    owned_total: 0,
+    ...extra,
+  });
+
+/** Discipline (`mainCards[0]`, `variants: 3`) in its two other printings. */
+export const disciplineAlts = [
+  altArt(mainCards[0], 'OGS', '7', { rarity: 'Rare', market: 2, owned_total: 2 }),
+  altArt(mainCards[0], 'OGN', '310a', { rarity: 'Showcase', market: 9 }),
+];
+/** The Riven champion in a second printing (decks that give the champion `variants: 2`). */
+export const championAlt = altArt(rivenChampion, 'OGS', '20', {
+  rarity: 'Showcase',
+  market: 30,
+  variants: 2,
+});
+
 export const deckCatalog: DeckCard[] = [
   rivenLegend,
   rivenChampion,
@@ -133,7 +162,39 @@ export const deckCatalog: DeckCard[] = [
   ...sideCards,
   benchCard,
   furyBench,
+  ...disciplineAlts,
+  championAlt,
 ];
+
+/** `GET /cards/<set>/<id>` of one of `printings` (every printing of its name, in this order). */
+export function printingDetail(of: DeckCard, printings: DeckCard[]): CardDetail {
+  const mini = (c: DeckCard): CardMini => ({
+    set_id: c.set_id,
+    card_id: c.card_id,
+    key: c.key,
+    name: c.name,
+    domains: c.domains,
+    type: c.type,
+    supertype: c.supertype,
+    rarity: c.rarity,
+    image_src: c.image_src,
+    image_thumb_src: null,
+    is_base: c.is_base,
+    market: c.market,
+    owned_total: c.owned_total ?? 0,
+  });
+  return {
+    ...cardDetail,
+    set_id: of.set_id,
+    card_id: of.card_id,
+    key: of.key,
+    name: of.name,
+    printings: printings.map(mini),
+    related: [],
+    my_lines: [],
+    in_decks: [],
+  };
+}
 
 const ref = (c: DeckCard) => ({ set: c.set_id, id: c.card_id });
 export const line = (c: DeckCard, qty: number) => ({ ...ref(c), qty });

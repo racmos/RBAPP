@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, type ReactNode } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DeckCard, DeckRef } from '@/api/types';
 import { CardImage, DomainPips } from '@/components/card';
@@ -7,6 +7,9 @@ import { Icon } from '@/components/ui/Icon';
 import { useEnumLabel } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { AddCardsSheet } from './AddCardsSheet';
+import { ArtSwitch, type ArtTarget } from './ArtSwitch';
+import { CardZoom } from './CardZoom';
+import { Guarded } from './Guarded';
 import { cardLabel, refKey } from './labels';
 import { useRuneCards } from './queries';
 import type { DeckEditor } from './useDeckEditor';
@@ -29,43 +32,6 @@ const MOVES: Record<MoveZone, MoveZone[]> = {
   sideboard: ['main', 'workbench'],
   workbench: ['main', 'sideboard'],
 };
-
-/** A control the rules may refuse: disabled, with the reason as tooltip and description. */
-function Guarded({
-  label,
-  reason,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  reason: string | null;
-  disabled: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  const id = useId();
-  return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={label}
-        title={reason ?? label}
-        disabled={disabled || reason !== null}
-        aria-describedby={reason ? id : undefined}
-        onClick={onClick}
-      >
-        {children}
-      </Button>
-      {reason && (
-        <span id={id} className="sr-only">
-          {reason}
-        </span>
-      )}
-    </>
-  );
-}
 
 /** Energy, power and might as short labelled chips; a value the card lacks is left out. */
 function Stats({ card }: { card: DeckCard }) {
@@ -94,10 +60,76 @@ function Stats({ card }: { card: DeckCard }) {
   );
 }
 
-type RowProps = { card: DeckCard; qty: number; zone: SectionKey; editor?: DeckEditor };
+/** Why the art cannot change right now (offline, rules loading, unknown cards). */
+function lockReason(editor: DeckEditor, t: DeckEditor['t']): string | null {
+  if (editor.canEdit) return null;
+  if (editor.offline) return t('art.offline');
+  if (!editor.rules) return t('edit.needRules');
+  return t('art.unknown');
+}
 
-/** One card: thumb, name, copies, type, domains and price; with an editor, its controls. */
-export function CardRow({ card, qty, zone, editor }: RowProps) {
+/** "N alt arts": with an editor, the button that opens the art switch; else a plain badge. */
+function AltArts({
+  card,
+  name,
+  editor,
+  onChangeArt,
+}: {
+  card: DeckCard;
+  name: string;
+  editor?: DeckEditor;
+  onChangeArt?: (card: DeckCard, opener: HTMLElement) => void;
+}) {
+  const { t } = useTranslation('decks');
+  const id = useId();
+  const text = t('row.altArts', { count: card.variants - 1 });
+  if (!editor || !onChangeArt) {
+    return (
+      <span className={styles.altArts} data-slot="alt-arts">
+        {text}
+      </span>
+    );
+  }
+  const reason = lockReason(editor, t);
+  const label = t('art.open', { name });
+  return (
+    <>
+      <button
+        type="button"
+        className={`${styles.altArts} ${styles.altArtsButton}`}
+        data-slot="alt-arts"
+        aria-label={label}
+        title={reason ?? label}
+        disabled={reason !== null}
+        aria-describedby={reason ? id : undefined}
+        onClick={(event) => onChangeArt(card, event.currentTarget)}
+      >
+        {text}
+      </button>
+      {reason && (
+        <span id={id} className="sr-only">
+          {reason}
+        </span>
+      )}
+    </>
+  );
+}
+
+type RowProps = {
+  card: DeckCard;
+  qty: number;
+  zone: SectionKey;
+  editor?: DeckEditor;
+  /** Show the printing code (`OGN-310`): the card has alt arts or another row of its name.
+   *  Defaults to the card having alt arts. */
+  showPrinting?: boolean;
+  /** Opens the art switch of this row (the section owns it, so it outlives the row). */
+  onChangeArt?: (card: DeckCard, opener: HTMLElement) => void;
+};
+
+/** One card: thumb (zooms the card), name, printing, copies, type, domains and price; with an
+ *  editor, its controls. */
+export function CardRow({ card, qty, zone, editor, showPrinting, onChangeArt }: RowProps) {
   const { t } = useTranslation('decks');
   const { typeLabel } = useEnumLabel();
   // CardImage resets on a new card object: keep one per printing
@@ -107,19 +139,24 @@ export function CardRow({ card, qty, zone, editor }: RowProps) {
   const off = !editor?.canEdit;
   return (
     <li className={styles.row}>
-      <CardImage card={image} size="thumb" className={styles.thumb} />
+      <CardZoom card={image} name={name} className={styles.thumbButton}>
+        <CardImage card={image} size="thumb" decorative className={styles.thumb} />
+      </CardZoom>
       <span className={styles.rowMain}>
-        <span className={styles.rowName} data-slot="name">
-          {name}
+        <span className={styles.rowName}>
+          <span data-slot="name">{name}</span>
+          {(showPrinting ?? card.variants > 1) && (
+            <span className={styles.printing} data-slot="printing">
+              {card.key}
+            </span>
+          )}
         </span>
         <span className={styles.rowFacts}>
           <span>{typeLabel(card.supertype, card.type)}</span>
           <DomainPips domains={card.domains} size={16} />
           <Stats card={card} />
           {card.variants > 1 && (
-            <span className={styles.altArts} data-slot="alt-arts">
-              {t('row.altArts', { count: card.variants - 1 })}
-            </span>
+            <AltArts card={card} name={name} editor={editor} onChangeArt={onChangeArt} />
           )}
         </span>
       </span>
@@ -205,6 +242,18 @@ function AutoRunes({ editor }: { editor: DeckEditor }) {
 type Row = { card: DeckCard; qty: number };
 const TYPE_ORDER = ['Unit', 'Spell', 'Gear'];
 
+/** The rows of one name side by side, where its first one came; its printings by code. */
+function byName(rows: Row[]): Row[] {
+  const first = new Map<string, number>();
+  rows.forEach((row, index) => {
+    if (!first.has(row.card.name)) first.set(row.card.name, index);
+  });
+  const rank = (row: Row) => first.get(row.card.name) ?? 0;
+  return [...rows].sort(
+    (a, b) => rank(a) - rank(b) || a.card.key.localeCompare(b.card.key, 'en', { numeric: true }),
+  );
+}
+
 /** Rows grouped by card type (Unit, Spell, Gear, then any other), in the order they came. */
 function groupByType(rows: Row[]) {
   const groups = new Map<string, Row[]>();
@@ -237,9 +286,24 @@ function Section({ name, editor, addCards }: SectionProps) {
       : name === 'battlefields'
         ? content.battlefields.map((ref) => ({ ...ref, qty: 1 }))
         : content[name];
-  const rows = lines.flatMap((line) => {
-    const card = book[refKey(line)];
-    return card ? [{ card, qty: line.qty }] : [];
+  const rows = byName(
+    lines.flatMap((line) => {
+      const card = book[refKey(line)];
+      return card ? [{ card, qty: line.qty }] : [];
+    }),
+  );
+  // a name in several printings shows each row's printing
+  const named = new Map<string, number>();
+  for (const row of rows) named.set(row.card.name, (named.get(row.card.name) ?? 0) + 1);
+  const rowProps = (row: Row) => ({
+    ...row,
+    zone: name,
+    editor,
+    showPrinting: row.card.variants > 1 || (named.get(row.card.name) ?? 0) > 1,
+    onChangeArt: (card: DeckCard, opener: HTMLElement) => {
+      artOpener.current = opener;
+      setArt({ zone: name, card });
+    },
   });
   const sectionDone = name === 'workbench' ? null : done[name];
   const count = sectionDone
@@ -247,40 +311,62 @@ function Section({ name, editor, addCards }: SectionProps) {
     : String(rows.reduce((total, row) => total + row.qty, 0));
   const slotFull = (name === 'legend' || name === 'champion') && rows.length > 0;
   const summary = useRef<HTMLElement>(null);
+  const [art, setArt] = useState<ArtTarget | null>(null);
+  const artOpener = useRef<HTMLElement | null>(null);
+  // the opener's row may be gone once its copies went to other printings
+  const artReturn = useMemo(
+    () => ({
+      get current() {
+        const opener = artOpener.current;
+        return opener?.isConnected ? opener : summary.current;
+      },
+    }),
+    [],
+  );
   return (
-    <details className={styles.section} open>
-      <summary ref={summary}>
-        <span className={styles.sectionName}>{t(`section.${name}`)}</span>
-        <span className={styles.sectionCount}>{count}</span>
-      </summary>
-      {rows.length === 0 ? (
-        <p className={styles.muted}>{t('emptySection')}</p>
-      ) : name === 'main' || name === 'sideboard' ? (
-        groupByType(rows).map((group) => (
-          <div key={group.type} className={styles.group} role="group" aria-label={group.title}>
-            <h3 className={styles.groupTitle}>
-              {typeLabel(null, group.type)}
-              <span className={styles.groupCount}>{t('group.count', { count: group.copies })}</span>
-            </h3>
-            <ul className={styles.rows}>
-              {group.rows.map((row) => (
-                <CardRow key={row.card.key} {...row} zone={name} editor={editor} />
-              ))}
-            </ul>
-          </div>
-        ))
-      ) : (
-        <ul className={styles.rows}>
-          {rows.map((row) => (
-            <CardRow key={row.card.key} {...row} zone={name} editor={editor} />
-          ))}
-        </ul>
-      )}
-      {name === 'runes' && <AutoRunes editor={editor} />}
-      {addCards && editor.canEdit && name !== 'workbench' && (
-        <AddCardsSheet zone={name} editor={editor} full={slotFull} fallbackFocus={summary} />
-      )}
-    </details>
+    <>
+      <details className={styles.section} open>
+        <summary ref={summary}>
+          <span className={styles.sectionName}>{t(`section.${name}`)}</span>
+          <span className={styles.sectionCount}>{count}</span>
+        </summary>
+        {rows.length === 0 ? (
+          <p className={styles.muted}>{t('emptySection')}</p>
+        ) : name === 'main' || name === 'sideboard' ? (
+          groupByType(rows).map((group) => (
+            <div key={group.type} className={styles.group} role="group" aria-label={group.title}>
+              <h3 className={styles.groupTitle}>
+                {typeLabel(null, group.type)}
+                <span className={styles.groupCount}>
+                  {t('group.count', { count: group.copies })}
+                </span>
+              </h3>
+              <ul className={styles.rows}>
+                {group.rows.map((row) => (
+                  <CardRow key={row.card.key} {...rowProps(row)} />
+                ))}
+              </ul>
+            </div>
+          ))
+        ) : (
+          <ul className={styles.rows}>
+            {rows.map((row) => (
+              <CardRow key={row.card.key} {...rowProps(row)} />
+            ))}
+          </ul>
+        )}
+        {name === 'runes' && <AutoRunes editor={editor} />}
+        {addCards && editor.canEdit && name !== 'workbench' && (
+          <AddCardsSheet zone={name} editor={editor} full={slotFull} fallbackFocus={summary} />
+        )}
+      </details>
+      <ArtSwitch
+        target={art}
+        editor={editor}
+        onClose={() => setArt(null)}
+        returnFocusRef={artReturn}
+      />
+    </>
   );
 }
 

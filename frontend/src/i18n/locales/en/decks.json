@@ -117,6 +117,33 @@
     "altArts_one": "{{count}} alt art",
     "altArts_other": "{{count}} alt arts"
   },
+  "zoom": {
+    "view": "View {{name}}",
+    "close": "Close"
+  },
+  "art": {
+    "open": "Change art of {{name}}",
+    "title": "Choose art for {{name}} ({{section}})",
+    "loading": "Loading the printings…",
+    "error": "The printings could not be loaded.",
+    "lines": "Printings of {{name}}",
+    "hint": "Each copy you add to a printing comes from {{code}}, the row you opened.",
+    "slotHint": "Choose the printing this slot uses.",
+    "total_one": "This section keeps {{count}} copy of {{name}}.",
+    "total_other": "This section keeps {{count}} copies of {{name}}.",
+    "copies_one": "{{count}} copy",
+    "copies_other": "{{count}} copies",
+    "owned": "You own {{count}}",
+    "source": "From this row",
+    "more": "One more copy in {{code}}",
+    "less": "One less copy in {{code}}",
+    "noneLeft": "{{code}} has no copies left to move.",
+    "offline": "Offline: the art cannot be changed.",
+    "unknown": "Remove the cards not in the catalog to change the art.",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "changed": "Art of {{name}} changed."
+  },
   "unknown": {
     "title": "Cards not in the catalog",
     "body": "These printings stay in the deck, but they are left out of the legality and the value.",

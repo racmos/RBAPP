@@ -14,6 +14,7 @@ import {
   removeCopy,
   removeUnknown,
   rulesCardsOf,
+  setPrinting,
   toDeckCard,
   unknownRefs,
   type CardBook,
@@ -39,6 +40,9 @@ import {
 } from './rules';
 
 const AUTOSAVE_MS = 1000;
+
+/** `n` copies of the printing `from` become the printing `to` (the art switch). */
+export type PrintingMove = { from: DeckCard; to: DeckCard; n: number };
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error' | 'blocked';
 
 /**
@@ -264,6 +268,32 @@ export function useDeckEditor(deck: DeckDetail) {
       removeWithUndo(result.deck as DeckContentV2, t('edit.removed', { name: label }));
   };
 
+  /** Copies of a card go to other printings of it (the art switch, one edit with undo). The
+   *  copies of the name stay the same, so no rule is asked; a move between two cards that do not
+   *  share the name is ignored. The new printings join the book, so the rows, legality and value
+   *  read them. True when the deck changed. */
+  const changeArt = (zone: EditZone | 'legend' | 'champion', moves: PrintingMove[]): boolean => {
+    if (!canEdit) return false;
+    const withBook: Record<string, DeckCard> = { ...book };
+    let next = content;
+    for (const { from, to, n } of moves) {
+      if (from.name !== to.name) continue;
+      withBook[to.key] = withBook[to.key] ?? to;
+      next = setPrinting(next, zone, refOf(from), refOf(to), n);
+    }
+    if (next === content) return false;
+    const label = cardLabel(moves[0].from);
+    setBook(withBook);
+    const before = content;
+    edit(next);
+    pushToast({
+      kind: 'info',
+      message: t('art.changed', { name: label }),
+      action: { label: t('edit.undo'), onAction: () => edit(before) },
+    });
+    return true;
+  };
+
   const identityDomains = useMemo(
     () => (known.legend ? identity(known, cards) : []),
     [known, cards],
@@ -304,9 +334,12 @@ export function useDeckEditor(deck: DeckDetail) {
     move,
     pick,
     clearSlot,
+    changeArt,
     balanceRunes,
     removeUnknown: () => edit(removeUnknown(content, book)),
   };
 }
 
 export type DeckEditor = ReturnType<typeof useDeckEditor>;
+
+const refOf = (card: DeckCard): DeckRef => ({ set: card.set_id, id: card.card_id });

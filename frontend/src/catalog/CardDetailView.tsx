@@ -302,19 +302,12 @@ function Attribute({ label, value }: { label: string; value: string | number | n
 }
 
 function imageCardFromMini(mini: CardMini): CardImageCard {
-  return {
-    ...mini,
-    domains: [],
-    type: '',
-    supertype: null,
-    energy: null,
-    might: null,
-  };
+  return { ...mini, energy: null, might: null };
 }
 
 function PrintingItem({ printing, current }: { printing: CardMini; current: boolean }) {
   const { label } = useEnumLabel();
-  const market = printing.price?.market ?? null;
+  const market = printing.market;
   const name = `${printing.set_id} · #${printing.card_id}`;
   const ariaLabel = `${name}, ${label('rarity', printing.rarity)}`;
   const content = (

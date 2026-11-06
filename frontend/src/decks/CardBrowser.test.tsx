@@ -247,7 +247,7 @@ describe('Card browser of the two-pane editor (F5-i step 2)', () => {
 
   it('shows energy and might, and the copies already in the deck', async () => {
     const { browser } = await openBrowser();
-    const tile = within(browser).getByRole('button', { name: /Ayla/ });
+    const tile = within(browser).getByRole('button', { name: /^Add Ayla/ });
     expect(tile.querySelector('[data-slot="energy"]')).toHaveTextContent('3');
     expect(tile.querySelector('[data-slot="might"]')).toHaveTextContent('1');
     const wisp = within(browser).getByRole('button', { name: 'Add Ember Wisp' });

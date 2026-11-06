@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { CardSummary } from '@/api/types';
 import { CardImage } from '@/components/card';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { Icon } from '@/components/ui/Icon';
 import { Pagination } from '@/components/ui/Pagination';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { DebouncedInput, useCardList, useGameMeta } from '@/catalog';
@@ -14,6 +15,7 @@ import {
   scopeOf,
   type BrowserFilters,
 } from './browserFilters';
+import { CardZoom } from './CardZoom';
 import { copiesInDeck, toDeckCard } from './editor';
 import { ActiveFilters, FilterPanel, FilterToggle, InlineFilters } from './FilterPanel';
 import type { DeckEditor } from './useDeckEditor';
@@ -32,7 +34,8 @@ const COSTED: readonly Tab[] = ['champion', 'main', 'sideboard'];
 
 type TileProps = { card: CardSummary; tab: Tab; editor: DeckEditor; onChosen?: () => void };
 
-/** One card: a button that adds it to the tab's zone, or says why the rules refuse it. */
+/** One card: a button that adds it to the tab's zone, or says why the rules refuse it; the
+ *  magnifier over its corner, a sibling of that button, zooms the card without adding it. */
 function Tile({ card, tab, editor, onChosen }: TileProps) {
   const { t } = useTranslation('decks');
   const id = useId();
@@ -44,7 +47,7 @@ function Tile({ card, tab, editor, onChosen }: TileProps) {
   const copies = copiesInDeck(editor.content, ref);
   const label = t(isSlot(tab) ? 'browser.choose' : 'browser.add', { name: card.name });
   return (
-    <li>
+    <li className={styles.tileItem}>
       <button
         type="button"
         className={styles.tile}
@@ -75,6 +78,9 @@ function Tile({ card, tab, editor, onChosen }: TileProps) {
           </span>
         )}
       </button>
+      <CardZoom card={card} name={card.name} className={styles.zoom}>
+        <Icon name="search" size={16} />
+      </CardZoom>
       {reason && (
         <span id={id} className="sr-only">
           {reason}

@@ -242,6 +242,23 @@
     width: 40px;
   }
 
+  /* The thumb is a button that zooms the card (a tap on a phone). */
+  .thumbButton {
+    display: block;
+    width: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    cursor: zoom-in;
+  }
+
+  .thumbButton:hover,
+  .thumbButton:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   .rowMain {
     display: flex;
     flex-direction: column;
@@ -254,8 +271,18 @@
     overflow-wrap: anywhere;
   }
 
+  /* The printing code of a card with alt arts (`OGN-310`). */
+  .printing {
+    margin-left: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
   .rowFacts {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
     color: var(--muted);
@@ -273,6 +300,27 @@
   .altArts {
     color: var(--gold);
     font-weight: 700;
+  }
+
+  /* With an editor the badge opens the art switch. */
+  .altArtsButton {
+    min-height: 28px;
+    padding: 0 8px;
+    border: 1px solid rgba(224, 185, 74, 0.5);
+    border-radius: 999px;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .altArtsButton:hover:not(:disabled) {
+    background: rgba(224, 185, 74, 0.12);
+  }
+
+  .altArtsButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .group {
