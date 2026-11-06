@@ -856,8 +856,8 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   for <section>", a debounced search (`DebouncedInput`, 300 ms, sent as `q`), a grid of 48 tiles per
   page from `useCardList` with `pickFilters(zone)` (exported by `browserFilters.ts`; the sideboard
   uses the main deck filters) and `sort=name`, and `Pagination`; tab or search changes go back to
-  page 1. A tile is one button ("Add <name>", "Choose <name>" on Legend and Champion) with energy
-  (top left) and might (top right) badges and the copies already in the deck (`copiesInDeck`, "×2");
+  page 1. A tile is one button ("Add <name>", "Choose <name>" on Legend and Champion) with only the
+  copies already in the deck (`copiesInDeck`, "×2"; no energy or might circle: the art shows them);
   a click calls `editor.pick(card, zone)`. On the other tabs a tile the rules refuse
   (`editor.addReason` with the card added to the book) is `aria-disabled` with the reason as `title`
   and description, and does nothing.

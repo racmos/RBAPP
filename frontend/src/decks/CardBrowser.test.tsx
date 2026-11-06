@@ -245,14 +245,11 @@ describe('Card browser of the two-pane editor (F5-i step 2)', () => {
     expect(body.content.main).toEqual(rivenDeck.content.main);
   }, 30000);
 
-  it('shows energy and might, and the copies already in the deck', async () => {
+  it('shows no energy or might circle (the art has them), only the copies already in the deck', async () => {
     const { browser } = await openBrowser();
     const tile = within(browser).getByRole('button', { name: /^Add Ayla/ });
-    expect(tile.querySelector('[data-slot="energy"]')).toHaveTextContent('3');
-    expect(tile.querySelector('[data-slot="might"]')).toHaveTextContent('1');
-    const wisp = within(browser).getByRole('button', { name: 'Add Ember Wisp' });
-    expect(wisp.querySelector('[data-slot="energy"]')).toBeNull();
-    expect(wisp.querySelector('[data-slot="might"]')).toBeNull();
+    expect(tile.querySelector('[data-slot="energy"]')).toBeNull();
+    expect(tile.querySelector('[data-slot="might"]')).toBeNull();
     const copies = within(browser)
       .getByRole('button', { name: 'Add Discipline' })
       .querySelector('[data-slot="copies"]');

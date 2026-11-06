@@ -67,7 +67,7 @@ locations/F5-f; ask the owner).
    hook and rules. (largest)
    **Done (frontend, `feat/f5i-editor-two-pane`):** rows with energy/power/might, alt arts and Main/Sideboard
    grouped by type; `CardBrowser` left of the workspace from 960 px while editing is possible (tabs, search,
-   48-tile grid with energy/might/copies badges, refusals with the rules' reason, paging). Not yet: the
+   48-tile grid with a copies badge (no energy/might circles: the art shows them), refusals with the rules' reason, paging). Not yet: the
    resizable divider, `View`, `Fit` and the workspace tabs (List / Full Art / Stats); the filter popover is
    step 3.
    **Legend identity (owner rule, `fix/f5i-browser-identity`):** once a legend is chosen the editor offers
