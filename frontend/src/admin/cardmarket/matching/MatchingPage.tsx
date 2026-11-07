@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { useDocumentTitle } from '@/i18n';
 import { useOnline } from '@/lib/useOnline';
 import { AutoMatchPanel } from './AutoMatchPanel';
+import { ExpansionsPanel } from './ExpansionsPanel';
 import { TABS, parseTab, type MatchingTab } from './format';
 import { IgnoredPanel } from './IgnoredPanel';
 import { LinkDialog, type LinkSubject } from './LinkDialog';
@@ -26,7 +27,8 @@ export type PanelProps = {
 
 /**
  * Cardmarket matching workbench (CM-b): link the products the daily load could not match,
- * unlink or relink the wrong ones, the conflicts, the ignore list and the auto-match.
+ * unlink or relink the wrong ones, the conflicts, the ignore list, the auto-match and the
+ * mapping of the Cardmarket expansions to our sets (CM-d).
  * The tab and its filters live in the URL.
  */
 export function MatchingPage() {
@@ -85,6 +87,7 @@ export function MatchingPage() {
         {tab === 'conflicts' && <ConflictsPanel {...panel} />}
         {tab === 'ignored' && <IgnoredPanel {...panel} />}
         {tab === 'auto' && <AutoMatchPanel {...panel} />}
+        {tab === 'expansions' && <ExpansionsPanel {...panel} />}
       </div>
       <LinkDialog
         subject={subject}
@@ -103,12 +106,14 @@ function Counters() {
   return (
     <p className={styles.counters}>
       <span>{t('cardmarket.unmatched', { count: status.data.unmatched })}</span>
-      <span>{t('cardmarket.unmappedExpansions', { count: status.data.unmapped_expansions })}</span>
+      <Link to="/admin/cardmarket/matching?tab=expansions" className={styles.back}>
+        {t('cardmarket.unmappedExpansions', { count: status.data.unmapped_expansions })}
+      </Link>
     </p>
   );
 }
 
-/** The five sections as tabs: arrows, Home and End move between them. */
+/** The six sections as tabs: arrows, Home and End move between them. */
 function Tabs({ tab, choose }: { tab: MatchingTab; choose: (tab: MatchingTab) => void }) {
   const { t } = useTranslation('admin');
   const refs = useRef<Partial<Record<MatchingTab, HTMLButtonElement | null>>>({});

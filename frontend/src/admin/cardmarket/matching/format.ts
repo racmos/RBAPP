@@ -1,7 +1,7 @@
 /** Pure helpers of the Cardmarket matching workbench (CM-b). */
 import type { CardmarketFoil, CardmarketLink } from '@/api/endpoints';
 
-export const TABS = ['link', 'linked', 'conflicts', 'ignored', 'auto'] as const;
+export const TABS = ['link', 'linked', 'conflicts', 'ignored', 'auto', 'expansions'] as const;
 export type MatchingTab = (typeof TABS)[number];
 
 /** The page size of every list; all the matching endpoints accept 25, 50, 100 and 200. */

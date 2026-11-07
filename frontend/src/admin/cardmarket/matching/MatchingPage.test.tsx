@@ -25,11 +25,12 @@ afterEach(() => {
 });
 
 describe('MatchingPage frame (CM-b)', () => {
-  it('shows the counters of the status and the five tabs, To link first', async () => {
+  it('shows the counters of the status and the six tabs, To link first', async () => {
     matchingApi();
     await openPage();
     expect(await screen.findByText('Unmatched products: 305', undefined, LONG)).toBeVisible();
-    expect(screen.getByText('Unmapped expansions: 2')).toBeVisible();
+    // CM-d: the expansions counter opens the Expansions tab
+    expect(screen.getByRole('link', { name: 'Unmapped expansions: 2' })).toBeVisible();
     const tabs = within(screen.getByRole('tablist', { name: 'Matching sections' })).getAllByRole(
       'tab',
     );
@@ -39,6 +40,7 @@ describe('MatchingPage frame (CM-b)', () => {
       'Conflicts',
       'Ignored',
       'Auto-match',
+      'Expansions',
     ]);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'To link' })).toBeVisible();
@@ -60,7 +62,7 @@ describe('MatchingPage frame (CM-b)', () => {
     expect(where()).toBe(`${PATH}?tab=linked`);
     await userEvent.keyboard('{End}');
     await vi.waitFor(() =>
-      expect(screen.getByRole('tab', { name: 'Auto-match' })).toHaveAttribute(
+      expect(screen.getByRole('tab', { name: 'Expansions' })).toHaveAttribute(
         'aria-selected',
         'true',
       ),

@@ -237,6 +237,42 @@ export const ADMIN_SETS = [
   },
 ];
 
+/** `GET /admin/cardmarket/expansions` (CM-d): the sets they map to, newest release first. */
+export const EXPANSION_SETS = [
+  { id: 'OGN', name: 'Origins', release_date: '2025-10-31' },
+  { id: 'OGS', name: 'Proving Grounds', release_date: '2025-09-01' },
+];
+
+export const expansion = (
+  id: number,
+  name: string,
+  setId: string | null,
+  extra: Record<string, unknown> = {},
+) => ({
+  id,
+  name,
+  products_count: 0,
+  singles_count: 0,
+  sealed_count: 0,
+  mapped_set_id: setId,
+  mapped_set_name: EXPANSION_SETS.find((one) => one.id === setId)?.name ?? null,
+  ...extra,
+});
+
+export const EXPANSIONS = [
+  expansion(6399, 'Spiritforged', null, {
+    products_count: 310,
+    singles_count: 300,
+    sealed_count: 10,
+  }),
+  expansion(6400, 'Arcane Box Set', null),
+  expansion(6286, 'Origins', 'OGN', {
+    products_count: 1250,
+    singles_count: 1200,
+    sealed_count: 50,
+  }),
+];
+
 /** The `AdminCard` the API answers a create with: the card id lower-cased, as the server does. */
 export const adminCard = (body: Record<string, unknown>) => {
   const setId = String(body.set_id);
@@ -278,6 +314,7 @@ export function matchingApi({
   conflicts = linkList(CONFLICTS, 2) as JsonBodyType,
   ignored = IGNORED as unknown[],
   review = reviewList() as JsonBodyType,
+  expansions = EXPANSIONS as ReturnType<typeof expansion>[],
 } = {}) {
   const calls: Call[] = [];
   const record = async (request: Request) => {
@@ -389,6 +426,57 @@ export function matchingApi({
     http.get(`${BASE}/review`, async ({ request }) => {
       await record(request);
       return ok(review);
+    }),
+    http.get(`${BASE}/expansions`, async ({ request }) => {
+      await record(request);
+      const unmapped = new URL(request.url).searchParams.get('unmapped') === 'true';
+      const items = expansions.filter((one) => !unmapped || one.mapped_set_id === null);
+      return ok({
+        items,
+        sets: EXPANSION_SETS,
+        meta: {
+          unmapped: expansions.filter((one) => one.mapped_set_id === null).length,
+          total: items.length,
+          date: '2026-11-06',
+        },
+      });
+    }),
+    http.put(`${BASE}/expansions/:id`, async ({ request, params }) => {
+      await record(request);
+      const body = (await request.json()) as {
+        set_id: string;
+        create_set?: { name: string; release_date: string; declared_count: number | null };
+      };
+      const current = expansions.find((one) => one.id === Number(params.id))!;
+      const setId = body.create_set ? body.set_id.toUpperCase() : body.set_id;
+      return ok({
+        expansion: {
+          ...current,
+          mapped_set_id: setId,
+          mapped_set_name:
+            body.create_set?.name ?? EXPANSION_SETS.find((one) => one.id === setId)?.name ?? null,
+        },
+        previous: current.mapped_set_id,
+        created_set: body.create_set
+          ? {
+              id: setId,
+              name: body.create_set.name,
+              release_date: body.create_set.release_date,
+              card_count: 0,
+              declared_count: body.create_set.declared_count,
+              window: 'none',
+              next_run_at: null,
+            }
+          : null,
+      });
+    }),
+    http.delete(`${BASE}/expansions/:id/mapping`, async ({ request, params }) => {
+      await record(request);
+      const current = expansions.find((one) => one.id === Number(params.id))!;
+      return ok({
+        expansion: { ...current, mapped_set_id: null, mapped_set_name: null },
+        previous: current.mapped_set_id,
+      });
     }),
   );
   return calls;

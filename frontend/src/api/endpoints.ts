@@ -477,6 +477,53 @@ export const applyCardmarketAutoMatch = () =>
 export const listCardmarketReview = (query: string, signal?: AbortSignal) =>
   request<CardmarketReviewList>(withQuery('/admin/cardmarket/review', query), { signal });
 
+/** Cardmarket expansions (CM-d): counts are of the latest load; `null` set = not mapped. */
+export type CardmarketExpansionItem = {
+  id: number;
+  name: string | null;
+  products_count: number;
+  singles_count: number;
+  sealed_count: number;
+  mapped_set_id: string | null;
+  mapped_set_name: string | null;
+};
+export type CardmarketExpansionSet = { id: string; name: string; release_date: string | null };
+export type CardmarketExpansionList = {
+  items: CardmarketExpansionItem[];
+  sets: CardmarketExpansionSet[];
+  meta: { unmapped: number; total: number; date: string | null };
+};
+/** The fields of a new set, as `POST /admin/sets` takes them but the id (`set_id`). */
+export type CardmarketNewSet = {
+  name: string;
+  release_date: string;
+  declared_count: number | null;
+};
+export type CardmarketExpansionMapped = {
+  expansion: CardmarketExpansionItem;
+  previous: string | null;
+  created_set: AdminSet | null;
+};
+
+export const listCardmarketExpansions = (unmappedOnly: boolean, signal?: AbortSignal) =>
+  request<CardmarketExpansionList>(
+    withQuery('/admin/cardmarket/expansions', unmappedOnly ? 'unmapped=true' : ''),
+    { signal },
+  );
+
+/** Map (or re-map) to `setId`; with `createSet` the set is created first, in one transaction. */
+export const mapCardmarketExpansion = (id: number, setId: string, createSet?: CardmarketNewSet) =>
+  request<CardmarketExpansionMapped>(`/admin/cardmarket/expansions/${id}`, {
+    method: 'PUT',
+    body: createSet ? { set_id: setId, create_set: createSet } : { set_id: setId },
+  });
+
+export const unmapCardmarketExpansion = (id: number) =>
+  request<{ expansion: CardmarketExpansionItem; previous: string }>(
+    `/admin/cardmarket/expansions/${id}/mapping`,
+    { method: 'DELETE' },
+  );
+
 /** `GET /admin/overview` (F13-a, extended in F13-e with the `riot` block). */
 export type AdminRiotActive = {
   id: string;

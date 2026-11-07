@@ -366,7 +366,8 @@
       "linked": "Linked",
       "conflicts": "Conflicts",
       "ignored": "Ignored",
-      "auto": "Auto-match"
+      "auto": "Auto-match",
+      "expansions": "Expansions"
     },
     "slot": {
       "N": "N",
@@ -547,6 +548,47 @@
       "noCandidates": "No candidates.",
       "emptyTitle": "Nothing to review",
       "emptyBody": "No doubtful case in the latest load."
+    },
+    "expansions": {
+      "caption": "Cardmarket expansions",
+      "help": "Mapping lets the matcher prefer cards of that set; it does not change prices.",
+      "unmappedOnly": "Not mapped only",
+      "total_one": "{{count}} expansion",
+      "total_other": "{{count}} expansions",
+      "columns": {
+        "expansion": "Expansion",
+        "id": "Cardmarket id",
+        "products": "Products",
+        "singles": "Singles",
+        "sealed": "Sealed",
+        "set": "Set",
+        "actions": "Actions"
+      },
+      "notMapped": "Not mapped",
+      "setRef": "{{name}} ({{id}})",
+      "setMissing": "{{id}} (not a set)",
+      "unnamed": "Expansion #{{id}}",
+      "map": "Map to a set",
+      "mapFor": "Map {{name}} to a set",
+      "change": "Change",
+      "changeFor": "Change the set of {{name}}",
+      "unmap": "Unmap",
+      "unmapFor": "Unmap {{name}}",
+      "dialogTitle": "Map {{name}}",
+      "current": "Now mapped to {{set}}.",
+      "set": "Set",
+      "choose": "Choose a set",
+      "newSet": "Create a new set…",
+      "newSetHelp": "The new set is created as in Sets and the expansion is mapped to it.",
+      "submit": "Map",
+      "setExists": "A set with this code already exists; choose it in the list.",
+      "mapped": "Mapped {{name}} to {{set}}.",
+      "createdAndMapped": "Created set {{set}} and mapped {{name}} to it.",
+      "unmapped": "Unmapped {{name}}.",
+      "emptyTitle": "Every expansion is mapped",
+      "emptyBody": "Turn off Not mapped only to see the mapped ones.",
+      "emptyAllTitle": "No expansions yet",
+      "emptyAllBody": "The daily Cardmarket load adds the expansions."
     }
   }
 }
