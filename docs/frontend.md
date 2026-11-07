@@ -349,6 +349,25 @@ ignore ↔ restore) and invalidates every `['admin', 'cardmarket']` query, so th
 counters refresh. Writes are disabled offline. The `Link` shape has no image, so only the dialog
 shows card images.
 
+**Create a card from a Cardmarket item (CM-c).** When no card of the catalog matches a single,
+"Create card" (on its To link row, on each review item with reason "No candidates" and in the
+link dialog, except when relinking) switches the dialog to `CreateCardForm.tsx`: the fields of
+the cards admin (`CardEditor.tsx::CardFields`, the same body through `cardInput`) prefilled from
+the item: the name (`format.ts::cardNameFrom` drops only a trailing set and number such as
+`(OGN-066)`), the set from the mapped expansion, else a select of `GET /admin/sets` newest first
+with a hint, the type only when the category names one (`typeFromCategory`; "Riftbound Single"
+names none); number, rarity and the rest stay empty. The facts come from the list, or from
+`…/candidates` for a review item. A slot select (None / N / S) follows `defaultFoil` of the typed
+rarity and type until chosen. "Create and link" posts `POST /admin/cards`, then
+`POST /admin/cardmarket/links` with the created card (its id as the API stored it, lower-cased)
+and toasts "Card created and linked." with an Undo that deletes the link only (the card stays).
+A 400 marks the fields; a 409 `already_exists` marks the number and offers "Use the existing card
+instead" (back to the search with `SET-NUM`); a created card whose link fails keeps the dialog on
+"Card created, link failed: …" with "Link again" (never a second create). Success invalidates
+`['admin', 'cards']`, `['admin', 'sets']` and every Cardmarket query. Sealed products need no
+creation: `products_refresh` adds every Cardmarket non-single to `rbproducts` with the same id
+(the "Linked by identity" hint says so and links to Products).
+
 ## Products (F14-e)
 
 `frontend/src/products/` is the products section (nav entry `products`, `spa`, icon `gift`, after

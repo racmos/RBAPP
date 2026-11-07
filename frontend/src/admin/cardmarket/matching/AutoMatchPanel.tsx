@@ -222,6 +222,19 @@ function ReviewSection({ params, setParam, setPage, offline, openDialog }: Panel
                 >
                   {t('matching.toLink.choose')}
                 </Button>
+                {item.reason === 'no_candidates' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={offline}
+                    aria-label={t('matching.toLink.createFor', { name: item.name })}
+                    onClick={() =>
+                      openDialog({ id_product: item.product_id, name: item.name, mode: 'create' })
+                    }
+                  >
+                    {t('matching.toLink.create')}
+                  </Button>
+                )}
               </span>
             </li>
           ))}

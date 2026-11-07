@@ -5,6 +5,7 @@ import {
   createCardmarketLink,
   relinkCardmarketLink,
   type CardmarketCandidateCard,
+  type CardmarketExpansion,
   type CardmarketFoil,
   type CardmarketLink,
   type CardmarketLinkTarget,
@@ -17,20 +18,32 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { cardRef, defaultFoil } from './format';
+import { CreateCardForm } from './CreateCardForm';
+import { MAX_QUERY, cardRef, defaultFoil, firstQuery } from './format';
 import { CandidateImage, linkConflict, useLinkErrorText, useSlotLabel, useSlotRef } from './parts';
 import { useCandidates, useUndoToasts } from './queries';
 import styles from './MatchingPage.module.css';
 
 const SEARCH_DELAY_MS = 300;
-const MAX_QUERY = 100;
+
+/** What a list already knows of a Cardmarket item; the dialog fetches it otherwise. */
+export type CardmarketItemFacts = {
+  category: string | null;
+  expansion: CardmarketExpansion | null;
+};
 
 export type LinkSubject = {
   id_product: number;
   name: string;
   /** The link to replace: the dialog relinks (PUT) instead of linking (POST). */
   current?: CardmarketLink;
+  /** Open on the form that creates the card (CM-c) instead of the search. */
+  mode?: 'search' | 'create';
+  facts?: CardmarketItemFacts;
 };
+
+/** The search (with its first text) or the create-card form. */
+type View = { mode: 'search'; q?: string } | { mode: 'create' };
 
 type LinkDialogProps = {
   subject: LinkSubject | null;
@@ -40,23 +53,46 @@ type LinkDialogProps = {
   onOpenLink: (idProduct: number) => void;
 };
 
-/** Choose the card (and slot) a Cardmarket product links to: search, images, Link (CM-b). */
+/**
+ * Choose the card (and slot) a Cardmarket product links to: search, images, Link (CM-b); or
+ * create the missing card from the item and link it (CM-c).
+ */
 export function LinkDialog({ subject, offline, onClose, onOpenLink }: LinkDialogProps) {
   const { t } = useTranslation('admin');
-  const title = subject
-    ? t(subject.current ? 'matching.dialog.relink' : 'matching.dialog.link', {
-        name: subject.name,
-      })
-    : '';
+  const [view, setView] = useState<View>({ mode: subject?.mode ?? 'search' });
+  const [shown, setShown] = useState(subject);
+  if (subject !== shown) {
+    setShown(subject);
+    setView({ mode: subject?.mode ?? 'search' });
+  }
+  let title = '';
+  if (subject && view.mode === 'create') {
+    title = t('matching.create.title', { name: subject.name });
+  } else if (subject) {
+    title = t(subject.current ? 'matching.dialog.relink' : 'matching.dialog.link', {
+      name: subject.name,
+    });
+  }
   return (
     <Modal open={subject !== null} title={title} onClose={onClose} size="xl">
-      {subject && (
-        <LinkDialogBody
+      {subject && view.mode === 'create' && (
+        <CreateCardForm
           key={subject.id_product}
           subject={subject}
           offline={offline}
           onClose={onClose}
+          onSearch={(q) => setView({ mode: 'search', q })}
+        />
+      )}
+      {subject && view.mode === 'search' && (
+        <LinkDialogBody
+          key={`${subject.id_product}-${view.q ?? ''}`}
+          subject={subject}
+          firstText={view.q}
+          offline={offline}
+          onClose={onClose}
           onOpenLink={onOpenLink}
+          onCreate={() => setView({ mode: 'create' })}
         />
       )}
     </Modal>
@@ -67,16 +103,18 @@ type Failure = { error: unknown; target: CardmarketLinkTarget };
 
 function LinkDialogBody({
   subject,
+  firstText,
   offline,
   onClose,
   onOpenLink,
-}: LinkDialogProps & { subject: LinkSubject }) {
+  onCreate,
+}: LinkDialogProps & { subject: LinkSubject; firstText?: string; onCreate: () => void }) {
   const { t } = useTranslation('admin');
   const { t: common } = useTranslation('common');
   const slotRef = useSlotRef();
   const errorText = useLinkErrorText();
   const toasts = useUndoToasts();
-  const [text, setText] = useState(() => subject.name.slice(0, MAX_QUERY));
+  const [text, setText] = useState(() => firstText ?? firstQuery(subject.name));
   const [q, setQ] = useState(() => text.trim());
   const [failure, setFailure] = useState<Failure | null>(null);
   const query = useCandidates(subject.id_product, q);
@@ -167,6 +205,14 @@ function LinkDialogBody({
         )}
       </Field>
       {shortQuery && <p className={styles.muted}>{t('matching.dialog.minChars')}</p>}
+      {!relinking && (
+        <p className={styles.identity}>
+          <Button size="sm" variant="ghost" disabled={offline} onClick={onCreate}>
+            {t('matching.create.open')}
+          </Button>
+          <span className={styles.muted}>{t('matching.create.openHint')}</span>
+        </p>
+      )}
       <p className={styles.help}>{t('matching.slotHelp')}</p>
       {failure && (
         <div role="alert" className={styles.alert}>

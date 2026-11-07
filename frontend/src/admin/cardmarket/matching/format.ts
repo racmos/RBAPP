@@ -10,6 +10,12 @@ export const PER_PAGE = 50;
 export const parseTab = (value: string | null): MatchingTab =>
   (TABS as readonly string[]).includes(value ?? '') ? (value as MatchingTab) : 'link';
 
+/** The longest search the candidates endpoint takes. */
+export const MAX_QUERY = 100;
+
+/** The first search of a product: its name, as long as the candidates endpoint takes. */
+export const firstQuery = (name: string): string => name.slice(0, MAX_QUERY);
+
 /** "OGN-001": how cards are named in the workbench (the API `SET-ID`). */
 export const cardRef = (setId: string, cardId: string): string => `${setId}-${cardId}`;
 
@@ -29,6 +35,33 @@ export function defaultFoil(
   const type = (card.type ?? '').toLowerCase();
   if (type.includes('rune') || (rarity !== 'common' && rarity !== 'uncommon')) return null;
   return taken.includes('N') && !taken.includes('S') ? 'S' : 'N';
+}
+
+/** "Ahri, Alluring (OGN-066)", "... [OGN 066a]" or "... #066": a trailing set and number. */
+const NUMBER_NOISE = /\s*(?:[([]\s*[A-Z]{2,5}[-\s]?\d{1,4}[a-z]?\s*[)\]]|#\d{1,4}[a-z]?)$/;
+
+/**
+ * The card name a Cardmarket product suggests (CM-c): the name trimmed, without a trailing
+ * set and number; anything less obvious (a variant such as "(V.2)") stays.
+ */
+export function cardNameFrom(name: string): string {
+  const trimmed = name.trim();
+  return trimmed.replace(NUMBER_NOISE, '').trim() || trimmed;
+}
+
+const CATEGORY_TYPES = [
+  ['Rune', /\brunes?\b/i],
+  ['Battlefield', /\bbattlefields?\b/i],
+  ['Legend', /\blegends?\b/i],
+] as const;
+
+/**
+ * The card type a Cardmarket category names, only when it names exactly one
+ * ("Riftbound Single" names none).
+ */
+export function typeFromCategory(category: string | null): string {
+  const found = CATEGORY_TYPES.filter(([, pattern]) => pattern.test(category ?? ''));
+  return found.length === 1 ? found[0]![0] : '';
 }
 
 /** The slot a suggestion links to: its first free one; `undefined` when every slot is taken. */
