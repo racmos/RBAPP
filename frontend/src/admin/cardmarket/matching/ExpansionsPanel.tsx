@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/errors';
@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { TableScroll } from '@/components/ui/TableScroll';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
-import { formatNumber } from '@/lib/format';
+import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { FormAlert } from '@/admin/FormAlert';
 import { SetEditor, type SetForm } from '@/admin/SetEditor';
 import type { PanelProps } from './MatchingPage';
@@ -31,6 +31,9 @@ import styles from './MatchingPage.module.css';
 
 /** The select value that opens the new set fields instead of choosing a set. */
 const NEW_SET = '__new__';
+
+/** How many sample product names a row shows; the rest are "+N" and in the tooltip. */
+const SHOWN_SAMPLES = 3;
 
 /** "Origins (OGN)", or "GONE (not a set)" when the mapped id is not one of our sets. */
 function useSetText() {
@@ -47,6 +50,108 @@ function useExpansionName() {
     item.name ?? t('matching.expansions.unnamed', { id: item.id });
 }
 
+/** The set a row suggests mapping to: its linked cards' set, unless it is mapped there. */
+const hintOf = (item: CardmarketExpansionItem): string | null =>
+  item.suggested_set_id !== null && item.suggested_set_id !== item.mapped_set_id
+    ? item.suggested_set_id
+    : null;
+
+/**
+ * The expansion cell: the name, then what tells an unnamed expansion apart (sample products,
+ * the price range of its singles, first seen) and the "Looks like" hint, which opens the map
+ * dialog with that set chosen.
+ */
+function ExpansionCell({
+  item,
+  name,
+  busy,
+  onHint,
+}: {
+  item: CardmarketExpansionItem;
+  name: string;
+  busy: boolean;
+  onHint: (setId: string) => void;
+}) {
+  const { t } = useTranslation('admin');
+  const setText = useSetText();
+  const names = item.sample_products.map((one) => one.name);
+  const shown = names.slice(0, SHOWN_SAMPLES).join(', ');
+  const more = names.length - SHOWN_SAMPLES;
+  const hint = hintOf(item);
+  return (
+    <div className={styles.cellStack}>
+      <span>{name}</span>
+      {names.length > 0 && (
+        <span className={styles.muted} title={names.join(', ')}>
+          {more > 0 ? t('matching.expansions.samplesMore', { names: shown, more }) : shown}
+        </span>
+      )}
+      {(item.price_range || item.first_seen) && (
+        <div className={styles.meta}>
+          {item.price_range && (
+            <span>
+              {t('matching.expansions.priceRange', {
+                min: formatMoney(item.price_range.min),
+                max: formatMoney(item.price_range.max),
+              })}
+            </span>
+          )}
+          {item.first_seen && (
+            <span>{t('matching.expansions.firstSeen', { date: formatDate(item.first_seen) })}</span>
+          )}
+        </div>
+      )}
+      {hint !== null && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className={styles.suggestion}
+          disabled={busy}
+          onClick={() => onHint(hint)}
+        >
+          {t('matching.expansions.hint', {
+            set: setText(hint, item.suggested_set_name),
+            count: item.suggested_count ?? 0,
+            linked: item.linked_count,
+          })}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** The sample products in the map dialog, with their low price. */
+function SampleList({ item }: { item: CardmarketExpansionItem }) {
+  const { t } = useTranslation('admin');
+  const titleId = useId();
+  if (item.sample_products.length === 0) {
+    return <p className={styles.help}>{t('matching.expansions.noSamples')}</p>;
+  }
+  return (
+    <div>
+      <p id={titleId} className={styles.help}>
+        {t('matching.expansions.samplesTitle')}
+      </p>
+      <ul aria-labelledby={titleId} className={styles.samples}>
+        {item.sample_products.map((one) => (
+          <li key={one.id_product}>
+            {t('matching.expansions.sampleLine', {
+              name:
+                one.type === 'single'
+                  ? one.name
+                  : t('matching.expansions.sampleSealed', { name: one.name }),
+              price:
+                one.low_price === null
+                  ? t('matching.expansions.noPrice')
+                  : formatMoney(one.low_price),
+            })}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /**
  * "Expansions" (CM-d): every Cardmarket expansion with its products on the latest load and the
  * set of ours it maps to. Map, Change and Unmap each leave an Undo toast. "Not mapped only" is
@@ -60,7 +165,11 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
   const toasts = useExpansionToasts();
   const setText = useSetText();
   const nameOf = useExpansionName();
-  const [mapping, setMapping] = useState<CardmarketExpansionItem | null>(null);
+  // the expansion of the map dialog and the set it opens with (the "Looks like" hint)
+  const [mapping, setMapping] = useState<{
+    item: CardmarketExpansionItem;
+    preset?: string;
+  } | null>(null);
   const unmap = useMutation({
     mutationFn: (item: CardmarketExpansionItem) => unmapCardmarketExpansion(item.id),
     onSuccess: ({ previous }, item) => toasts.unmapped(item.id, nameOf(item), previous),
@@ -120,7 +229,14 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
                 const name = nameOf(item);
                 return (
                   <tr key={item.id}>
-                    <td>{name}</td>
+                    <td>
+                      <ExpansionCell
+                        item={item}
+                        name={name}
+                        busy={busy}
+                        onHint={(preset) => setMapping({ item, preset })}
+                      />
+                    </td>
                     <td>{item.id}</td>
                     <td>{formatNumber(item.products_count)}</td>
                     <td>{formatNumber(item.singles_count)}</td>
@@ -140,7 +256,7 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
                             variant="ghost"
                             disabled={busy}
                             aria-label={t('matching.expansions.mapFor', { name })}
-                            onClick={() => setMapping(item)}
+                            onClick={() => setMapping({ item })}
                           >
                             {t('matching.expansions.map')}
                           </Button>
@@ -151,7 +267,7 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
                               variant="ghost"
                               disabled={busy}
                               aria-label={t('matching.expansions.changeFor', { name })}
-                              onClick={() => setMapping(item)}
+                              onClick={() => setMapping({ item })}
                             >
                               {t('matching.expansions.change')}
                             </Button>
@@ -185,13 +301,14 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
       {body}
       <Modal
         open={mapping !== null}
-        title={mapping ? t('matching.expansions.dialogTitle', { name: nameOf(mapping) }) : ''}
+        title={mapping ? t('matching.expansions.dialogTitle', { name: nameOf(mapping.item) }) : ''}
         onClose={() => setMapping(null)}
       >
         {mapping && query.data && (
           <MapForm
-            key={mapping.id}
-            item={mapping}
+            key={mapping.item.id}
+            item={mapping.item}
+            preset={mapping.preset}
             sets={query.data.sets}
             offline={offline}
             onDone={() => setMapping(null)}
@@ -204,14 +321,19 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
 
 type SetFieldErrors = Partial<Record<'id' | 'name' | 'releaseDate' | 'declaredCount', string>>;
 
-/** Choose one of our sets, or create one with the fields of the sets admin, and map to it. */
+/**
+ * Choose one of our sets, or create one with the fields of the sets admin, and map to it. The
+ * select starts on `preset` (the hint) or the current set; nothing is written until Map.
+ */
 function MapForm({
   item,
+  preset,
   sets,
   offline,
   onDone,
 }: {
   item: CardmarketExpansionItem;
+  preset?: string;
   sets: CardmarketExpansionSet[];
   offline: boolean;
   onDone: () => void;
@@ -222,9 +344,10 @@ function MapForm({
   const setText = useSetText();
   const name = useExpansionName()(item);
   const current = item.mapped_set_id;
-  const [choice, setChoice] = useState(() =>
-    sets.some((one) => one.id === current) ? (current ?? '') : '',
-  );
+  const [choice, setChoice] = useState(() => {
+    const start = preset ?? current;
+    return sets.some((one) => one.id === start) ? (start ?? '') : '';
+  });
   const [fieldErrors, setFieldErrors] = useState<SetFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -286,6 +409,7 @@ function MapForm({
           {t('matching.expansions.current', { set: setText(current, item.mapped_set_name) })}
         </p>
       )}
+      <SampleList item={item} />
       <Field label={t('matching.expansions.set')}>
         {(control) => (
           <Select

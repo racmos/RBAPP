@@ -383,6 +383,13 @@ on those fields (`set_id` → code, `create_set.<field>`), a 409 `already_exists
 Toasts with Undo: a mapping goes back to the previous set or is unmapped (a created set stays), an
 unmap maps back. Every write invalidates every `['admin', 'cardmarket']` query and
 `['admin', 'sets']`. Writes are disabled offline.
+Cardmarket names few expansions (the name falls back to "Expansion #id"), so the expansion cell
+also shows the context of the item (CM-d samples): the first three sample product names
+(`+N` when there are more, all of them in the tooltip), the price range of its singles
+(`0.02 € - 34.00 €`), "First seen <date>" and, when its linked cards point to a set other than
+the mapped one, a "Looks like <Name (ID)> — N of M linked products" button that opens the map
+dialog with that set already chosen (the user still presses Map). The map dialog lists every
+sample product with its low price ("no price", sealed ones marked "(sealed)").
 
 ## Products (F14-e)
 
