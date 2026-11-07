@@ -9,7 +9,8 @@
     "cardmarket": "Cardmarket",
     "riot": "Riot",
     "changes": "Changes",
-    "changesCount": "Changes ({{count}})"
+    "changesCount": "Changes ({{count}})",
+    "audit": "Audit"
   },
   "mobileHint": "Easier on a computer.",
   "overview": {
@@ -26,7 +27,9 @@
     },
     "riotTitle": "Riot",
     "noSync": "No sync yet.",
-    "placeholderSets": "Sets created by the sync (give them a name and date): {{codes}}"
+    "placeholderSets": "Sets created by the sync (give them a name and date): {{codes}}",
+    "cardmarketTitle": "Cardmarket",
+    "openCardmarket": "Open Cardmarket"
   },
   "window": {
     "pre_release": "Before release",
@@ -598,6 +601,69 @@
       "emptyBody": "Turn off Not mapped only to see the mapped ones.",
       "emptyAllTitle": "No expansions yet",
       "emptyAllBody": "The daily Cardmarket load adds the expansions."
+    }
+  },
+  "audit": {
+    "title": "Audit",
+    "subtitle": "Every change made in the admin area: who, what and when.",
+    "caption": "Admin actions",
+    "filters": {
+      "action": "Action",
+      "allActions": "All actions",
+      "actionOption": "{{label}} ({{count}})",
+      "actor": "Actor",
+      "targetType": "Target type",
+      "allTargets": "All targets",
+      "from": "From",
+      "to": "To",
+      "perPage": "Rows per page"
+    },
+    "columns": {
+      "time": "Time",
+      "actor": "Actor",
+      "action": "Action",
+      "target": "Target",
+      "details": "Details"
+    },
+    "system": "System",
+    "details": "Details",
+    "emptyTitle": "Nothing recorded",
+    "emptyBody": "No admin action matches these filters.",
+    "actions": {
+      "cardmarketLoad": "Queue a Cardmarket load",
+      "cardmarketLink": "Link a Cardmarket product",
+      "cardmarketRelink": "Relink a Cardmarket product",
+      "cardmarketUnlink": "Unlink a Cardmarket product",
+      "cardmarketIgnore": "Ignore a Cardmarket product",
+      "cardmarketUnignore": "Restore an ignored Cardmarket product",
+      "cardmarketAutoMatch": "Auto-match the clear cases",
+      "cardmarketExpansionMap": "Map a Cardmarket expansion",
+      "cardmarketExpansionUnmap": "Unmap a Cardmarket expansion",
+      "setCreate": "Create a set",
+      "setUpdate": "Edit a set",
+      "setDelete": "Delete a set",
+      "cardCreate": "Create a card",
+      "cardUpdate": "Edit a card",
+      "cardImage": "Upload a card image",
+      "cardDelete": "Delete a card",
+      "productUpdate": "Edit a product",
+      "productImage": "Upload a product image",
+      "riotSyncRequested": "Request a Riot sync",
+      "riotInsert": "Riot sync added cards",
+      "riotApply": "Riot sync applied a card change",
+      "riotRecheck": "Recheck the pending Riot changes",
+      "riotChangeApprove": "Approve a Riot change",
+      "riotChangeReject": "Reject a Riot change"
+    },
+    "targets": {
+      "cardmarketProduct": "Cardmarket product",
+      "cardmarketExpansion": "Cardmarket expansion",
+      "cardmarket": "Cardmarket load",
+      "card": "Card",
+      "cardChange": "Card changes",
+      "set": "Set",
+      "product": "Product",
+      "job": "Job"
     }
   }
 }

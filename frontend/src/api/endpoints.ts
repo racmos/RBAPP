@@ -561,8 +561,49 @@ export type AdminRiot = {
   placeholder_sets: string[];
 };
 
+/** The Cardmarket health of the overview (CM-e): the same values as `/admin/cardmarket/status`. */
+export type AdminCardmarketHealth = {
+  last_load: { date: string; status: string } | null;
+  loaded_today: boolean;
+  job_status: string | null;
+  unmatched: number;
+  unmapped_expansions: number;
+};
+
+// `cardmarket` is optional: an API older than CM-e does not send it (additive key).
 export const getAdminOverview = (signal?: AbortSignal) =>
-  request<{ catalog: AdminCatalog; riot: AdminRiot }>('/admin/overview', { signal });
+  request<{ catalog: AdminCatalog; riot: AdminRiot; cardmarket?: AdminCardmarketHealth }>(
+    '/admin/overview',
+    { signal },
+  );
+
+/** One `rbadminaudit` row (CM-e); `actor` null is the system (a job or the CLI). */
+export type AdminAuditItem = {
+  id: number;
+  created_at: string;
+  actor: { id: number | null; username: string } | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  detail: unknown;
+};
+
+export type AdminAuditList = {
+  items: AdminAuditItem[];
+  meta: { page: number; per_page: number; total: number; pages: number };
+};
+
+export type AdminAuditFacets = {
+  actions: { action: string; count: number }[];
+  target_types: { target_type: string; count: number }[];
+};
+
+/** `GET /admin/audit`; the caller builds the query (`admin/audit/format.ts::auditApiQuery`). */
+export const listAdminAudit = (query: string, signal?: AbortSignal) =>
+  request<AdminAuditList>(query ? `/admin/audit?${query}` : '/admin/audit', { signal });
+
+export const getAdminAuditFacets = (signal?: AbortSignal) =>
+  request<AdminAuditFacets>('/admin/audit/facets', { signal });
 
 /** `PATCH /me/prefs`: absent fields stay, `null` resets to Auto (PREF-4). Returns the full prefs. */
 export const patchPrefs = async (changes: Partial<Prefs>): Promise<Prefs> =>

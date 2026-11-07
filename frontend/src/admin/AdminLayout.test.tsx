@@ -104,7 +104,7 @@ describe('AdminLayout (F13-a S6)', () => {
     );
   });
 
-  it('lists the sections in order, Cardmarket after Products (CM-a)', async () => {
+  it('lists the sections in order, Cardmarket after Products (CM-a), Audit last (CM-e)', async () => {
     adminApi();
     await renderApp({ path: '/admin', width: 1280 });
     const nav = await screen.findByRole('navigation', { name: NAV_LABEL }, { timeout: 10000 });
@@ -112,7 +112,11 @@ describe('AdminLayout (F13-a S6)', () => {
       within(nav)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Overview', 'Sets', 'Cards', 'Products', 'Cardmarket', 'Riot', 'Changes']);
+    ).toEqual(['Overview', 'Sets', 'Cards', 'Products', 'Cardmarket', 'Riot', 'Changes', 'Audit']);
+    expect(within(nav).getByRole('link', { name: 'Audit' })).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/audit',
+    );
     expect(within(nav).getByRole('link', { name: 'Cardmarket' })).toHaveAttribute(
       'href',
       '/riftbound/app/admin/cardmarket',

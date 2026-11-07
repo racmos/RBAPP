@@ -301,9 +301,10 @@ def load_day(value: str) -> dict | None:
     }
 
 
-def status() -> dict:
-    """Header of the Cardmarket admin screen: the last load day, whether it is today
-    (UTC, the loader's date), the latest `daily_prices` job and the open counters."""
+def health() -> dict:
+    """The open state of the Cardmarket load, shared by the status header and the admin
+    overview (CM-e): the last load day, whether it is today (UTC, the loader's date), the
+    latest `daily_prices` job and the open counters. Five statements (four without a load)."""
     newest = db.session.execute(sa.select(sa.func.max(RbcmLoadHistory.rblh_date))).scalar()
     last_load = None
     if newest:
@@ -320,5 +321,9 @@ def status() -> dict:
         'job': job_brief(job) if job else None,
         'unmatched': unmatched_count(),
         'unmapped_expansions': unmapped_expansions_count(),
-        'prices_as_of': pricing.price_as_of(),
     }
+
+
+def status() -> dict:
+    """Header of the Cardmarket admin screen: `health()` and the date of the prices."""
+    return {**health(), 'prices_as_of': pricing.price_as_of()}

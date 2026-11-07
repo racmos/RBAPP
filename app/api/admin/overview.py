@@ -1,7 +1,8 @@
 """GET /admin/overview: the first counters of the admin area (F13-R25, S3, F13-e S7).
 
 Four catalog COUNTs, at most four statements, plus one `rbcardchanges` COUNT,
-the sets list and the latest `riot_sync` job. Clients ignore unknown keys.
+the sets list and the latest `riot_sync` job, then the Cardmarket health of
+`cardmarket_log.health` (CM-e, five statements). Clients ignore unknown keys.
 """
 from sqlalchemy import func, or_
 
@@ -12,7 +13,7 @@ from app.models.card import RbCard
 from app.models.card_change import RbCardChange
 from app.models.job import RbJob
 from app.models.set import RbSet
-from app.services import riot_sync
+from app.services import cardmarket_log, riot_sync
 from app.utils import clock
 
 
@@ -61,4 +62,17 @@ def overview():
         'active_sets': active,
         'last_sync': last_sync,
         'placeholder_sets': sorted(placeholders),
-    }})
+    }, 'cardmarket': _cardmarket()})
+
+
+def _cardmarket() -> dict:
+    """The Cardmarket counters of the overview: `cardmarket_log.health`, trimmed."""
+    health = cardmarket_log.health()
+    last = health['last_load']
+    return {
+        'last_load': {'date': last['date'], 'status': last['status']} if last else None,
+        'loaded_today': health['loaded_today'],
+        'job_status': health['job']['status'] if health['job'] else None,
+        'unmatched': health['unmatched'],
+        'unmapped_expansions': health['unmapped_expansions'],
+    }

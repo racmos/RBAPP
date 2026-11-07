@@ -871,6 +871,12 @@ extension inside `PRODUCT_IMAGES_DIR`, cached a week, no `Set-Cookie`; anything 
 - `GET /admin/overview` gains `riot`: `{pending_changes, active_sets: [{id, name, window,
   next_run_at}], last_sync: {job_id, status, finished_at, trigger} | null,
   placeholder_sets: [codes whose name equals their id and have no release date]}`.
+- `GET /admin/overview` gains `cardmarket` (CM-e, additive): `{last_load: {date
+  ("YYYY-MM-DD"), status} | null, loaded_today, job_status (status of the latest
+  `daily_prices` job) | null, unmatched, unmapped_expansions}`, the same values as
+  `GET /admin/cardmarket/status` (one definition: `cardmarket_log.health`). The whole overview
+  is at most twelve SQL statements beyond the session user (the Cardmarket part adds five:
+  newest load day, its history rows, latest job, unmatched and unmapped COUNTs).
 
 ### Cardmarket load log (CM-a)
 
@@ -1055,3 +1061,35 @@ audited in the same transaction (target type `cardmarket_expansion`, id the expa
   `cardmarket.expansion.unmap` `{name, previous}`.
 
 Not ported: the legacy `rbexp_name` override and the download URLs of the legacy list.
+
+### Audit log (CM-e)
+
+`app/api/admin/audit.py`, logic in `app/services/audit_log.py`. Read-only views of
+`rbadminaudit`, the row every admin write records in its own transaction
+(`app/services/audit.py::record`). `details` are passed through as stored: they are small
+summaries written by the admin code (names, ids, old/new values, counts; at most 4 KB), and no
+action stores a password, a hash or a token, so nothing is filtered. Timestamps are naive UTC
+ISO strings.
+
+- `GET /admin/audit` with `actor` (case-insensitive substring of the stored username, `%` and `_`
+  literal; `system` matches the job and CLI rows), `action`, `target_type`, `target_id` (exact),
+  `from`, `to` (`YYYY-MM-DD`, inclusive UTC days; `to` before `from` → 400 on `to`), `page` ≥ 1,
+  `per_page` 50, 100 or 200 (default 50); anything else or an unknown parameter → 400
+  `validation_error` "Invalid query parameters" → `{items: [AuditItem], meta: {page, per_page,
+  total, pages}}`, newest first (equal times: higher id first). `AuditItem` = `{id, created_at,
+  actor: {id, username} | null, action, target_type, target_id | null, detail}`: `actor` is null
+  for the system (a job or the CLI); a deleted user keeps the stored username with `id` null;
+  `detail` is the stored JSON (object, list or null) untouched. Two SQL statements (COUNT and the
+  page) beyond the session user, whatever the page size. Dates use `idx_rbadminaudit_created`,
+  a target type with an id `idx_rbadminaudit_target`; `actor` and `action` alone scan the table
+  (fine at the admin volume; an index on `rbaud_action` would be the first to add if it grows).
+- `GET /admin/audit/facets` (no parameters) → `{actions: [{action, count}], target_types:
+  [{target_type, count}]}`, by name: the values present, for the filter selects. Two SQL
+  statements (two GROUP BYs).
+
+Actions recorded today: `set.create|update|delete`, `card.create|update|image|delete`,
+`product.update|image`, `riot.sync_requested|insert|apply|recheck|change_approve|change_reject`,
+`cardmarket.load|link|relink|unlink|ignore|unignore|auto_match`,
+`cardmarket.expansion.map|unmap`. Target types: `set`, `card` (`SET-ID`), `product`,
+`cardmarket_product` and `cardmarket_expansion` (Cardmarket ids), `cardmarket` (auto-match, the
+load date), `job`, `card_change`.

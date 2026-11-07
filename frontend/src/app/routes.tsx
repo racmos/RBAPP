@@ -191,6 +191,12 @@ export function createAppRoutes(
                         Component: (await import('@/admin/ChangesPage')).ChangesPage,
                       }),
                     },
+                    {
+                      path: 'audit',
+                      lazy: async () => ({
+                        Component: (await import('@/admin/audit/AuditPage')).AuditPage,
+                      }),
+                    },
                   ],
                 },
                 // Development only; Vite replaces the flag at build time and drops the branch.
