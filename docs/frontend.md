@@ -326,7 +326,7 @@ naive UTC and are read as UTC (`format.ts::asUtc`).
 **Cardmarket matching workbench (CM-b).** `/admin/cardmarket/matching`
 (`src/admin/cardmarket/matching/`, lazy, under the admin guard; no nav entry of its own: the admin
 navigation marks Cardmarket, `adminNav.ts::navEntryFor`) is the screen over `docs/api.md` →
-"Cardmarket matching (CM-b)". The header repeats the status counters; five tabs (`role="tablist"`,
+"Cardmarket matching (CM-b)". The header repeats the status counters; six tabs (`role="tablist"`,
 arrows, Home, End) keep the tab and its filters in the URL (`?tab=`, a tab change drops the
 filters; `format.ts::apiQuery` sends only the keys each endpoint takes and `per_page=50`).
 **To link** (`GET …/unmatched`: search, type all / singles / sealed) lists each product (id, type,
@@ -367,6 +367,22 @@ instead" (back to the search with `SET-NUM`); a created card whose link fails ke
 `['admin', 'cards']`, `['admin', 'sets']` and every Cardmarket query. Sealed products need no
 creation: `products_refresh` adds every Cardmarket non-single to `rbproducts` with the same id
 (the "Linked by identity" hint says so and links to Products).
+
+**Cardmarket expansions (CM-d).** The workbench's sixth tab, **Expansions** (`?tab=expansions`,
+`ExpansionsPanel.tsx`), is the screen over `docs/api.md` → "Cardmarket expansions (CM-d)". The
+"Unmapped expansions: N" counters of the Cardmarket page and of the workbench header link to it.
+A help line says the mapping lets the matcher prefer cards of that set and does not change
+prices. "Not mapped only" (a checkbox, on by default; off writes `show=all`) sends
+`unmapped=true`. The table lists each expansion (name, Cardmarket id, products, singles and sealed
+of the latest load, the mapped set as `Name (ID)`, `ID (not a set)` for a soft FK to no set, or a
+"Not mapped" badge) with "Map to a set" when unmapped, "Change" and "Unmap" when mapped. Map and
+Change open a dialog with a select of the `sets` of the list (newest first) plus
+"Create a new set…", which shows the sets admin form (`SetEditor`: code, name, release date,
+announced cards) and sends it as `create_set` with the code as `set_id`; its field errors come back
+on those fields (`set_id` → code, `create_set.<field>`), a 409 `already_exists` marks the code.
+Toasts with Undo: a mapping goes back to the previous set or is unmapped (a created set stays), an
+unmap maps back. Every write invalidates every `['admin', 'cardmarket']` query and
+`['admin', 'sets']`. Writes are disabled offline.
 
 ## Products (F14-e)
 

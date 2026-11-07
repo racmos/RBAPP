@@ -6,11 +6,14 @@ import {
   getCardmarketCandidates,
   ignoreCardmarketProduct,
   listCardmarketIgnored,
+  listCardmarketExpansions,
   listCardmarketLinks,
   listCardmarketReview,
   listCardmarketUnmatched,
+  mapCardmarketExpansion,
   relinkCardmarketLink,
   unignoreCardmarketProduct,
+  unmapCardmarketExpansion,
   type CardmarketLink,
   type CardmarketLinkTarget,
 } from '@/api/endpoints';
@@ -29,6 +32,8 @@ export const matchingKeys = {
   links: (query: string) => [...cardmarketKeys.all, 'matching', 'links', query] as const,
   ignored: [...cardmarketKeys.all, 'matching', 'ignored'] as const,
   review: (query: string) => [...cardmarketKeys.all, 'matching', 'review', query] as const,
+  expansions: (unmappedOnly: boolean) =>
+    [...cardmarketKeys.all, 'matching', 'expansions', unmappedOnly] as const,
 };
 
 export const useUnmatched = (query: string) =>
@@ -67,28 +72,23 @@ export const useReview = (query: string) =>
     placeholderData: keepPreviousData,
   });
 
+export const useExpansions = (unmappedOnly: boolean) =>
+  useQuery({
+    queryKey: matchingKeys.expansions(unmappedOnly),
+    queryFn: ({ signal }) => listCardmarketExpansions(unmappedOnly, signal),
+    placeholderData: keepPreviousData,
+  });
+
 /** After any write: the lists, the status counters and the load days change. */
 export function useRefreshCardmarket() {
   const queryClient = useQueryClient();
   return () => void queryClient.invalidateQueries({ queryKey: cardmarketKeys.all });
 }
 
-const targetOf = (link: CardmarketLink): CardmarketLinkTarget => ({
-  card: { set_id: link.set_id, card_id: link.card_id },
-  foil: link.foil,
-});
-
-/**
- * The toasts of the writes, each with an Undo that sends the opposite write: a link is
- * unlinked, an unlink posts the removed link back, a relink goes back to the previous target,
- * an ignore is restored and a restore ignored again.
- */
-export function useUndoToasts() {
+/** A success toast whose Undo sends the opposite write; `refresh` runs after both. */
+function useUndoable(refresh: () => void) {
   const { t, i18n } = useTranslation('admin');
-  const refresh = useRefreshCardmarket();
-  const slotRef = useSlotRef();
-
-  const undoable = (message: string, undo: () => Promise<unknown>) => {
+  return (message: string, undo: () => Promise<unknown>) => {
     refresh();
     pushToast({
       kind: 'success',
@@ -104,6 +104,22 @@ export function useUndoToasts() {
       },
     });
   };
+}
+
+const targetOf = (link: CardmarketLink): CardmarketLinkTarget => ({
+  card: { set_id: link.set_id, card_id: link.card_id },
+  foil: link.foil,
+});
+
+/**
+ * The toasts of the writes, each with an Undo that sends the opposite write: a link is
+ * unlinked, an unlink posts the removed link back, a relink goes back to the previous target,
+ * an ignore is restored and a restore ignored again.
+ */
+export function useUndoToasts() {
+  const { t } = useTranslation('admin');
+  const undoable = useUndoable(useRefreshCardmarket());
+  const slotRef = useSlotRef();
 
   return {
     /** A card created from a Cardmarket item and linked (CM-c): Undo unlinks, the card stays. */
@@ -125,5 +141,32 @@ export function useUndoToasts() {
       undoable(t('matching.ignored', { name }), () => unignoreCardmarketProduct(id, name)),
     restored: (id: number, name: string) =>
       undoable(t('matching.restored', { name }), () => ignoreCardmarketProduct(id, name)),
+  };
+}
+
+/**
+ * The toasts of the expansion writes (CM-d). A mapping is undone by mapping back to the previous
+ * set, or unmapping when there was none (a set created on the way stays); an unmap maps back.
+ * Every write also refreshes the sets, which a mapping may have created.
+ */
+export function useExpansionToasts() {
+  const { t } = useTranslation('admin');
+  const queryClient = useQueryClient();
+  const undoable = useUndoable(() => {
+    void queryClient.invalidateQueries({ queryKey: cardmarketKeys.all });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'sets'] });
+  });
+  const back = (id: number, previous: string | null) =>
+    previous === null ? unmapCardmarketExpansion(id) : mapCardmarketExpansion(id, previous);
+
+  return {
+    mapped: (id: number, name: string, set: string, previous: string | null) =>
+      undoable(t('matching.expansions.mapped', { name, set }), () => back(id, previous)),
+    createdAndMapped: (id: number, name: string, set: string, previous: string | null) =>
+      undoable(t('matching.expansions.createdAndMapped', { name, set }), () => back(id, previous)),
+    unmapped: (id: number, name: string, previous: string) =>
+      undoable(t('matching.expansions.unmapped', { name }), () =>
+        mapCardmarketExpansion(id, previous),
+      ),
   };
 }

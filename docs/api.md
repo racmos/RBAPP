@@ -1002,3 +1002,41 @@ apply runs synchronously and is bounded.
 Not ported: the legacy unmap by card (`rbset_id` + `rbcar_id`; unlink by Cardmarket id
 instead), the legacy unified mapped + unmapped browser (split into `unmatched` and `links`),
 card/product upsert (CM-c), unmapped expansions (CM-d), the price CSV (dropped).
+
+### Cardmarket expansions (CM-d)
+
+`app/api/admin/cardmarket_expansions.py`, logic in `app/services/cardmarket_expansions.py`.
+Port of the legacy `/riftbound/price/cardmarket-unmapped-expansions` and
+`/cardmarket-map-expansion` (the legacy file is unchanged). An expansion is one
+`rbcm_expansions` row; `rbexp_rbset_id` is a soft FK to `rbset` (NULL = **not mapped**). The
+mapping lets the matcher prefer cards of that set (CM-b suggestions) and lets
+`products_refresh` give products the set of their expansion on its next run; prices never
+depend on it. **Unmapped** has one definition (`cardmarket_log.unmapped_expansions_count`): the
+`unmapped_expansions` of `GET /admin/cardmarket/status` and `meta.unmapped` below. Writes are
+audited in the same transaction (target type `cardmarket_expansion`, id the expansion id).
+
+- `GET /admin/cardmarket/expansions` with `unmapped` (`true`|`false`, default `false`) →
+  `{items: [{id, name, products_count, singles_count, sealed_count, mapped_set_id | null,
+  mapped_set_name | null}], sets: [{id, name, release_date | null}], meta: {unmapped, total,
+  date}}`. Every expansion, unmapped first, then by id (`unmapped=true` keeps the unmapped
+  ones). Counts are of the latest product date (`date`, `YYYY-MM-DD` or null): `sealed_count` is
+  the non-singles. `mapped_set_name` is null when the mapped id is not a set of ours. `sets` are
+  every set, newest release first, undated last. Five SQL statements (session user included)
+  whatever the number of expansions and sets.
+- `PUT /admin/cardmarket/expansions/<id>` `{set_id, create_set?: {name, release_date,
+  declared_count?}}` → `{expansion (as an item above), previous (set id | null),
+  created_set (the `POST /admin/sets` item | null)}`. Without `create_set`, `set_id` must be a
+  set of ours (400 `validation_error` on `set_id`, "unknown set"). With `create_set` the set is
+  created first, exactly as `POST /admin/sets` does it: the same `AdminSetCreate` validation
+  (`set_id` follows its id rule and is upper-cased; field errors are named `set_id` and
+  `create_set.<field>`), the same row and the same `set.create` audit row; a set that exists →
+  409 `already_exists` `params {field: "set_id"}`. Create, map and audits are one transaction:
+  any failure leaves neither the set nor the mapping. Re-mapping a mapped expansion is allowed
+  and returns `previous`; the same set again writes nothing. Unknown expansion → 404 (before
+  any set is created). Audit `cardmarket.expansion.map` `{name, set_id, previous}`.
+- `DELETE /admin/cardmarket/expansions/<id>/mapping` → `{expansion, previous}` (the set id it
+  was mapped to, so the client can undo with `PUT`); the set stays. Unknown expansion → 404;
+  not mapped → 404 "Cardmarket expansion <id> is not mapped.". Audit
+  `cardmarket.expansion.unmap` `{name, previous}`.
+
+Not ported: the legacy `rbexp_name` override and the download URLs of the legacy list.

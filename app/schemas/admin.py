@@ -6,7 +6,7 @@ list query uses `validate_query` with the same error body.
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, create_model, field_validator
 
 from app.models.cardmarket import PRODUCT_KINDS
 
@@ -388,3 +388,35 @@ class AdminReviewQuery(BaseModel):
     per_page: Literal[25, 50, 100, 200] = 50
 
     _ints = field_validator('page', 'per_page', mode='before')(_page_to_int)
+
+
+class AdminExpansionsQuery(BaseModel):
+    """GET /admin/cardmarket/expansions query (CM-d)."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    unmapped: bool = False
+
+    @field_validator('unmapped', mode='before')
+    @classmethod
+    def _to_bool(cls, value):
+        return _query_bool(value)
+
+
+# `create_set` of PUT /admin/cardmarket/expansions/<id> (CM-d): the fields of
+# `AdminSetCreate` but `id` (the body's `set_id`), built from them so both forms validate a
+# new set the same way.
+AdminExpansionNewSet = create_model(
+    'AdminExpansionNewSet', __config__=STRIPPED,
+    **{name: (field.annotation, field) for name, field in AdminSetCreate.model_fields.items()
+       if name != 'id'})
+
+
+class AdminExpansionMapBody(BaseModel):
+    """PUT /admin/cardmarket/expansions/<id> body (CM-d): the set to map to; with
+    `create_set` the set is created first and `set_id` follows the `AdminSetCreate` id rule."""
+
+    model_config = STRIPPED
+
+    set_id: str = Field(min_length=1, max_length=20)
+    create_set: Optional[AdminExpansionNewSet] = None

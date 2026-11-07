@@ -189,6 +189,14 @@ def unmatched_count() -> int:
     ).scalar_one()
 
 
+def unmapped_expansions_count() -> int:
+    """Cardmarket expansions not mapped to a set of ours (`rbexp_rbset_id` NULL): the
+    status counter and the CM-d expansions list both use it."""
+    return db.session.execute(
+        sa.select(sa.func.count()).select_from(RbcmExpansion)
+        .where(RbcmExpansion.rbexp_rbset_id.is_(None))).scalar_one()
+
+
 def _jobs_near(oldest: str, newest: str) -> list:
     """The `daily_prices` jobs queued between the day before `oldest` and the day after
     `newest`, oldest first."""
@@ -306,14 +314,11 @@ def status() -> dict:
     job = db.session.execute(
         sa.select(RbJob).where(RbJob.rbjob_kind == JOB_KIND)
         .order_by(RbJob.rbjob_id.desc()).limit(1)).scalar()
-    unmapped = db.session.execute(
-        sa.select(sa.func.count()).select_from(RbcmExpansion)
-        .where(RbcmExpansion.rbexp_rbset_id.is_(None))).scalar_one()
     return {
         'last_load': last_load,
         'loaded_today': newest == clock.utcnow().strftime('%Y%m%d'),
         'job': job_brief(job) if job else None,
         'unmatched': unmatched_count(),
-        'unmapped_expansions': unmapped,
+        'unmapped_expansions': unmapped_expansions_count(),
         'prices_as_of': pricing.price_as_of(),
     }

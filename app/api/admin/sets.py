@@ -26,6 +26,14 @@ def create_set():
     if RbSet.query.get(data.id) is not None:
         return fail('Conflict', f"Set '{data.id}' already exists.", 409,
                     code=ErrorCode.ALREADY_EXISTS, params={'field': 'id'})
+    rs = add_set(data)
+    db.session.commit()
+    return ok(catalog_admin.set_item(rs, 0), 201)
+
+
+def add_set(data: AdminSetCreate) -> RbSet:
+    """Add the set of a validated `AdminSetCreate` (its id is free) with its `set.create`
+    audit row, without committing: also the "create the set" of an expansion mapping (CM-d)."""
     rs = RbSet(rbset_id=data.id, rbset_name=data.name,
                rbset_ncard=data.declared_count, rbset_outdat=data.release_date)
     db.session.add(rs)
@@ -33,8 +41,7 @@ def create_set():
     audit_service.record('set.create', 'set', rs.rbset_id,
                          {'name': rs.rbset_name,
                           'release_date': rs.rbset_outdat.isoformat()})
-    db.session.commit()
-    return ok(catalog_admin.set_item(rs, 0), 201)
+    return rs
 
 
 @api_admin.patch('/sets/<set_id>')

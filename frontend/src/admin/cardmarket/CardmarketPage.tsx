@@ -205,9 +205,9 @@ function StatusHeader() {
           <Link to="/admin/cardmarket/matching?type=single" className={styles.link}>
             {t('cardmarket.unmatched', { count: query.data.unmatched })}
           </Link>
-          <span>
+          <Link to="/admin/cardmarket/matching?tab=expansions" className={styles.link}>
             {t('cardmarket.unmappedExpansions', { count: query.data.unmapped_expansions })}
-          </span>
+          </Link>
         </p>
         <div>
           <Button
