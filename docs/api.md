@@ -1021,8 +1021,23 @@ audited in the same transaction (target type `cardmarket_expansion`, id the expa
   date}}`. Every expansion, unmapped first, then by id (`unmapped=true` keeps the unmapped
   ones). Counts are of the latest product date (`date`, `YYYY-MM-DD` or null): `sealed_count` is
   the non-singles. `mapped_set_name` is null when the mapped id is not a set of ours. `sets` are
-  every set, newest release first, undated last. Five SQL statements (session user included)
+  every set, newest release first, undated last. Seven SQL statements (session user included)
   whatever the number of expansions and sets.
+
+  Each item also carries the context that tells an expansion apart when Cardmarket gives it no
+  name (additive, CM-d samples), all of the latest product date: `sample_products: [{id_product,
+  name, type ("single" | "nonsingle"), low_price | null}]`, its 3 dearest singles then its 2
+  dearest sealed products by the low price of that day (unpriced last, then by product id; `[]`
+  when it has no product on that date); `price_range: {min, max} | null`, the lowest and highest
+  low price of its singles (null when none is priced); `first_seen: "YYYY-MM-DD" | null`, the
+  earliest Cardmarket `dateAdded` of its products on that date (null when none, or not a date;
+  older snapshots are not read); and the **suggested set**: of its products that have a card link
+  (`rbcm_product_card_map`), `linked_count` is how many (0 when none) and `suggested_set_id`,
+  `suggested_set_name`, `suggested_count` (how many point to it) and `suggested_confidence`
+  (`suggested_count / linked_count`, 3 decimals) name the set of ours most of them point to (a
+  tie goes to the lower set id; links to an id that is not a set of ours count in `linked_count`
+  but are never suggested); all four are null when there is no such set. The `expansion` items
+  of `PUT` and `DELETE` below carry the same keys.
 - `PUT /admin/cardmarket/expansions/<id>` `{set_id, create_set?: {name, release_date,
   declared_count?}}` → `{expansion (as an item above), previous (set id | null),
   created_set (the `POST /admin/sets` item | null)}`. Without `create_set`, `set_id` must be a

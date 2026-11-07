@@ -5,6 +5,9 @@ set of ours (creating the set on the way, exactly as `POST /admin/sets` does), c
 and removing the mapping. Ports the legacy `/cardmarket-unmapped-expansions` and
 `/cardmarket-map-expansion` of `price_bp` (left untouched). Data from
 `tests/cardmarket_matching_data.py`: expansions 10 -> OGN, 11 -> OGNX, 12 unmapped.
+
+Every item also carries the context that tells an expansion apart when Cardmarket gives it no
+name (sample products, price range, first seen, the set its linked cards suggest).
 """
 from datetime import date
 
@@ -35,6 +38,32 @@ def data(app):
     db.session.add(RbcmExpansion(rbexp_id=14, rbexp_name='Ghost', rbexp_rbset_id='GONE'))
     db.session.commit()
     return app
+
+
+COUNT_KEYS = ('id', 'name', 'products_count', 'singles_count', 'sealed_count',
+              'mapped_set_id', 'mapped_set_name')
+CONTEXT_KEYS = ('sample_products', 'price_range', 'first_seen', 'suggested_set_id',
+                'suggested_set_name', 'suggested_confidence', 'suggested_count', 'linked_count')
+NO_CONTEXT = {'sample_products': [], 'price_range': None, 'first_seen': None,
+              'suggested_set_id': None, 'suggested_set_name': None,
+              'suggested_confidence': None, 'suggested_count': None, 'linked_count': 0}
+
+
+def counts(item):
+    """The CM-d keys of an item, without the context."""
+    return {key: item[key] for key in COUNT_KEYS}
+
+
+def context(item):
+    return {key: item[key] for key in CONTEXT_KEYS}
+
+
+def by_id(items):
+    return {item['id']: item for item in items}
+
+
+def sample(id_product, name, low, type_='single'):
+    return {'id_product': id_product, 'name': name, 'type': type_, 'low_price': low}
 
 
 def mapping():
@@ -116,7 +145,8 @@ class TestAuthorization:
 class TestList:
     def test_every_expansion_unmapped_first_with_counts(self, admin_client, data):
         got = ok(admin_client.get(EXPANSIONS))
-        assert got['items'] == [
+        assert set(got['items'][0]) == {*COUNT_KEYS, *CONTEXT_KEYS}
+        assert [counts(item) for item in got['items']] == [
             {'id': 12, 'name': 'Accessories', 'products_count': 1, 'singles_count': 0,
              'sealed_count': 1, 'mapped_set_id': None, 'mapped_set_name': None},
             {'id': 13, 'name': 'Arcane Box Set', 'products_count': 0, 'singles_count': 0,
@@ -159,9 +189,10 @@ class TestList:
         db.session.add(RbcmExpansion(rbexp_id=1, rbexp_name='Origins'))
         db.session.commit()
         got = ok(admin_client.get(EXPANSIONS))
-        assert got['items'] == [{'id': 1, 'name': 'Origins', 'products_count': 0,
-                                 'singles_count': 0, 'sealed_count': 0,
-                                 'mapped_set_id': None, 'mapped_set_name': None}]
+        assert [counts(item) for item in got['items']] == [
+            {'id': 1, 'name': 'Origins', 'products_count': 0, 'singles_count': 0,
+             'sealed_count': 0, 'mapped_set_id': None, 'mapped_set_name': None}]
+        assert context(got['items'][0]) == NO_CONTEXT
         assert got['sets'] == [] and got['meta'] == {'unmapped': 1, 'total': 1, 'date': None}
 
     def test_the_unmapped_count_is_the_status_counter(self, admin_client, data):
@@ -174,13 +205,143 @@ class TestList:
         for n in range(20, 60):
             db.session.add(RbcmExpansion(rbexp_id=n, rbexp_name=f'Exp {n}'))
             db.session.add(RbSet(rbset_id=f'S{n}', rbset_name=f'Set {n}'))
-            cm.product(1000 + n, f'Card {n}', expansion=n)
+            for k in range(3):
+                pid = 1000 + n * 10 + k
+                cm.product(pid, f'Card {n}.{k}', expansion=n, date_added='2026-01-01')
+                cm.price(pid, k + 1)
+                cm.link(pid, 'OGN' if k else f'S{n}', f'{n}{k}')
+            cm.product(2000 + n, f'Box {n}', expansion=n, type_='nonsingle')
         db.session.commit()
         big = statements(admin_client, 'get', EXPANSIONS)
         assert len(big) == small
-        # the signed-in user, the expansions with their counts, the sets, the latest date
-        # and the unmapped counter
-        assert small == 5, small
+        # the signed-in user, the expansions with their counts, price range and first seen,
+        # their sample products, their linked sets, the sets, the latest date and the
+        # unmapped counter
+        assert small == 7, small
+
+
+# ---------------------------------------------------------------------------
+# GET /expansions: the context of each expansion
+# ---------------------------------------------------------------------------
+
+class TestContext:
+    def test_samples_and_price_range_of_the_latest_load(self, admin_client, data):
+        items = by_id(ok(admin_client.get(EXPANSIONS))['items'])
+        # the three dearest singles, then the dearest sealed product
+        assert items[10]['sample_products'] == [
+            sample(250, 'Ahri, Nine-Tailed Fox', 9.0), sample(200, 'Vi', 2.0),
+            sample(101, 'Jinx (Foil)', 1.0),
+            sample(300, 'Origins Booster Box', 100.0, 'nonsingle')]
+        assert items[10]['price_range'] == {'min': 0.1, 'max': 9.0}
+        assert items[11]['sample_products'] == [sample(201, 'Vi (Promo)', 5.0)]
+        assert items[11]['price_range'] == {'min': 5.0, 'max': 5.0}
+        # sealed only, without a price: no price range
+        assert items[12]['sample_products'] == [
+            sample(301, 'Origins Playmat', None, 'nonsingle')]
+        assert items[12]['price_range'] is None
+        # nothing on the latest load
+        assert items[13]['sample_products'] == [] and items[13]['price_range'] is None
+
+    def test_sample_rules(self, admin_client, data):
+        db.session.add(RbcmExpansion(rbexp_id=20, rbexp_name=None))
+        for pid, name, low in ((2001, 'Dear A', 3.0), (2002, 'No Price', None),
+                               (2000, 'Dear B', 3.0), (2003, 'Mid', 1.0),
+                               (2004, 'Cheap', 0.5)):
+            cm.product(pid, name, expansion=20)
+            if low is not None:
+                cm.price(pid, low)
+        for pid, name, low in ((2101, 'Box No Price', None), (2102, 'Case', 20.0),
+                               (2103, 'Booster', 10.0)):
+            cm.product(pid, name, expansion=20, type_='nonsingle')
+            if low is not None:
+                cm.price(pid, low)
+        # an older snapshot never counts, nor a price of another day
+        cm.product(2009, 'Old Chase', expansion=20, date=cm.D1)
+        cm.price(2009, 500.0, date=cm.D1)
+        cm.price(2002, 99.0, date=cm.D1)
+        db.session.commit()
+        item = by_id(ok(admin_client.get(EXPANSIONS))['items'])[20]
+        assert item['name'] is None
+        # dearest first, the lower id first on a tie, unpriced last
+        assert item['sample_products'] == [
+            sample(2000, 'Dear B', 3.0), sample(2001, 'Dear A', 3.0), sample(2003, 'Mid', 1.0),
+            sample(2102, 'Case', 20.0, 'nonsingle'),
+            sample(2103, 'Booster', 10.0, 'nonsingle')]
+        assert item['price_range'] == {'min': 0.5, 'max': 3.0}
+
+    def test_unpriced_products_fill_the_samples(self, admin_client, data):
+        db.session.add(RbcmExpansion(rbexp_id=20, rbexp_name=None))
+        cm.product(2001, 'Second', expansion=20)
+        cm.product(2000, 'First', expansion=20)
+        db.session.commit()
+        item = by_id(ok(admin_client.get(EXPANSIONS))['items'])[20]
+        assert item['sample_products'] == [sample(2000, 'First', None),
+                                           sample(2001, 'Second', None)]
+        assert item['price_range'] is None
+
+    def test_first_seen_is_the_earliest_date_added_on_the_latest_load(self, admin_client,
+                                                                     data):
+        db.session.add(RbcmExpansion(rbexp_id=20, rbexp_name=None))
+        db.session.add(RbcmExpansion(rbexp_id=21, rbexp_name=None))
+        cm.product(2000, 'A', expansion=20, date_added='2025-07-14 16:11:32')
+        cm.product(2001, 'B', expansion=20, date_added='2025-06-01 10:00:00')
+        cm.product(2002, 'C', expansion=20)
+        cm.product(2003, 'Old', expansion=20, date=cm.D1, date_added='2020-01-01 00:00:00')
+        cm.product(2100, 'D', expansion=21, date_added='soon')
+        db.session.commit()
+        items = by_id(ok(admin_client.get(EXPANSIONS))['items'])
+        assert items[20]['first_seen'] == '2025-06-01'
+        assert items[21]['first_seen'] is None          # not a date
+        assert items[10]['first_seen'] is None          # no date_added at all
+
+    def test_the_set_most_linked_products_point_to(self, admin_client, data):
+        cm.link(100, 'OGN', '001')
+        cm.link(200, 'OGN', '002')
+        cm.link(250, 'OGNX', '002')
+        cm.link(201, 'OGNX', '002', foil='S')
+        # product 900 is on the older snapshot only: its link does not count
+        cm.link(900, 'OGNX', '009')
+        db.session.commit()
+        items = by_id(ok(admin_client.get(EXPANSIONS))['items'])
+        assert {key: items[10][key] for key in CONTEXT_KEYS[3:]} == {
+            'suggested_set_id': 'OGN', 'suggested_set_name': 'Origins',
+            'suggested_confidence': 0.667, 'suggested_count': 2, 'linked_count': 3}
+        assert (items[11]['suggested_set_id'], items[11]['suggested_confidence'],
+                items[11]['suggested_count'], items[11]['linked_count']) == ('OGNX', 1.0, 1, 1)
+        for one in (12, 13, 14):
+            assert (items[one]['suggested_set_id'], items[one]['suggested_set_name'],
+                    items[one]['suggested_confidence'], items[one]['suggested_count'],
+                    items[one]['linked_count']) == (None, None, None, None, 0)
+
+    def test_a_tie_goes_to_the_lower_set_id_and_only_our_sets_are_suggested(
+            self, admin_client, data):
+        cm.link(100, 'OGNX', '001')
+        cm.link(200, 'OGN', '002')
+        cm.link(101, 'GONE', '001')
+        cm.link(250, 'GONE', '003')
+        db.session.commit()
+        item = by_id(ok(admin_client.get(EXPANSIONS))['items'])[10]
+        # GONE holds the most links but is not a set of ours; OGN and OGNX tie
+        assert (item['suggested_set_id'], item['suggested_set_name'],
+                item['suggested_confidence'], item['suggested_count'],
+                item['linked_count']) == ('OGN', 'Origins', 0.25, 1, 4)
+
+    def test_links_to_a_missing_set_only_suggest_nothing(self, admin_client, data):
+        cm.link(201, 'GONE', '002')
+        db.session.commit()
+        item = by_id(ok(admin_client.get(EXPANSIONS))['items'])[11]
+        assert (item['suggested_set_id'], item['suggested_confidence'],
+                item['suggested_count'], item['linked_count']) == (None, None, None, 1)
+
+    def test_the_written_item_carries_the_context_too(self, admin_client, data):
+        cm.link(100, 'OGN', '001')
+        db.session.commit()
+        mapped = ok(admin_client.put(f'{EXPANSIONS}/12', json={'set_id': 'OGN'}))['expansion']
+        assert mapped['sample_products'] == [sample(301, 'Origins Playmat', None, 'nonsingle')]
+        unmapped = ok(admin_client.delete(f'{EXPANSIONS}/10/mapping'))['expansion']
+        assert context(unmapped) == context(
+            by_id(ok(admin_client.get(EXPANSIONS))['items'])[10])
+        assert unmapped['suggested_set_id'] == 'OGN' and unmapped['linked_count'] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -190,11 +351,11 @@ class TestList:
 class TestMap:
     def test_maps_an_unmapped_expansion_and_audits(self, admin_client, data):
         got = ok(admin_client.put(f'{EXPANSIONS}/12', json={'set_id': 'OGN'}))
-        assert got == {
-            'expansion': {'id': 12, 'name': 'Accessories', 'products_count': 1,
-                          'singles_count': 0, 'sealed_count': 1, 'mapped_set_id': 'OGN',
-                          'mapped_set_name': 'Origins'},
-            'previous': None, 'created_set': None}
+        assert set(got) == {'expansion', 'previous', 'created_set'}
+        assert counts(got['expansion']) == {
+            'id': 12, 'name': 'Accessories', 'products_count': 1, 'singles_count': 0,
+            'sealed_count': 1, 'mapped_set_id': 'OGN', 'mapped_set_name': 'Origins'}
+        assert (got['previous'], got['created_set']) == (None, None)
         assert mapping()[12] == 'OGN'
         assert audits() == [('cardmarket.expansion.map', 'cardmarket_expansion', '12',
                              {'name': 'Accessories', 'set_id': 'OGN', 'previous': None})]

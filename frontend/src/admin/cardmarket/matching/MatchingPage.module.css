@@ -219,6 +219,12 @@
     font-weight: 700;
   }
 
+  .samples {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    font-size: 13px;
+  }
+
   .alert {
     display: flex;
     flex-wrap: wrap;

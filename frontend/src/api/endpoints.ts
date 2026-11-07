@@ -478,6 +478,13 @@ export const listCardmarketReview = (query: string, signal?: AbortSignal) =>
   request<CardmarketReviewList>(withQuery('/admin/cardmarket/review', query), { signal });
 
 /** Cardmarket expansions (CM-d): counts are of the latest load; `null` set = not mapped. */
+/** A product of an expansion on the latest load: its dearest singles, then its dearest sealed. */
+export type CardmarketExpansionSample = {
+  id_product: number;
+  name: string;
+  type: string;
+  low_price: number | null;
+};
 export type CardmarketExpansionItem = {
   id: number;
   name: string | null;
@@ -486,6 +493,17 @@ export type CardmarketExpansionItem = {
   sealed_count: number;
   mapped_set_id: string | null;
   mapped_set_name: string | null;
+  sample_products: CardmarketExpansionSample[];
+  /** The low prices of its singles on the latest load. */
+  price_range: { min: number; max: number } | null;
+  /** `YYYY-MM-DD`: the earliest Cardmarket `dateAdded` of its products. */
+  first_seen: string | null;
+  /** The set of ours most of its linked products point to. */
+  suggested_set_id: string | null;
+  suggested_set_name: string | null;
+  suggested_confidence: number | null;
+  suggested_count: number | null;
+  linked_count: number;
 };
 export type CardmarketExpansionSet = { id: string; name: string; release_date: string | null };
 export type CardmarketExpansionList = {
