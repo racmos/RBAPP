@@ -25,6 +25,7 @@ export function DebouncedInput({
 }: DebouncedInputProps) {
   const [local, setLocal] = useState(value);
   const sent = useRef(new Set<string>()); // committed, answer from the URL not seen yet
+  const seen = useRef(value); // the last `value` adopted; the mount run must not reset `local`
   const commitRef = useRef(onCommit);
   useEffect(() => {
     commitRef.current = onCommit;
@@ -35,7 +36,11 @@ export function DebouncedInput({
     commitRef.current(next);
   }, []);
 
+  // Only a change of `value` is adopted. On mount the effects may run after a first input event
+  // (transition renders defer them), and resetting `local` there would undo what was typed.
   useEffect(() => {
+    if (seen.current === value) return;
+    seen.current = value;
     if (sent.current.delete(value)) return;
     sent.current.clear();
     setLocal(value);
