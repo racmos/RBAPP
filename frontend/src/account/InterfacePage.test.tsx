@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -54,6 +54,28 @@ describe('Interface page: playset size (F3-g S8)', () => {
     await waitFor(() => expect(patches).toContainEqual({ playset_size: 6 }), LONG);
     await userEvent.clear(input);
     await waitFor(() => expect(patches).toContainEqual({ playset_size: null }), LONG);
+  }, 20000);
+
+  it('keeps a size cleared before the page effects run', async () => {
+    signedIn({ ...NO_PREFS, playset_size: 4 });
+    // Clear the field right after the commit that inserts it, before React runs that commit's
+    // effects: the order a slow CI machine produced, which used to turn "6" into "46".
+    let clearedEarly = false;
+    const observer = new MutationObserver(() => {
+      const field = document.querySelector<HTMLInputElement>('input[type="number"]');
+      if (!field || clearedEarly) return;
+      clearedEarly = true;
+      fireEvent.change(field, { target: { value: '' } });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    await renderApp({ path: '/account/interface', width: 390 });
+    const input = await screen.findByRole('spinbutton', { name: 'Playset size' }, LONG);
+    observer.disconnect();
+    expect(clearedEarly).toBe(true);
+    await waitFor(() => expect(patches).toContainEqual({ playset_size: null }), LONG);
+    expect(input).toHaveValue(null);
+    await userEvent.type(input, '6');
+    await waitFor(() => expect(patches).toContainEqual({ playset_size: 6 }), LONG);
   }, 20000);
 
   it('ignores values outside 1-9', async () => {
