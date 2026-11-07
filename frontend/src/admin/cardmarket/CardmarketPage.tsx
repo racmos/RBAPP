@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { ApiError } from '@/api/errors';
 import {
   startCardmarketLoad,
@@ -72,7 +73,15 @@ export function CardmarketPage() {
 
   return (
     <>
-      <PageHeader title={t('cardmarket.title')} subtitle={t('cardmarket.subtitle')} />
+      <PageHeader
+        title={t('cardmarket.title')}
+        subtitle={t('cardmarket.subtitle')}
+        actions={
+          <Link to="/admin/cardmarket/matching" className={styles.link}>
+            {t('cardmarket.workbench')}
+          </Link>
+        }
+      />
       <StatusHeader />
       <LoadDays phone={phone} onOpen={setOpenDate} />
       <RecentJobs />
@@ -193,7 +202,9 @@ function StatusHeader() {
           </div>
         </dl>
         <p className={styles.counters}>
-          <span>{t('cardmarket.unmatched', { count: query.data.unmatched })}</span>
+          <Link to="/admin/cardmarket/matching?type=single" className={styles.link}>
+            {t('cardmarket.unmatched', { count: query.data.unmatched })}
+          </Link>
           <span>
             {t('cardmarket.unmappedExpansions', { count: query.data.unmapped_expansions })}
           </span>

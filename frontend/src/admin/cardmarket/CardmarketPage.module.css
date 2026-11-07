@@ -54,6 +54,11 @@
     gap: 8px;
   }
 
+  .link {
+    color: var(--text);
+    text-decoration: underline;
+  }
+
   .counters {
     display: flex;
     flex-wrap: wrap;

@@ -27,3 +27,20 @@ export const ADMIN_NAV: readonly AdminNavEntry[] = [
 export function changesLabelKey(pending: number | undefined): AdminNavEntry['labelKey'] {
   return pending ? 'nav.changesCount' : 'nav.changes';
 }
+
+/**
+ * The entry of a path: the exact one, else the longest entry the path lies under (the matching
+ * workbench at `/admin/cardmarket/matching` belongs to Cardmarket, CM-b).
+ */
+export function navEntryFor(path: string): AdminNavEntry | undefined {
+  return (
+    ADMIN_NAV.find((entry) => entry.to === path) ??
+    ADMIN_NAV.filter((entry) => entry.to !== '/admin' && path.startsWith(`${entry.to}/`)).sort(
+      (a, b) => b.to.length - a.to.length,
+    )[0]
+  );
+}
+
+/** A link stays current on the pages under it, unless another entry lives there. */
+export const matchesExactly = (entry: AdminNavEntry): boolean =>
+  entry.to === '/admin' || ADMIN_NAV.some((other) => other.to.startsWith(`${entry.to}/`));
