@@ -245,7 +245,7 @@ export const EXPANSION_SETS = [
 
 export const expansion = (
   id: number,
-  name: string,
+  name: string | null,
   setId: string | null,
   extra: Record<string, unknown> = {},
 ) => ({
@@ -256,7 +256,43 @@ export const expansion = (
   sealed_count: 0,
   mapped_set_id: setId,
   mapped_set_name: EXPANSION_SETS.find((one) => one.id === setId)?.name ?? null,
+  sample_products: [] as unknown[],
+  price_range: null as { min: number; max: number } | null,
+  first_seen: null as string | null,
+  suggested_set_id: null as string | null,
+  suggested_set_name: null as string | null,
+  suggested_confidence: null as number | null,
+  suggested_count: null as number | null,
+  linked_count: 0,
   ...extra,
+});
+
+export const sampleProduct = (
+  id_product: number,
+  name: string,
+  low_price: number | null,
+  type = 'single',
+) => ({ id_product, name, type, low_price });
+
+/** An expansion Cardmarket gives no name, with the context that tells it apart. */
+export const UNNAMED = expansion(6567, null, null, {
+  products_count: 120,
+  singles_count: 115,
+  sealed_count: 5,
+  sample_products: [
+    sampleProduct(9001, 'Ahri, Nine-Tailed Fox', 34),
+    sampleProduct(9002, 'Vi, Enforcer', 12.5),
+    sampleProduct(9003, 'Jinx, Loose Cannon', 3.2),
+    sampleProduct(9101, 'Proving Grounds Booster Box', 95, 'nonsingle'),
+    sampleProduct(9102, 'Proving Grounds Booster', null, 'nonsingle'),
+  ],
+  price_range: { min: 0.02, max: 34 },
+  first_seen: '2025-07-14',
+  suggested_set_id: 'OGS',
+  suggested_set_name: 'Proving Grounds',
+  suggested_confidence: 0.8,
+  suggested_count: 4,
+  linked_count: 5,
 });
 
 export const EXPANSIONS = [
@@ -270,6 +306,12 @@ export const EXPANSIONS = [
     products_count: 1250,
     singles_count: 1200,
     sealed_count: 50,
+    // its linked cards point to the set it is mapped to: no hint
+    suggested_set_id: 'OGN',
+    suggested_set_name: 'Origins',
+    suggested_confidence: 1,
+    suggested_count: 900,
+    linked_count: 900,
   }),
 ];
 

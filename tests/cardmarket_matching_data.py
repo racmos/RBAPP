@@ -36,9 +36,10 @@ def card(set_id, car_id, name, rarity, card_type='Unit', tags=None, image=None):
 
 
 def product(id_product, name, metacard=None, expansion=10, type_='single', date=D2,
-            category=None):
+            category=None, date_added=None):
     db.session.add(RbcmProduct(
         rbprd_date=date, rbprd_id_product=id_product, rbprd_name=name,
+        rbprd_date_added=date_added,
         rbprd_id_metacard=metacard, rbprd_id_expansion=expansion, rbprd_type=type_,
         rbprd_category_name=category or ('Riftbound Single' if type_ == 'single'
                                          else 'Riftbound Booster Box')))

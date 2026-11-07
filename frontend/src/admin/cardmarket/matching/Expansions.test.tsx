@@ -7,7 +7,13 @@ import { API, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 import { clearToasts } from '@/components/ui/toastStore';
-import { callsTo, matchingApi } from '@/test/fixtures/cardmarketMatching';
+import {
+  EXPANSIONS,
+  UNNAMED,
+  callsTo,
+  expansion,
+  matchingApi,
+} from '@/test/fixtures/cardmarketMatching';
 
 const LONG = { timeout: 10000 };
 const PATH = '/admin/cardmarket/matching';
@@ -82,19 +88,7 @@ describe('Expansions tab (CM-d)', () => {
   });
 
   it('a mapped expansion whose set is gone shows its id', async () => {
-    matchingApi({
-      expansions: [
-        {
-          id: 1,
-          name: 'Ghost',
-          products_count: 0,
-          singles_count: 0,
-          sealed_count: 0,
-          mapped_set_id: 'GONE',
-          mapped_set_name: null,
-        },
-      ],
-    });
+    matchingApi({ expansions: [expansion(1, 'Ghost', 'GONE')] });
     const { table } = await openTab('&show=all');
     expect(within(rowOf(table, 'Ghost')).getAllByRole('cell')[5]).toHaveTextContent(
       'GONE (not a set)',
@@ -331,6 +325,118 @@ describe('Expansions tab (CM-d)', () => {
       within(dialog).getByRole('combobox', { name: 'Set' }),
       'Create a new set…',
     );
+    expect(await axe(dialog)).toHaveNoViolations();
+  }, 20000);
+});
+
+describe('Expansion context (CM-d samples)', () => {
+  const HINT = 'Looks like Proving Grounds (OGS) — 4 of 5 linked products';
+
+  it('an unnamed expansion shows its samples, price range, first seen and the hint', async () => {
+    matchingApi({ expansions: [UNNAMED, ...EXPANSIONS] });
+    const { table } = await openTab();
+    const row = rowOf(table, 'Expansion #6567');
+    const cell = within(row).getAllByRole('cell')[0]!;
+    const samples = within(cell).getByText(
+      'Ahri, Nine-Tailed Fox, Vi, Enforcer, Jinx, Loose Cannon +2',
+    );
+    expect(samples).toHaveAttribute(
+      'title',
+      'Ahri, Nine-Tailed Fox, Vi, Enforcer, Jinx, Loose Cannon, Proving Grounds Booster Box, Proving Grounds Booster',
+    );
+    expect(within(cell).getByText('0.02 € - 34.00 €')).toBeVisible();
+    expect(within(cell).getByText('First seen 14 Jul 2025')).toBeVisible();
+    expect(within(cell).getByRole('button', { name: HINT })).toBeEnabled();
+    // the other columns keep their place
+    expect(within(row).getAllByRole('cell')[1]).toHaveTextContent('6567');
+  });
+
+  it('three samples or fewer have no +N', async () => {
+    matchingApi({
+      expansions: [
+        expansion(1, 'Small', null, { sample_products: UNNAMED.sample_products.slice(0, 2) }),
+      ],
+    });
+    const { table } = await openTab();
+    const samples = within(rowOf(table, 'Small')).getByText('Ahri, Nine-Tailed Fox, Vi, Enforcer');
+    expect(samples).toHaveAttribute('title', 'Ahri, Nine-Tailed Fox, Vi, Enforcer');
+  });
+
+  it('no context shows the name alone, and no hint', async () => {
+    matchingApi();
+    const { table } = await openTab();
+    const cell = within(rowOf(table, 'Spiritforged')).getAllByRole('cell')[0]!;
+    expect(cell).toHaveTextContent(/^Spiritforged$/);
+    expect(within(cell).queryByRole('button')).toBeNull();
+  });
+
+  it('no hint when the suggestion is the set it is mapped to', async () => {
+    matchingApi();
+    const { table } = await openTab('&show=all');
+    expect(within(rowOf(table, '6286')).queryByRole('button', { name: /Looks like/ })).toBeNull();
+  });
+
+  it('the hint opens the map dialog with the suggested set chosen; the user confirms', async () => {
+    const calls = matchingApi({ expansions: [UNNAMED, ...EXPANSIONS] });
+    const user = userEvent.setup();
+    const { table } = await openTab();
+    await user.click(within(rowOf(table, 'Expansion #6567')).getByRole('button', { name: HINT }));
+    const dialog = await screen.findByRole('dialog', { name: 'Map Expansion #6567' });
+    expect(within(dialog).getByRole('combobox', { name: 'Set' })).toHaveValue('OGS');
+    // nothing is written until Map
+    expect(callsTo(calls, 'PUT', '/expansions/6567')).toHaveLength(0);
+    await user.click(within(dialog).getByRole('button', { name: 'Map' }));
+    await vi.waitFor(() =>
+      expect(callsTo(calls, 'PUT', '/expansions/6567').map((call) => call.body)).toEqual([
+        { set_id: 'OGS' },
+      ]),
+    );
+  });
+
+  it('Map to a set keeps no set chosen, and the dialog lists the samples', async () => {
+    matchingApi({ expansions: [UNNAMED, ...EXPANSIONS] });
+    const { table } = await openTab();
+    const dialog = await openMap(table, 'Expansion #6567');
+    expect(within(dialog).getByRole('combobox', { name: 'Set' })).toHaveValue('');
+    const list = within(dialog).getByRole('list', { name: 'Sample products of the latest load' });
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Ahri, Nine-Tailed Fox · 34.00 €',
+      'Vi, Enforcer · 12.50 €',
+      'Jinx, Loose Cannon · 3.20 €',
+      'Proving Grounds Booster Box (sealed) · 95.00 €',
+      'Proving Grounds Booster (sealed) · no price',
+    ]);
+  });
+
+  it('a dialog without samples says so', async () => {
+    matchingApi();
+    const { table } = await openTab();
+    const dialog = await openMap(table, 'Spiritforged');
+    expect(within(dialog).getByText('No products on the latest load.')).toBeVisible();
+    expect(within(dialog).queryByRole('list')).toBeNull();
+  });
+
+  it('offline: the hint is disabled', async () => {
+    matchingApi({ expansions: [UNNAMED] });
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    const { table } = await openTab();
+    expect(
+      within(rowOf(table, 'Expansion #6567')).getByRole('button', { name: HINT }),
+    ).toBeDisabled();
+  });
+
+  it('has no axe violations with the context and the dialog samples', async () => {
+    matchingApi({ expansions: [UNNAMED, ...EXPANSIONS] });
+    const { container, table } = await openTab();
+    expect(await axe(container)).toHaveNoViolations();
+    await userEvent.click(
+      within(rowOf(table, 'Expansion #6567')).getByRole('button', { name: HINT }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Map Expansion #6567' });
     expect(await axe(dialog)).toHaveNoViolations();
   }, 20000);
 });
