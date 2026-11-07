@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   apiQuery,
+  cardNameFrom,
   cardRef,
   defaultFoil,
   groupConflicts,
   parseTab,
   scoreText,
   suggestionFoil,
+  typeFromCategory,
 } from './format';
 
 const link = (id: number, setId: string, cardId: string, foil: 'N' | 'S' | null) => ({
@@ -87,5 +89,34 @@ describe('matching format helpers (CM-b)', () => {
       ['OGN|001|S', [4]],
     ]);
     expect(groups[0]).toMatchObject({ set_id: 'OGN', card_id: '001', card_name: 'Card 001' });
+  });
+});
+
+describe('cardNameFrom (CM-c)', () => {
+  it('keeps a plain Cardmarket name as is, trimmed', () => {
+    expect(cardNameFrom('  Ahri, Alluring ')).toBe('Ahri, Alluring');
+    expect(cardNameFrom('Fury Rune (V.2)')).toBe('Fury Rune (V.2)');
+    expect(cardNameFrom('Ahri - Alluring')).toBe('Ahri - Alluring');
+  });
+
+  it('drops a trailing set and number only', () => {
+    expect(cardNameFrom('Ahri, Alluring (OGN-066)')).toBe('Ahri, Alluring');
+    expect(cardNameFrom('Ahri, Alluring [OGN 066a]')).toBe('Ahri, Alluring');
+    expect(cardNameFrom('Ahri, Alluring #066')).toBe('Ahri, Alluring');
+  });
+
+  it('never leaves an empty name', () => {
+    expect(cardNameFrom('(OGN-066)')).toBe('(OGN-066)');
+  });
+});
+
+describe('typeFromCategory (CM-c)', () => {
+  it('guesses only from an unambiguous category', () => {
+    expect(typeFromCategory('Riftbound Single')).toBe('');
+    expect(typeFromCategory(null)).toBe('');
+    expect(typeFromCategory('Riftbound Runes')).toBe('Rune');
+    expect(typeFromCategory('Riftbound Battlefield')).toBe('Battlefield');
+    expect(typeFromCategory('Riftbound Legend')).toBe('Legend');
+    expect(typeFromCategory('Rune and Battlefield Pack')).toBe('');
   });
 });

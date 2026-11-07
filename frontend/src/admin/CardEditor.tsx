@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/api/errors';
 import { uploadAdminCardImage, type AdminCard } from '@/api/endpoints';
 import { fieldErrorsFromDetails } from '@/auth/formHelpers';
 import { Button } from '@/components/ui/Button';
-import { Field } from '@/components/ui/Field';
+import { Field, type FieldControlProps } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
@@ -27,9 +27,25 @@ const TEXT_FIELDS = [
   ['image_url', false],
 ] as const;
 
-type CardField = (typeof TEXT_FIELDS)[number][0] | 'set_id' | 'card_id' | 'ability';
+/** Every field of the card form, in its order: the server `details[]` map onto these. */
+export const CARD_FIELDS = [
+  'set_id',
+  'card_id',
+  'name',
+  'domain',
+  'type',
+  'tags',
+  'energy',
+  'power',
+  'might',
+  'ability',
+  'rarity',
+  'artist',
+  'image_url',
+] as const;
+export type CardField = (typeof CARD_FIELDS)[number];
 
-function toForm(card: AdminCard | null): CardForm {
+export function toForm(card: AdminCard | null): CardForm {
   return {
     set_id: card?.set_id ?? '',
     card_id: card?.card_id ?? '',
@@ -45,6 +61,137 @@ function toForm(card: AdminCard | null): CardForm {
     artist: card?.artist ?? '',
     image_url: card?.image_url ?? '',
   };
+}
+
+/** The body of a card write without the keys: blank texts are null, numbers are parsed. */
+export function cardInput(form: CardForm) {
+  const numbers: Record<string, number | null> = {};
+  for (const field of ['energy', 'power', 'might']) {
+    const raw = form[field].trim();
+    numbers[field] = raw === '' ? null : Number.parseInt(raw, 10);
+  }
+  return {
+    name: form.name,
+    domain: form.domain || null,
+    type: form.type || null,
+    tags: form.tags || null,
+    ...numbers,
+    ability: form.ability || null,
+    rarity: form.rarity || null,
+    artist: form.artist || null,
+    image_url: form.image_url || null,
+  };
+}
+
+type CardFieldsProps = {
+  form: CardForm;
+  onChange: (patch: Partial<CardForm>) => void;
+  errors: Partial<Record<string, string>>;
+  disabled: boolean;
+  creating: boolean;
+  /** Another control for the set (the Cardmarket form offers a select of the sets). */
+  setControl?: (control: FieldControlProps) => ReactNode;
+  hints?: { set_id?: string; card_id?: string };
+};
+
+/** The fields of a card, shared by the cards admin and the Cardmarket create form (CM-c). */
+export function CardFields({
+  form,
+  onChange,
+  errors,
+  disabled,
+  creating,
+  setControl,
+  hints,
+}: CardFieldsProps) {
+  const { t } = useTranslation('admin');
+  return (
+    <>
+      <Field
+        label={t('cards.fields.set_id')}
+        hint={hints?.set_id}
+        error={errors.set_id}
+        required={creating}
+      >
+        {(control) =>
+          setControl ? (
+            setControl(control)
+          ) : (
+            <Input
+              {...control}
+              value={form.set_id}
+              disabled={disabled || !creating}
+              onChange={(event) => onChange({ set_id: event.target.value })}
+            />
+          )
+        }
+      </Field>
+      <Field
+        label={t('cards.fields.card_id')}
+        hint={hints?.card_id}
+        error={errors.card_id}
+        required={creating}
+      >
+        {(control) => (
+          <Input
+            {...control}
+            value={form.card_id}
+            disabled={disabled || !creating}
+            onChange={(event) => onChange({ card_id: event.target.value })}
+          />
+        )}
+      </Field>
+      {!creating && <p className={styles.hint}>{t('cards.keyLocked')}</p>}
+      <Field label={t('cards.fields.name')} error={errors.name} required={creating}>
+        {(control) => (
+          <Input
+            {...control}
+            value={form.name}
+            disabled={disabled}
+            onChange={(event) => onChange({ name: event.target.value })}
+          />
+        )}
+      </Field>
+      {TEXT_FIELDS.slice(1).map(([name, required]) => (
+        <Field
+          key={name}
+          label={t(`cards.fields.${name}` as 'cards.fields.domain')}
+          hint={
+            name === 'domain'
+              ? t('cards.hints.domain')
+              : name === 'type'
+                ? t('cards.hints.type')
+                : name === 'tags'
+                  ? t('cards.hints.tags')
+                  : undefined
+          }
+          error={errors[name]}
+          required={required && creating}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              value={form[name]}
+              type={name === 'energy' || name === 'power' || name === 'might' ? 'number' : 'text'}
+              disabled={disabled}
+              onChange={(event) => onChange({ [name]: event.target.value })}
+            />
+          )}
+        </Field>
+      ))}
+      <Field label={t('cards.fields.ability')} error={errors.ability}>
+        {(control) => (
+          <textarea
+            {...control}
+            rows={6}
+            value={form.ability}
+            disabled={disabled}
+            onChange={(event) => onChange({ ability: event.target.value })}
+          />
+        )}
+      </Field>
+    </>
+  );
 }
 
 type CardEditorProps = {
@@ -116,75 +263,13 @@ export function CardEditor({
         onSave(form, creating);
       }}
     >
-      <Field label={t('cards.fields.set_id')} error={shown.set_id} required={creating}>
-        {(control) => (
-          <Input
-            {...control}
-            value={form.set_id}
-            disabled={disabled || !creating}
-            onChange={(event) => set({ set_id: event.target.value })}
-          />
-        )}
-      </Field>
-      <Field label={t('cards.fields.card_id')} error={shown.card_id} required={creating}>
-        {(control) => (
-          <Input
-            {...control}
-            value={form.card_id}
-            disabled={disabled || !creating}
-            onChange={(event) => set({ card_id: event.target.value })}
-          />
-        )}
-      </Field>
-      {!creating && <p className={styles.hint}>{t('cards.keyLocked')}</p>}
-      <Field label={t('cards.fields.name')} error={shown.name} required={creating}>
-        {(control) => (
-          <Input
-            {...control}
-            value={form.name}
-            disabled={disabled}
-            onChange={(event) => set({ name: event.target.value })}
-          />
-        )}
-      </Field>
-      {TEXT_FIELDS.slice(1).map(([name, required]) => (
-        <Field
-          key={name}
-          label={t(`cards.fields.${name}` as 'cards.fields.domain')}
-          hint={
-            name === 'domain'
-              ? t('cards.hints.domain')
-              : name === 'type'
-                ? t('cards.hints.type')
-                : name === 'tags'
-                  ? t('cards.hints.tags')
-                  : undefined
-          }
-          error={shown[name]}
-          required={required && creating}
-        >
-          {(control) => (
-            <Input
-              {...control}
-              value={form[name]}
-              type={name === 'energy' || name === 'power' || name === 'might' ? 'number' : 'text'}
-              disabled={disabled}
-              onChange={(event) => set({ [name]: event.target.value })}
-            />
-          )}
-        </Field>
-      ))}
-      <Field label={t('cards.fields.ability')} error={shown.ability}>
-        {(control) => (
-          <textarea
-            {...control}
-            rows={6}
-            value={form.ability}
-            disabled={disabled}
-            onChange={(event) => set({ ability: event.target.value })}
-          />
-        )}
-      </Field>
+      <CardFields
+        form={form}
+        onChange={set}
+        errors={shown}
+        disabled={disabled}
+        creating={creating}
+      />
       <div>
         {imageSrc && <img src={imageSrc} alt="" className={styles.preview} />}
         {!creating && (

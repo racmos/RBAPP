@@ -34,7 +34,7 @@ import { up } from '@/lib/breakpoints';
 import { sortSetsNewestFirst } from '@/lib/sets';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
-import { CardEditor, type CardForm } from './CardEditor';
+import { CardEditor, cardInput, type CardForm } from './CardEditor';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './CardsAdminPage.module.css';
 
@@ -115,39 +115,10 @@ export function CardsAdminPage() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin'] });
 
   const save = useMutation({
-    mutationFn: async ({ target, form }: { target: EditorTarget; form: CardForm }) => {
-      const numbers: Record<string, number | null> = {};
-      for (const field of ['energy', 'power', 'might']) {
-        const raw = form[field].trim();
-        numbers[field] = raw === '' ? null : Number.parseInt(raw, 10);
-      }
-      if (target.mode === 'create') {
-        return createAdminCard({
-          set_id: form.set_id,
-          card_id: form.card_id,
-          name: form.name,
-          domain: form.domain || null,
-          type: form.type || null,
-          tags: form.tags || null,
-          ...numbers,
-          ability: form.ability || null,
-          rarity: form.rarity || null,
-          artist: form.artist || null,
-          image_url: form.image_url || null,
-        });
-      }
-      return patchAdminCard(target.card.set_id, target.card.card_id, {
-        name: form.name,
-        domain: form.domain || null,
-        type: form.type || null,
-        tags: form.tags || null,
-        ...numbers,
-        ability: form.ability || null,
-        rarity: form.rarity || null,
-        artist: form.artist || null,
-        image_url: form.image_url || null,
-      });
-    },
+    mutationFn: async ({ target, form }: { target: EditorTarget; form: CardForm }) =>
+      target.mode === 'create'
+        ? createAdminCard({ set_id: form.set_id, card_id: form.card_id, ...cardInput(form) })
+        : patchAdminCard(target.card.set_id, target.card.card_id, cardInput(form)),
     onSuccess: () => {
       pushToast({ kind: 'success', message: t('cards.saved') });
       setEditor(null);

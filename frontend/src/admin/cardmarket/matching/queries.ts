@@ -39,11 +39,11 @@ export const useUnmatched = (query: string) =>
   });
 
 /** `q` empty asks for the suggested cards; a 1-character `q` is never sent. */
-export const useCandidates = (id: number, q: string) =>
+export const useCandidates = (id: number, q: string, enabled = true) =>
   useQuery({
     queryKey: matchingKeys.candidates(id, q),
     queryFn: ({ signal }) => getCardmarketCandidates(id, q, signal),
-    enabled: q.length !== 1,
+    enabled: enabled && q.length !== 1,
     placeholderData: keepPreviousData,
   });
 
@@ -106,6 +106,9 @@ export function useUndoToasts() {
   };
 
   return {
+    /** A card created from a Cardmarket item and linked (CM-c): Undo unlinks, the card stays. */
+    createdAndLinked: (link: CardmarketLink) =>
+      undoable(t('matching.create.done'), () => deleteCardmarketLink(link.id_product)),
     linked: (name: string, link: CardmarketLink) =>
       undoable(t('matching.linkedTo', { name, ref: cardRef(link.set_id, link.card_id) }), () =>
         deleteCardmarketLink(link.id_product),

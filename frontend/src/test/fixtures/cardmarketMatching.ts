@@ -215,6 +215,55 @@ export const reviewList = (items: unknown[] = [REVIEW_ITEM]) => ({
   },
 });
 
+/** `GET /admin/sets` (the set select of the create-card form, CM-c). */
+export const ADMIN_SETS = [
+  {
+    id: 'OGS',
+    name: 'Proving Grounds',
+    release_date: '2025-09-01',
+    card_count: 24,
+    declared_count: 24,
+    window: 'none',
+    next_run_at: null,
+  },
+  {
+    id: 'OGN',
+    name: 'Origins',
+    release_date: '2025-10-31',
+    card_count: 298,
+    declared_count: 298,
+    window: 'none',
+    next_run_at: null,
+  },
+];
+
+/** The `AdminCard` the API answers a create with: the card id lower-cased, as the server does. */
+export const adminCard = (body: Record<string, unknown>) => {
+  const setId = String(body.set_id);
+  const cardId = String(body.card_id).toLowerCase();
+  return {
+    domain: null,
+    type: null,
+    tags: null,
+    energy: null,
+    power: null,
+    might: null,
+    ability: null,
+    rarity: null,
+    artist: null,
+    image_url: null,
+    ...body,
+    set_id: setId,
+    card_id: cardId,
+    key: `${setId}-${cardId}`,
+    image: null,
+    image_src: null,
+  };
+};
+
+/** Where the admin cards endpoint is recorded: outside the `/admin/cardmarket` base. */
+export const CARDS_PATH = `${API}/admin/cards`;
+
 export type Call = { method: string; path: string; search: URLSearchParams; body: unknown };
 
 const BASE = `${API}/admin/cardmarket`;
@@ -249,7 +298,16 @@ export function matchingApi({
         riot: { pending_changes: 0, active_sets: [], last_sync: null, placeholder_sets: [] },
       }),
     ),
-    http.get(`${BASE}/status`, () => ok(STATUS)),
+    http.get(`${BASE}/status`, async ({ request }) => {
+      await record(request);
+      return ok(STATUS);
+    }),
+    http.get(`${API}/admin/sets`, () => ok(ADMIN_SETS)),
+    http.post(`${API}/admin/cards`, async ({ request }) => {
+      await record(request);
+      const body = (await request.json()) as Record<string, unknown>;
+      return ok(adminCard(body), 201);
+    }),
     http.get(`${BASE}/unmatched`, async ({ request }) => {
       await record(request);
       return ok(unmatched);

@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import {
   createCardmarketLink,
   ignoreCardmarketProduct,
@@ -105,6 +106,14 @@ export function ToLinkPanel({ params, setParam, setPage, offline, openDialog }: 
               busy={busy}
               onLink={(target) => link.mutate({ product, target })}
               onChoose={() => openDialog({ id_product: product.id_product, name: product.name })}
+              onCreate={() =>
+                openDialog({
+                  id_product: product.id_product,
+                  name: product.name,
+                  mode: 'create',
+                  facts: { category: product.category, expansion: product.expansion },
+                })
+              }
               onIgnore={() => ignore.mutate(product)}
             />
           ))}
@@ -127,12 +136,14 @@ function ProductRow({
   busy,
   onLink,
   onChoose,
+  onCreate,
   onIgnore,
 }: {
   product: CardmarketUnmatched;
   busy: boolean;
   onLink: (target: CardmarketLinkTarget) => void;
   onChoose: () => void;
+  onCreate: () => void;
   onIgnore: () => void;
 }) {
   const { t } = useTranslation('admin');
@@ -161,7 +172,10 @@ function ProductRow({
       {identity ? (
         <p className={styles.identity}>
           <Badge tone="success">{t('matching.toLink.identity')}</Badge>
-          <span className={styles.muted}>{t('matching.toLink.identityHint')}</span>
+          <span className={styles.muted}>
+            {t('matching.toLink.identityHint')} {t('matching.toLink.identityEdit')}{' '}
+            <Link to="/admin/products">{t('matching.toLink.identityProducts')}</Link>.
+          </span>
         </p>
       ) : (
         <>
@@ -191,6 +205,17 @@ function ProductRow({
                 onClick={onChoose}
               >
                 {t('matching.toLink.choose')}
+              </Button>
+            )}
+            {single && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                aria-label={t('matching.toLink.createFor', { name: product.name })}
+                onClick={onCreate}
+              >
+                {t('matching.toLink.create')}
               </Button>
             )}
             <Button
