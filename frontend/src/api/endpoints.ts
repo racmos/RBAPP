@@ -295,6 +295,188 @@ export const startCardmarketLoad = () =>
     method: 'POST',
   });
 
+/** Cardmarket matching workbench (CM-b). A foil slot is `N`, `S` or `null` (one slot). */
+export type CardmarketFoil = 'N' | 'S' | null;
+export type CardmarketExpansion = { id: number; name: string; set_id: string | null };
+export type CardmarketSuggestion = {
+  kind: 'card' | 'product';
+  /** `SET-ID` for a card, the product id for a product. */
+  id: string | number;
+  name: string;
+  set: string | null;
+  number: string | null;
+  score: number;
+  free_foils: CardmarketFoil[];
+};
+export type CardmarketUnmatched = {
+  id_product: number;
+  name: string;
+  type: string;
+  category: string | null;
+  expansion: CardmarketExpansion | null;
+  low_price: number | null;
+  first_seen_date: string | null;
+  suggestions: CardmarketSuggestion[];
+};
+export type CardmarketPageMeta = { page: number; per_page: number; total: number; pages: number };
+export type CardmarketUnmatchedList = {
+  items: CardmarketUnmatched[];
+  meta: CardmarketPageMeta & { date: string | null };
+};
+export type CardmarketCandidateCard = {
+  set_id: string;
+  card_id: string;
+  name: string;
+  rarity: string | null;
+  type: string | null;
+  image_src: string | null;
+  links: { id_product: number; foil: CardmarketFoil }[];
+};
+export type CardmarketCandidates = {
+  product: {
+    id_product: number;
+    name: string;
+    type: string;
+    category: string | null;
+    expansion: CardmarketExpansion | null;
+    date: string | null;
+    link: {
+      set_id: string;
+      card_id: string;
+      foil: CardmarketFoil;
+      match_type: string;
+    } | null;
+  };
+  cards: CardmarketCandidateCard[];
+  products: { id: number; name: string; set_id: string | null; kind: string; category: string }[];
+};
+export type CardmarketLink = {
+  id_product: number;
+  product_name: string | null;
+  product_type: string | null;
+  in_latest_load: boolean;
+  set_id: string;
+  card_id: string;
+  card_name: string | null;
+  foil: CardmarketFoil;
+  match_type: string;
+  confidence: number | null;
+  low_price: number | null;
+  price_date: string | null;
+};
+export type CardmarketLinkList = {
+  items: CardmarketLink[];
+  meta: CardmarketPageMeta & { conflict_slots: number };
+};
+export type CardmarketLinkTarget = {
+  card: { set_id: string; card_id: string };
+  foil: CardmarketFoil;
+};
+export type CardmarketIgnored = {
+  id_product: number;
+  name: string;
+  low_price: number | null;
+  ignored_at: string | null;
+};
+export type CardmarketProposed = {
+  id_product: number;
+  product_name: string;
+  low_price: number | null;
+  set_id: string;
+  card_id: string;
+  card_name: string;
+  foil: CardmarketFoil;
+};
+export type CardmarketReviewItem = {
+  product_id: number;
+  name: string;
+  expansion_id: number | null;
+  reason: string;
+  candidates: { set: string; id: string; name: string }[];
+};
+export type CardmarketPreview = {
+  date: string | null;
+  proposed: number;
+  clear: number;
+  doubtful: number;
+  links: CardmarketProposed[];
+  review: CardmarketReviewItem[];
+  review_total: number;
+};
+export type CardmarketApplied = {
+  date: string | null;
+  linked: number;
+  clear: number;
+  remaining_clear: number;
+  doubtful: number;
+  links: CardmarketProposed[];
+};
+export type CardmarketReviewList = {
+  items: CardmarketReviewItem[];
+  meta: CardmarketPageMeta & { date: string | null; reasons: Record<string, number> };
+};
+
+const withQuery = (path: string, query: string) => (query ? `${path}?${query}` : path);
+
+export const listCardmarketUnmatched = (query: string, signal?: AbortSignal) =>
+  request<CardmarketUnmatchedList>(withQuery('/admin/cardmarket/unmatched', query), { signal });
+
+/** Without `q` the API sends the suggested cards; `q` must have 2-100 characters. */
+export const getCardmarketCandidates = (idProduct: number, q: string, signal?: AbortSignal) =>
+  request<CardmarketCandidates>(
+    withQuery(
+      `/admin/cardmarket/unmatched/${idProduct}/candidates`,
+      q ? new URLSearchParams({ q }).toString() : '',
+    ),
+    { signal },
+  );
+
+export const listCardmarketLinks = (query: string, signal?: AbortSignal) =>
+  request<CardmarketLinkList>(withQuery('/admin/cardmarket/links', query), { signal });
+
+export const createCardmarketLink = (idProduct: number, target: CardmarketLinkTarget) =>
+  request<CardmarketLink>('/admin/cardmarket/links', {
+    method: 'POST',
+    body: { id_product: idProduct, card: target.card, foil: target.foil },
+  });
+
+export const relinkCardmarketLink = (idProduct: number, target: CardmarketLinkTarget) =>
+  request<{ link: CardmarketLink; previous: CardmarketLink }>(
+    `/admin/cardmarket/links/${idProduct}`,
+    { method: 'PUT', body: { card: target.card, foil: target.foil } },
+  );
+
+export const deleteCardmarketLink = (idProduct: number) =>
+  request<{ link: CardmarketLink }>(`/admin/cardmarket/links/${idProduct}`, { method: 'DELETE' });
+
+export const listCardmarketIgnored = (signal?: AbortSignal) =>
+  request<{ items: CardmarketIgnored[] }>('/admin/cardmarket/ignored', { signal });
+
+export const ignoreCardmarketProduct = (idProduct: number, name: string) =>
+  request<{ item: CardmarketIgnored; created: boolean }>('/admin/cardmarket/ignored', {
+    method: 'POST',
+    body: { id_product: idProduct, name },
+  });
+
+/** Restores one name of the id, or every name when `name` is left out. */
+export const unignoreCardmarketProduct = (idProduct: number, name?: string) =>
+  request<{ removed: { id_product: number; name: string }[] }>(
+    withQuery(
+      `/admin/cardmarket/ignored/${idProduct}`,
+      name ? new URLSearchParams({ name }).toString() : '',
+    ),
+    { method: 'DELETE' },
+  );
+
+export const previewCardmarketAutoMatch = () =>
+  request<CardmarketPreview>('/admin/cardmarket/auto-match/preview', { method: 'POST' });
+
+export const applyCardmarketAutoMatch = () =>
+  request<CardmarketApplied>('/admin/cardmarket/auto-match/apply', { method: 'POST', body: {} });
+
+export const listCardmarketReview = (query: string, signal?: AbortSignal) =>
+  request<CardmarketReviewList>(withQuery('/admin/cardmarket/review', query), { signal });
+
 /** `GET /admin/overview` (F13-a, extended in F13-e with the `riot` block). */
 export type AdminRiotActive = {
   id: string;

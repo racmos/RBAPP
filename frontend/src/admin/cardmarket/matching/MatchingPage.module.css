@@ -1,0 +1,266 @@
+@layer components {
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .back {
+    color: var(--text);
+    font-size: 14px;
+    text-decoration: underline;
+  }
+
+  .counters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 12px 0 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tab {
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .tab[aria-selected='true'] {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+  }
+
+  .tab:hover {
+    color: var(--text);
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: calc(var(--gap) * 1.5);
+  }
+
+  .sectionTitle {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .filterField {
+    display: grid;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .short {
+    width: 8em;
+  }
+
+  .muted {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .help {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .rows {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .row {
+    display: grid;
+    gap: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 12px;
+  }
+
+  .rowHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+  }
+
+  .rowTitle {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  .rowActions,
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .suggestion {
+    text-align: left;
+  }
+
+  .identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+    vertical-align: top;
+  }
+
+  .cellStack {
+    display: grid;
+    gap: 2px;
+    justify-items: start;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .preview {
+    display: grid;
+    gap: 10px;
+  }
+
+  .pairs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 0;
+  }
+
+  .pairs dt {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .pairs dd {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .dialog {
+    display: grid;
+    gap: 12px;
+  }
+
+  .current {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--red-text);
+    font-size: 14px;
+  }
+
+  .candidates {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .candidate {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 8px;
+  }
+
+  .candidateImage {
+    width: 88px;
+  }
+
+  .candidateBody {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    justify-items: start;
+  }
+
+  .candidateActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+}

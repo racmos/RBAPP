@@ -173,6 +173,13 @@ export function createAppRoutes(
                       }),
                     },
                     {
+                      path: 'cardmarket/matching',
+                      lazy: async () => ({
+                        Component: (await import('@/admin/cardmarket/matching/MatchingPage'))
+                          .MatchingPage,
+                      }),
+                    },
+                    {
                       path: 'riot',
                       lazy: async () => ({
                         Component: (await import('@/admin/RiotPage')).RiotPage,

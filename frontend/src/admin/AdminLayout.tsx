@@ -6,7 +6,13 @@ import { Select } from '@/components/ui/Select';
 import { SidePanel } from '@/components/ui/SidePanel';
 import { down, up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { ADMIN_NAV, changesLabelKey, type AdminNavEntry } from './adminNav';
+import {
+  ADMIN_NAV,
+  changesLabelKey,
+  matchesExactly,
+  navEntryFor,
+  type AdminNavEntry,
+} from './adminNav';
 import styles from './AdminLayout.module.css';
 
 /** Frame of the admin area (F13-a S6): side navigation on desktop, a select below it. */
@@ -21,6 +27,7 @@ export function AdminLayout() {
     queryFn: ({ signal }) => getAdminOverview(signal),
   });
   const pending = overview.data?.riot?.pending_changes ?? 0;
+  const path = location.pathname.replace(/^\/riftbound\/app/, '') || '/';
   const labelOf = (entry: AdminNavEntry) =>
     entry.id === 'changes' && entry.labelKey === 'nav.changes'
       ? t(changesLabelKey(pending), pending ? { count: pending } : undefined)
@@ -38,7 +45,12 @@ export function AdminLayout() {
           className={styles.nav}
         >
           {ADMIN_NAV.map((entry) => (
-            <NavLink key={entry.id} to={entry.to} end className={styles.link}>
+            <NavLink
+              key={entry.id}
+              to={entry.to}
+              end={matchesExactly(entry)}
+              className={styles.link}
+            >
               {labelOf(entry)}
             </NavLink>
           ))}
@@ -47,7 +59,7 @@ export function AdminLayout() {
         <Select
           aria-label={t('nav.label')}
           className={styles.select}
-          value={location.pathname.replace(/^\/riftbound\/app/, '') || '/'}
+          value={navEntryFor(path)?.to ?? path}
           onChange={(event) => {
             void navigate(event.target.value);
           }}

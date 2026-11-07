@@ -281,7 +281,8 @@
     "recentTitle": "Recent jobs",
     "recentEmpty": "No runs yet.",
     "requestedBy": "By {{user}}",
-    "scheduled": "Scheduled"
+    "scheduled": "Scheduled",
+    "workbench": "Matching workbench"
   },
   "job": {
     "status": {
@@ -354,5 +355,173 @@
   "panels": {
     "editor": "Editor",
     "detail": "Details"
+  },
+  "matching": {
+    "title": "Matching workbench",
+    "subtitle": "Link the Cardmarket products the daily load could not match, and fix wrong links.",
+    "back": "Back to Cardmarket",
+    "tabsLabel": "Matching sections",
+    "tabs": {
+      "link": "To link",
+      "linked": "Linked",
+      "conflicts": "Conflicts",
+      "ignored": "Ignored",
+      "auto": "Auto-match"
+    },
+    "slot": {
+      "N": "N",
+      "S": "S",
+      "none": "None"
+    },
+    "slotOption": {
+      "none": "None",
+      "N": "N (normal)",
+      "S": "S (foil)"
+    },
+    "slotHelp": "Slot: Cardmarket sells commons and uncommons as two products, a normal (N) and a foil (S) one. Every other card, and every rune, has one product: slot None. None and N are different slots.",
+    "undo": "Undo",
+    "toLink": {
+      "caption": "Products to link",
+      "search": "Search products",
+      "type": "Type",
+      "typeAll": "All",
+      "typeSingle": "Singles",
+      "typeSealed": "Sealed products",
+      "count_one": "{{count}} product",
+      "count_other": "{{count}} products",
+      "latest": "Latest load: {{date}}",
+      "firstSeen": "First seen {{date}}",
+      "suggestion": "Link to {{ref}} {{name}} ({{score}})",
+      "suggestionSlot": "Link to {{ref}} {{name}}, slot {{slot}} ({{score}})",
+      "slotsTaken": "Every slot of this card is linked already.",
+      "noSuggestions": "No suggestions.",
+      "identity": "Linked by identity",
+      "identityHint": "Sealed products are linked by their Cardmarket id.",
+      "noProduct": "No product with this id yet.",
+      "choose": "Choose a card…",
+      "chooseFor": "Choose a card for {{name}}",
+      "ignore": "Ignore",
+      "ignoreFor": "Ignore {{name}}",
+      "emptyTitle": "Nothing to link",
+      "emptyBody": "Every product of the latest load is linked or ignored."
+    },
+    "single": "Single",
+    "sealed": "Sealed",
+    "linkedTo": "Linked {{name}} to {{ref}}.",
+    "ignored": "Ignored {{name}}.",
+    "restored": "Restored {{name}}.",
+    "unlinked": "Unlinked {{name}}.",
+    "relinked": "Relinked {{name}}: {{from}} → {{to}}.",
+    "slotRef": "{{ref}}, slot {{slot}}",
+    "dialog": {
+      "link": "Link {{name}}",
+      "relink": "Relink {{name}}",
+      "linkedNow": "Linked now to {{target}}.",
+      "search": "Search cards",
+      "searchHint": "A name or a number such as OGN-066, at least 2 characters. Empty shows the suggested cards.",
+      "minChars": "Type at least 2 characters.",
+      "cards": "Cards",
+      "noCards": "No cards found.",
+      "linkTo": "Link to {{ref}}",
+      "relinkTo": "Relink to {{ref}}",
+      "slotFor": "Slot for {{ref}}",
+      "linkedBadge": "Linked to #{{id}}, slot {{slot}}",
+      "slotTaken": "Cardmarket product #{{id}} holds {{target}}.",
+      "openOther": "Open the link of #{{id}}",
+      "productLinked": "This product is already linked to {{target}}.",
+      "relinkInstead": "Relink here instead"
+    },
+    "linked": {
+      "caption": "Cardmarket links",
+      "search": "Search links",
+      "set": "Set",
+      "slot": "Slot",
+      "match": "Match",
+      "any": "Any",
+      "auto": "Auto",
+      "manual": "Manual",
+      "count_one": "{{count}} link",
+      "count_other": "{{count}} links",
+      "conflictSlots": "Conflict slots: {{count}}",
+      "columns": {
+        "product": "Cardmarket product",
+        "card": "Card",
+        "slot": "Slot",
+        "price": "Low price",
+        "match": "Match",
+        "actions": "Actions"
+      },
+      "notLatest": "Not in the latest load",
+      "relinkFor": "Relink {{name}}",
+      "unlinkFor": "Unlink {{name}}",
+      "relink": "Relink",
+      "unlink": "Unlink",
+      "confirmTitle": "Unlink {{name}}?",
+      "confirmBody": "Its prices stop reaching {{target}} until it is linked again.",
+      "emptyTitle": "No links",
+      "emptyBody": "No link matches these filters."
+    },
+    "conflicts": {
+      "caption": "Conflict slots",
+      "intro": "One card slot linked to several Cardmarket products: unlink the wrong ones.",
+      "slot": "{{ref}} {{name}}, slot {{slot}}",
+      "products_one": "{{count}} Cardmarket product",
+      "products_other": "{{count}} Cardmarket products",
+      "emptyTitle": "No conflicts",
+      "emptyBody": "Every card slot is linked to one Cardmarket product at most."
+    },
+    "ignoredTab": {
+      "caption": "Ignored products",
+      "columns": {
+        "product": "Product",
+        "id": "Cardmarket id",
+        "price": "Low price",
+        "since": "Ignored at",
+        "actions": "Actions"
+      },
+      "restore": "Restore",
+      "restoreFor": "Restore {{name}}",
+      "emptyTitle": "Nothing ignored",
+      "emptyBody": "Ignored products stay out of the list to link."
+    },
+    "auto": {
+      "title": "Auto-match",
+      "intro": "Links the clear cases as the daily load does. Doubtful cases are never linked: review them below.",
+      "preview": "Preview",
+      "apply": "Apply clear cases",
+      "previewTitle": "Preview",
+      "proposed": "Proposed",
+      "clear": "Clear",
+      "doubtful": "Doubtful",
+      "proposedCaption": "Proposed links",
+      "noClear": "No clear cases to link.",
+      "confirmTitle_one": "Link the {{count}} clear case?",
+      "confirmTitle_other": "Link the {{count}} clear cases?",
+      "confirmBody": "They are linked as automatic matches. You can unlink any of them later.",
+      "applied": "Linked {{linked}}. Clear cases left: {{remaining}}. Doubtful: {{doubtful}}.",
+      "columns": {
+        "product": "Cardmarket product",
+        "card": "Card",
+        "slot": "Slot",
+        "price": "Low price"
+      }
+    },
+    "review": {
+      "title": "To review",
+      "caption": "Products to review",
+      "reason": "Reason",
+      "all": "All",
+      "withCount": "{{label}} ({{n}})",
+      "reasons": {
+        "ignored_pair": "Ignored pair",
+        "no_candidates": "No candidates",
+        "conflict": "Slot conflict",
+        "ambiguous": "Several candidates"
+      },
+      "candidates": "Candidates: {{list}}",
+      "noCandidates": "No candidates.",
+      "emptyTitle": "Nothing to review",
+      "emptyBody": "No doubtful case in the latest load."
+    }
   }
 }

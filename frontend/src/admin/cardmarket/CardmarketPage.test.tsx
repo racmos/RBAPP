@@ -143,7 +143,16 @@ describe('CardmarketPage header (CM-a)', () => {
     expect(within(header).getByText('Finished')).toBeVisible();
     expect(within(header).getByText('Unmatched products: 12')).toBeVisible();
     expect(within(header).getByText('Unmapped expansions: 2')).toBeVisible();
-    expect(within(header).queryByRole('link')).toBeNull();
+    // CM-b: the unmatched counter opens the matching workbench; expansions wait for CM-d
+    expect(
+      within(header)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Unmatched products: 12']);
+    expect(within(header).getByRole('link', { name: 'Unmatched products: 12' })).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/cardmarket/matching?type=single',
+    );
     expect(within(header).getByRole('button', { name: 'Load now' })).toBeEnabled();
   });
 

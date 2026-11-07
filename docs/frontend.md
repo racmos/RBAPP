@@ -309,7 +309,7 @@ between Products and Riot) is the log of the daily Cardmarket price load (`docs/
 "Cardmarket load log (CM-a)"). The status header (`GET /admin/cardmarket/status`) shows the last
 load and its status, "Loaded today" or the "No load today yet" warning, prices as of, the latest
 `daily_prices` job (times, error message) and the unmatched products / unmapped expansions counts
-(plain text until the matching screens exist). "Load now" asks first, then
+(the unmatched count links to the matching workbench, `?type=single`; a "Matching workbench" link sits in the page header). "Load now" asks first, then
 `POST /admin/cardmarket/load` ("Load queued."; 409 `job_running` → "A Cardmarket load is already
 queued or running."); it is disabled offline and while a job is queued or running, and the
 status is polled every 3 s meanwhile; when the job ends the days, the open day and the recent
@@ -322,6 +322,32 @@ numbers of its result (`format.ts::resultRows`, defensive) plus the raw result i
 `<details>`. "Recent jobs" lists the last 10 `daily_prices` jobs (`GET /admin/jobs?kind=daily_prices&limit=10`)
 so a failed load, which leaves no history row, is visible with its message. API timestamps are
 naive UTC and are read as UTC (`format.ts::asUtc`).
+
+**Cardmarket matching workbench (CM-b).** `/admin/cardmarket/matching`
+(`src/admin/cardmarket/matching/`, lazy, under the admin guard; no nav entry of its own: the admin
+navigation marks Cardmarket, `adminNav.ts::navEntryFor`) is the screen over `docs/api.md` →
+"Cardmarket matching (CM-b)". The header repeats the status counters; five tabs (`role="tablist"`,
+arrows, Home, End) keep the tab and its filters in the URL (`?tab=`, a tab change drops the
+filters; `format.ts::apiQuery` sends only the keys each endpoint takes and `per_page=50`).
+**To link** (`GET …/unmatched`: search, type all / singles / sealed) lists each product (id, type,
+category, expansion or "—", low price, first seen) with up to three "Link to SET-NUM name (score)"
+buttons (the first free slot; disabled when none is free), "Choose a card…" and "Ignore"; sealed
+products with their product get "Linked by identity" and no actions. The link dialog
+(`LinkDialog.tsx`, also Relink) searches `…/candidates` with the product name (≥ 2 characters;
+empty = the suggested cards; debounced), shows each card's image, `SET-NUM`, rarity and type, the
+products already linked to it, and a slot select (None / N / S, default as the matcher builds
+slots: commons and uncommons N then S, every other card and runes None; the help text explains
+them). A 409 `already_exists` names who holds the slot ("Open the link of #N" goes to Linked
+filtered by that id; it never relinks the other product) or, when the product is linked already,
+offers "Relink here instead" (`PUT`). **Linked** (`GET …/links`: search, set, slot, match type)
+is a table with Relink and Unlink (confirm); **Conflicts** (`conflicts=true`) groups the links by
+card slot. **Ignored** lists the ignore list with Restore. **Auto-match** previews (counts and the
+proposed links) and applies the clear cases (confirm; disabled until a preview has clear cases),
+and lists the review (`GET …/review`, reason select with counts, each item opens the link dialog).
+Every write toasts with Undo (link → unlink, unlink → link again, relink → previous target,
+ignore ↔ restore) and invalidates every `['admin', 'cardmarket']` query, so the lists and the
+counters refresh. Writes are disabled offline. The `Link` shape has no image, so only the dialog
+shows card images.
 
 ## Products (F14-e)
 
