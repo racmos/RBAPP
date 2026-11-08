@@ -1,8 +1,8 @@
 """Card detail and price history (F2-d S1-S9).
 
 Reads only: the catalog (`rbcards`/`rbset`), the Cardmarket tables filled by
-the daily load (F4-b), the user's collection rows and decks, and the ban table
-(F2-a). One batched query per data need; filtering and ordering run in Python
+the daily load (F4-b), the user's collection rows and decks v2 (the current
+version of each `rbdeckheads` row), and the ban table (F2-a). One batched query per data need; filtering and ordering run in Python
 (no PostgreSQL-only SQL), like `card_list`.
 """
 import datetime as _datetime
@@ -10,7 +10,8 @@ import datetime as _datetime
 from sqlalchemy import tuple_
 
 from app import db
-from app.models import RbCard, RbCollection, RbDeck, RbSet, RbcmPrice, RbcmProductCardMap
+from app.models import (RbCard, RbCollection, RbDeckHead, RbDeckVersion, RbSet, RbcmPrice,
+                        RbcmProductCardMap, User)
 from app.services import bans as bans_service
 from app.services import catalog
 from app.services.pricing import price_summaries, resolve_price_with_source
@@ -174,25 +175,7 @@ def get_card_detail(set_id, card_id, username):
 
     name_by_card = {(c.rbcar_rbset_id, c.rbcar_id): catalog.name_key(c.rbcar_name)
                     for c in all_cards}
-    decks = db.session.query(RbDeck).filter(RbDeck.rbdck_user == username).all() \
-        if username else []
-    best = {}
-    for deck in decks:
-        known = best.get(deck.rbdck_name)
-        if known is None or (deck.rbdck_seq or 0) > (known.rbdck_seq or 0):
-            best[deck.rbdck_name] = deck
-    in_decks = []
-    for name in sorted(best):
-        deck = best[name]
-        payload = deck.rbdck_cards or {}
-        total = 0
-        for entry in list(payload.get('main') or []) + list(payload.get('sideboard') or []):
-            if not isinstance(entry, dict):
-                continue
-            if name_by_card.get((entry.get('set'), entry.get('id'))) == wanted:
-                total += entry.get('qty') or 0
-        if total > 0:
-            in_decks.append({'deck_id': deck.id, 'name': name, 'qty': total})
+    in_decks = _in_decks(username, wanted, name_by_card)
 
     tags = {t.casefold() for t in catalog.parse_tags(card.rbcar_tags)}
     candidates = []
@@ -258,6 +241,35 @@ def get_card_detail(set_id, card_id, username):
         'in_decks': in_decks,
     })
     return summary
+
+
+def _in_decks(username, wanted, name_by_card):
+    """`[{deck_id, name, qty}]` of the user's decks v2 whose current version holds copies of
+    the name `wanted` (every printing), ordered by name; one statement. Copies count in every
+    zone except the workbench, which is not part of the deck (product.md); cards missing from
+    the catalog are skipped."""
+    # Imported here: `decks` imports `_card_mini` from this module.
+    from app.services.decks import VALUE_ZONES, _refs, normal_content
+    if not username:
+        return []
+    rows = db.session.query(
+        RbDeckHead.rbdkh_id, RbDeckHead.rbdkh_name, RbDeckVersion.rbdkv_content,
+    ).join(
+        User, User.id == RbDeckHead.rbdkh_user_id,
+    ).join(
+        RbDeckVersion, RbDeckVersion.rbdkv_id == RbDeckHead.rbdkh_current_version_id,
+    ).filter(
+        User.username == username,
+        RbDeckVersion.rbdkv_deck_id == RbDeckHead.rbdkh_id,
+    ).all()
+    in_decks = []
+    for deck_id, name, stored in sorted(rows, key=lambda row: (row[1], row[0])):
+        total = sum(qty for zone, _field, ref, qty in _refs(normal_content(stored))
+                    if zone in VALUE_ZONES
+                    and name_by_card.get((ref['set'], ref['id'])) == wanted)
+        if total > 0:
+            in_decks.append({'deck_id': deck_id, 'name': name, 'qty': total})
+    return in_decks
 
 
 def _foilable(card):

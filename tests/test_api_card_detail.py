@@ -3,16 +3,20 @@ from datetime import date, datetime
 
 import pytest
 from sqlalchemy import event
+from werkzeug.security import generate_password_hash
 
 from app import db
-from app.models import RbCard, RbCollection, RbSet, RbDeck, RbcmPrice, RbcmProductCardMap
+from app.models import (RbCard, RbCollection, RbDeck, RbDeckHead, RbDeckVersion, RbSet,
+                        RbcmPrice, RbcmProductCardMap, User)
 from app.services import bans
+from tests.deck_api_helpers import content, line, make_deck, ref
 
 URL = '/riftbound/api/v1/cards/OGN/79'
 
 
-def _seed_detail(app):
-    """Two sets, a two-printing name, related/unrelated cards, prices, lines, decks."""
+def _seed_detail(app, decks=True):
+    """Two sets, a two-printing name, related/unrelated cards, prices, lines and (when
+    `decks`, which needs the signed-in testuser) decks v2."""
     with app.app_context():
         db.session.add_all([
             RbSet(rbset_id='OGN', rbset_name='Origins', rbset_outdat=date(2025, 10, 31)),
@@ -97,23 +101,34 @@ def _seed_detail(app):
                          rbcol_foil='N', rbcol_user='otheruser', rbcol_quantity=9,
                          rbcol_condition='NM', rbcol_language='English'),
         ])
-        db.session.add_all([
-            RbDeck(rbdck_user='testuser', rbdck_name='Aggro', rbdck_seq=1,
-                   rbdck_cards={'main': [{'set': 'OGN', 'id': '79', 'qty': 2}],
-                                'sideboard': []}),
-            RbDeck(rbdck_user='testuser', rbdck_name='Aggro', rbdck_seq=2,
-                   rbdck_cards={'main': [{'set': 'OGN', 'id': '79', 'qty': 3}],
-                                'sideboard': [{'set': 'SFD', 'id': '257', 'qty': 1},
-                                              {'set': 'ZZZ', 'id': '9', 'qty': 5}]}),
-            RbDeck(rbdck_user='testuser', rbdck_name='Nope', rbdck_seq=1,
-                   rbdck_cards={'main': [{'set': 'OGN', 'id': '1', 'qty': 3}],
-                                'sideboard': []}),
-            RbDeck(rbdck_user='otheruser', rbdck_name='Aggro', rbdck_seq=1,
-                   rbdck_cards={'main': [{'set': 'OGN', 'id': '79', 'qty': 9}],
-                                'sideboard': []}),
-        ])
+        db.session.add(User(username='otheruser', email='other@test.com',
+                            password_hash=generate_password_hash(
+                                'testpass123', method='pbkdf2:sha256:1000')))
+        # A legacy `rbdecks` row is not a source any more: decks v2 are.
+        db.session.add(RbDeck(rbdck_user='testuser', rbdck_name='Legacy', rbdck_seq=1,
+                              rbdck_cards={'main': [{'set': 'OGN', 'id': '79', 'qty': 3}],
+                                           'sideboard': []}))
         db.session.commit()
         bans.add_ban('Jinx, Loose Cannon', ['1v1'], reason='Too strong')
+        if decks:
+            _seed_decks()
+
+
+def _seed_decks():
+    """Decks v2 of testuser (and one of otheruser) around the name 'Jinx, Loose Cannon'."""
+    # Current version: 2 + 1 in main (two printings), 1 in the sideboard, the missing
+    # ZZZ/9 skipped, 3 on the workbench that never count.
+    aggro = make_deck('Aggro', content(
+        main=[line('OGN', '79', 2), line('SFD', '257', 1), line('OGN', '1', 3)],
+        sideboard=[line('SFD', '257', 1), line('ZZZ', '9', 5)],
+        workbench=[line('OGN', '79', 3)]))
+    # A later version that is not the current one is never read.
+    db.session.add(RbDeckVersion(rbdkv_deck_id=aggro, rbdkv_seq=2,
+                                 rbdkv_content=content(main=[line('OGN', '79', 9)])))
+    make_deck('Brawl', content(champion=ref('SFD', '257'), main=[line('OGN', '79', 2)]))
+    make_deck('Bench only', content(workbench=[line('OGN', '79', 2)]))
+    make_deck('Nope', content(main=[line('OGN', '1', 3)]))
+    make_deck('Aggro', content(main=[line('OGN', '79', 3)]), user='otheruser')
 
 
 class TestSummaryAnd404:
@@ -227,14 +242,48 @@ class TestBansOwnedAndDecks:
                                   'selling', 'sell_price', 'playset', 'updated_at',
                                   'purchase_price', 'sell_qty'}
 
-    def test_in_decks_highest_seq_only_current_user(self, authenticated_client, app):
+    def test_in_decks_reads_the_current_version_of_my_v2_decks(self, authenticated_client,
+                                                                 app):
         _seed_detail(app)
         decks = authenticated_client.get(URL).get_json()['data']['in_decks']
-        # Seq 2 (3 main + 1 sideboard printing of the same name); the missing
-        # ZZZ/9 entry is skipped; otheruser's deck never appears.
-        assert [(d['name'], d['qty']) for d in decks] == [('Aggro', 4)]
-        assert decks[0]['deck_id'] != next(
-            d.id for d in RbDeck.query.filter_by(rbdck_user='otheruser').all())
+        # Aggro: two printings in main (2 + 1) and the sideboard (1); the workbench and the
+        # non-current version are left out. Brawl: the champion slot (1) and main (2).
+        # Bench only, Nope, the legacy row and otheruser's deck never appear.
+        assert [(d['name'], d['qty']) for d in decks] == [('Aggro', 4), ('Brawl', 3)]
+        assert all(set(d) == {'deck_id', 'name', 'qty'} for d in decks)
+
+    def test_in_decks_deck_id_is_the_v2_head_id(self, authenticated_client, app):
+        _seed_detail(app)
+        decks = authenticated_client.get(URL).get_json()['data']['in_decks']
+        with app.app_context():
+            mine = {name: deck_id for deck_id, name in db.session.query(
+                RbDeckHead.rbdkh_id, RbDeckHead.rbdkh_name).filter(
+                RbDeckHead.rbdkh_user_id == User.query.filter_by(
+                    username='testuser').one().id)}
+        assert [d['deck_id'] for d in decks] == [mine['Aggro'], mine['Brawl']]
+        for deck in decks:
+            resp = authenticated_client.get(f'/riftbound/api/v1/decks/{deck["deck_id"]}')
+            assert resp.status_code == 200
+            assert resp.get_json()['data']['name'] == deck['name']
+
+    def test_in_decks_ignores_legacy_only_decks(self, authenticated_client, app):
+        _seed_detail(app)
+        with app.app_context():
+            db.session.add(RbDeck(rbdck_user='testuser', rbdck_name='Zeta', rbdck_seq=1,
+                                  rbdck_cards={'main': [{'set': 'SFD', 'id': '257',
+                                                         'qty': 2}], 'sideboard': []}))
+            db.session.commit()
+        decks = authenticated_client.get(URL).get_json()['data']['in_decks']
+        assert 'Legacy' not in [d['name'] for d in decks]
+        assert 'Zeta' not in [d['name'] for d in decks]
+
+    def test_in_decks_of_the_other_user(self, authenticated_client, app):
+        _seed_detail(app)
+        other = app.test_client()
+        other.post('/riftbound/login', data={'username': 'otheruser',
+                                             'password': 'testpass123'})
+        decks = other.get(URL).get_json()['data']['in_decks']
+        assert [(d['name'], d['qty']) for d in decks] == [('Aggro', 3)]
 
 
 class TestStatementBound:
@@ -257,10 +306,20 @@ class TestStatementBound:
         _seed_detail(app)
         assert self._count_statements(app, authenticated_client, URL) <= 10
 
+    def test_in_decks_costs_the_same_with_more_decks(self, authenticated_client, app):
+        _seed_detail(app)
+        before = self._count_statements(app, authenticated_client, URL)
+        with app.app_context():
+            for n in range(5):
+                make_deck(f'More {n}', content(main=[line('OGN', '79', 1)]))
+        assert self._count_statements(app, authenticated_client, URL) == before
+        decks = authenticated_client.get(URL).get_json()['data']['in_decks']
+        assert len(decks) == 7
+
 
 class TestAuthzAndShape:
     def test_anonymous_gets_a_json_401(self, client, app):
-        _seed_detail(app)
+        _seed_detail(app, decks=False)
         resp = client.get(URL)
         assert resp.status_code == 401
         body = resp.get_json()

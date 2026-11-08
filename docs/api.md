@@ -175,9 +175,12 @@ printings of other names sharing ≥1 tag, most shared tags first, then name),
 `ban_info` (`ban_info(name)`, `[]` when legal), `my_lines` (the current user's
 rows of this printing ordered by foil N first, condition, language, id; each
 `{id, foil (bool), qty, condition, language, selling, sell_price, playset,
-updated_at (UTC `…Z`)}`), `in_decks` (per deck name the highest `rbdck_seq`
-row only; `{deck_id, name, qty}` summed over main + sideboard entries of the
-same name, missing-card entries skipped, ordered by name).
+updated_at (UTC `…Z`)}`), `in_decks` (the current user's decks v2: the current
+version of each deck; `{deck_id, name, qty}` where `deck_id` is the deck id of
+`GET /decks/<id>` and the app route `/decks/:id`, and `qty` sums every printing of
+the same name over legend, champion, main, runes, battlefields and sideboard, never
+the workbench; missing-card entries skipped; only decks with `qty > 0`, ordered by
+name; one SQL statement). The legacy `rbdecks` table is not read.
 
 ```http
 GET /riftbound/api/v1/cards/OGN/79
