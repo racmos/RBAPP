@@ -1,24 +1,20 @@
 import type { IconName } from '@/components/ui/icons';
-import { legacyHref, type LegacyKey } from './legacyRoutes';
 
 /**
  * One registry feeds the topbar, the bottom navigation, the "More" sheet and the home hub
- * (SHELL-5). Each entry is `spa` (a router link), `legacy` (a plain link to a Jinja page) or
- * `planned` (not rendered anywhere). When a phase ports a module, flip its entry to `spa`.
+ * (SHELL-5). Each entry is `spa` (a router link) or `planned` (not rendered anywhere). The app
+ * never links to the old Jinja web (Jinja retirement 2/3).
  */
-export type NavStatus = 'spa' | 'legacy' | 'planned';
+export type NavStatus = 'spa' | 'planned';
 export type NavPlacement = 'top' | 'bottom' | 'hub' | 'more';
 export type NavId =
   | 'home'
-  | 'dashboard'
-  | 'sets'
   | 'cards'
   | 'collection'
   | 'products'
   | 'locations'
   | 'decks'
   | 'profile'
-  | 'price'
   | 'admin'
   | 'interface'
   | 'events'
@@ -34,16 +30,10 @@ type Common = {
 };
 
 export type NavEntry = Common &
-  (
-    | { status: 'spa'; /** Router path, without the basename. */ to: string }
-    | { status: 'legacy'; legacy: LegacyKey }
-    | { status: 'planned' }
-  );
+  ({ status: 'spa'; /** Router path, without the basename. */ to: string } | { status: 'planned' });
 
 export const isSpa = (entry: NavEntry): entry is Extract<NavEntry, { status: 'spa' }> =>
   entry.status === 'spa';
-export const isLegacy = (entry: NavEntry): entry is Extract<NavEntry, { status: 'legacy' }> =>
-  entry.status === 'legacy';
 
 /** Order here is the order on screen. */
 export const NAV: readonly NavEntry[] = [
@@ -54,20 +44,6 @@ export const NAV: readonly NavEntry[] = [
     status: 'spa',
     to: '/account/interface',
     placements: ['more'],
-  },
-  {
-    id: 'dashboard',
-    icon: 'dashboard',
-    status: 'legacy',
-    legacy: 'dashboard',
-    placements: ['top', 'hub', 'more'],
-  },
-  {
-    id: 'sets',
-    icon: 'bookmark',
-    status: 'legacy',
-    legacy: 'sets',
-    placements: ['top', 'hub', 'more'],
   },
   {
     id: 'cards',
@@ -112,14 +88,6 @@ export const NAV: readonly NavEntry[] = [
     placements: ['hub', 'more'],
   },
   {
-    id: 'price',
-    icon: 'coin',
-    status: 'legacy',
-    legacy: 'price',
-    placements: ['top', 'hub'],
-    adminOnly: true,
-  },
-  {
     id: 'admin',
     icon: 'shield',
     status: 'spa',
@@ -146,6 +114,5 @@ export function navEntries(
   );
 }
 
-/** Where an entry leads: the router path or the Jinja URL. */
-export const entryHref = (entry: NavEntry): string =>
-  isSpa(entry) ? entry.to : isLegacy(entry) ? legacyHref(entry.legacy) : '#';
+/** Where an entry leads: its router path (`#` for a planned entry). */
+export const entryHref = (entry: NavEntry): string => (isSpa(entry) ? entry.to : '#');

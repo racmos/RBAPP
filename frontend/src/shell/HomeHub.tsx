@@ -10,10 +10,7 @@ import styles from './HomeHub.module.css';
 import { NavItem } from './NavItem';
 import { navEntries } from './navRegistry';
 
-/**
- * The SPA home (SHELL-6): a launcher into the modules. Each tile follows its registry status, so
- * a module that is still a Jinja page opens as a full navigation until its phase ports it.
- */
+/** The SPA home (SHELL-6): a launcher into the modules of the registry. */
 export function HomeHub() {
   const { t } = useTranslation('nav');
   const session = useSession();
@@ -36,12 +33,6 @@ export function HomeHub() {
                   </span>
                   <span className={styles.description}>{t(`items.${entry.id}.description`)}</span>
                 </span>
-                {entry.status === 'legacy' && (
-                  <span className={styles.classic}>
-                    <Icon name="external-link" size={14} />
-                    <span className="sr-only">{t('hub.classic')}</span>
-                  </span>
-                )}
               </NavItem>
             </li>
           ))}

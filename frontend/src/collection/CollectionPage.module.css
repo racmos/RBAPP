@@ -25,21 +25,6 @@
     background: rgba(120, 205, 228, 0.12);
   }
 
-  /* A link, boxed like the buttons next to it so it lines up with them (owner feedback S18 m). */
-  .classic {
-    display: inline-flex;
-    align-items: center;
-    min-height: 32px;
-    color: var(--muted);
-    font-size: 13px;
-    text-decoration: underline;
-    white-space: nowrap;
-  }
-
-  .classic:hover {
-    color: var(--accent);
-  }
-
   .summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

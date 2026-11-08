@@ -15,7 +15,6 @@ import { useDocumentTitle, useEnumLabel } from '@/i18n';
 import { up } from '@/lib/breakpoints';
 import { readStorage, removeStorage, writeStorage } from '@/lib/storage';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { legacyHref } from '@/shell/legacyRoutes';
 import { CatalogFilters } from './CatalogFilters';
 import { CatalogPreview } from './CatalogPreview';
 import { CatalogTable } from './CatalogTable';
@@ -227,11 +226,6 @@ export function CatalogPage() {
               total === 1
                 ? t('catalog.count_one', { count: total })
                 : t('catalog.count_other', { count: total })
-            }
-            actions={
-              <a href={legacyHref('cards')} className={styles.classic}>
-                {t('catalog.classic')}
-              </a>
             }
           />
 

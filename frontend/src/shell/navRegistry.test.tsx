@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { legacyHref } from './legacyRoutes';
 import { NAV, entryHref, isSpa, navEntries } from './navRegistry';
 
 describe('navRegistry (F2-h S13)', () => {
@@ -61,7 +60,7 @@ describe('navRegistry (F2-h S13)', () => {
     );
   });
 
-  it('flips decks to spa at /decks; the classic page stays in the legacy routes (F5-h)', () => {
+  it('flips decks to spa at /decks (F5-h)', () => {
     const decks = NAV.find((entry) => entry.id === 'decks');
     expect(decks).toEqual({
       id: 'decks',
@@ -74,10 +73,9 @@ describe('navRegistry (F2-h S13)', () => {
     for (const placement of ['top', 'bottom', 'hub', 'more'] as const) {
       expect(navEntries(placement, { isAdmin: false }).map((entry) => entry.id)).toContain('decks');
     }
-    expect(legacyHref('decks')).toBe('/riftbound/deck');
   });
 
-  it('flips profile to spa at /account/profile; the classic page stays in the legacy routes', () => {
+  it('flips profile to spa at /account/profile', () => {
     const profile = NAV.find((entry) => entry.id === 'profile');
     expect(profile).toEqual({
       id: 'profile',
@@ -92,6 +90,33 @@ describe('navRegistry (F2-h S13)', () => {
         'profile',
       );
     }
-    expect(legacyHref('profile')).toBe('/riftbound/profile');
+  });
+});
+
+describe('navRegistry without the old web (Jinja retirement 2/3)', () => {
+  it('every entry is an app route or planned: none links to a Jinja page', () => {
+    for (const entry of NAV) expect(['spa', 'planned']).toContain(entry.status);
+    const ids = NAV.map((entry) => entry.id as string);
+    for (const gone of ['dashboard', 'sets', 'price']) expect(ids).not.toContain(gone);
+  });
+
+  it.each([
+    ['top', false, ['home', 'cards', 'collection', 'products', 'locations', 'decks']],
+    ['top', true, ['home', 'cards', 'collection', 'products', 'locations', 'decks']],
+    ['bottom', false, ['home', 'cards', 'collection', 'decks']],
+    ['hub', false, ['cards', 'collection', 'products', 'locations', 'decks', 'profile']],
+    ['hub', true, ['cards', 'collection', 'products', 'locations', 'decks', 'profile']],
+    [
+      'more',
+      false,
+      ['interface', 'cards', 'collection', 'products', 'locations', 'decks', 'profile'],
+    ],
+    [
+      'more',
+      true,
+      ['interface', 'cards', 'collection', 'products', 'locations', 'decks', 'profile', 'admin'],
+    ],
+  ] as const)('%s (admin %s) shows %j', (placement, isAdmin, expected) => {
+    expect(navEntries(placement, { isAdmin }).map((entry) => entry.id)).toEqual(expected);
   });
 });

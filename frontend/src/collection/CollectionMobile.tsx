@@ -13,7 +13,6 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { CollectionSort } from '@/api/types';
 import { formatMoney } from '@/lib/format';
-import { legacyHref } from '@/shell/legacyRoutes';
 import { AddSheet } from './AddSheet';
 import { CollectionFilters } from './CollectionFilters';
 import { CollectionItem } from './CollectionItem';
@@ -195,9 +194,6 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
             <Link className={styles.tool} to="/collection/import">
               {t('import.open')}
             </Link>
-            <a className={styles.classic} href={legacyHref('collection')}>
-              {t('classic')}
-            </a>
           </>
         }
       />

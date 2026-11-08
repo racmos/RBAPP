@@ -219,13 +219,29 @@ shrink (`flex: none`), only the search does, so nothing overlaps or wraps at 124
 
 **Navigation registry.** `src/shell/navRegistry.ts` is the one list behind the topbar, the
 bottom navigation, the sheet and the home hub. Every entry has a `status`:
-`spa` (a router link, `to` is a path under the basename), `legacy` (a plain `<a href>` to a
-Jinja page, key in `legacy-routes.json`) or `planned` (never rendered). `placements` says
-where it appears (`top`, `bottom`, `hub`, `more`); `adminOnly` hides it from non-admins (UX
-only, the server still enforces). **To port a module, flip its entry**: change
-`status: 'legacy', legacy: 'cards'` to `status: 'spa', to: '/cards'`, add the route in
-`src/app/routes.tsx` and keep the label in `nav.json`. Every URL of `legacy-routes.json` must
-exist in the Flask `url_map`; the unit that adds a legacy link adds a test for it.
+`spa` (a router link, `to` is a path under the basename) or `planned` (never rendered).
+`placements` says where it appears (`top`, `bottom`, `hub`, `more`); `adminOnly` hides it from
+non-admins (UX only, the server still enforces). A new module adds its route in
+`src/app/routes.tsx`, its entry here and its label in `nav.json`.
+
+| Placement | Entries (in order) |
+|-----------|--------------------|
+| `top` | Home, Cards, Collection, Products, Locations, Decks |
+| `bottom` | Home, Cards, Collection, Decks (plus the "More" button) |
+| `hub` | Cards, Collection, Products, Locations, Decks, Profile |
+| `more` | Interface; Cards, Collection, Products, Locations, Decks, Profile; Admin (admins only) |
+
+`events`, `sales` and `stats` are `planned`. The Cardmarket tools live in the admin area
+(`/admin/cardmarket`), not in the main navigation.
+
+**No links to the old web** (PR 2/3 of the Jinja retirement). Nothing in the app links to a
+Jinja page: there is no `legacy` nav status, no `legacyHref` and no "Classic version" link.
+`src/test/no-legacy-links.test.ts` scans every non-test `.ts`, `.tsx` and `.json` file of
+`src/` and fails on `/riftbound/set`, `/riftbound/card`, `/riftbound/collection`,
+`/riftbound/deck`, `/riftbound/profile`, `/riftbound/price`, `legacyHref` or a quoted bare
+`/riftbound/` (allowed only in `auth/safeNext.ts`, which validates `next`). The app names only
+`/riftbound/api`, `/riftbound/app`, `/riftbound/media` and `/riftbound/static`. `safeNext`
+still sends a `next` outside `/riftbound/app` to a full page load (`lib/navigateDocument.ts`).
 
 **Preferences.** The app uses four interface values (`density`, `accent`, `bg_intensity`,
 `collection_view`; `null` is Auto) plus `playset_size`. The account also stores `lang`, which
@@ -248,8 +264,7 @@ playset size; at 1240 px and above a
 live preview sits beside the controls. Its header links to the profile page.
 
 **Profile.** `/account/profile` (`src/account/ProfilePage.tsx`, PR 1/3 of the Jinja retirement;
-the nav entry `profile` is `spa`, while `legacy-routes.json` keeps the `profile` key until the
-Jinja page goes) shows the username read-only and two forms, each with its own button, inline
+the nav entry `profile` is `spa`) shows the username read-only and two forms, each with its own button, inline
 errors and form alert, saved through `PATCH /me/account` (`patchAccount` in `api/endpoints.ts`):
 **Email** sends only `{email}` and stays disabled while the value is unchanged; **Password**
 sends only `{current_password, password}` after the client checks (current required, new 8-128
@@ -692,8 +707,7 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   "Clear". URL parameters mirror the API names (`params.ts`:
   parse/serialize/round-trip; text search debounced with `replace`, other changes push; scroll
   restored per search string). The detail opens as a modal over the catalog at ≥ 860 px and as
-  a page below; `navRegistry` entry `cards` is `spa` (the classic Jinja page stays linked as
-  "Classic version").
+  a page below; `navRegistry` entry `cards` is `spa`.
 - `CatalogTable` — the table view (860 px and up, optional): 13 columns below 1240 in a horizontal
   scroll box (`min-width: 920px`); 16 with tags/foil/30 d at ≥ 1240 in `TableScroll fit`, so the page
   is the only vertical scroll and the header sticks below the topbar (owner feedback S22). Fitted, the
@@ -748,14 +762,14 @@ Device storage keys: `rb_cards_view` (`grid` | `list` | `table`), `rb_cards_face
 - `context.ts` — the outlet context type (`presentation`, `siblings`, `onClose`).
 
 `catalog` sits in the `shell`/`account` boundary group (it may import everything below, never
-`app`). Links back to Jinja (collection, deck view) are plain `<a>` anchors via
-`legacyHref`, not router navigation. The detail data comes from `getCard` (`GET
+`app`). "Manage in the collection" is a router link to `/collection`; "In my decks" lists deck
+names without links, because `in_decks[].deck_id` is still the old `rbdecks` id, not a
+`/decks/:id` id. The detail data comes from `getCard` (`GET
 /riftbound/api/v1/cards/<set>/<id>`, F2-d); the MSW handler serves the `cardDetail` fixture.
 
 ## Collection (F3-g)
 
-`frontend/src/collection/` is the `/collection` screen (nav entry `collection` is `spa`; the Jinja page
-stays linked as "Classic version"). Below 1240 px it is a grid or a list, and until F3-h it is the same
+`frontend/src/collection/` is the `/collection` screen (nav entry `collection` is `spa`). Below 1240 px it is a grid or a list, and until F3-h it is the same
 layout on a desktop.
 
 - `params.ts` — URL ⇄ `GET /collection` params (F3-b names): defaults `sort=number`, `per_page=50`
@@ -883,7 +897,7 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   Legal"; a not legal one is a button that shows "Why it is not legal in <mode>" with the first three
   `issueShort` texts and "And N more", since `GET /decks` sends codes only), value and "N cards without
   price", "Updated <date>". States: skeleton, error with retry, "No decks yet", offline (cached list,
-  creation disabled). A "Classic version" link keeps the Jinja page (`/riftbound/deck`) reachable.
+  creation disabled).
 - Deck list grid (`DecksPage`, `DeckListToolbar`, `DeckCardActions`, pure `deckListParams.ts`): from
   860 px (`up('md')`, `data-layout="grid"`) the decks are a grid of cards
   (`repeat(auto-fill, minmax(280px, 1fr))`, page up to 1480 px); below it the same cards in one column

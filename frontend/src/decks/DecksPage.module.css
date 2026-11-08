@@ -243,17 +243,6 @@
     font-size: 13px;
   }
 
-  .classic {
-    align-self: center;
-    color: var(--muted);
-    font-size: 13px;
-    text-decoration: underline;
-  }
-
-  .classic:hover {
-    color: var(--accent);
-  }
-
   .form {
     display: flex;
     flex-direction: column;

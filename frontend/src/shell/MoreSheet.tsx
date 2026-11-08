@@ -15,7 +15,7 @@ type MoreSheetProps = {
   install?: ReactNode;
 };
 
-/** The phone's "More" menu (SHELL-4): Interface, classic modules, install, Admin, logout. */
+/** The phone's "More" menu (SHELL-4): Interface, modules, install, Admin, logout. */
 export function MoreSheet({ open, onClose, returnFocusRef, install }: MoreSheetProps) {
   const { t } = useTranslation('nav');
   const session = useSession();
@@ -33,9 +33,6 @@ export function MoreSheet({ open, onClose, returnFocusRef, install }: MoreSheetP
           <NavItem entry={entry} className={styles.item} onActivate={onClose}>
             <Icon name={entry.icon} size={20} />
             <span className={styles.text}>{t(`items.${entry.id}.label`)}</span>
-            {entry.status === 'legacy' && (
-              <Icon name="external-link" size={15} className={styles.out} />
-            )}
           </NavItem>
         </li>
       ))}

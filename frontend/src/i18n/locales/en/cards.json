@@ -3,7 +3,6 @@
     "title": "Cards",
     "count_one": "{{count}} card",
     "count_other": "{{count}} cards",
-    "classic": "Classic version",
     "search": {
       "label": "Search cards",
       "placeholder": "Name, tag or number"
