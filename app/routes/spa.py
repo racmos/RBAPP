@@ -15,8 +15,7 @@ The directory is read per request, so a rebuild needs no restart and tests can
 point the app at a temporary dist. No dist, or a dist without index.html, is a
 503 (HOST-5): the app still starts and every other route works.
 
-Errors never go through the Jinja error pages: `base.html` calls `csrf_token()`
-and `current_user`, which would write the session and set a cookie (R11, D5).
+Errors are a minimal inline page of their own, without a session cookie (R11, D5).
 """
 import os
 import re

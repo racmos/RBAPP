@@ -21,8 +21,7 @@ One Flask application serves three front doors that share one session cookie:
         v
  Gunicorn (3 workers)  ->  Flask app  (create_app, ProxyFix)
         |
-        +-- Jinja pages (legacy)      /riftbound/...            HTML, forms, small JSON endpoints
-        +-- Landing page + partials   /  and  /api/*  /frames/*  public, HTMX fragments
+        +-- Redirects (old URLs)      /  /riftbound/  /riftbound/<old page>  302 to the app
         +-- JSON API v1               /riftbound/api/v1/...     envelope {success, data, meta}
         +-- React SPA (the new app)   /riftbound/app/...        static build from FRONTEND_DIST
         v
@@ -31,16 +30,15 @@ One Flask application serves three front doors that share one session cookie:
 
 - Nginx does NOT serve the SPA: Flask does (`spa_bp`). Nginx only terminates TLS and proxies.
 - The SPA calls the JSON API with the same-origin session cookie plus the `X-CSRFToken` header.
-- Jinja pages and the SPA share the session: signing in or out in one applies to both.
-- The PWA takes over one module per phase. A module that is not ported yet stays a Jinja page and
-  is linked from the SPA ("legacy" entries of the nav registry). Jinja is retired in F11.
+- The Jinja web was retired (PR 3/3 of the Jinja retirement): the backend writes no HTML pages but the
+  redirects of section 6 and the inline error page.
 - Environment: there is no production yet. The only server is the dev server.
 
 Top-level layout (only what matters):
 
 | Path | What it is |
 |---|---|
-| `app/` | Flask package: factory, blueprints, models, services, schemas, CLI, Jinja templates, static files |
+| `app/` | Flask package: factory, blueprints, models, services, schemas, CLI (`app/static/images/cards/` is only the default source of `flask images import-legacy`) |
 | `frontend/` | React 19 + TypeScript + Vite app (Node 24); build output `frontend/dist` is git-ignored |
 | `migrations/` | Alembic revisions (`versions/`) and the frozen pre-Alembic SQL (`legacy_sql/`) |
 | `tests/` | pytest suite (SQLite in memory by default) |
@@ -54,15 +52,16 @@ Top-level layout (only what matters):
 ### 2.1 App factory and extensions (`app/__init__.py`)
 
 `create_app(**overrides)` runs in this order: load `.env` only if the effective environment is
-development, resolve `RB_ENV`, create `Flask` with static files at `/riftbound/static`, read settings
+development, resolve `RB_ENV`, create `Flask` without a static route (`static_folder=None`), read settings
 from the environment, apply `overrides` (tests), compute SQLAlchemy engine options from the FINAL
 database URI, validate (fail fast), install the SQLite shims (only for `sqlite` URIs: a
-`regexp_replace` function and an in-memory database attached as `riftbound`), then initialise the
+`regexp_replace` function, unused since the Jinja catalog went, and an in-memory database attached as
+`riftbound`), then initialise the
 extensions, CLI, `ProxyFix` and the blueprints.
 
 Extensions are module-level singletons in `app/__init__.py`:
 `db` (Flask-SQLAlchemy), `migrate` (Flask-Migrate; directory `migrations/`, options from
-`app/db_schema.py`), `login` (Flask-Login, `login_view = 'auth.login'`), `csrf` (`CSRFProtect`),
+`app/db_schema.py`), `login` (Flask-Login, no `login_view`: the unauthorized handler redirects to the app), `csrf` (`CSRFProtect`),
 `limiter` (Flask-Limiter keyed by the client IP that `ProxyFix` rewrote).
 
 Details that matter:
@@ -71,29 +70,19 @@ Details that matter:
 - The limiter hooks are always wired and the switch (`limiter.enabled`) is read per request, so a test
   can turn limits on for an existing app.
 - `db.create_all()` is used by the tests only. Production and dev schemas are built by Alembic.
-- Time: new code uses `app.utils.clock.utcnow()` (naive UTC, patched in tests). Older route code still
-  calls `datetime.utcnow()` directly (collection and deck routes).
+- Time: new code uses `app.utils.clock.utcnow()` (naive UTC, patched in tests).
 
 ### 2.2 Blueprints and URL prefixes
 
-80 URL rules at this commit (`app.url_map`). Prefix `/riftbound` is in every blueprint URL except the
-landing page.
+Prefix `/riftbound` is in every blueprint URL except the `/` redirect.
 
 | Blueprint | Prefix | Module | Access |
 |---|---|---|---|
-| `landing_bp` | none: `/`, `/api/*`, `/frames/*`, `/landing/static/*` | `app/routes/landing.py` | public |
-| `main_bp` | `/riftbound` | `app/routes/routes.py` (dashboard at `/riftbound/`) | user |
-| `auth_bp` | `/riftbound` | `app/routes/auth.py` (`/login`, `/register`, `/logout`) | public / user |
-| `sets_bp` | `/riftbound/set` | `app/routes/domains/sets.py` | user, writes admin |
-| `cards_bp` | `/riftbound/card` (singular) | `app/routes/domains/cards.py` | user, writes admin |
-| `collection_bp` | `/riftbound/collection` | `app/routes/domains/collection.py` | user |
-| `deck_bp` | `/riftbound/deck` | `app/routes/domains/deck.py` | user |
-| `price_bp` | `/riftbound/price` | `app/routes/domains/price.py` | admin (all 23 rules) |
-| `profile_bp` | `/riftbound/profile` | `app/routes/domains/profile.py` | user |
+| `legacy_redirects` | none: `/`, `/riftbound`, `/riftbound/` and the old page URLs (section 6) | `app/routes/redirects.py` | public |
 | `spa_bp` | `/riftbound/app` | `app/routes/spa.py` | public |
 | `media_bp` | `/riftbound/media` (`/cards/<folder>/<filename>`) | `app/routes/media.py` (card images from `CARD_IMAGES_DIR`) | public |
-| `api_v1` | `/riftbound/api/v1` | `app/api/v1/{auth,me,meta}.py` | mixed, see section 3 |
-| `static` (Flask) | `/riftbound/static` | `app/static/` | public |
+| `api_v1` | `/riftbound/api/v1` | `app/api/v1/*.py` | mixed, see section 3 |
+| `api_admin` | `/riftbound/api/v1/admin` | `app/api/admin/*.py` | admin (`before_request(require_admin)`) |
 
 Every URL rule is classified public (P), authenticated (U) or admin (A) in `tests/test_authz_matrix.py`
 (`MATRIX`, `fnmatch` patterns on the endpoint name). An unclassified rule fails the suite and names
@@ -106,39 +95,35 @@ prefers `application/json` over `text/html` (a bare `*/*`, which `fetch` sends, 
 request with no `Accept` header is HTML. Every error path uses it, so one request gets one kind of
 answer:
 
-- `HTTPException` handler: JSON envelope for JSON clients (405 keeps the `Allow` header), else the
-  Jinja page `errors/{400,401,403,404,500}.html` or `errors/generic.html`.
+- `HTTPException` handler: JSON envelope for JSON clients, else `html_error_page`: one minimal inline
+  page (status, title, message, a "Back to the app" link to `/riftbound/app/`; everything escaped, no
+  stylesheet, no script, no session cookie). Both keep the `Allow` header of a 405.
 - Non-HTTP exceptions: logged with the stack, answered as a generic 500. Exception text is never
   returned by these handlers.
-- `CSRFError`: 400, `error: "CSRF Error"`, `code: csrf_invalid` (JSON) or `errors/400.html`.
-- 429: always carries an integer `Retry-After`; JSON has `code: rate_limited`, `params.retry_after`.
-- Flask-Login `unauthorized_handler`: JSON 401 with `code: unauthenticated` for JSON clients, else flash
-  plus redirect to `/riftbound/login?next=...`.
+- `CSRFError`: 400, `error: "CSRF Error"`, `code: csrf_invalid` (JSON) or the inline 400 page.
+- 429: always carries an integer `Retry-After` (JSON or the inline page); JSON has `code: rate_limited`,
+  `params.retry_after`.
+- Flask-Login `unauthorized_handler`: JSON 401 with `code: unauthenticated` for JSON clients, else a
+  redirect to `/riftbound/app/login?next=<path and query>` (no flash; every protected rule is under the
+  API today, so this only matters for a future HTML route).
 - The `api_v1` blueprint has its own catch-all error handler that returns the envelope for anything.
-- `spa_bp` errors never use Jinja (`base.html` would write the session cookie): JSON for JSON clients,
-  a minimal inline HTML page otherwise, `Cache-Control: no-store`. `media_bp` likewise answers its 404
-  without Jinja (JSON or plain text), so no image response sets a cookie.
-
-Note: a few legacy admin endpoints (`cards.upload_card_image` and several in `price.py`) still return
-`str(exception)` in a 500 body, and `validate_json`'s generic `except` puts it in a 400. That predates the API contract; the
-rule "500 never includes exception text" holds for the API v1 and the global handlers. Do not copy
-the legacy pattern.
+- `spa_bp` has its own minimal inline page (`Cache-Control: no-store`); `media_bp` answers its 404 as
+  JSON or plain text, so no image response sets a cookie.
+- `validate_json`'s generic `except` goes through `unexpected_failure()`: a clear 400 `bad_request`, the
+  traceback in the log, the exception text only under `detail` for a signed-in admin.
 
 ### 2.4 Security model
 
 - **Roles.** `rbusers.is_admin` and `is_blocked` change only through the CLI, never through a request.
   `User.is_active` is `not is_blocked`; a blocked user is rejected exactly like a wrong password and
   loses a live session on the next request. `app/security.py`: `admin_required` (decorator) and
-  `require_admin` (a `before_request` hook; the whole `price_bp` uses it). Anonymous callers go to
-  login (HTML) or get a JSON 401, never 403; a signed-in non-admin gets 403.
+  `require_admin` (a `before_request` hook; the whole `api_admin` blueprint uses it). Anonymous callers
+  get a JSON 401 (or the login redirect for HTML), never 403; a signed-in non-admin gets 403.
 - **CSRF.** `CSRFProtect` on every POST/PUT/PATCH/DELETE with no exemptions, API included. Token in the
   `X-CSRFToken` header or the `csrf_token` form field; no time limit (lives as long as the session).
-  Jinja: `<meta name="csrf-token">` in `base.html` plus `app/static/js/csrf.js` (adds the header to
-  same-origin `fetch`). SPA/API clients read the token from `GET /riftbound/api/v1/auth/session`.
-  Logout is `POST` only.
+  SPA/API clients read the token from `GET /riftbound/api/v1/auth/session`. Logout is `POST` only.
 - **Rate limits** (per IP, in memory per Gunicorn worker): login `10/minute;50/hour`, register `5/hour`.
-  The Jinja form and the API share one budget per scope (`scope='login'`, `scope='register'`).
-  Opening the pages is free (`exempt_when` for non-POST). Nginx `limit_req` (zone `rb_auth`, 20 requests
+  One budget per scope (`scope='login'`, `scope='register'`). Nginx `limit_req` (zone `rb_auth`, 20 requests
   per minute, burst 10, status 429) on POST to login, register and `/riftbound/api/v1/auth/` is the
   global limit.
 - **Lockout** (`app/services/auth.py`): the 5th consecutive wrong password locks the account 15 min;
@@ -155,7 +140,6 @@ the legacy pattern.
 - **Cookies.** Session and remember cookies: HttpOnly, SameSite=Lax (never Strict: future OAuth
   callbacks), Secure by default in production only. `remember: true` on `POST /auth/login` issues a
   30-day `remember_token` (absolute expiry, `REMEMBER_COOKIE_DURATION` is a constant, not an env var).
-  The Jinja login form never remembers.
 - **Passwords.** Werkzeug `generate_password_hash`; length 8 to 128 (`PASSWORD_MIN_LENGTH`,
   `PASSWORD_MAX_LENGTH` in `app/schemas/validators.py`, used by register, profile and the CLI).
 - **Outbound URLs.** Cardmarket loader overrides must be https on `CARDMARKET_ALLOWED_HOSTS`, port 443
@@ -193,7 +177,6 @@ is read only for development. Real environment variables always win.
 | `RATELIMIT_STORAGE_URI` | limiter storage | `memory://` |
 | `LOGIN_MAX_FAILURES`, `LOGIN_LOCK_BASE_MINUTES`, `LOGIN_LOCK_MAX_MINUTES` | lockout | 5, 15, 1440 |
 | `ALTCHA_HMAC_KEY`, `ALTCHA_EXPIRE_SECONDS`, `ALTCHA_MAX_NUMBER` | captcha key (derived from `SECRET_KEY` when empty), lifetime, difficulty | derived, 300, 1000000 |
-| `LANDING_CACHE_TTL` | seconds the landing feeds are cached per worker (0 = off) | 300 |
 | `FRONTEND_DIST` | directory with the Vite build served at `/riftbound/app/` | `<project>/frontend/dist` |
 
 The three kill switches (`WTF_CSRF_ENABLED`, `RATELIMIT_ENABLED`, `CAPTCHA_PROVIDER=none`) are for
@@ -351,36 +334,35 @@ repeats it on PostgreSQL 18. Runbook: `docs/migrations.md`.
 - `cardmarket_matcher.py`: `auto_match(dry_run, max_groups)` pairs unmapped products to cards by metacard,
   normalised name and price/rarity ranking (Basic Rune: one slot without foil; common/uncommon: normal and
   foil slots; rare/epic: separate card entries), writing `rbcm_product_card_map`.
-- `riot_scraper.py`: `refresh_riot_sets()` and the fetch/parse helpers read the official card
+- `riot_scraper.py`: the fetch/parse helpers (and `refresh_riot_sets()`, unused since the Jinja price
+  tools went) read the official card
   gallery (`__NEXT_DATA__` JSON). Since F13-c only `app/services/riot_sync.py` writes from it: `sync`
   inserts new cards, auto-applies differences in active windows and proposes the rest to
   `rbcardchanges` (one transaction per set); the legacy `extract_riot_cards` write path is gone.
-- `scraper.py`: landing feeds (`fetch_noticias`, `fetch_discord`, `fetch_torneos_online`,
-  `fetch_torneos_fisicos`, `fetch_videos`, `fetch_decks`) with placeholder fallbacks and a per-feed,
-  per-worker TTL cache (`LANDING_CACHE_TTL`, default 300 s; failures are not cached; `clear_cache()`).
 - Not a service: `app/utils/clock.py` (`utcnow()`), `app/schemas/*` (Pydantic request models).
 
-## 6. Legacy Jinja pages (what the PWA will absorb)
+## 6. Old Jinja URLs (retired)
 
-All under `/riftbound` unless noted. JSON helpers below them keep the flat `{"success": true, ...}`
-shape, not the API v1 envelope. The nav registry (section 7) lists the same modules.
+The Jinja web (landing, dashboard, login/register forms, sets, cards, collection, decks, profile and the
+admin price tools, with `app/templates/` and `app/static/{css,js,landing,vendor}`) was removed in PR 3/3 of
+the Jinja retirement; its last state is on `main` at `67a79dc`. The React app covers every module (the
+Sets page was dropped; the landing returns with F8). `legacy_redirects` (`app/routes/redirects.py`,
+public, GET/HEAD only, never touches the session) keeps old bookmarks working with a 302 (not 301: `/`
+gets the F8 landing back):
 
-| Page | URL | Blueprint | Auth | What it does | Related endpoints (all CSRF-protected POST unless GET) |
-|---|---|---|---|---|---|
-| Landing | `/` | `landing_bp` | P | public marketing page; HTMX partials for news, tournaments, videos, decks | GET `/api/{noticias,discord,torneos-online,torneos-fisicos,videos,decks}`, `/frames/*` |
-| Login / Register | `/login`, `/register` | `auth_bp` | P | forms with CSRF; register shows the ALTCHA widget (vendored in `app/static/vendor/altcha`) | POST `/logout` (U) |
-| Dashboard | `/riftbound/` | `main_bp` | U | tile launcher; admin tile for price tools | none |
-| Sets | `/set` | `sets_bp` | U | list/search sets; admins add/edit in modals | A: POST `/set/add`, `/set/update/<set_id>` |
-| Cards | `/card` | `cards_bp` | U | catalog with many filters, table/grid, pagination 50; admins add/edit/upload image | A: POST `/card/add`, `/card/update/<set_id>/<card_id>`, `/card/upload_image` (2 MB, jpg/jpeg/png/webp) |
-| Collection | `/collection` | `collection_bp` | U | the user's lines with latest Cardmarket price, filters, sorting (set, card id, name, quantity, price), list/grid, bulk edit, add modal, CSV export of lines for sale, CSV import | POST `add`, `update_quantity` (0 deletes), `delete`, `update_selling`, `update_playset`, `update_sell_price`, `update_condition`, `update_language`, `bulk_apply`, `bulk_delete`, `import_csv` (`set;card;foil;quantity` lines), `export_csv`; GET `api/sets`, `api/cards` |
-| Decks | `/deck` | `deck_bp` | U | "My decks" and "All public decks" lists (20 per page, filters by name, user, format, mode, set, legend); create modal with a text-list parser | GET `api/legends`, `versions/<name>`, `view/<id>`, `view/<name>`, `view/<name>/<seq>`; POST `save` (always creates a new version row) |
-| Deck view | `/deck/view/...` | `deck_bp` | U | enriched deck: images, have/missing vs the viewer's collection, price, text/TTS export, shopping list | |
-| Profile | `/profile` | `profile_bp` | U | shows account; change e-mail or password (current password required for a new one) | POST `/profile/update` |
-| Price tools | `/price` | `price_bp` | A | price CSV generator, Cardmarket load, mappings browser, auto-match, ignored list, Riot gallery extraction | 22 more routes (all admin): `generate`, `refresh-riot-sets`, `extract-riot-cards`, `cardmarket-load`, `cardmarket-unmatched`, `cardmarket-search-cards`, `cardmarket-map`, `cardmarket-unmap`, `cardmarket-mappings`, `cardmarket-unmapped-expansions`, `cardmarket-map-expansion`, `cardmarket-card-detail`, `cardmarket-card-search-full`, `cardmarket-upsert-card`, `cardmarket-product-detail`, `cardmarket-product-search`, `cardmarket-upsert-product`, `cardmarket-auto-match`, `auto-match/apply`, `ignored`, `ignored/add`, `ignored/restore` |
+| Old URL | Goes to |
+|---|---|
+| `/`, `/riftbound`, `/riftbound/`, `/riftbound/set` | `/riftbound/app/` |
+| `/riftbound/login` | `/riftbound/app/login` (keeps `next` when it is a safe `/riftbound/` path) |
+| `/riftbound/register` | `/riftbound/app/register` |
+| `/riftbound/card` | `/riftbound/app/cards` |
+| `/riftbound/collection` | `/riftbound/app/collection` |
+| `/riftbound/deck`, `/riftbound/deck/view/<any>` | `/riftbound/app/decks` |
+| `/riftbound/profile` | `/riftbound/app/account/profile` |
+| `/riftbound/price` | `/riftbound/app/admin/cardmarket` |
 
-`base.html` links to the SPA ("Nueva app" to `/riftbound/app/`) and renders Add/Edit/Price controls
-only for admins (server checks stay authoritative). Jinja page titles say "Rift Manager"; the landing
-keeps its own title until F11.
+Any other old path (the HTMX partials, `/frames/*`, `/riftbound/static/*`, the flat JSON helpers) is a 404.
+The legacy tables (`rbdecks`, `rbcol_playset`, ...) stay until F11.
 
 ## 7. Frontend (`frontend/`)
 
@@ -393,7 +375,7 @@ Node 24 (`.nvmrc`), `engines.node >= 22.22`, `.npmrc`: `save-exact=true`, `engin
 
 Scripts: `dev`, `build` (`tsc -b && vite build`), `preview`, `lint` (`eslint . && prettier --check .`),
 `typecheck` (`tsc -b --noEmit`), `test` (`vitest run`), `icons`, `brand:trace`, `check:dist`.
-The dev server proxies `/riftbound/api` and `/riftbound/static` to Flask (`VITE_DEV_PROXY`, default the
+The dev server proxies `/riftbound/api` to Flask (`VITE_DEV_PROXY`, default the
 local Flask dev server on port 5000); `VITE_BASE` defaults to `/riftbound/app/`.
 
 ### 7.1 Folder map (`frontend/src/`)
@@ -503,20 +485,13 @@ Five account values: `lang`, `density`, `accent`, `bg_intensity`, `collection_vi
 - `BottomNav`: the entries with placement `bottom` (Inicio, Cartas, Colección, Mazos) plus "Más", which
   opens `MoreSheet` (a native `<dialog>`: Interface, classic modules, language, install, Admin, logout).
 - `shell/navRegistry.ts` is the single list behind topbar, bottom nav, sheet and home hub. Entry:
-  `{id, icon, placements: ('top'|'bottom'|'hub'|'more')[], adminOnly?, status}` with `status` one of
-  `spa` (`to` = router path without basename), `legacy` (`legacy` = key of `legacy-routes.json`, rendered as
-  a plain `<a href>`, a full navigation) or `planned` (never rendered). Current entries: `home` and
-  `interface` are `spa`; `dashboard`, `sets`, `cards`, `collection`, `decks`, `profile`, `price`
-  (admin only) and `admin` (admin only, points at the `price` page) are `legacy`; `events`, `sales`, `stats`
-  are `planned`.
-- `legacy-routes.json` maps `dashboard`, `sets`, `cards`, `collection`, `decks`, `profile`, `price` to their
-  Jinja URLs; each URL must match a GET rule of the Flask `url_map` (a unit that adds a legacy link adds
-  that check).
-- To port a module: flip its registry entry from `{status: 'legacy', legacy: 'cards'}` to
-  `{status: 'spa', to: '/cards'}`, add the lazy route inside the `ShellError` group of `routes.tsx`, add the
-  labels in `nav.json` (`items.<id>.label` and `.description`, both languages). Keep the Jinja page and its
-  `legacy-routes.json` key until the page is retired (removing a key means updating the contract test).
-- `HomeHub` is the launcher: tiles follow the registry status; legacy tiles show an "external" icon.
+  `{id, icon, placements: ('top'|'bottom'|'hub'|'more')[], adminOnly?, status}` with `status` `spa`
+  (`to` = router path without basename) or `planned` (never rendered). The `legacy` status and
+  `legacy-routes.json` went with PR 2/3 of the Jinja retirement; nothing in the app links to a Jinja page
+  (`src/test/no-legacy-links.test.ts`), and the Jinja web itself is gone (section 6).
+- To add a module: a registry entry `{status: 'spa', to: '/cards'}`, the lazy route inside the `ShellError`
+  group of `routes.tsx`, and the labels in `nav.json` (`items.<id>.label` and `.description`).
+- `HomeHub` is the launcher: tiles follow the registry.
 
 ### 7.7 Styling, breakpoints, background
 

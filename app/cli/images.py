@@ -17,9 +17,10 @@ images_cli = AppGroup('images', help='Card images in CARD_IMAGES_DIR.')
 
 @images_cli.command('import-legacy')
 @click.option('--source', type=click.Path(exists=True, file_okay=False),
-              help='Folder holding <folder>/<file>; default <app static>/images/cards.')
+              help='Folder holding <folder>/<file>; default app/static/images/cards.')
 def import_legacy(source):
     """Copy every <folder>/<file> image of SOURCE into CARD_IMAGES_DIR."""
-    source = source or os.path.join(current_app.static_folder, 'images', 'cards')
+    # Read from disk: the app has no static route (the Jinja web is gone).
+    source = source or os.path.join(current_app.root_path, 'static', 'images', 'cards')
     copied, skipped, ignored = copy_legacy(source)
     click.echo(f'Copied {copied}, skipped {skipped} existing, ignored {ignored}.')

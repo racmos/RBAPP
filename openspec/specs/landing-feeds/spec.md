@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** The landing page, its partials (`/api/*`, `/frames/*`), `app/services/scraper.py` and `LANDING_CACHE_TTL` were removed; `/` answers a 302 to `/riftbound/app/` until the new landing of F8. LAND-1 no longer applies; kept as history.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. The proposal assigns no unit to this capability; it is tagged `[d]` because the exploration ties it to the rate-limiting work. All scenarios are pytest-testable (scraper functions mocked, clock injected).
 
 ## Requirements

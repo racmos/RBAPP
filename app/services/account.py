@@ -1,6 +1,6 @@
 """Account changes of the signed-in user: email and password (PROF-1, PROF-2).
 
-The same rules as the Jinja profile update: a new password needs the current one, the email is
+The rules of the old Jinja profile update: a new password needs the current one, the email is
 unique ignoring case, and an email-only update does not need the password. Returns an
 `AccountStatus`; the caller turns it into a response. Nothing is written unless it is `OK`.
 """

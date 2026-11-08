@@ -209,10 +209,8 @@ job): `validation`-style summary per set (`window`, `inserted`, `applied`, `prop
 venv/bin/flask shell <<< "import json; from app.models import RbJob; j = RbJob.query.filter_by(rbjob_kind='riot_sync').order_by(RbJob.rbjob_id.desc()).first(); print(j.rbjob_id, j.rbjob_status, j.rbjob_message); print(json.dumps(j.rbjob_result, indent=2, ensure_ascii=False))"
 ```
 
-The legacy Jinja button "Extraer cartas Riot" now only queues the job
-(`POST /riftbound/price/extract-riot-cards` → `{"success": true, "job_id": n, …}`; 409
-`{"success": false, "message": "Ya hay una sincronización en curso."}` when one is active);
-"refresh Riot sets" stays read only.
+Manual runs come from the app (Admin → Riot, `POST /riftbound/api/v1/admin/riot/sync`); the old Jinja
+button went with the Jinja web (PR 3/3 of its retirement).
 
 The `am` job runs every day at 08:00 Europe/Madrid (pre-release, post-release and, on the 1st of
 the month, `monthly` sets); the `pm` job runs at 14:00 (pre-release only). A scheduled run with no
@@ -334,8 +332,9 @@ owner's go-ahead.
 
 Revision `0025_decks_v2` creates `rbdeckheads` and `rbdeckversions` and copies nothing; `flask decks
 migrate` copies the legacy `rbdecks` rows into them (one deck per user and name, one version per row;
-routing rules in `docs/requirements/F5/F5-c-decks-v2-data.md` S4-S8). `rbdecks` is never modified and
-the Jinja deck pages keep reading and writing it (the read-only switch comes with the v2 editor, F5-d/h).
+routing rules in `docs/requirements/F5/F5-c-decks-v2-data.md` S4-S8). `rbdecks` is never modified; since
+the Jinja web was retired (PR 3/3, after a dry run showed 0 new decks) nothing writes it any more, so there
+is nothing left to copy and no final run is due (F11 drops the table).
 Order, with the owner's go-ahead:
 
 ```bash
@@ -352,9 +351,8 @@ The report prints, per deck, the new name and mode, and per version the legend, 
 per zone and every card moved to the workbench or left out (unknown card ids, malformed lines) with why;
 `Total: ...` sums it up. `--strict` exits 1 and writes nothing when a line is unresolved. The real run
 writes everything in one transaction and ends with `Done: N decks created, N updated, N versions copied.`
-It is idempotent: a legacy row is copied once (`rbdkv_legacy_id`); rows saved in Jinja after a run become
-new versions of their deck on the next run, so run it once more right before the Jinja switch (F5-d/h)
-and never after it (a deck deleted in v2 would come back).
+It is idempotent: a legacy row is copied once (`rbdkv_legacy_id`). Do not run it again for real now that
+the Jinja deck pages are gone: a deck deleted in v2 would come back from its legacy rows.
 
 Read the result:
 
@@ -373,9 +371,9 @@ Card images are not in git and not in the code tree. They live in the data direc
 `CARD_IMAGES_DIR=<data dir>` in `.env` (absolute path, outside the checkout, owned by the service user; the
 host value is in `ops.local.md`). Unset, the app uses `<project>/data/card-images` (git-ignored; dev and
 tests only). Flask serves the directory at `/riftbound/media/cards/<folder>/<file>` (public, cached a
-week); the admin upload and the Riot scraper write there. The old `/riftbound/static/images/cards/...`
-URLs no longer serve the images. The Nginx template proxies every `/riftbound/` URL to Flask, so the
-proxy needs no change.
+week); the admin upload and the Riot scraper write there. The app has no `/riftbound/static/` route
+(Jinja retirement, PR 3/3): those URLs are 404. The Nginx template proxies every `/riftbound/` URL to
+Flask, so the proxy needs no change.
 
 - Backup: the data directory is the only copy of the scraped and uploaded images. Copy it with the
   database backup (`tar -C <data dir> -czf <backup folder>/card-images-<date>.tar.gz .`, private folder);
@@ -398,7 +396,7 @@ checkout. Copy first.
 2. Set `CARD_IMAGES_DIR=<data dir>` in `.env`, deploy, restart, then run `venv/bin/flask images
    import-legacy` (copies 0 if step 1 was done; it also picks up the untracked images the Riot scraper
    left in the checkout).
-3. Live check: open a Jinja catalog page; its images load from `/riftbound/media/cards/…`;
+3. Live check: open the app's Cards page; its images load from `/riftbound/media/cards/…`;
    `curl -sI <URL>/riftbound/media/cards/ogn/ogn_1.png` → 200 with `Cache-Control: public, max-age=604800`.
 
 Rollback: revert the PR and redeploy; the revert puts the tracked images back in the checkout and the
@@ -425,6 +423,30 @@ Flask serves them at `/riftbound/media/products/<file>` (public, cached a week).
   hand is not shown until the product's `rbpdt_image` names it: add new images through the admin upload.
 - Live check: upload an image on a product in the admin; `curl -sI <URL>/riftbound/media/products/<id>.png`
   → 200 with `Cache-Control: public, max-age=604800`.
+
+## Jinja retirement (PR 3/3)
+
+The Jinja web (landing, dashboard, auth forms, sets, cards, collection, decks, price tools, profile,
+templates, static assets) is removed; `/`, `/riftbound`, `/riftbound/` and the old page URLs answer a 302 to
+the app (table in AGENTS.md → "Old URLs"). No migration, no data change; the legacy tables stay until F11.
+
+- Deploy: the usual "Deploy after a merge" (`requirements.txt` changed only by dropping `beautifulsoup4`, so
+  `pip install` changes nothing; no frontend rebuild is needed: only the dev proxy line of
+  `frontend/vite.config.ts` changed), then restart.
+- `.env`: `LANDING_CACHE_TTL` is no longer read; remove it if present (harmless otherwise).
+- Nginx: **no change needed** when it proxies `/` and `/riftbound/` whole to Flask, as `docs/nginx_config`
+  does. Only a proxy that serves `/riftbound/static/` from disk, or keeps a separate landing app at `/`, needs
+  that block removed (check `ops.local.md`). The `limit_req` line for `POST /riftbound/(login|register)` of
+  older copies of the template is now dead (those URLs answer 405) and may stay.
+- Live checks:
+  - `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' <URL>/` → `302 <URL>/riftbound/app/`
+  - the same for `<URL>/riftbound/` → `/riftbound/app/`, `<URL>/riftbound/collection` →
+    `/riftbound/app/collection`, `<URL>/riftbound/login?next=%2Friftbound%2Fcollection` →
+    `/riftbound/app/login?next=%2Friftbound%2Fcollection`
+  - `<URL>/riftbound/nope` → 404 with the small "Back to the app" page; `<URL>/riftbound/static/css/style.css`
+    → 404
+  - sign in through the app, open a bookmark of an old page: it lands on the matching app screen.
+- Rollback: revert the PR and deploy again (no data to restore).
 
 ## Never
 

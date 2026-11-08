@@ -11,7 +11,7 @@ through `AGENTS.md`.
 | [`roadmap.md`](roadmap.md) | Phase order and dependencies, cross-phase contracts, units per phase, next steps. |
 | [`workflow.md`](workflow.md) | The Claude Project → gentle-shell → PR → deploy cycle, roles, rules for requirements, project setup. |
 | [`project-instructions.md`](project-instructions.md) | Text to paste into the Claude Project instructions. |
-| [`architecture.md`](architecture.md) | How the system is built today: backend, API, data model, legacy Jinja pages, frontend, PWA, hosting, CI, tests. |
+| [`architecture.md`](architecture.md) | How the system is built today: backend, API, data model, the old Jinja URLs (retired), frontend, PWA, hosting, CI, tests. |
 | [`conventions.md`](conventions.md) | Rules every change follows, known traps, definition of done. |
 | [`specs-index.md`](specs-index.md) | Index of the formal contracts in `openspec/specs/` (F0 and F1, merged). |
 | [`decisions-2026-10-25.md`](decisions-2026-10-25.md) | Planner decisions delegated by the owner for batch 1 (functional sketch): every open decision of M-d, F2, F3, F4-c, F13, F14 closed, and what is deferred to batch 2. Wins over the phase specs' open-decision tables. |

@@ -2,6 +2,8 @@
 
 Source: change f1-app-shell (archived 2026-10-22)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** The Jinja pages and Flask `static` named in HOST-1 scenarios are gone; `/riftbound/login` is now a 302 to `/riftbound/app/login` and `/riftbound/static/*` a 404.
+
 > Tags: `[a]`..`[g]` = delivery unit of change f1-app-shell (all requirements here are unit `[b]` unless stated). `[MANUAL]` = deploy/ops check. Untagged scenarios are pytest-testable with a temporary `dist/` directory (no Node in the Python lane). The SPA is served by Flask at `/riftbound/app/`; Jinja routes, the landing `/` and `/riftbound/api/v1` are unaffected.
 
 ## Requirements

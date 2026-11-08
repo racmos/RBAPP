@@ -59,8 +59,8 @@ class TestShare:
         deck_id = make_deck('Azir', AZIR)
         host = 'https://rift.example'
         client = app.test_client()
-        client.post('/riftbound/login', base_url=host,
-                    data={'username': 'testuser', 'password': 'testpass123'})
+        from tests.conftest import login_as
+        login_as(client, 'testuser', 'testpass123', base_url=host)
         share = data(client.post(f'{BASE}/{deck_id}/share', base_url=host))
         assert share['url'] == f"https://rift.example/riftbound/app/d/{share['slug']}"
 

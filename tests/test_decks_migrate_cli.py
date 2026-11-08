@@ -212,21 +212,6 @@ class TestVersions:
         assert head.rbdkh_mode == '1v1'          # set once, when the deck is created
         assert head.rbdkh_updated_at == day(2)
 
-    def test_jinja_saving_still_works_and_a_rerun_copies_it(self, cli, catalog,
-                                                             authenticated_client):
-        # F5-c S11: `POST /deck/save` stays enabled until the v2 editor exists (F5-d/h).
-        save = {'rbdck_name': 'Azir', 'rbdck_mode': '1v1', 'rbdck_cards': AZIR}
-        assert authenticated_client.post('/riftbound/deck/save', json=save).get_json()[
-            'seq'] == 1
-        cli()
-        response = authenticated_client.post('/riftbound/deck/save', json=save)
-        assert response.status_code == 200
-        assert (response.get_json()['success'], response.get_json()['seq']) == (True, 2)
-        result = cli()
-        assert result.output.splitlines()[0] == 'Deck testuser / "Azir": 1 new version for ' \
-                                                'deck "Azir"'
-        assert sorted(v.rbdkv_seq for v in RbDeckVersion.query) == [1, 2]
-
     def test_repeated_seqs_get_the_next_free_one(self, cli, catalog, make_user):
         make_user('ana')
         legacy(1, 'Azir', AZIR, seq=1)

@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** The Jinja rules of the tables below (landing, Flask `static`, the login/register forms, sets, cards, collection, decks, profile, `price_bp`) are gone; the old page URLs are public 302 redirects to the app (`legacy_redirects`), every protected rule is under `/riftbound/api/`, and anonymous HTML requests to a protected page go to `/riftbound/app/login?next=...`. `tests/test_authz_matrix.py` is the current table.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. `[PG-CI]` = PostgreSQL CI job; `[MANUAL]` = manual/ops check. Untagged scenarios are pytest-testable. "Anonymous denial" means: HTML/no-Accept client gets 302 to `/riftbound/login`; JSON client (`Accept: application/json` or JSON body) gets 401 `{success:false,error:"Unauthorized",message}`. "Non-admin denial" means 403 (JSON `{success:false,error:"Forbidden",message}` for JSON clients, HTML 403 page otherwise).
 
 ## Requirements

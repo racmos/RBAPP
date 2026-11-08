@@ -2,12 +2,15 @@
 Error handlers for the application.
 
 JSON or HTML (API-8, D18): `wants_json()` decides, and every handler below uses
-it, so one request gets one kind of answer whatever went wrong.
+it, so one request gets one kind of answer whatever went wrong. Browsers get one
+minimal inline page (`html_error_page`): the Jinja error templates went with the
+Jinja web (PR 3/3).
 """
 import math
 import time
+from html import escape
 
-from flask import render_template, jsonify, make_response, request
+from flask import jsonify, make_response, request
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 
@@ -16,9 +19,17 @@ from app.api.error_codes import ErrorCode
 # Everything under this prefix is the JSON API: always JSON, whatever the headers.
 API_PREFIX = '/riftbound/api/'
 
-# Error pages that exist as templates; any other status uses errors/generic.html.
-ERROR_TEMPLATES = {400: 'errors/400.html', 401: 'errors/401.html', 403: 'errors/403.html',
-                   404: 'errors/404.html', 500: 'errors/500.html'}
+# Where the error page sends the reader.
+APP_HOME = '/riftbound/app/'
+
+# Minimal page: no stylesheet, no script, no template, never touches the session.
+_ERROR_PAGE = ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
+               '<meta name="viewport" content="width=device-width, initial-scale=1">'
+               '<title>{status} {title} · Rift Manager</title></head>'
+               '<body style="font-family:sans-serif;background:#06222c;color:#e8eef0;padding:2rem">'
+               '<h1>{status} {title}</h1><p>{message}</p>'
+               '<p><a href="{home}" style="color:#00b2cf">Back to the app</a></p>'
+               '</body></html>\n')
 
 # Fixed texts for the statuses where the stock description says too much or too little.
 # 400 is not here: abort(400, '...') carries a message meant for the caller.
@@ -67,12 +78,11 @@ def json_error(error, message, status, details=None, *, code=None, params=None):
 
 def unexpected_failure(exc, message, status=500, *, error='Internal Server Error',
                        code=ErrorCode.INTERNAL_ERROR, **extra):
-    """The JSON body of a legacy endpoint for a failure nobody expected (M-c).
+    """The JSON body for a failure nobody expected (M-c; used by `@validate_json`).
 
     `message` is the clear text the user sees; the exception text never goes
     there. The full traceback is always logged, and a signed-in admin also gets
-    `detail` ("<ExceptionClass>: <text>"). `extra` keeps the keys the legacy page
-    reads (`sets`, `steps`, `stats`, `errors`) with their usual types.
+    `detail` ("<ExceptionClass>: <text>"). `extra` adds keys to the body.
     """
     from flask import current_app
     from flask_login import current_user
@@ -83,17 +93,28 @@ def unexpected_failure(exc, message, status=500, *, error='Internal Server Error
     return make_response(jsonify(body), status)
 
 
+def html_error_page(status, title, message):
+    """The error page for browsers: status, title, message and a link to the app.
+    Everything is escaped; nothing is loaded from elsewhere."""
+    body = _ERROR_PAGE.format(status=int(status), title=escape(title), message=escape(message),
+                              home=APP_HOME)
+    response = make_response(body, status)
+    response.content_type = 'text/html; charset=utf-8'
+    return response
+
+
 def http_error_response(error):
     """One response for any HTTPException: JSON envelope or the error page."""
     code = error.code or 500
+    message = FRIENDLY_MESSAGES.get(code) or error.description or 'Invalid request'
     if wants_json():
-        message = FRIENDLY_MESSAGES.get(code) or error.description or 'Invalid request'
         response = json_error(error.name, message, code)
-        allow = dict(error.get_headers()).get('Allow')      # 405 says which methods work
-        if allow:
-            response.headers['Allow'] = allow
-        return response
-    return render_template(ERROR_TEMPLATES.get(code, 'errors/generic.html'), error=error), code
+    else:
+        response = html_error_page(code, error.name, message)
+    allow = dict(error.get_headers()).get('Allow')          # 405 says which methods work
+    if allow:
+        response.headers['Allow'] = allow
+    return response
 
 
 def unexpected_error_response(error):
@@ -102,7 +123,7 @@ def unexpected_error_response(error):
     current_app.logger.error(f'Unhandled exception: {error}', exc_info=True)
     if wants_json():
         return json_error('Internal Server Error', FRIENDLY_MESSAGES[500], 500)
-    return render_template('errors/500.html', error=error), 500
+    return html_error_page(500, 'Internal Server Error', FRIENDLY_MESSAGES[500])
 
 
 def register_error_handlers(app):
@@ -115,12 +136,12 @@ def register_error_handlers(app):
     def csrf_error(error):
         """Missing, invalid or cross-origin CSRF token (CSRF-1, CSRF-2).
 
-        A browser navigation gets the HTML 400 page; fetch, JSON and API clients
-        get the JSON envelope.
+        A browser form gets the HTML 400 page; fetch, JSON and API clients get
+        the JSON envelope.
         """
         if wants_json():
             return json_error('CSRF Error', error.description, 400, code=ErrorCode.CSRF_INVALID)
-        return render_template('errors/400.html', error=error, csrf_error=True), 400
+        return html_error_page(400, 'Bad Request', error.description)
 
     @app.errorhandler(429)
     def too_many_requests(error):
@@ -131,8 +152,9 @@ def register_error_handlers(app):
                                   'Too many requests. Please wait before trying again.', 429,
                                   code=ErrorCode.RATE_LIMITED, params={'retry_after': retry_after})
         else:
-            response = make_response(render_template('errors/429.html', error=error,
-                                                     retry_after=retry_after), 429)
+            response = html_error_page(
+                429, 'Too Many Requests',
+                f'Too many requests. Please wait {retry_after} seconds before trying again.')
         response.headers['Retry-After'] = str(retry_after)
         return response
 

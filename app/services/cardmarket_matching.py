@@ -2,8 +2,8 @@
 link / unlink / relink, the links browser, the ignore list, the auto-match preview /
 apply and the review list. No Flask request objects; the views audit and commit.
 
-Port of the legacy `price_bp` endpoints (`app/routes/domains/price.py`, pinned in
-`tests/test_legacy_price_characterization.py`). A link is one `rbcm_product_card_map`
+Port of the old Jinja price tools (removed with the Jinja web, PR 3/3 of its retirement).
+A link is one `rbcm_product_card_map`
 row: a Cardmarket product id to a card and a foil slot (`N`, `S` or null; two nulls are
 the same slot). Products (`rbproducts`) are keyed by the Cardmarket id itself, so a
 non-single is linked by identity and there is no product link to write.

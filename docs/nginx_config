@@ -3,8 +3,9 @@
 #
 # One Flask application, served by Gunicorn on port 8000 (see
 # docs/riftbound.service), answers BOTH paths:
-#   /            the public landing page (it is no longer a separate app)
-#   /riftbound/  the application and its JSON API (/riftbound/api/v1)
+#   /            a 302 to the app today (the new landing page comes back in F8)
+#   /riftbound/  the app (/riftbound/app/), its JSON API (/riftbound/api/v1), the card
+#                images (/riftbound/media/) and 302s from the old Jinja URLs
 #
 # Replace the server name, the certificate paths and the upstream address with
 # your own. Keep every address and credential out of the repository.
@@ -25,8 +26,7 @@ upstream riftbound_app {
 }
 
 # =====================================================================
-# Rate limit for the login / register forms and the API auth endpoints
-# (LOGIN-7). Goes at http level (this file is included there).
+# Rate limit for the API auth endpoints (login, register; LOGIN-7). Goes at http level (this file is included there).
 #
 # The key is the client IP only for POSTs to those URLs; every other request
 # gets an empty key and is never limited. The application has its own limiter
@@ -37,7 +37,6 @@ upstream riftbound_app {
 # =====================================================================
 map "$request_method:$request_uri" $rb_auth_limit_key {
     default "";
-    ~^POST:/riftbound/(login|register)(\?|$)     $binary_remote_addr;
     ~^POST:/riftbound/api/v1/auth/               $binary_remote_addr;
 }
 limit_req_zone $rb_auth_limit_key zone=rb_auth:10m rate=20r/m;
@@ -80,7 +79,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_redirect off;
 
-    # Landing page and its HTMX partials (/api/noticias, ...), static frames.
+    # `/` (today a 302 to /riftbound/app/; the F8 landing later).
     location / {
         proxy_pass http://riftbound_app;
     }
@@ -103,7 +102,7 @@ server {
     location /riftbound/ {
         proxy_pass http://riftbound_app;
 
-        # Login / register / API auth: at most 20 requests per minute per IP (+ a burst of 10),
+        # API auth (login, register): at most 20 requests per minute per IP (+ a burst of 10),
         # see the zone at the top of this file. Over the limit: 429.
         limit_req zone=rb_auth burst=10 nodelay;
     }

@@ -4,7 +4,6 @@ Every test points CARD_IMAGES_DIR at a temporary folder (`card_images_dir`):
 nothing here reads or writes the real images. `secret.txt` sits NEXT TO the
 images root, so a path that escaped it would land there.
 """
-import io
 from pathlib import Path
 
 import pytest
@@ -119,51 +118,8 @@ class TestImageSrc:
         assert RbCard(rbcar_rbset_id=set_id, rbcar_id='1', image=image).image_src == expected
 
 
-# ---------------------------------------------------------------------------
-# S5: the admin upload writes into the root, the media route serves it back
-# ---------------------------------------------------------------------------
-
-def _upload(client, name='ogn_7.png', set_id='ogn', data=PNG):
-    return client.post('/riftbound/card/upload_image',
-                       data={'set_id': set_id, 'image': (io.BytesIO(data), name)},
-                       content_type='multipart/form-data')
-
-
-class TestUpload:
-    def test_the_upload_creates_the_folder_and_is_served_at_image_src(self, card_images_dir,
-                                                                     admin_client, client):
-        assert not card_images_dir.exists()
-        resp = _upload(admin_client)
-        assert resp.status_code == 200
-        assert resp.get_json() == {'success': True, 'filename': 'ogn_7.png'}
-        assert (card_images_dir / 'ogn' / 'ogn_7.png').read_bytes() == PNG
-
-        src = RbCard(rbcar_rbset_id='OGN', rbcar_id='7', image='ogn_7.png').image_src
-        served = client.get(src)
-        assert served.status_code == 200
-        assert served.data == PNG
-        assert served.mimetype == 'image/png'
-
-    def test_a_promo_upload_lands_in_the_prefix_folder(self, card_images_dir, admin_client):
-        assert _upload(admin_client, name='ogn_257.png', set_id='ognx').status_code == 200
-        assert (card_images_dir / 'ogn' / 'ogn_257.png').read_bytes() == PNG
-
-    @pytest.mark.parametrize('kwargs, message', [
-        ({'set_id': '../x'}, 'Invalid set id: use letters and digits only'),
-        ({'name': 'ogn_7.gif'}, 'Invalid file type. Allowed: jpg, jpeg, png, webp'),
-        ({'data': b'x' * (2 * 1024 * 1024 + 1)}, 'File size exceeds 2MB limit'),
-        ({'name': ''}, 'No file selected'),
-    ])
-    def test_the_upload_rules_still_hold_and_write_nothing(self, card_images_dir, admin_client,
-                                                          kwargs, message):
-        resp = _upload(admin_client, **kwargs)
-        assert resp.status_code == 400
-        assert resp.get_json() == {'success': False, 'message': message}
-        assert not card_images_dir.exists()
-
-    def test_a_plain_user_cannot_upload(self, card_images_dir, authenticated_client):
-        assert _upload(authenticated_client).status_code == 403
-        assert not card_images_dir.exists()
+# The admin upload (S5) is POST /admin/cards/<set>/<id>/image: tests/test_admin_card_image.py.
+# The Jinja upload route went with the Jinja web (PR 3/3).
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +209,3 @@ class TestNoOldImageUrls:
             if 'vendor' not in path.parts and OLD_PREFIX in path.read_text(encoding='utf-8')
         ]
         assert offenders == []
-
-    def test_the_deck_legend_placeholder_is_an_inline_svg(self):
-        deck = (APP_DIR / 'templates' / 'deck.html').read_text(encoding='utf-8')
-        assert "img.src = legend.image || 'data:image/svg+xml," in deck

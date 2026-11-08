@@ -782,13 +782,12 @@ class LoginRequest(BaseModel):
     'Old User (1)' keep working; the upper bounds only stop absurd inputs."""
     username: str = Field(..., min_length=1, max_length=255)
     password: str = Field(..., min_length=1, max_length=1024)
-    # API only (API-5): the SPA sends true by default. StrictBool refuses "yes" and 1.
-    # The Jinja form has no such field and drops it before validating.
+    # API-5: the SPA sends true by default. StrictBool refuses "yes" and 1.
     remember: StrictBool = False
 
 
 class RegisterRequest(BaseModel):
-    """Register input (LOGIN-9), shared by the Jinja form and the API. Extra fields (for
+    """Register input (LOGIN-9) of POST /auth/register. Extra fields (for
     example `is_admin`) are ignored by Pydantic and never reach the model."""
     username: str = Field(...)
     email: str = Field(...)

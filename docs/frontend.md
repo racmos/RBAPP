@@ -1,8 +1,9 @@
 # Frontend (new app) - build, hosting and deploy
 
 The new app is a React single-page app built from `frontend/` (Vite). Flask serves the
-build itself at `/riftbound/app/` (blueprint `spa_bp`, `app/routes/spa.py`). The Jinja
-pages, the landing page and the JSON API are not affected.
+build itself at `/riftbound/app/` (blueprint `spa_bp`, `app/routes/spa.py`). The old Jinja web
+was retired (PR 3/3 of its retirement): `/`, `/riftbound/` and the old page URLs answer a 302 to the
+app (`app/routes/redirects.py`, see AGENTS.md → "Old URLs").
 
 ## Build
 
@@ -42,7 +43,7 @@ as `application/manifest+json`.
 
 Errors under `/riftbound/app/` (404 for a missing file, 503 without a build) are JSON for
 clients that ask for it (`Accept: application/json` or `*/*`, which is what `fetch`
-sends) and a minimal inline HTML page otherwise. They never use the Jinja error pages.
+sends) and a minimal inline HTML page otherwise.
 
 ## Content Security Policy
 
@@ -55,7 +56,7 @@ Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; styl
 
 Nothing else gets a CSP: not `assets/*`, `sw.js`, `manifest.webmanifest`, the icons, the 404
 for a missing file or the 503 without a build, and no response carries an enforcing
-`Content-Security-Policy`. Jinja pages and the API are untouched.
+`Content-Security-Policy`. The API is untouched.
 
 - **Why report-only.** The browser evaluates the policy and reports what it would block, but blocks
   nothing. We learn what an enforcing policy would break (inline styles, `data:`/`blob:` images,
@@ -105,19 +106,20 @@ Nginx needs no change in F1: `/riftbound/` already proxies to Flask, so
    - a deep link such as `/riftbound/app/account/interface` reloads correctly;
    - `/riftbound/app` redirects to `/riftbound/app/`;
    - `/riftbound/app/assets/missing.js` is a 404, not the app shell;
-   - the Jinja pages, the landing page and `/riftbound/api/v1/health` still work;
+   - `/` and `/riftbound/` redirect to `/riftbound/app/` and `/riftbound/api/v1/health` works;
    - the pending manual checks of the foundation phase (F0) pass.
 
 ## Sign-in, sessions and CSRF (what the app does)
 
-The app and the Jinja pages share one session cookie, so signing in or out in either
-applies to both.
+The app signs in through the JSON API; the session cookie is the only session (the Jinja pages that
+shared it are gone). An old bookmark of `/riftbound/login?next=...` lands on the app's login screen with
+the same safe `next`.
 
 - **Boot.** The app calls `GET /riftbound/api/v1/auth/session` before rendering any
   guarded route and shows a loading state meanwhile, so a signed-in user never sees the
   login form. The answer (`authenticated`, `user`, `prefs`) is the TanStack Query entry
-  `['session']`; it is refetched whenever the window regains focus, so a logout done in a
-  Jinja page or another tab is noticed.
+  `['session']`; it is refetched whenever the window regains focus, so a logout done in
+  another tab is noticed.
 - **CSRF token.** It comes from `/auth/session`, is held in a module variable only and is
   never written to `localStorage`, `sessionStorage` or a cookie. Every POST, PATCH, PUT
   and DELETE sends it as `X-CSRFToken`. If the server answers `400` with
@@ -154,7 +156,7 @@ and typed: a missing key fails `npm run typecheck`. There is no Spanish catalog,
 detection (`navigator.languages`, `rb_lang`) and no language in the `rb_prefs_v1` mirror;
 `createI18n()` always starts in `en` and `<html lang>` is always `en`. The backend still stores
 and sends the `lang` preference (`rbprf_lang`, see `docs/api.md`); the app ignores it and never
-sends it. The Jinja pages are not part of this: they keep their own texts.
+sends it.
 
 What was removed: `locales/es/*`, `LanguageToggle`, `AccountLanguageToggle`,
 `i18n/resolveLang.ts` (`resolveLang`, `storeLang`, `initialLang`...), the `Lang` type and every
@@ -241,7 +243,9 @@ Jinja page: there is no `legacy` nav status, no `legacyHref` and no "Classic ver
 `/riftbound/deck`, `/riftbound/profile`, `/riftbound/price`, `legacyHref` or a quoted bare
 `/riftbound/` (allowed only in `auth/safeNext.ts`, which validates `next`). The app names only
 `/riftbound/api`, `/riftbound/app`, `/riftbound/media` and `/riftbound/static`. `safeNext`
-still sends a `next` outside `/riftbound/app` to a full page load (`lib/navigateDocument.ts`).
+still sends a `next` outside `/riftbound/app` to a full page load (`lib/navigateDocument.ts`); since
+PR 3/3 such a page is one of the 302 redirects back into the app. Flask no longer serves
+`/riftbound/static/` at all (the PWA keeps it in its navigation denylist, harmless).
 
 **Preferences.** The app uses four interface values (`density`, `accent`, `bg_intensity`,
 `collection_view`; `null` is Auto) plus `playset_size`. The account also stores `lang`, which
@@ -591,9 +595,9 @@ manifest as `application/manifest+json`.
 
 | Piece | Value |
 |---|---|
-| Worker | `/riftbound/app/sw.js` (Workbox `generateSW`, prompt mode), so its **scope is `/riftbound/app/`** and it never controls the Jinja pages or the API |
+| Worker | `/riftbound/app/sw.js` (Workbox `generateSW`, prompt mode), so its **scope is `/riftbound/app/`** and it never controls the API or the redirects |
 | Manifest | `id` and `scope` `/riftbound/`, `start_url` `/riftbound/app/`, standalone, `#06222c`. The scope is wider than the worker on purpose: the installed window may still open a legacy page |
-| Precache | The app shell only: hashed JS and CSS, `index.html`, latin fonts, the background images, the brand SVGs and the icons. **No runtime caching** of `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages |
+| Precache | The app shell only: hashed JS and CSS, `index.html`, latin fonts, the background images, the brand SVGs and the icons. **No runtime caching** of `/riftbound/api/*` or any path outside the app |
 | Offline | The shell opens from the precache with an offline banner; F1 is read-only offline |
 | Updates | A new worker waits. The app shows a "New version available." toast; "Update" activates it and reloads. It checks every hour and when the window becomes visible |
 | Development | The worker is disabled in `npm run dev` |
@@ -652,8 +656,8 @@ Run on the dev server over HTTPS (a service worker needs it; `localhost` is the 
   Name "Rift Manager" and the mark icon, no black corners.
 - **Desktop (Chrome or Edge):** the install button in the address bar and "Install app" in the
   topbar; the app opens in its own window.
-- **Scope:** DevTools, Application, Service Workers shows the scope `/riftbound/app/`; a Jinja page
-  (for example `/riftbound/deck`) is "not controlled".
+- **Scope:** DevTools, Application, Service Workers shows the scope `/riftbound/app/`; an old URL
+  (for example `/riftbound/deck`) is not controlled: the server answers its 302 into the app.
 - **Offline:** with the installed app, airplane mode, open it: the shell opens with the offline
   banner and the preference controls and "Sign out" are disabled. Back online: the banner goes.
 - **Update:** deploy a second build, reopen the installed app, wait for the "New version available." toast,

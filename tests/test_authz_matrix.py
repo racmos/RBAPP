@@ -9,13 +9,14 @@ Every URL rule of the app is classified exactly once as
 
 in the explicit table below. A rule the table does not know fails the suite and
 is named in the message, so adding a route forces a decision. `fnmatch`
-wildcards cover whole blueprints (`price.*`, `landing.*`). Units d and e add
+wildcards cover whole blueprints (`spa.*`, `api_admin.*`). Units d and e add
 their rules here.
 
 "Anonymous denial" has two shapes (API-8, R14): HTML clients (no Accept, or a
-browser's) get a 302 to the login page; JSON clients (`Accept: application/json`,
-a JSON body) and everything under /riftbound/api/ get a JSON 401, never a
-redirect.
+browser's) get a 302 to the app's login screen; JSON clients (`Accept:
+application/json`, a JSON body) and everything under /riftbound/api/ get a JSON
+401, never a redirect. Since the Jinja web was retired (PR 3/3) every protected
+rule is under /riftbound/api/.
 
 No test here may reach the internet: `requests.Session.request` is replaced by
 a recorder that raises, and the A-class tests assert nothing was recorded for a
@@ -33,12 +34,9 @@ from tests.conftest import login_as
 # endpoint pattern -> class
 MATRIX = {
     # --- public -----------------------------------------------------------
-    'static': 'P',
     'media.card_image': 'P',                # card images from CARD_IMAGES_DIR (M-d)
     'media.product_image': 'P',             # product images from PRODUCT_IMAGES_DIR (F14-d)
-    'landing.*': 'P',                       # landing page, HTMX partials, frames
-    'auth.login': 'P',
-    'auth.register': 'P',
+    'legacy_redirects.*': 'P',              # `/`, `/riftbound/` and old Jinja URLs -> the app
     'api_v1.health': 'P',                   # JSON API v1 (unit e)
     'api_v1.meta_config': 'P',
     'api_v1.meta_game': 'P',                      # game metadata for the catalog UI (F2-b)
@@ -49,7 +47,6 @@ MATRIX = {
     'api_v1.public_deck': 'P',              # read-only deck behind a share link (F5-g)
     'spa.*': 'P',                           # SPA shell (F1 unit b): the SPA hosts the login screen
     # --- authenticated ----------------------------------------------------
-    'auth.logout': 'U',
     'api_v1.auth_logout': 'U',
     'api_v1.get_me_prefs': 'U',             # unit c of f1-app-shell
     'api_v1.patch_me_prefs': 'U',
@@ -101,27 +98,18 @@ MATRIX = {
     'api_v1.share_deck': 'U',                # F5 unit g
     'api_v1.unshare_deck': 'U',
     'api_v1.duplicate_deck': 'U',            # F5 duplicate
-    'main.dashboard': 'U',
-    'sets.sets': 'U',
-    'cards.cards': 'U',
-    'collection.*': 'U',
-    'deck.*': 'U',
-    'profile.*': 'U',
     # --- admin ------------------------------------------------------------
-    'sets.add_set': 'A',
-    'sets.update_set': 'A',
-    'cards.add_card': 'A',
-    'cards.update_card': 'A',
-    'cards.upload_card_image': 'A',
-    'price.*': 'A',                         # all 23 routes, including future ones
     'api_admin.*': 'A',                     # /riftbound/api/v1/admin/* (F13-a); includes
                                             # /admin/cardmarket/* (CM-a)
 }
 
-LOGIN_PATH = '/riftbound/login'
+LOGIN_PATH = '/riftbound/app/login'
 API_PREFIX = '/riftbound/api/'
+SESSION_PATH = '/riftbound/api/v1/auth/session'
+# The old login URL: a public redirect TO the login screen, not a denial.
+OLD_LOGIN = 'legacy_redirects.login'
 # Endpoints that end the caller's session: always requested last.
-LOGOUT_ENDPOINTS = ('auth.logout', 'api_v1.auth_logout')
+LOGOUT_ENDPOINTS = ('api_v1.auth_logout',)
 JSON = {'Accept': 'application/json'}
 
 
@@ -238,8 +226,8 @@ class TestMatrixIsComplete:
         assert 'brandnew.index' in str(err.value)
 
     def test_a_rule_matched_by_two_entries_fails(self, monkeypatch):
-        monkeypatch.setitem(MATRIX, 'sets.*', 'U')              # overlaps 'sets.sets'
-        rule = SimpleNamespace(rule='/riftbound/set', endpoint='sets.sets')
+        monkeypatch.setitem(MATRIX, 'api_v1.list_*', 'U')       # overlaps 'api_v1.list_bans'
+        rule = SimpleNamespace(rule='/riftbound/api/v1/bans', endpoint='api_v1.list_bans')
         with pytest.raises(AssertionError, match='more than once'):
             classify(rule)
 
@@ -248,10 +236,15 @@ class TestMatrixIsComplete:
             assert any(fnmatchcase(rule.endpoint, pattern) for rule in rules), (
                 f'MATRIX entry {pattern!r} matches no rule; remove it')
 
-    def test_all_price_routes_are_admin_only(self, rules):
-        price_rules = [r for r in rules if r.endpoint.startswith('price.')]
-        assert len(price_rules) == 23
-        assert {classify(r) for r in price_rules} == {'A'}
+    def test_the_old_jinja_urls_are_public_redirects(self, rules):
+        redirect_rules = [r for r in rules if r.endpoint.startswith('legacy_redirects.')]
+        assert len(redirect_rules) == 12
+        assert {classify(r) for r in redirect_rules} == {'P'}
+        assert {method_for(r) for r in redirect_rules} == {'GET'}
+
+    def test_every_protected_rule_is_under_the_api(self, rules):
+        protected = [r.rule for r in rules if classify(r) in ('U', 'A')]
+        assert protected and all(rule.startswith(API_PREFIX) for rule in protected)
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +255,11 @@ class TestPublicRules:
     def test_anonymous_is_never_denied(self, app, client, rules, outbound):
         def check(rule):
             resp = call(client, rule)
-            if is_denied(resp):
+            if rule.endpoint == OLD_LOGIN:
+                # Its whole job is to send the bookmark to the login screen.
+                if resp.headers.get('Location') != LOGIN_PATH:
+                    return f'expected the redirect to {LOGIN_PATH}, got {resp.status_code}'
+            elif is_denied(resp):
                 return f'denied with {resp.status_code}'
         failed = failures_for(rules, 'P', check)
         assert not failed, '\n'.join(failed)
@@ -304,9 +301,9 @@ class TestAuthenticatedRules:
                     login_as(client, username)
                 resp = call(client, rule)
                 if rule.endpoint in LOGOUT_ENDPOINTS:
-                    # Logging out answers 302 (form) or 200 (API) by design: prove
-                    # it ran with a live session by checking the session is gone.
-                    if resp.status_code not in (200, 302) or client.get('/riftbound/').status_code != 302:
+                    # Prove the logout ran with a live session: the session is gone.
+                    session = client.get(SESSION_PATH).get_json()['data']
+                    if resp.status_code != 200 or session['authenticated']:
                         return f'{who}: logout did not end the session'
                 elif is_denied(resp):
                     return f'{who} was denied with {resp.status_code}'

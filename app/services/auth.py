@@ -1,6 +1,7 @@
 """Login, lockout and registration (LOGIN-2..6, LOGIN-9, R3, R4, D15).
 
-Shared by the Jinja forms and (unit e) the JSON API, so both behave the same.
+Used by the JSON API (/auth/login, /auth/register); the Jinja forms that also used it
+are gone (PR 3/3 of the Jinja retirement).
 
 `authenticate` is a small state machine:
 
@@ -41,9 +42,8 @@ from app.models import User
 from app.schemas.validators import RegisterRequest
 from app.utils import clock
 
-# Per-IP request limits of the login and register endpoints (LOGIN-7, D15). The Jinja
-# forms and the JSON API share ONE budget each (same `scope`), so switching front door
-# does not reset the count.
+# Per-IP request limits of the login and register endpoints (LOGIN-7, D15), one budget
+# each (`scope`).
 LOGIN_RATE_LIMIT = '10/minute;50/hour'
 REGISTER_RATE_LIMIT = '5/hour'
 

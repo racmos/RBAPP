@@ -29,7 +29,7 @@ Rows follow the agreed order (first unit of each phase). A phase split across th
 | F7 Sales | Sales table, listings from lines on sale, margin, Cardmarket export. | F3, F4 | Planned |
 | F10 Admin | React admin (rest): users, Cardmarket tools and mappings, bans per mode, audit, event moderation. Catalog admin and Riot sync moved to F13; the legacy price CSV is dropped. | F13 (foundation), F9 (users), F2-a (bans), F4 | Planned |
 | F9 Account | Profile + avatar, TOTP 2FA, server-side sessions/devices, API key; **Google/Discord login (F9-f) just before production**. | F1 | Planned |
-| F11 Close | Retire Jinja, a11y audit, performance, final docs, Riot disclaimer. **Without** the new landing (F11-a/b move with F8). | F2-F7, F9, F10 | Planned |
+| F11 Close | a11y audit, performance, final docs, Riot disclaimer, legacy schema cleanup. Jinja was retired early (2026-11-08, PRs 1-3/3 of the Jinja retirement). **Without** the new landing (F11-a/b move with F8). | F2-F7, F9, F10 | Planned |
 | F12 Production | Final URL/server, HTTPS, new secrets, production DB from Alembic, backups, monitoring, CSP enforcing, licensing. | F11 | Planned |
 | F15 Rules app | After production, before events: select cards that interact; answers only from the official Core Rules, Tournament Rules and FAQ; stored queries returned when repeated. Specified when the phase starts. | F12 | Planned |
 | F5-k Mulligan / opening hands | Split out of F5: opening-hand simulator and mulligan. Needs the official rules from the owner. | F12, F15, F5 | Planned |
@@ -95,8 +95,8 @@ decides.
   then.
 - **Decks** — F5 makes decks private by default with public share links; F8 links "deck played" to an F5 deck.
 - **Sessions and identity** — F9 introduces the server-side session table, TOTP, OAuth and API keys.
-- **Jinja retirement** — each phase flips its module's nav registry entry from `legacy` to `spa` and keeps
-  the Jinja page reachable until F11 removes Jinja.
+- **Jinja retirement** — done ahead of F11 (2026-11-08, PRs 1-3/3): the app covers every module, the Jinja
+  web is removed and its URLs redirect to the app (`/` too, until the F8 landing).
 - **Layouts** — every new screen defines mobile (< 860 px), desktop (≥ 1240 px) and wide (≥ 1600 px)
   layouts; desktop shows more data.
 
@@ -117,9 +117,9 @@ Unit tables (ID, title, dependencies, size, risk) are in each phase spec. Summar
 | F5 Decks v2 | a rules engine (Python) + rule values in meta · b rules library (TS, shared cases) · c v2 tables + migration of existing decks · d decks API · e import/export API · f deck vs collection · g share link · h UI mobile · i UI desktop/wide + analysis · j import/export + versions UI · k hand simulator / mulligan (split out, after production) · l offline · m public deck page | The owner provides deck export samples at the start of F5 (F5-e) and the official opening-hand/mulligan rules before F5-k. Decks become owner-only (amends DECK-1). |
 | F6 Stats | a stats API · b chart components · c stats page (nav flip, offline) | Can swap with F7. |
 | F7 Sales | a sales table + create API · b lifecycle · c listings + summary API · d export · e UI listings + sell · f UI history, export, wide rail | Export stays byte-identical to today's Cardmarket export (D-F7-4). |
-| F10 Admin | b users API · c users UI + forced password change · d Cardmarket job kinds · g mappings API port · h mappings UI · i bans admin · j events moderation · k audit UI + Jinja admin hand-off | a, e and f moved to F13. Users admin (b, c) waits for F9. j needs F8-a, so it waits for F8. The legacy price CSV generator is dropped. Desktop-first. |
+| F10 Admin | b users API · c users UI + forced password change · d Cardmarket job kinds · g mappings API port · h mappings UI · i bans admin · j events moderation · k audit UI (the Jinja admin is already gone) | a, e and f moved to F13. Users admin (b, c) waits for F9. j needs F8-a, so it waits for F8. The legacy price CSV generator is dropped. Desktop-first. |
 | F9 Account | a server-side sessions · b profile + password + re-auth API · c avatar · d TOTP enrolment · e 2FA at sign-in · f OAuth backend + owner guide · g OAuth UI · h API key · i account shell + profile UI · j security + API UI · k scheduled account deletion | f and g just before F12 (the owner creates the OAuth apps following the guide). New deps to approve (D-F9-10). |
-| F11 Close | c about + licences · d retire Jinja (user modules) · e retire Jinja (admin + leftovers) · f legacy schema cleanup (optional) · g E2E + axe harness · h a11y fixes + audit · i performance · j final docs | a (public feeds API) and b (new landing) move with F8, after production. |
+| F11 Close | c about + licences · d, e retire Jinja (**done early**, PRs 1-3/3 of the Jinja retirement, 2026-11-08) · f legacy schema cleanup (optional; `rbdecks`, `rbcol_playset`, `rbcar_banned`, ...) · g E2E + axe harness · h a11y fixes + audit · i performance · j final docs | a (public feeds API) and b (new landing) move with F8, after production. |
 | F12 Production | a server config + logging · b CSP enforcing · c release artifact + deploy script · d backups + restore check · e monitoring + alerting · f production Nginx template + runbook · h licensing + privacy pages · i data export/import (optional) · j go-live record | g (card images out of the code tree) moved to unit M-d. b depended on F11-b (new landing), now after production: see the F12 spec. Many USER steps (host level). |
 | F15 Rules app | outline only | `docs/requirements/F15/README.md`. Specified when the phase starts. |
 | F8 Events | a model + read API · b manual events + saves · c ICS + feed · d scraper import job · e results + stats API · f UI upcoming + forms · g UI calendar/history/results · h push reminders | After F15 and F5-k, with F11-a/b. The scraper starts with the upcoming-events calendar of the official site; past events when a source exists. |

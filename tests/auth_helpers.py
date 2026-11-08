@@ -1,16 +1,8 @@
-"""Small helpers for tests that deal with CSRF tokens (unit d)."""
-import re
+"""Small helpers for tests that deal with CSRF tokens and cookies (unit d).
 
-META_TOKEN = re.compile(r'<meta\s+name="csrf-token"\s+content="([^"]*)"')
-FORM_TOKEN = re.compile(r'<input[^>]*name="csrf_token"[^>]*value="([^"]*)"')
-
-
-def meta_token(client, path='/riftbound/login', **kwargs):
-    """The token a browser would read from `<meta name="csrf-token">` of `path`."""
-    html = client.get(path, **kwargs).get_data(as_text=True)
-    match = META_TOKEN.search(html)
-    assert match and match.group(1), f'no csrf-token meta tag on {path}'
-    return match.group(1)
+The CSRF token comes from GET /auth/session (`tests.conftest.api_csrf_token`): the
+Jinja pages that carried it in a meta tag or a form field are gone.
+"""
 
 
 def token_payload(token):
@@ -18,12 +10,6 @@ def token_payload(token):
     timestamp, so two renders a second apart differ as strings but carry the
     same payload."""
     return token.rsplit('.', 2)[0]
-
-
-def form_token(html):
-    """The hidden `csrf_token` input of a rendered form, or None."""
-    match = FORM_TOKEN.search(html)
-    return match.group(1) if match else None
 
 
 HTTPS = 'https://localhost'

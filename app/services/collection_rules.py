@@ -1,4 +1,4 @@
-"""Collection rules shared by the Jinja routes and the JSON API (F3-a S5).
+"""Collection rules of the JSON API (F3-a S5).
 
 Pure functions plus one helper that applies the legacy rule to a row. Nothing
 here touches the request or commits.

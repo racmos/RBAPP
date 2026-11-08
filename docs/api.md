@@ -1,7 +1,7 @@
 # API
 
-JSON API of Rift Manager. Jinja pages keep their own flat `{"success": ...}` bodies;
-everything under `/riftbound/api/v1/` uses the envelope below.
+JSON API of Rift Manager. Everything under `/riftbound/api/v1/` uses the envelope below (the
+Jinja web and its flat `{"success": ...}` endpoints were retired, PR 3/3 of the Jinja retirement).
 
 ## Envelope
 
@@ -229,19 +229,20 @@ ignored), `format=rbapp|cardmarket` (default `rbapp`; anything else -> 400 `vali
 `text/csv; charset=utf-8`, starts with a UTF-8 BOM, is streamed one row at a time (the filtered
 lines are held in memory to order them) and carries `Content-Disposition: attachment` and
 `X-Rows-Exported: <n>`. A text cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage
-return gets a leading `'` so a spreadsheet does not read it as a formula (the Jinja export is not
-changed).
+return gets a leading `'` so a spreadsheet does not read it as a formula.
 
 - **RBAPP** (`rbapp_collection_<YYYYMMDDHHMMSS>.csv`, UTC): comma, minimal quoting, `\n`; header
   `set_id,card_id,name,foil,qty,condition,language,purchase_price,selling,sell_qty,sell_price`;
   one row per line in `sort=number` order; `foil` `S`/`N`, `selling` `Y`/`N`, prices with a dot and
   two decimals, empty when null. Re-importable by F3-e.
-- **Cardmarket** (`<YYYYMMDDHHMMSS>_cardmarket.csv`): same bytes as the Jinja export
+- **Cardmarket** (`<YYYYMMDDHHMMSS>_cardmarket.csv`): same bytes as the old Jinja export
   (`QUOTE_ALL`, `\n`, header `name,language,quantity,price`, ordered by card name then non-foil
   first): only `selling` lines with `sell_qty` > 0; `name` is the Cardmarket product name of the
   mapped product (exact foil mapping, else unclassified, else any; newest `rbcm_products` row),
   else the card name; `quantity` is `sell_qty`; `price` is `sell_price`, else the market price,
-  else `0.00`, formatted with `{:.2f}` like the Jinja export. A golden test compares both.
+  else `0.00`, formatted with `{:.2f}` like the Jinja export. A golden test compares the output with
+  the Jinja route's bytes, frozen in `tests/fixtures/collection_export_cardmarket_golden.csv` before the
+  route was removed.
 
 ### Collection import (F3-e)
 
@@ -954,8 +955,8 @@ Timestamps are naive UTC ISO strings, as in `GET /admin/jobs`.
 ### Cardmarket matching (CM-b)
 
 `app/api/admin/cardmarket_matching.py`, logic in `app/services/cardmarket_matching.py`. Port of
-the legacy Jinja admin endpoints of `price_bp` (`/riftbound/price/cardmarket-*`, `ignored/*`;
-behaviour pinned in `tests/test_legacy_price_characterization.py`, the legacy file is unchanged).
+the legacy Jinja admin endpoints of `price_bp` (`/riftbound/price/cardmarket-*`, `ignored/*`; removed
+with the Jinja web, PR 3/3 of its retirement).
 A **link** is one `rbcm_product_card_map` row: a Cardmarket product id to a card and a foil slot
 (`N`, `S` or `null`; two `null`s are the same slot, `null` and `N` are not). **Products are
 linked by Cardmarket id**: `rbproducts` is keyed by the Cardmarket id and `products_refresh`

@@ -279,9 +279,8 @@ class TestBansOwnedAndDecks:
 
     def test_in_decks_of_the_other_user(self, authenticated_client, app):
         _seed_detail(app)
-        other = app.test_client()
-        other.post('/riftbound/login', data={'username': 'otheruser',
-                                             'password': 'testpass123'})
+        from tests.conftest import login_as
+        other = login_as(app.test_client(), 'otheruser')
         decks = other.get(URL).get_json()['data']['in_decks']
         assert [(d['name'], d['qty']) for d in decks] == [('Aggro', 3)]
 

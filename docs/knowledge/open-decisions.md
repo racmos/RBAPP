@@ -92,7 +92,7 @@ The order of the sections follows the phase order of `roadmap.md`.
 
 ## F5 Decks v2
 
-- **D-F5-1** — new head/version tables: *yes.* · **D-F5-2** — Jinja deck pages read-only after migration: *yes.*
+- **D-F5-1** — new head/version tables: *yes.* · **D-F5-2** — Jinja deck pages read-only after migration: *yes;* superseded 2026-11-08: the pages were removed (0 decks left to migrate).
 - **D-F5-3** — when a new version is created. · **D-F5-4** — what a public link shows.
 - **D-F5-5** — import sample files (riftdecks, piltover): *the owner provides them.*
 - **D-F5-7** — name collation. · **D-F5-8** — where the shared Python/TS rule cases live.
@@ -134,11 +134,11 @@ The landing decisions (D-F11-1, D-F11-2, D-F11-7, D-F11-10, D-F11-11) are asked 
 with F8, after production.
 
 - **D-F11-1** — landing as a second Vite entry. · **D-F11-2** — landing shows real feeds only.
-- **D-F11-3** — permanent 301 redirects from Jinja URLs. · **D-F11-4** — Playwright E2E in CI.
+- **D-F11-3** — permanent 301 redirects from Jinja URLs: *owner 2026-11-08: 302, not 301 (the landing returns at `/` in F8); done in PR 3/3 of the Jinja retirement.* · **D-F11-4** — Playwright E2E in CI.
 - **D-F11-5** — Lighthouse manual with thresholds. · **D-F11-6** — Riot disclaimer: English verbatim + Spanish.
-- **D-F11-7** — replace the 5.3 MB landing frame animation. · **D-F11-8** — delete legacy JSON endpoints.
+- **D-F11-7** — replace the 5.3 MB landing frame animation. · **D-F11-8** — delete legacy JSON endpoints: *done with the Jinja web (2026-11-08).*
 - **D-F11-9** — drop obsolete columns (optional unit). · **D-F11-10** — landing ES + EN. · **D-F11-11** — landing design from tokens.
-- **D-F11-12** — what `/` shows between go-live and the new landing (F11-b): *hide the placeholder blocks with fabricated items (small change in F11-d or F12); full rebuild with F8.*
+- **D-F11-12** — what `/` shows between go-live and the new landing (F11-b): *hide the placeholder blocks with fabricated items (small change in F11-d or F12); full rebuild with F8.* Owner 2026-11-08: `/` redirects (302) to the app until F8.
 
 ## F12 Production
 
