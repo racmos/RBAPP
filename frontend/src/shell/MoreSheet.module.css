@@ -52,10 +52,6 @@
     flex: 1;
   }
 
-  .out {
-    color: var(--muted-2);
-  }
-
   .logout {
     display: flex;
     align-items: center;

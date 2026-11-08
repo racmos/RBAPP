@@ -297,15 +297,6 @@
     border-bottom: 0;
   }
 
-  .deckLink {
-    color: var(--text);
-    text-decoration: none;
-  }
-
-  .deckLink:hover {
-    color: var(--accent);
-  }
-
   /* Mobile: one column (default). */
 
   /* Tablet: two columns. */

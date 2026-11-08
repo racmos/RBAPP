@@ -16,7 +16,6 @@ import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { legacyHref } from '@/shell/legacyRoutes';
 import { AddSheet } from './AddSheet';
 import { BulkBar } from './BulkBar';
 import { CollectionFilters } from './CollectionFilters';
@@ -243,9 +242,6 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
                 <Link className={styles.tool} to="/collection/import">
                   {t('import.open')}
                 </Link>
-                <a className={styles.classic} href={legacyHref('collection')}>
-                  {t('classic')}
-                </a>
               </>
             }
           />

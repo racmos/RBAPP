@@ -16,7 +16,6 @@ import { useDocumentTitle } from '@/i18n';
 import { up } from '@/lib/breakpoints';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { legacyHref } from '@/shell/legacyRoutes';
 import { DeckCardActions } from './DeckCardActions';
 import { ImportDeckModal, NewDeckModal } from './DeckCreate';
 import { DeckListToolbar } from './DeckListToolbar';
@@ -242,9 +241,6 @@ export function DecksPage() {
       <PageHeader title={t('title')} subtitle={t('subtitle')} actions={actions} />
       {offline && <p className={styles.note}>{tCommon('offline.editDisabled')}</p>}
       {body}
-      <a className={styles.classic} href={legacyHref('decks')}>
-        {t('classic')}
-      </a>
       <NewDeckModal open={creating === 'new'} onClose={() => setCreating(null)} />
       <ImportDeckModal open={creating === 'import'} onClose={() => setCreating(null)} />
     </div>

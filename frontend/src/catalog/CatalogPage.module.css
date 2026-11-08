@@ -43,16 +43,6 @@
     min-width: 0;
   }
 
-  .classic {
-    font-size: 13px;
-    color: var(--muted);
-    text-decoration: underline;
-  }
-
-  .classic:hover {
-    color: var(--accent);
-  }
-
   .search {
     margin-block: 16px;
   }

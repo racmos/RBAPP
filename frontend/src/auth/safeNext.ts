@@ -1,4 +1,4 @@
-/** Where to go after sign-in: inside the router, or to a legacy Jinja page with a full load. */
+/** Where to go after sign-in: inside the router, or to another `/riftbound/` page with a full load. */
 export type NextTarget = { kind: 'router'; to: string } | { kind: 'document'; href: string };
 
 export const HOME: NextTarget = { kind: 'router', to: '/' };

@@ -51,10 +51,7 @@ describe.each([390, 1000])('CollectionPage at %i px (F3-g S2-S3)', (width) => {
     expect(await screen.findByRole('button', { name: /Ayla/ })).toBeVisible();
     expect(screen.getByRole('button', { name: /Ember Wisp/ })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add card' })).toBeEnabled();
-    expect(screen.getByRole('link', { name: 'Classic version' })).toHaveAttribute(
-      'href',
-      '/riftbound/collection',
-    );
+    expect(screen.queryByRole('link', { name: 'Classic version' })).not.toBeInTheDocument();
   }, 15000);
 
   it('is axe clean', async () => {
@@ -281,13 +278,12 @@ describe('CollectionPage layout (owner feedback S18 a, e, m)', () => {
     expect(screen.getAllByRole('button', { name: 'Add card' })).toHaveLength(1);
   }, 15000);
 
-  it('lines the classic link up with the header buttons', () => {
+  it('lines the header tools up with the header buttons', () => {
     expect(value(headerCss, '.actions', 'align-items')).toBe('center');
     for (const css of [pageCss, desktopCss]) {
-      expect(value(css, '.classic', 'display')).toBe('inline-flex');
-      expect(value(css, '.classic', 'align-items')).toBe('center');
-      expect(value(css, '.classic', 'min-height')).toBe(value(css, '.tool', 'min-height'));
-      expect(value(css, '.classic', 'white-space')).toBe('nowrap');
+      expect(value(css, '.tool', 'display')).toBe('inline-flex');
+      expect(value(css, '.tool', 'align-items')).toBe('center');
+      expect(value(css, '.classic', 'display')).toBeUndefined();
     }
   });
 });

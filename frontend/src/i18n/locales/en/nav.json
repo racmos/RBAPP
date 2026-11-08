@@ -13,11 +13,10 @@
     "label": "More",
     "title": "More options",
     "account": "Account",
-    "modules": "Classic modules"
+    "modules": "Modules"
   },
   "hub": {
     "subtitle": "Pick a module to get started.",
-    "classic": "Classic version",
     "account": "Your account",
     "customize": "Customize the interface",
     "customizeHint": "Density, accent, background and collection view."
@@ -30,14 +29,6 @@
     "interface": {
       "label": "Interface",
       "description": "Density, accent, background and collection view"
-    },
-    "dashboard": {
-      "label": "Dashboard",
-      "description": "A summary of your activity"
-    },
-    "sets": {
-      "label": "Sets",
-      "description": "Game expansions"
     },
     "cards": {
       "label": "Cards",
@@ -62,10 +53,6 @@
     "profile": {
       "label": "Profile",
       "description": "Your account details"
-    },
-    "price": {
-      "label": "Prices",
-      "description": "Pricing tools"
     },
     "admin": {
       "label": "Admin",

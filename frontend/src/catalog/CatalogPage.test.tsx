@@ -21,6 +21,7 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     expect(await screen.findByRole('heading', { name: 'Cards' }, LONG)).toBeVisible();
     expect(await screen.findByRole('link', { name: /Ayla/ }, LONG)).toBeVisible();
     expect(screen.getByText('6 cards')).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Classic version' })).not.toBeInTheDocument();
   });
 
   it('debounces the search input and uses replace', async () => {

@@ -1,6 +1,5 @@
 {
   "title": "Collection",
-  "classic": "Classic version",
   "summary": {
     "line": "Copies: {{qty}} · Unique: {{unique}} · Value: {{value}}",
     "copies": "Copies",

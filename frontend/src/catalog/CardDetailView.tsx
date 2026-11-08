@@ -14,7 +14,6 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
 import { formatDate, formatMoney } from '@/lib/format';
-import { legacyHref } from '@/shell/legacyRoutes';
 import { CardPriceHistory } from './CardPriceHistory';
 import styles from './CardDetailView.module.css';
 
@@ -273,13 +272,9 @@ export function CardDetailView({
             ) : (
               <ul className={styles.deckList}>
                 {card.in_decks.map((deck) => (
+                  // `deck_id` is not an app deck id yet, so the name is not a link
                   <li key={deck.deck_id}>
-                    <a
-                      href={`${legacyHref('decks')}/view/${deck.deck_id}`}
-                      className={styles.deckLink}
-                    >
-                      {deck.name} — {t('detail.decks.qty', { count: deck.qty })}
-                    </a>
+                    {deck.name} — {t('detail.decks.qty', { count: deck.qty })}
                   </li>
                 ))}
               </ul>

@@ -142,7 +142,7 @@ describe('DecksPage at 390 px (F5-h stage 1)', () => {
     ).toEqual(['No legend', 'No champion', 'Main deck size', 'And 3 more']);
   }, 20000);
 
-  it('the nav entry opens the decks in the app and the classic page stays linked', async () => {
+  it('the nav entry opens the decks in the app, with no link to the old web', async () => {
     withDecks();
     signedIn();
     await renderApp({ path: '/', width: 1280 });
@@ -151,10 +151,7 @@ describe('DecksPage at 390 px (F5-h stage 1)', () => {
     for (const link of links) expect(link).toHaveAttribute('href', '/riftbound/app/decks');
     await userEvent.click(links[0]);
     await list();
-    expect(screen.getByRole('link', { name: 'Classic version' })).toHaveAttribute(
-      'href',
-      '/riftbound/deck',
-    );
+    expect(screen.queryByRole('link', { name: 'Classic version' })).not.toBeInTheDocument();
   }, 20000);
 
   it('empty: says so, with New deck and Import', async () => {
