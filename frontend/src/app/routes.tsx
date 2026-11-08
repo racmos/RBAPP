@@ -79,6 +79,12 @@ export function createAppRoutes(
                   }),
                 },
                 {
+                  path: '/account/profile',
+                  lazy: async () => ({
+                    Component: (await import('@/account/ProfilePage')).ProfilePage,
+                  }),
+                },
+                {
                   path: '/cards',
                   lazy: async () => ({
                     Component: (await import('@/catalog/CatalogPage')).CatalogPage,

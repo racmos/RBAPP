@@ -5,6 +5,7 @@
     "rate_limited": "Too many requests. Try again in {{retry_after}} s.",
     "username_taken": "That username is already taken.",
     "email_taken": "That email is already registered.",
+    "current_password_incorrect": "The current password is incorrect.",
     "captcha_failed": "The security check failed. Please try again.",
     "csrf_invalid": "The form session has expired. Please try again.",
     "unauthenticated": "Your session has expired. Please sign in again.",

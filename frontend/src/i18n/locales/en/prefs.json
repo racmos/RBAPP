@@ -37,6 +37,35 @@
       "button": "Primary button",
       "row": "Sample row",
       "badge": "New"
+    },
+    "profileLink": "Email and password"
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Your account details: username, email and password.",
+    "interfaceLink": "Interface settings",
+    "account": "Account",
+    "username": "Username",
+    "usernameHint": "Your username cannot be changed.",
+    "email": {
+      "title": "Email",
+      "hint": "The address linked to your account.",
+      "label": "Email",
+      "save": "Save email",
+      "saving": "Saving…",
+      "saved": "Email updated."
+    },
+    "password": {
+      "title": "Password",
+      "hint": "Enter your current password to set a new one. You stay signed in.",
+      "current": "Current password",
+      "new": "New password",
+      "newHint": "Between 8 and 128 characters.",
+      "confirm": "Confirm new password",
+      "mismatch": "The passwords do not match.",
+      "save": "Change password",
+      "saving": "Changing…",
+      "saved": "Password changed."
     }
   }
 }

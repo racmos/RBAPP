@@ -870,6 +870,16 @@ class ProfileUpdate(BaseModel):
         return self
 
 
+class AccountUpdate(ProfileUpdate):
+    """PATCH /me/account: a ProfileUpdate that must change something."""
+
+    @model_validator(mode='after')
+    def something_to_change(self):
+        if self.email is None and self.password is None:
+            raise ValueError('Send an email or a new password')
+        return self
+
+
 # ============== Price Schemas ==============
 
 class PriceGenerate(BaseModel):

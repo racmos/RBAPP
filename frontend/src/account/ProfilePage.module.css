@@ -1,0 +1,70 @@
+@layer components {
+  .layout {
+    display: grid;
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .form {
+    display: grid;
+    gap: 16px;
+    padding-top: 6px;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .text {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+
+  .label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .hint {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .value {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent-bright);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .notice {
+    margin: 0 0 var(--gap);
+    padding: 10px 12px;
+    border: 1px solid var(--accent-ring);
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    font-size: 14px;
+  }
+
+  /* From lg the email and password forms sit side by side under the account card. */
+  @media (min-width: 960px) {
+    .layout {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+  }
+}

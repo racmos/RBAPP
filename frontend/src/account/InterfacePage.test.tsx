@@ -87,3 +87,15 @@ describe('Interface page: playset size (F3-g S8)', () => {
     expect(patches.filter((p) => 'playset_size' in p)).toEqual([]);
   }, 20000);
 });
+
+describe('Interface page: links', () => {
+  it('links to the profile page', async () => {
+    signedIn();
+    await renderApp({ path: '/account/interface', width: 390 });
+    await screen.findByRole('spinbutton', { name: 'Playset size' }, LONG);
+    expect(screen.getByRole('link', { name: 'Email and password' })).toHaveAttribute(
+      'href',
+      '/riftbound/app/account/profile',
+    );
+  }, 15000);
+});

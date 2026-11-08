@@ -40,6 +40,7 @@ class ErrorCode(StrEnum):
                                                        # params.max, params.requested, 409
     LOCATION_LOCKED = 'location_locked'           # the location is locked (quantities read-only,
                                                   # a locked deck location stays), 409
+    CURRENT_PASSWORD_INCORRECT = 'current_password_incorrect'  # wrong current password, 400
     DECK_LIMIT_EXCEEDED = 'deck_limit_exceeded'   # a deck breaks a hard limit (F5-R9);
                                                   # params.rule, params.max, params.name?, 400
 
