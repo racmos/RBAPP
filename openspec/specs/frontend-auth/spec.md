@@ -2,6 +2,8 @@
 
 Source: change f1-app-shell (archived 2026-10-22)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** FAUTH-11 (session shared with Jinja) is moot: the Jinja pages are gone and their URLs redirect to the app.
+
 > Tags: all requirements are unit `[d]` of change f1-app-shell unless stated. `[vitest]` = Vitest + Testing Library + MSW (jsdom). `[MANUAL]` = browser check. The SPA lives at `/riftbound/app/` (router basename `/riftbound/app`) and shares ONE session cookie with the Jinja pages: logging in or out in either applies to both. The SPA consumes the F0 API (`/riftbound/api/v1`) and the F1 additions of api-v1.
 
 ## Requirements

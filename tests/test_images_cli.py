@@ -85,15 +85,23 @@ class TestImportLegacy:
 
     def test_the_default_source_is_the_static_cards_folder(self, app, cli, tmp_path,
                                                           card_images_dir):
+        # <app package>/static/images/cards, read from disk: the app serves no static URL.
         static = tmp_path / 'static'
         (static / 'images' / 'cards' / 'ogs').mkdir(parents=True)
         (static / 'images' / 'cards' / '.gitkeep').write_bytes(b'')
         (static / 'images' / 'cards' / 'ogs' / 'ogs_1.png').write_bytes(PNG)
-        app.static_folder = str(static)
+        app.root_path = str(tmp_path)
         result = cli('import-legacy')
         assert result.exit_code == 0, result.output
         assert result.stdout == 'Copied 1, skipped 0 existing, ignored 1.\n'
         assert (card_images_dir / 'ogs' / 'ogs_1.png').read_bytes() == PNG
+
+    def test_the_app_root_is_the_app_package_and_nothing_is_served_from_static(self, app,
+                                                                               client):
+        assert app.root_path == os.path.dirname(os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..', 'app', '__init__.py')))
+        assert app.static_folder is None
+        assert client.get('/riftbound/static/images/cards/.gitkeep').status_code == 404
 
     def test_an_empty_source_copies_nothing(self, cli, tmp_path, card_images_dir):
         (tmp_path / 'empty').mkdir()

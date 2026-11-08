@@ -21,7 +21,7 @@ CONFIG_ENV_NAMES = (
     # unit d
     'SESSION_COOKIE_SECURE', 'REMEMBER_COOKIE_SECURE', 'WTF_CSRF_ENABLED',
     'RATELIMIT_ENABLED', 'RATELIMIT_STORAGE_URI', 'CAPTCHA_PROVIDER', 'ALTCHA_HMAC_KEY',
-    'ALTCHA_EXPIRE_SECONDS', 'ALTCHA_MAX_NUMBER', 'LANDING_CACHE_TTL',
+    'ALTCHA_EXPIRE_SECONDS', 'ALTCHA_MAX_NUMBER',
     'LOGIN_MAX_FAILURES', 'LOGIN_LOCK_BASE_MINUTES', 'LOGIN_LOCK_MAX_MINUTES',
     # F1 unit b
     'FRONTEND_DIST',
@@ -100,12 +100,7 @@ def authenticated_client(app, client):
         db.session.add(user)
         db.session.commit()
         
-        # Login
-        client.post('/riftbound/login', data={
-            'username': 'testuser',
-            'password': 'testpass123'
-        }, follow_redirects=True)
-        
+        login_as(client, 'testuser')
         yield client
 
 
@@ -135,9 +130,23 @@ def make_user(app):
     return _make
 
 
-def login_as(client, username, password=DEFAULT_PASSWORD):
-    """Log `client` in through the real login form."""
-    client.post('/riftbound/login', data={'username': username, 'password': password})
+API_LOGIN = '/riftbound/api/v1/auth/login'
+API_SESSION = '/riftbound/api/v1/auth/session'
+
+
+def api_csrf_token(client, **kwargs):
+    """The CSRF token the API hands out (GET /auth/session), as the React app reads it."""
+    return client.get(API_SESSION, **kwargs).get_json()['data']['csrf_token']
+
+
+def login_as(client, username, password=DEFAULT_PASSWORD, **kwargs):
+    """Log `client` in through the JSON API (POST /auth/login), with the session's CSRF
+    token so it also works on an app with CSRF on. `kwargs` go to both requests
+    (`base_url=...`)."""
+    token = api_csrf_token(client, **kwargs)
+    response = client.post(API_LOGIN, json={'username': username, 'password': password},
+                           headers={'X-CSRFToken': token}, **kwargs)
+    assert response.status_code == 200, response.get_json()
     return client
 
 
@@ -203,9 +212,8 @@ def sample_card(app, sample_set):
 # turn ONE protection on, on top of `app`, so they combine with `make_user`,
 # `admin_client` and friends.
 #
-# Fixture ORDER matters when a test also asks for a logged-in client:
-# `admin_client` and `other_user_client` log in through the real form, so
-# request them BEFORE `csrf_app` (the login would otherwise need a token).
+# `login_as` (and the logged-in client fixtures) send the CSRF token of
+# GET /auth/session, so they work in any order with `csrf_app`.
 
 @pytest.fixture
 def csrf_app(app):

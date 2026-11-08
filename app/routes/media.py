@@ -3,7 +3,7 @@
   GET /riftbound/media/cards/<folder>/<filename>  -> CARD_IMAGES_DIR/<folder>/<filename>
   GET /riftbound/media/products/<filename>        -> PRODUCT_IMAGES_DIR/<filename>
 
-Public, like the static files; the URLs come from `RbCard.image_src`
+Public; the URLs come from `RbCard.image_src`
 (`app.services.card_images.card_image_url`) and `ProductSummary.image_src`
 (`app.services.product_images.product_image_url`). `folder` must be letters and
 digits and `filename` a plain file name (product images also need a png, jpg, jpeg
@@ -11,8 +11,7 @@ or webp extension); anything else, a missing file, a folder or a symlink that
 resolves outside the root is a 404. Images are cached for a week.
 
 The route never touches `session` or `current_user`, so no response carries a
-`Set-Cookie`. Its 404 is a minimal answer, not the Jinja error page, because
-`base.html` would write the session (same reason as `app/routes/spa.py`).
+`Set-Cookie`. Its 404 is a minimal answer of its own (same as `app/routes/spa.py`).
 """
 from flask import Blueprint, make_response, send_from_directory
 

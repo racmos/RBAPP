@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** CSRF-1 and CSRF-5 still hold (every unsafe rule of the app, now all API, guarded by `tests/test_api_auth_guards.py`). CSRF-2 HTML pages are the inline error page of `app/errors.py`. CSRF-3 (meta tag, `csrf.js`, hidden form fields) and the logout form of CSRF-4 went with the Jinja web; clients read the token from `GET /auth/session` and log out with `POST /auth/logout`.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. `[MANUAL]` = manual/browser check. Untagged scenarios are pytest-testable with the `csrf_app` fixture (CSRF enabled). The default test config keeps CSRF disabled so the 93 baseline tests are untouched.
 
 ## Requirements

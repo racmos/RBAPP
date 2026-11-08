@@ -2,6 +2,8 @@
 
 Source: change f1-app-shell (archived 2026-10-22)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** SHELL-10 (Jinja coexistence, "Nueva app" link) and the `legacy` nav status no longer apply: the Jinja web is gone and the old URLs redirect to the app.
+
 > Tags: all requirements are unit `[e]` of change f1-app-shell. `[vitest]` = Vitest + Testing Library (jsdom; viewport set per scenario). Untagged backend scenarios are pytest-testable. Breakpoints: `md` = 860 px (navigation switch). Brand name: "Rift Manager".
 
 ## Requirements

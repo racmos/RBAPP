@@ -15,7 +15,8 @@ from config import engine_options, load_settings, resolve_env, validate_settings
 db = SQLAlchemy()
 migrate = Migrate()
 login = LoginManager()
-login.login_view = 'auth.login'
+# No login view: the React app hosts the login screen, `unauthorized` below redirects to it.
+login.login_view = None
 # CSRF for every unsafe method, no exemptions (CSRF-1, D14).
 csrf = CSRFProtect()
 # Per-IP limits (LOGIN-7, D15). get_remote_address reads request.remote_addr,
@@ -75,9 +76,9 @@ def create_app(**overrides):
     _maybe_load_dotenv()
     env = resolve_env(os.environ)
 
-    app = Flask(__name__,
-                static_folder=os.path.join(_APP_DIR, 'static'),
-                static_url_path='/riftbound/static')
+    # No static route: the Jinja web is gone and nothing is served from app/static
+    # (`flask images import-legacy` reads app/static/images/cards from disk).
+    app = Flask(__name__, static_folder=None)
     app.config.update(load_settings(env, os.environ))
 
     # Apply test configuration overrides before initializing extensions
@@ -118,12 +119,7 @@ def create_app(**overrides):
                 if 'riftbound' not in attached:
                     cursor.execute('ATTACH DATABASE ":memory:" AS riftbound')
                 cursor.close()
-    
-    # Make min/max available in all templates
-    from builtins import min as _min, max as _max
-    app.jinja_env.globals['min'] = _min
-    app.jinja_env.globals['max'] = _max
-    
+
     db.init_app(app)
     migrate.init_app(app, db, directory=MIGRATIONS_DIR, **MIGRATE_OPTIONS)
     from app.cli import register_cli
@@ -143,36 +139,13 @@ def create_app(**overrides):
         x_prefix=0,
     )
 
-    # Landing page (root /)
-    from app.routes.landing import landing_bp
-    app.register_blueprint(landing_bp)
-
     # Card images (/riftbound/media/cards/), served from CARD_IMAGES_DIR (M-d)
     from app.routes.media import media_bp
     app.register_blueprint(media_bp)
 
-    from app.routes.routes import main_bp
-    app.register_blueprint(main_bp)
-    
-    # Register auth blueprint
-    from app.routes.auth import auth_bp
-    app.register_blueprint(auth_bp)
-    
-    # Register domain blueprints
-    from app.routes.domains import (
-        sets_bp,
-        cards_bp,
-        collection_bp,
-        deck_bp,
-        price_bp,
-        profile_bp,
-    )
-    app.register_blueprint(sets_bp)
-    app.register_blueprint(cards_bp)
-    app.register_blueprint(collection_bp)
-    app.register_blueprint(deck_bp)
-    app.register_blueprint(price_bp)
-    app.register_blueprint(profile_bp)
+    # `/`, `/riftbound/` and the old Jinja pages: 302 to the app (Jinja retirement)
+    from app.routes.redirects import redirects_bp
+    app.register_blueprint(redirects_bp)
 
     # Single-page app (/riftbound/app/), served from FRONTEND_DIST
     from app.routes.spa import spa_bp
@@ -189,32 +162,23 @@ def create_app(**overrides):
     @login.user_loader
     def load_user(id):
         return User.query.get(int(id))
-    
-    # Custom Jinja filter for pagination
-    @app.template_filter('first_val')
-    def first_val(value):
-        """Convert multi-value dict to single values for URL building"""
-        if isinstance(value, dict):
-            return {k: v[0] if isinstance(v, list) and len(v) > 0 else v 
-                    for k, v in value.items()}
-        return value
-    
+
     # Register error handlers
     from app.errors import register_error_handlers
     register_error_handlers(app)
 
     @login.unauthorized_handler
     def unauthorized():
-        """Not logged in (API-8, D18): JSON 401 for JSON clients, else the usual
-        flash and redirect to the login page (with `next`)."""
-        from flask import flash, redirect, request
-        from flask_login.utils import login_url
+        """Not logged in (API-8, D18): JSON 401 for JSON clients, else a redirect
+        to the app's login screen with `next` = the requested path and query."""
+        from flask import redirect, request
         from app.api.error_codes import ErrorCode
         from app.errors import json_error, wants_json
+        from app.routes.redirects import login_location
         if wants_json():
             return json_error('Unauthorized', 'Authentication is required', 401,
                               code=ErrorCode.UNAUTHENTICATED)
-        flash(login.login_message, login.login_message_category)
-        return redirect(login_url(login.login_view, request.url))
+        query = request.query_string.decode('latin-1')
+        return redirect(login_location(request.path + (f'?{query}' if query else '')))
 
     return app

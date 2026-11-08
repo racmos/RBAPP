@@ -1,6 +1,6 @@
 """`riot_sync`: keep the catalog in line with the Riot gallery (F13-c, D-F13-5).
 
-Manual runs queue `trigger=manual` (the legacy Jinja button, F13-e later);
+Manual runs queue `trigger=manual` (POST /admin/riot/sync);
 the F13-d timers queue `trigger=schedule` with `--param slot=am|pm` (the slot
 is accepted and ignored here). Any failure is a `JobFailed`, so the job ends
 `error` and nothing half-written stays (one transaction per set).

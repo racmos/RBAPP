@@ -2,6 +2,8 @@
 
 Source: change f1-app-shell (archived 2026-10-22)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** There are no Jinja pages left for the worker to leave uncontrolled; the old URLs are 302 redirects into the app.
+
 > Tags: all requirements are unit `[f]` of change f1-app-shell. `[build]` = asserted by a test/script over the production build output (`dist/`). `[vitest]` = Vitest + Testing Library. `[GH-CI]` = observable in GitHub Actions. `[MANUAL]` = real device/browser check. Identity: app name "Rift Manager". The SW never controls or caches Jinja pages or the API; the installed window may still open Jinja pages (manifest scope is wider than SW scope).
 
 ## Requirements

@@ -67,7 +67,8 @@ class TestServe:
         assert again.data == b''
 
     def test_the_old_static_url_does_not_serve_the_images_root(self, images, client):
-        # A name that exists only in CARD_IMAGES_DIR: the old prefix is plain static now.
+        # A name that exists only in CARD_IMAGES_DIR: the old prefix serves nothing at all
+        # (no static route since the Jinja web was retired).
         (images / 'ogn' / 'ogn_only_in_data.png').write_bytes(PNG)
         assert client.get(f'{MEDIA}/ogn/ogn_only_in_data.png').status_code == 200
         old = client.get('/riftbound/static/images/cards/ogn/ogn_only_in_data.png')

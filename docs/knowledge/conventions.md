@@ -48,8 +48,8 @@ repeat everything in it. Architecture and file locations: `docs/knowledge/archit
 unit writes the tests for the behaviour it adds or changes. When a unit touches an area whose old
 guard was removed, it re-creates that guard in its smallest form: a migration → a round-trip and
 model/schema drift test for that revision (`tests/migration_helpers.py`); new UI strings → the ES/EN
-parity test; a new error code → the backend/frontend catalog test; a new legacy link → the
-legacy-routes check against the Flask `url_map`; a new pinned version → the pin check. The last
+parity test; a new error code → the backend/frontend catalog test; a new pinned version → the pin
+check. The login protections are guarded through the API by `tests/test_api_auth_guards.py`. The last
 commit with the old suites is `902047c6579e5ee670e1fb4b103a941159b85c00`; recover any file with `git show 902047c6579e5ee670e1fb4b103a941159b85c00:<path>`.
 
 - Write the failing test first and RUN it to see it fail for the right reason (RED) before writing the
@@ -72,13 +72,13 @@ commit with the old suites is `902047c6579e5ee670e1fb4b103a941159b85c00`; recove
 
 ### Structure and style
 - Routes are thin; logic goes in `app/services/` (no Flask request objects there). Read the patterns in
-  `app/routes/domains/` and `app/services/` before writing.
+  `app/api/` and `app/services/` before writing.
 - PEP 8, type hints where useful. `db.session.commit()` after writes.
 - New code gets time from `app.utils.clock.utcnow()` called through the module
   (`from app.utils import clock`), never `from ... import utcnow`, so tests can freeze it
-  (`frozen_clock`). Older collection and deck routes still use `datetime.utcnow()`; do not copy that.
-- Keep URLs under `/riftbound`; only the landing page and its partials (`/`, `/api/*`, `/frames/*`) live
-  outside it. New JSON API routes go in the
+  (`frozen_clock`).
+- Keep URLs under `/riftbound`; only the `/` redirect (the F8 landing later) lives outside it. The old
+  Jinja URLs are 302 redirects to the app (`app/routes/redirects.py`). New JSON API routes go in the
   `api_v1` blueprint (`/riftbound/api/v1`); nothing may shadow `/riftbound/app/` (a test checks no existing
   rule lives under that prefix).
 
@@ -86,33 +86,32 @@ commit with the old suites is `902047c6579e5ee670e1fb4b103a941159b85c00`; recove
 - Every endpoint that receives JSON uses `@validate_json(Schema)` and reads `request.validated_data`. The
   schema goes in `app/schemas/validators.py`.
 - API v1 answers with `ok(...)` / `fail(...)` from `app/api/responses.py`: `{success, data, meta}` or
-  `{success: false, error, message, details?, code?, params?}`. Legacy endpoints keep their flat
-  `{"success": true, ...}` shape; do not change an existing legacy response shape without a requirement.
+  `{success: false, error, message, details?, code?, params?}`.
 - Error `code`s are a contract: add the `ErrorCode` / `DetailCode` value, the `code.<value>` (or
   `validation.<value>`) entry in BOTH `frontend/src/i18n/locales/{es,en}/errors.json`, and keep
   the backend/frontend catalog test green (the unit that adds the code re-creates it, see section 3).
 - Codes are additive and lowercase snake_case; `params` are JSON scalars; no secrets, stack traces or
   internals in `message`, `code` or `params`.
-- 500 responses never include exception text. Log the exception, return the generic message. (Some old
-  admin endpoints still leak `str(e)`; do not copy them.)
+- 500 responses never include exception text. Log the exception, return the generic message.
 - An error response must follow `wants_json()`: JSON for `/riftbound/api/` paths, JSON bodies and
-  `Accept` preferring JSON; HTML otherwise.
+  `Accept` preferring JSON; HTML (the inline `html_error_page`, no templates) otherwise.
 
 ### Authorization and data scope
 - Classify every new URL rule as P, U or A in `tests/test_authz_matrix.py` (`MATRIX`). An unclassified rule
   fails the suite and names the rule. Enforced by that test.
-- All routes except login, register, the landing page, the SPA host and the public API endpoints require
-  login. Admin routes use `@admin_required` (or a blueprint `before_request(require_admin)`);
-  anonymous callers are redirected to login or get a JSON 401, never 403; signed-in non-admins get 403.
+- All routes except the old-URL redirects, the SPA host, the media files and the public API endpoints
+  require login. Admin routes go in the `api_admin` blueprint (`before_request(require_admin)`);
+  anonymous callers get a JSON 401 (or the redirect to the app's login for HTML), never 403; signed-in
+  non-admins get 403.
 - `is_admin` and `is_blocked` change only through `flask users ...`; never from request input, a migration or an
   environment variable.
 - Never trust ids from the client. Collection and deck queries are scoped to the signed-in user by
   `current_user.username` (collection rows use the helper `_get_owned_row`, which 404s on someone else's row).
   Deck name lookups only resolve the viewer's own decks; opening another user's deck is by id only.
-- Every `POST`/`PUT`/`PATCH`/`DELETE` needs the CSRF token (`X-CSRFToken` header or `csrf_token` form
-  field). There are no exemptions, the API included. Never exempt a view.
-- Sensitive endpoints (login, register and any new one open to anonymous callers) get a Flask-Limiter limit;
-  the Jinja form and the API of the same action share one `scope`.
+- Every `POST`/`PUT`/`PATCH`/`DELETE` needs the CSRF token (`X-CSRFToken` header, from
+  `GET /auth/session`). There are no exemptions, the API included. Never exempt a view.
+- Sensitive endpoints (login, register and any new one open to anonymous callers) get a Flask-Limiter limit
+  with its own `scope`.
 - File uploads and image paths go through `app/services/card_images.py`. Outbound URLs chosen by a user or an
   admin go through an allow-list (`CARDMARKET_ALLOWED_HOSTS`, https only).
 - Passwords: Werkzeug hashing, 8 to 128 characters, one rule everywhere (`PASSWORD_MIN_LENGTH`).
@@ -179,15 +178,13 @@ commit with the old suites is `902047c6579e5ee670e1fb4b103a941159b85c00`; recove
 - Dev-only code is guarded by `import.meta.env.DEV` (the `/_kitchen` route) so the build drops it.
 - No inline `<script>` in the SPA (the F1 design keeps the door open for a CSP) and no third-party font
   hosts (`check-dist` fails on `fonts.googleapis.com` / `fonts.gstatic.com`). Fonts are self-hosted.
-  (The legacy Jinja `base.html` still loads Font Awesome from a CDN; that is not a pattern to copy.)
 - Use the existing UI primitives in `src/components/ui/` (list in `architecture.md`, section 7.8) and extend
   them when a phase needs more; do not hand-roll a second button, field, modal, toast or empty state.
 - Module navigation comes from `src/shell/navRegistry.ts` (single list for topbar, bottom nav, "Más" sheet and
-  hub); do not add a second list of modules. To port a module, flip its entry from `legacy` to `spa`, add the
-  route, add `nav.json` labels (both languages). the keys of `legacy-routes.json` must exist in the
-  Flask `url_map`; a unit that adds a legacy link adds the legacy-routes check (section 3).
+  hub); do not add a second list of modules. A new module is a `spa` entry, its route and its `nav.json`
+  labels; the app never links to a Jinja page (the Jinja web is gone).
 - Edits are disabled while offline: use `useOffline()` from `@/auth`. Offline in F1 is shell only; do not add
-  runtime caching of `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages to the service worker without a
+  runtime caching of `/riftbound/api/*` or any non-app path to the service worker without a
   requirement (PWA-3).
 - Dates, numbers and money use `src/lib/format.ts` (`es-ES` / `en-GB`, EUR); money is EUR only.
 
@@ -287,15 +284,12 @@ List them with `git ls-files --eol | grep -E 'i/(crlf|mixed)'`. The CRLF set tod
   (`.gitignore` is mixed);
 - docs and SQL: `docs/nginx_config`, `docs/riftbound.service`, `migrations/legacy_sql/database_setup.sql`;
 - app Python: `app/__init__.py`, `app/errors.py`, `app/models/{__init__,card,collection,market,set,user}.py`,
-  `app/routes/{auth,routes}.py`, `app/routes/domains/{__init__,cards,profile,sets}.py`,
   `app/schemas/{__init__,validation}.py`;
-- templates: `base`, `cards`, `deck`, `deck_view`, `login`, `profile`, `register`, `sets`, `errors/*`,
-  `landing/components/*`; static: `app/static/css/style.css`, `app/static/landing/js/camera-scroll.js`;
 - tests: `tests/__init__.py`, `tests/conftest.py`.
 
 LF (do not convert): all of `frontend/`, `app/api/`, `app/cli/`, `app/services/`, `app/utils/`,
 `app/schemas/{validators,prefs_domain}.py`, the newer models (`deck`, `cardmarket`, `captcha`, `prefs`),
-`app/routes/{landing,spa}.py`, `app/routes/domains/{collection,deck,price}.py`, `migrations/versions/`, the other
+`app/routes/{media,redirects,spa}.py`, `migrations/versions/`, the other
 `docs/*.md`, `openspec/`, `.github/`, and every test file except the two above.
 
 ## 9. Known traps

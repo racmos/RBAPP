@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** The Jinja login/register forms are gone; its rules hold for the JSON API (`/auth/login`, `/auth/register`) and are guarded by `tests/test_api_auth_guards.py`.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. `[MANUAL]` = manual/ops check. Untagged scenarios are pytest-testable; time-dependent ones use an injectable test clock (no sleeping). Default test config has rate limiting, captcha and CSRF OFF (`RATELIMIT_ENABLED=False`, `CAPTCHA_PROVIDER=none`, `WTF_CSRF_ENABLED=False`) so the 93 baseline tests are unaffected; dedicated fixtures turn each on. Applies to the Jinja forms (`/riftbound/login`, `/riftbound/register`) in unit d and to the API (see api-v1) through one shared auth service. "Locked response" = HTTP 429 with integer `Retry-After` (seconds) and the generic message "Invalid credentials or account temporarily locked".
 
 ## Requirements

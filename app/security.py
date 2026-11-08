@@ -2,12 +2,13 @@
 Authorization helpers (ACL-3, D11).
 
 `admin_required` guards single views; `require_admin` is the same check as a
-`before_request` hook (`price_bp.before_request(require_admin)`), so every
+`before_request` hook (`api_admin.before_request(require_admin)`), so every
 route of a blueprint, including ones added later, is covered.
 
-Order of the checks: not logged in -> the usual login redirect (never 403);
-logged in but not admin -> 403, rendered by the error handler as JSON for JSON
-clients and as `errors/403.html` for browsers.
+Order of the checks: not logged in -> the unauthorized handler (JSON 401, or a
+redirect to the app's login screen; never 403); logged in but not admin -> 403,
+rendered by the error handler as JSON for JSON clients and as the inline error
+page for browsers.
 """
 from functools import wraps
 

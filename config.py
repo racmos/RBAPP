@@ -196,7 +196,7 @@ def _session_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
 
 
 def _protection_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
-    """CSRF, rate limiter, lockout, captcha and landing cache (unit d).
+    """CSRF, rate limiter, lockout and captcha (unit d).
 
     The three protections default to ON everywhere except `testing`, where the
     93 baseline tests rely on them being off; dedicated fixtures turn them on.
@@ -232,7 +232,6 @@ def _protection_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]
         'ALTCHA_HMAC_KEY': (environ.get('ALTCHA_HMAC_KEY') or '').strip() or None,
         'ALTCHA_EXPIRE_SECONDS': _int_setting(environ, 'ALTCHA_EXPIRE_SECONDS', 300),
         'ALTCHA_MAX_NUMBER': _int_setting(environ, 'ALTCHA_MAX_NUMBER', 1_000_000),
-        'LANDING_CACHE_TTL': _int_setting(environ, 'LANDING_CACHE_TTL', 300),
     }
 
 

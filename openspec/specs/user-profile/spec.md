@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** `POST /riftbound/profile/update` was removed with the Jinja web (`/riftbound/profile` answers a 302 to `/riftbound/app/account/profile`). PROF-1..PROF-3 now hold for `PATCH /riftbound/api/v1/me/account` (`docs/api.md` → "PATCH /me/account").
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. All scenarios are pytest-testable. Endpoint: `POST /riftbound/profile/update` (JSON, `@validate_json`), session user only. Errors use `{success:false,error,message}`.
 
 ## Requirements

@@ -1,6 +1,7 @@
 """F3-d S1-S4 (AC1, AC2): GET /collection/export in the RBAPP and Cardmarket formats."""
 import csv
 import io
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +11,7 @@ from tests.collection_read_helpers import line, seed_all, seed_catalog, seed_lin
 
 URL = '/riftbound/api/v1/collection/export'
 BOM = b'\xef\xbb\xbf'
+GOLDEN = Path(__file__).resolve().parent / 'fixtures' / 'collection_export_cardmarket_golden.csv'
 
 
 @pytest.fixture
@@ -110,6 +112,10 @@ class TestCardmarketFormat:
 
 
 class TestGoldenAgainstTheJinjaExport:
+    """The Cardmarket file stays byte-identical to the old Jinja export (F3-d). The Jinja
+    route is gone (PR 3/3 of the Jinja retirement); its bytes for this scenario, checked
+    equal to the API output before the removal, are frozen in GOLDEN."""
+
     def test_same_bytes_after_the_bom(self, app, api):
         with app.app_context():
             db.session.add_all([
@@ -121,13 +127,13 @@ class TestGoldenAgainstTheJinjaExport:
             db.session.add(RbcmProduct(rbprd_date='20261020', rbprd_id_product=11,
                                        rbprd_name='Alpha Fury (Foil)', rbprd_type='single'))
             db.session.commit()
-        jinja = api.post('/riftbound/collection/export_csv',
-                         json={'rbset_id': 'OGN', 'rarity': 'Common'})
+        jinja = GOLDEN.read_bytes()
         mine = export(api, format='cardmarket', set='OGN', rarity='Common')
-        assert jinja.status_code == mine.status_code == 200
-        assert jinja.get_data().startswith(BOM) and mine.get_data().startswith(BOM)
-        assert mine.get_data() == jinja.get_data()
-        assert mine.headers['X-Rows-Exported'] == jinja.headers['X-Rows-Exported'] == '3'
+        assert mine.status_code == 200
+        assert jinja.startswith(BOM) and mine.get_data().startswith(BOM)
+        assert mine.get_data() == jinja
+        assert mine.headers['X-Rows-Exported'] == '3'
+        assert jinja.count(b'\n') - 1 == 3              # the Jinja X-Rows-Exported
 
 
 class TestHeadersAndStreaming:

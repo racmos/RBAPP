@@ -1,6 +1,6 @@
 # Rift Manager
 
-Web application to manage the Riftbound trading card game: user accounts, card sets and cards, your collection, decks, Cardmarket prices, and a public landing page. Flask + PostgreSQL, with a JSON API (`/riftbound/api/v1`) for a future React client.
+Web application to manage the Riftbound trading card game: user accounts, card sets and cards, your collection, decks and Cardmarket prices. Flask + PostgreSQL serve a JSON API (`/riftbound/api/v1`) and the React app at `/riftbound/app/` (the old Jinja web was retired; its URLs redirect to the app).
 
 Developer and agent conventions live in [AGENTS.md](AGENTS.md); the migration runbook in [docs/migrations.md](docs/migrations.md).
 
@@ -35,11 +35,10 @@ Settings come from environment variables only (see [.env.example](.env.example),
 | `SESSION_COOKIE_SECURE`, `REMEMBER_COOKIE_SECURE` | Secure flag of the cookies (default: on in production only) |
 | `WTF_CSRF_ENABLED` | CSRF protection kill switch (default on) |
 | `RATELIMIT_ENABLED`, `RATELIMIT_STORAGE_URI` | Per-IP rate limits and their storage (default on, `memory://`) |
-| `CAPTCHA_PROVIDER` | `altcha` (default) or `none`; ALTCHA on the register form |
+| `CAPTCHA_PROVIDER` | `altcha` (default) or `none`; ALTCHA on register |
 | `SPA_CSP` | `report-only` (default) or `off`: the `Content-Security-Policy-Report-Only` header of the new app (see `docs/frontend.md`) |
 | `ALTCHA_HMAC_KEY`, `ALTCHA_EXPIRE_SECONDS`, `ALTCHA_MAX_NUMBER` | ALTCHA signing key, challenge lifetime and difficulty |
 | `LOGIN_MAX_FAILURES`, `LOGIN_LOCK_BASE_MINUTES`, `LOGIN_LOCK_MAX_MINUTES` | Account lockout (5 failures, 15 minutes, doubling up to 24 hours) |
-| `LANDING_CACHE_TTL` | Seconds the landing feeds are cached per worker (0 = off) |
 | `CARDMARKET_ALLOWED_HOSTS` | Hosts the Cardmarket loader may download from |
 | `RB_LEGACY_BACKUP_DIR` | Where migration 0002 saves the legacy tables (contains personal data, never commit) |
 | `FRONTEND_DIST` | Directory with the built new app, served at `/riftbound/app/` (default `<project>/frontend/dist`; see [New app hosting](#new-app-hosting)) |
@@ -51,7 +50,7 @@ Settings come from environment variables only (see [.env.example](.env.example),
 python run.py        # http://127.0.0.1:5000/riftbound (loopback only, debug off)
 ```
 
-The landing page is at `/`; the application at `/riftbound`.
+The application is at `/riftbound/app/` (build it first, see [New app hosting](#new-app-hosting)); `/` and `/riftbound/` redirect there until the new landing page (F8).
 
 ## Tests
 
@@ -133,6 +132,6 @@ gunicorn --workers 3 --bind 0.0.0.0:8000 run:app
 ```
 
 - systemd unit: [docs/riftbound.service](docs/riftbound.service). It reads the settings from `/etc/riftbound/riftbound.env` (mode 640, owner `root:www-data`) with at least `RB_ENV=production`, `SECRET_KEY` and `DATABASE_URL`.
-- Nginx template: [docs/nginx_config](docs/nginx_config). One Flask app serves `/` (landing) and `/riftbound/`. The proxy must send `Host`, `X-Forwarded-For` and `X-Forwarded-Proto` and must not strip `Referer`; the app trusts exactly one proxy hop.
+- Nginx template: [docs/nginx_config](docs/nginx_config). One Flask app serves `/` (a redirect to the app for now) and `/riftbound/`. The proxy must send `Host`, `X-Forwarded-For` and `X-Forwarded-Proto` and must not strip `Referer`; the app trusts exactly one proxy hop.
 - Firewall port 8000 so only the Nginx host can reach Gunicorn.
 - To upgrade: back up the database, `pip install -r requirements.txt`, `flask db upgrade`, `flask db check`, restart the service. Order matters; follow [docs/migrations.md](docs/migrations.md).

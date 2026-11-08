@@ -1,9 +1,8 @@
 """Session endpoints of the JSON API (API-4..7).
 
-They use the same services, lockout and rate limits as the Jinja forms
-(`app.services.auth`, `app.services.captcha`), so both front doors behave the
-same. CSRF is not exempt: a client reads the token from GET /auth/session and
-sends it as `X-CSRFToken`.
+Login, lockout and registration live in `app.services.auth` and
+`app.services.captcha`. CSRF is not exempt: a client reads the token from
+GET /auth/session and sends it as `X-CSRFToken`.
 """
 from flask import request
 from flask_login import current_user, login_required, login_user, logout_user

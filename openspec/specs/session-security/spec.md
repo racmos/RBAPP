@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19); updated by change f1-app-shell (archived 2026-10-22)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** The Jinja form login is gone; the remember-cookie and session rules hold for `POST /auth/login` (`tests/test_api_auth_guards.py`).
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. `[MANUAL]` = manual/ops check. Untagged scenarios are pytest-testable (HTTPS simulated with `base_url='https://localhost'`).
 >
 > F1 Tags: unit `[c]` of change f1-app-shell. `[MANUAL]` = manual/ops check. Untagged scenarios are pytest-testable (HTTPS simulated with `base_url='https://localhost'`). The Jinja form login is unchanged (no "remember me" option there; out of scope). Reason: an installed PWA has its own cookie jar and loses a browser-session cookie every time it is closed.

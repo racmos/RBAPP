@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19); updated by change f1-app-shell (archived 2026-10-22)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** Anonymous HTML clients of a protected non-API page are redirected to `/riftbound/app/login?next=<path>` (no flash), not to `/riftbound/login`; the landing `/api/*` routes no longer exist. The JSON rules are unchanged.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation; every requirement here is unit `[e]`. All routes are under `/riftbound/api/v1`. Success envelope: `{"success":true,"data":<object>,"meta":<object, optional>}`. Error envelope: `{"success":false,"error":"<name>","message":"<text>","details":[...optional]}`. Legacy Jinja-era JSON endpoints stay flat and unchanged. All scenarios are pytest-testable (SQLite) unless tagged.
 >
 > F1 Tags: all requirements of this delta are unit `[c]` of change f1-app-shell. All routes are under `/riftbound/api/v1`. Success envelope: `{"success":true,"data":<object>,"meta":<object, optional>}`. Error envelope: `{"success":false,"error":"<name>","message":"<text>","details":[...optional],"code":"<snake_case, optional>","params":{...optional}}`. Changes are additive: existing fields, status codes and F0 tests stay valid. `GET`/`PATCH /me/prefs` are specified in capability `ui-preferences` (PREF-3, PREF-4). Scenarios are pytest-testable (SQLite) unless tagged.

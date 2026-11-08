@@ -506,9 +506,3 @@ class TestUnmap:
         assert body['message'] == 'Cardmarket expansion 12 is not mapped.'
         assert audits() == []
 
-
-class TestLegacyUntouched:
-    def test_the_legacy_endpoints_still_answer(self, admin_client, data):
-        resp = admin_client.get('/riftbound/price/cardmarket-unmapped-expansions')
-        assert resp.status_code == 200
-        assert [e['rbexp_id'] for e in resp.get_json()['expansions']] == [12, 13]

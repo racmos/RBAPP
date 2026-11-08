@@ -21,8 +21,8 @@ Work arrives as a unit requirement in `docs/requirements/F<n>/F<n>-<x>-<slug>.md
 - Personal collection tracking (quantities, foil, playsets, selling)
 - Deck building and deck viewing
 - Cardmarket prices (admin tools) and price resolution
-- A public landing page (news, tournaments, videos, decks)
-- A JSON API (`/riftbound/api/v1`) for the future React client
+- A React single-page app at `/riftbound/app/` (the old Jinja web was retired; `/` redirects to the app until the new landing page of F8)
+- A JSON API (`/riftbound/api/v1`) for the React app
 
 ## Technology Stack
 
@@ -50,7 +50,7 @@ The exact pins live in `requirements.txt`; if you change one, update this table 
 riftbound/
 ├── app/
 │   ├── __init__.py          # App factory, extensions (db, migrate, login, csrf, limiter), blueprints
-│   ├── errors.py            # Error handlers + wants_json() (JSON or HTML negotiation)
+│   ├── errors.py            # Error handlers + wants_json() (JSON or HTML negotiation) + html_error_page() (minimal inline page)
 │   ├── security.py          # admin_required / require_admin
 │   ├── db_schema.py         # Schema name + Alembic options shared by the app and migrations/env.py
 │   ├── api/                 # JSON API
@@ -101,7 +101,7 @@ riftbound/
 │   │   ├── set.py           # RbSet (rbset)
 │   │   ├── card.py          # RbCard (rbcards)
 │   │   ├── collection.py    # RbCollection (rbcollection)
-│   │   ├── deck.py          # RbDeck (rbdecks): legacy decks, read and written by the Jinja deck pages
+│   │   ├── deck.py          # RbDeck (rbdecks): legacy decks, no longer written (copied to v2 by `flask decks migrate`; F11 drops it)
 │   │   ├── deck_v2.py       # RbDeckHead (rbdeckheads), RbDeckVersion (rbdeckversions): decks v2 (F5-c)
 │   │   ├── market.py        # RbCardMarket (rbcardmarket)
 │   │   ├── cardmarket.py    # Rbcm* models (rbcm_* tables, Cardmarket loader) and RbProducts (rbproducts)
@@ -115,18 +115,9 @@ riftbound/
 │   │   ├── snapshot.py      # RbValueSnapshot (rbvaluesnaps): daily collection value per user (F4-c)
 │   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto; playset size (F3-a)
 │   ├── routes/
-│   │   ├── auth.py          # Login / register / logout (Jinja forms)
-│   │   ├── landing.py       # Public landing page and its HTMX partials (/ and /api/*)
 │   │   ├── media.py         # media_bp: card images from CARD_IMAGES_DIR at /riftbound/media/cards/
-│   │   ├── spa.py           # spa_bp: serves the React build from FRONTEND_DIST at /riftbound/app/
-│   │   ├── routes.py        # Dashboard + domain blueprint imports
-│   │   └── domains/         # Domain routes
-│   │       ├── sets.py      # Sets
-│   │       ├── cards.py     # Cards + image upload
-│   │       ├── collection.py # Collection management, import/export
-│   │       ├── deck.py      # Decks
-│   │       ├── price.py     # Cardmarket loading and matching (admin only)
-│   │       └── profile.py   # Profile updates
+│   │   ├── redirects.py     # legacy_redirects: `/`, `/riftbound/` and the old Jinja URLs -> 302 to the app
+│   │   └── spa.py           # spa_bp: serves the React build from FRONTEND_DIST at /riftbound/app/
 │   ├── services/            # Business logic, no Flask request objects
 │   │   ├── account.py       # update_account: email and/or password of the signed-in user (PATCH /me/account)
 │   │   ├── auth.py          # authenticate (lockout), register_user, unlock_user
@@ -167,8 +158,7 @@ riftbound/
 │   │   ├── cardmarket_loader.py
 │   │   ├── cardmarket_matcher.py
 │   │   ├── riot_scraper.py    # gallery fetch + parse only; writes go through riot_sync.py
-│   │   ├── riot_sync.py     # fetch_gallery, window_for, sync (per-set savepoints)
-│   │   └── scraper.py       # Landing feeds with a TTL cache
+│   │   └── riot_sync.py     # fetch_gallery, window_for, sync (per-set savepoints)
 │   ├── schemas/             # Pydantic
 │   │   ├── deck_content.py  # DeckContentV2: shape of a v2 deck version (F5-R6), VISIBILITIES (F5-c)
 │   │   ├── game_domain.py   # Game enumerations (modes, domains, types, supertypes, rarities) and DECK_RULES (F5-a), the single source for schemas and CHECKs (F2-b; see docs/api.md)
@@ -177,15 +167,7 @@ riftbound/
 │   │   └── validation.py    # @validate_json decorator
 │   ├── utils/
 │   │   └── clock.py         # utcnow() (patched in tests)
-│   ├── templates/           # Jinja2 templates; errors/ and landing/ inside
-│   └── static/              # Static files
-│       ├── css/
-│       ├── js/
-│       │   └── csrf.js      # fetch wrapper that adds X-CSRFToken
-│       ├── vendor/
-│       │   └── altcha/      # Vendored ALTCHA widget (pinned version)
-│       ├── landing/         # Landing page assets
-│       └── images/
+│   └── static/images/cards/ # `.gitkeep` only: default source of `flask images import-legacy` (never served)
 ├── migrations/              # Alembic
 │   ├── env.py
 │   ├── versions/            # 0001_baseline ... one file per revision
@@ -261,8 +243,8 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 - `rbproducts` (F14-a): keyed by `rbpdt_id_product` (`rbpdt_id_set` nullable), with `rbpdt_category`, `rbpdt_kind` (CHECK `rbproducts_kind_chk`), `rbpdt_kind_locked`, `rbpdt_set_locked`, `rbpdt_hidden`, `rbpdt_listed`, `rbpdt_updated_at`; only `rbpdt_type = 'nonsingle'` rows are products; `products_refresh` never deletes (a product that leaves the file gets `rbpdt_listed = false`)
-- `rbcollection` (F3-a): `rbcol_sell_qty` (0..quantity) is the number of copies for sale and `rbcol_purchase_price` the optional unit purchase price; `rbcol_selling` is only `Y` or `N`; **`rbcol_playset` is deprecated** (read only by the Jinja collection, dropped in F11); the Jinja writes keep `rbcol_sell_qty` coherent through `app/services/collection_rules.py`. Playset size per user is `rbuserprefs.rbprf_playset_size` (NULL = 3) and the "keep a playset" marks are `rbkeepplayset` (one row per user and `name_key`)
-- `rbdeckheads` / `rbdeckversions` (F5-c, migration `0025_decks_v2`): decks v2. A head (`rbdkh_user_id` → `rbusers.id`, name unique per user, mode, visibility, share slug, current version, `rbdkh_legacy_name`) has versions (`rbdkv_seq` unique per deck, `rbdkv_content` = content v2 validated by `app/schemas/deck_content.py`, `rbdkv_legacy_id` = the `rbdecks.id` it was copied from). `flask decks migrate [--dry-run] [--strict]` copies the legacy decks (dry run first, see `docs/knowledge/ops-runbook.md` → "Decks v2 migration"); `rbdecks` stays the Jinja source until the read-only switch (F5-h, F5-d L6)
+- `rbcollection` (F3-a): `rbcol_sell_qty` (0..quantity) is the number of copies for sale and `rbcol_purchase_price` the optional unit purchase price; `rbcol_selling` is only `Y` or `N`; **`rbcol_playset` is deprecated** (no longer read since the Jinja web was retired; dropped in F11). Playset size per user is `rbuserprefs.rbprf_playset_size` (NULL = 3) and the "keep a playset" marks are `rbkeepplayset` (one row per user and `name_key`)
+- `rbdeckheads` / `rbdeckversions` (F5-c, migration `0025_decks_v2`): decks v2. A head (`rbdkh_user_id` → `rbusers.id`, name unique per user, mode, visibility, share slug, current version, `rbdkh_legacy_name`) has versions (`rbdkv_seq` unique per deck, `rbdkv_content` = content v2 validated by `app/schemas/deck_content.py`, `rbdkv_legacy_id` = the `rbdecks.id` it was copied from). `flask decks migrate [--dry-run] [--strict]` copies the legacy decks (dry run first, see `docs/knowledge/ops-runbook.md` → "Decks v2 migration"); `rbdecks` is no longer written since the Jinja deck pages were retired (F11 drops it)
 
 ### Column Naming
 - snake_case with the table prefix: `rbcar_name`, `rbcol_quantity`, `rbdck_snapshot`
@@ -270,32 +252,26 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 - `rbcol_quantity` is an integer (1..9999); never store numbers as text.
 
 ### URL Routes
-- Every route uses the `/riftbound` prefix (Nginx reverse proxy); the landing page lives at `/`.
-- Legacy JSON endpoints stay flat (`{"success": true, ...}`); the API v1 uses the envelope below.
+- Every route uses the `/riftbound` prefix (Nginx reverse proxy); `/` only redirects to the app (the F8 landing page will live there).
+- The API v1 uses the envelope below.
 
 ### Blueprints
-`landing_bp`, `media_bp`, `main_bp` (dashboard), `auth_bp`, `sets_bp`, `cards_bp`, `collection_bp`, `deck_bp`, `price_bp`, `profile_bp` and `api_v1` (JSON API).
+`media_bp`, `legacy_redirects`, `spa_bp`, `api_v1` (JSON API) and `api_admin` (admin JSON API). The Jinja web (landing, dashboard, auth forms, sets, cards, collection, decks, price tools, profile, templates, static assets) was retired in PR 3/3 of its retirement.
+
+### Old URLs (`legacy_redirects`)
+`app/routes/redirects.py`, public, GET/HEAD only (POST is a 405), never touches the session. 302 (not 301: the landing returns at `/` in F8): `/`, `/riftbound`, `/riftbound/` and `/riftbound/set` → `/riftbound/app/`; `/riftbound/login` → `/riftbound/app/login` (keeps `next` when it is a safe `/riftbound/` path, same checks as `auth/safeNext.ts`); `/riftbound/register` → `/riftbound/app/register`; `/riftbound/card` → `/riftbound/app/cards`; `/riftbound/collection` → `/riftbound/app/collection`; `/riftbound/deck` and `/riftbound/deck/view/<any>` → `/riftbound/app/decks`; `/riftbound/profile` → `/riftbound/app/account/profile`; `/riftbound/price` → `/riftbound/app/admin/cardmarket`. Registered before `spa_bp`.
 
 ### SPA hosting (`spa_bp`)
-`app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise, never the Jinja error templates). The `index.html` responses carry `Content-Security-Policy-Report-Only` (`SPA_CSP=report-only`, the default, or `off`; any other value stops the app with `ConfigError`); no other response gets a CSP. It is registered after the domain blueprints; Tests get a temporary dist from the `spa_dist` / `spa_app` fixtures, no Node needed. See `docs/frontend.md`.
+`app/routes/spa.py` serves the frontend build (`FRONTEND_DIST`, default `frontend/dist`, read per request) at `/riftbound/app/`. Public, never touches the session, so no `Set-Cookie`. `assets/*` are immutable; everything else is `no-cache`. A path without a file extension gets `index.html`; a missing file with an extension is a real 404; no build is a 503 (JSON for JSON clients, a minimal inline page otherwise). The `index.html` responses carry `Content-Security-Policy-Report-Only` (`SPA_CSP=report-only`, the default, or `off`; any other value stops the app with `ConfigError`); no other response gets a CSP. It is registered after `legacy_redirects`; Tests get a temporary dist from the `spa_dist` / `spa_app` fixtures, no Node needed. See `docs/frontend.md`.
 
 ### Card images (`media_bp`)
-Card images live in `CARD_IMAGES_DIR`, never in git (`/data/` is git-ignored; `app/static/images/cards/` keeps only `.gitkeep`). `app/services/card_images.py` is the only module that knows the directory: `images_root()`, `card_image_path(image, set_id=None)` (every write: admin upload, Riot scraper) and `card_image_url(image, set_id=None)`, which `RbCard.image_src` returns: `/riftbound/media/cards/<folder>/<image>`. `app/routes/media.py` serves it (endpoint `media.card_image`, public): the folder must be letters and digits and the file a plain name, otherwise 404, as are missing files, folders and symlinks resolving outside the root; `Cache-Control: public, max-age=604800`; it never touches the session (no `Set-Cookie`; its 404 skips the Jinja error page). The old `/riftbound/static/images/cards/...` URLs no longer serve the images. `flask images import-legacy [--source PATH]` copies `<folder>/<file>` images (default source `app/static/images/cards`) into `CARD_IMAGES_DIR`, never overwriting (`docs/knowledge/ops-runbook.md` → "Card images"). Tests use the `card_images_dir` fixture (a temporary `CARD_IMAGES_DIR`) and never touch the real images.
-
-### Color Scheme (Dark Teal Theme)
-| Element | Color | Hex |
-|---------|-------|-----|
-| Background | Dark Teal | #013951 |
-| Hover | Deep Teal | #1a4c62 |
-| Accent (buttons) | Cyan | #00b2cf |
-| Active/Hover | Orange | #ef7d21 |
-| Menu | Black | #111111 |
+Card images live in `CARD_IMAGES_DIR`, never in git (`/data/` is git-ignored; `app/static/images/cards/` keeps only `.gitkeep`). `app/services/card_images.py` is the only module that knows the directory: `images_root()`, `card_image_path(image, set_id=None)` (every write: admin upload, Riot scraper) and `card_image_url(image, set_id=None)`, which `RbCard.image_src` returns: `/riftbound/media/cards/<folder>/<image>`. `app/routes/media.py` serves it (endpoint `media.card_image`, public): the folder must be letters and digits and the file a plain name, otherwise 404, as are missing files, folders and symlinks resolving outside the root; `Cache-Control: public, max-age=604800`; it never touches the session (no `Set-Cookie`; its 404 is a minimal answer of its own). The app has no static route: `/riftbound/static/...` is a 404. `flask images import-legacy [--source PATH]` copies `<folder>/<file>` images (default source `app/static/images/cards`) into `CARD_IMAGES_DIR`, never overwriting (`docs/knowledge/ops-runbook.md` → "Card images"). Tests use the `card_images_dir` fixture (a temporary `CARD_IMAGES_DIR`) and never touch the real images.
 
 ## Roles and Authorization
 
 Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests/test_authz_matrix.py` lists them all and fails, naming the rule, when a new route is not classified: add it there.
 
-- Admin routes use `@admin_required` (`app/security.py`); the whole `price_bp` is guarded by `before_request(require_admin)`. Anonymous callers are sent to login, plain users get 403.
+- Admin routes live in the `api_admin` blueprint, guarded as a whole by `before_request(require_admin)` (`app/security.py`). Anonymous callers get a JSON 401, plain users 403.
 - `is_admin` and `is_blocked` are changed only by the CLI (`flask users promote|demote|block|unblock <username>`), never by request input. A blocked user is rejected exactly like a wrong password.
 - Card bans (`rbcardbans`) are changed only by the CLI (`flask bans add|remove`) until the F10 admin UI; signed-in users read them with `GET /bans`.
 - Admin writes record one `rbadminaudit` row in the same transaction (`app/services/audit.py`); admins read the catalog counters with `GET /admin/overview`.
@@ -305,8 +281,7 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 ## CSRF, Sessions and Login Protection
 
 - Every `POST`/`PUT`/`PATCH`/`DELETE` needs a valid token in the `X-CSRFToken` header or the `csrf_token` form field. There are no exemptions, API included. `GET /riftbound/api/v1/auth/session` returns a token for API clients.
-- `base.html` exposes `<meta name="csrf-token">` and loads `static/js/csrf.js`, which adds the header to same-origin `fetch` calls; existing call sites need no change. Forms in Jinja carry a hidden `csrf_token`.
-- Logout is `POST` only (a form with a token).
+- Logout is `POST /auth/logout` only.
 - Session cookies are HttpOnly, SameSite=Lax and Secure in production.
 - Login: 5th consecutive failure locks the account 15 minutes, doubling up to 24 hours; a locked login answers 429 with `Retry-After`. Unlock with `flask users unlock <username>`. Login is limited to 10/minute and 50/hour per IP, register to 5/hour.
 - Registration uses an ALTCHA proof of work (`CAPTCHA_PROVIDER`); solved challenges are stored in `rbcaptcha_used` so they cannot be replayed.
@@ -314,27 +289,27 @@ Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests
 
 ## JSON vs HTML
 
-`wants_json()` in `app/errors.py` decides: JSON when the path is under `/riftbound/api/`, or the body is JSON, or `Accept` prefers `application/json` over `text/html` (a bare `*/*` counts as JSON). A request with no `Accept` header is HTML. Errors, 401 (Flask-Login) and CSRF failures follow it.
+`wants_json()` in `app/errors.py` decides: JSON when the path is under `/riftbound/api/`, or the body is JSON, or `Accept` prefers `application/json` over `text/html` (a bare `*/*` counts as JSON). A request with no `Accept` header is HTML. Errors, 401 (Flask-Login) and CSRF failures follow it. Since the Jinja web was retired the only HTML the backend writes is the redirects and one inline error page (`html_error_page`: status, message, a "Back to the app" link; escaped, no assets, no script, no session cookie; the 429 keeps `Retry-After`). An anonymous HTML request to a protected non-API page is redirected to `/riftbound/app/login?next=<path and query>`.
 
 ## API v1
 
 Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`, `PATCH /me/account`, `GET /bans`, `GET /meta/game`, `GET /cards`, `GET /collection`, `POST /collection`, `PATCH`/`DELETE /collection/<id>`, `POST /collection/<id>/split`, `POST /collection/bulk`, `POST /collection/keep-playset`, `GET /products`, `GET /products/<id>`, `GET /products/<id>/prices`, `GET`/`POST /me/products`, `PATCH`/`DELETE /me/products/<id>`, `GET /collection/export`, `POST /collection/import/preview`, `POST /collection/import/commit`. Decks (F5-d): `GET`/`POST /decks`, `GET`/`PATCH`/`DELETE /decks/<id>`, `PUT /decks/<id>/content`, `GET`/`POST /decks/<id>/versions`, `GET /decks/<id>/versions/<seq>`, `POST /decks/<id>/versions/<seq>/restore`, `GET /decks/<id>/diff?a=&b=`, `POST /decks/<id>/duplicate` (copy of the current content into a new private deck, `(copy)` name); text import/export (F5-e): `POST /decks/import/preview`, `POST /decks/import`, `GET /decks/<id>/export?format=text`; sharing (F5-g): `POST`/`DELETE /decks/<id>/share` (U), `GET /public/decks/<slug>` (P). Locations (F16-b): `GET`/`POST /locations`, `GET /locations/next-code`, `PATCH`/`DELETE /locations/<id>`, `PUT /locations/order`, `GET`/`PUT /collection/<id>/locations`, `POST /collection/<id>/locations/move`. Admin prefix `/riftbound/api/v1/admin` (A): `GET /admin/overview`, `GET/POST /admin/sets`, `PATCH/DELETE /admin/sets/<id>`, `GET/POST /admin/cards`, `PATCH/DELETE /admin/cards/<set>/<id>` and `POST .../image`, `POST /admin/riot/sync`, `GET /admin/jobs`, `GET /admin/jobs/<id>`, `GET /admin/products`, `PATCH /admin/products/<id>`, `POST /admin/products/<id>/image`, `GET /admin/riot/changes`, `POST .../changes/<id>/approve|reject`, `POST .../changes/bulk`, and the Cardmarket load log (CM-a): `GET /admin/cardmarket/loads`, `GET /admin/cardmarket/loads/<date>`, `GET /admin/cardmarket/status`, `POST /admin/cardmarket/load` (queues `daily_prices`; 409 `job_running`), and the Cardmarket matching workbench (CM-b): `GET /admin/cardmarket/unmatched`, `GET /admin/cardmarket/unmatched/<id>/candidates`, `GET`/`POST /admin/cardmarket/links`, `PUT`/`DELETE /admin/cardmarket/links/<id>` (relink in one transaction / unlink; 409 `already_exists` when linked or the slot is taken; products are linked by Cardmarket id), `GET`/`POST /admin/cardmarket/ignored`, `DELETE /admin/cardmarket/ignored/<id>`, `POST /admin/cardmarket/auto-match/preview|apply`, `GET /admin/cardmarket/review`, and the Cardmarket expansions (CM-d): `GET /admin/cardmarket/expansions` (`?unmapped=true`), `PUT /admin/cardmarket/expansions/<id>` (`{set_id}` or `{set_id, create_set}`: creates the set as `POST /admin/sets` does, in the same transaction; returns `previous`), `DELETE /admin/cardmarket/expansions/<id>/mapping`, and the audit log (CM-e): `GET /admin/audit` (`actor`, `action`, `target_type`, `target_id`, `from`, `to`, `page`, `per_page` 50/100/200; newest first) and `GET /admin/audit/facets`; `GET /admin/overview` also carries `cardmarket {last_load, loaded_today, job_status, unmatched, unmapped_expansions}` (see `docs/api.md`).
 
 - `GET /auth/session` returns `{authenticated, csrf_token}` for anonymous callers and `{authenticated, user, prefs, csrf_token}` when signed in. `prefs` always has the six keys `lang`, `density`, `accent`, `bg_intensity`, `collection_view`, `playset_size` (F3-c; `null` = 3 copies); `null` means Auto; the SPA is English-only and ignores `lang` (S21) (a user without a row gets five `null`s and no row is created).
-- `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous. The Jinja login form never remembers.
+- `POST /auth/login` takes `{username, password, remember?}`. `remember` is a strict boolean (default `false`); `true` also issues a 30-day `remember_token` cookie (`REMEMBER_COOKIE_DURATION`, absolute expiry). Logout expires it, and a blocked user stays anonymous.
 - `GET`/`PATCH /me/prefs` (`app/api/v1/me.py`): a key that is absent stays unchanged, `null` resets it to Auto, an invalid value is a 400 and nothing is stored (all-or-nothing), unknown keys are ignored. Domains live in `app/schemas/prefs_domain.py` (shared by the schema and the model CHECKs). Logic is in `app/services/prefs.py`.
-- `PATCH /me/account` (`app/api/v1/me.py`, U, logic `app/services/account.py`, `docs/api.md` → "PATCH /me/account"): `{email?, password?, current_password?}` (at least one of email/password); a new password needs `current_password` (400 `current_password_incorrect` when wrong, nothing written), an email-only change does not; 409 `email_taken` (ignoring case); 10 calls/hour per IP (429 `rate_limited`); returns `{user}` and keeps the session. The React profile page `/account/profile` uses it (nav `profile` is `spa`; the Jinja profile page stays until PR 3 of the Jinja retirement).
+- `PATCH /me/account` (`app/api/v1/me.py`, U, logic `app/services/account.py`, `docs/api.md` → "PATCH /me/account"): `{email?, password?, current_password?}` (at least one of email/password); a new password needs `current_password` (400 `current_password_incorrect` when wrong, nothing written), an email-only change does not; 409 `email_taken` (ignoring case); 10 calls/hour per IP (429 `rate_limited`); returns `{user}` and keeps the session. The React profile page `/account/profile` uses it (nav `profile` is `spa`).
 - `GET /bans` (`app/api/v1/bans.py`, U) returns `{items: [{name, mode, since, reason, printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2` (any other value is a 400 `validation_error`). A ban covers every printing of a card name (`name_key` in `app/services/bans.py`); modes come from `app/schemas/game_domain.py`. Bans are managed with `flask bans list [--mode M]`, `flask bans add NAME --mode 1v1|2v2|all [--since YYYY-MM-DD] [--reason TEXT] [--force]` and `flask bans remove NAME --mode 1v1|2v2|all`. The legacy `rbcar_banned` column is not a source (F11 drops it).
 - `GET /cards/<set_id>/<card_id>` (`api_v1.get_card`, U) returns `CardDetail` (summary + ability, set, price_detail, printings/related `CardMini`, ban_info, my_lines, in_decks); `GET …/prices` (`api_v1.get_card_prices`, U) returns `{range, currency: EUR, foilable, product_id, points}` (`docs/api.md` → "GET /cards/<set>/<id>"). At most 10/4 SQL statements; detail p95 123 ms on dev (6 printings).
 - `GET /cards` (`app/api/v1/cards.py`, U) returns `{data: {items: [CardSummary]}, meta: {page, per_page, total, pages, facets, price_as_of}}` (`docs/api.md` → "GET /cards"): free-text `q`/`text`, 7 repeated facet params, numeric/price ranges, `owned`, `banned_in`, `base_only`, 9 sort keys with nulls-last and natural tiebreak; disjunctive facets in canonical order; at most 12 SQL statements; prices for all matches only with price sort/bounds, else the page only. Query validation via `@validate_query` (`CardListQuery`); same 400 body as `validate_json` with message "Invalid query parameters".
 - Collection import (F3-e, `docs/api.md` → "Collection import"): `POST /collection/import/preview` parses an RBAPP CSV (2 MB, 10 000 rows) into rows with `status` and `reason_codes` and stores them 30 minutes; `POST /collection/import/commit` adds them or replaces the printings in the file, all or nothing. New codes `import_expired` (410) and `import_format_unknown` (400).
-- Decks v2 (F5-d, `app/api/v1/decks.py`, U, `docs/api.md` → "Decks (F5-d)"): only the owner sees a deck (another user's id or an unknown id/seq is a 404 on every route). `GET /decks` lists `{legend, champion, domains, counts, value, legal, issues}` per deck (value excludes the workbench; 9 SQL statements whatever the number of decks); `PUT /decks/<id>/content` autosaves the current version, refuses hard limits with 400 `deck_limit_exceeded` `params {rule, max, name?}` and unknown cards with `validation_error`; soft rules come back as `legality` (both modes, bans read on every request). `POST …/versions` and `…/restore` always add a new current version; `diff` compares two versions per zone and printing. The Jinja deck pages keep writing `rbdecks` until the F5-h switch.
+- Decks v2 (F5-d, `app/api/v1/decks.py`, U, `docs/api.md` → "Decks (F5-d)"): only the owner sees a deck (another user's id or an unknown id/seq is a 404 on every route). `GET /decks` lists `{legend, champion, domains, counts, value, legal, issues}` per deck (value excludes the workbench; 9 SQL statements whatever the number of decks); `PUT /decks/<id>/content` autosaves the current version, refuses hard limits with 400 `deck_limit_exceeded` `params {rule, max, name?}` and unknown cards with `validation_error`; soft rules come back as `legality` (both modes, bans read on every request). `POST …/versions` and `…/restore` always add a new current version; `diff` compares two versions per zone and printing.
 - Deck sharing (F5-g, `app/services/deck_share.py`, `docs/api.md` → "Deck sharing (F5-g)"): `POST /decks/<id>/share` (U) → `{slug, url}` (22 url-safe random chars, unique, idempotent; `url` from the request host + `/riftbound/app/d/<slug>`), `DELETE …/share` (U) → `{share: null}`, the old URL 404s at once and re-sharing draws a new slug; every `DeckHead` carries `share: {slug, url} | null`. `GET /public/decks/<slug>` (`api_v1.public_deck`, **P**, `@limiter.limit('60 per minute')`, `Cache-Control: no-store`, no `Set-Cookie`): `{name, mode, visibility, owner: {username} | null (only when public), updated_at, content, cards, unknown_cards, domains, counts, value, value_unpriced, legality}` without the workbench, `owned_total` null, never ids, email, versions, notes or slugs; unknown, revoked and malformed slugs give the same 404; 7 SQL statements.
 - Deck text import/export (F5-e, `app/services/deck_text.py`, U, `docs/api.md` → "Deck import/export (F5-e)"): one format, the common text every deck site exports (`Legend:`, `Champion:`, `MainDeck:`, `Battlefields:`, `Rune Pool:`, `Sideboard:`, `N Name` lines); `format` `auto|text`, else 400 `import_format_unknown`; text ≤ 64 KB and 2000 lines. The import always loads: unknown or ambiguous names are left out with a warning, wrong-block cards stay in their block (`wrong_zone`), hard limits are stored as is (`hard_limit` warnings; `PUT …/content` refuses them until fixed). The preview writes nothing; the export keeps the content order and excludes the workbench.
 - Products admin (F14-d, `app/api/admin/products.py`, A, `docs/api.md` → "Products (F14-d)"): `PATCH` of `kind` or `set_id` locks the value so `products_refresh` leaves it alone (`kind: null` / `set_id: "auto"` unlock and recompute); `hidden` removes the product from users (owners still see it); `POST .../image` (2 MB, magic bytes) stores `<id>.<ext>` in `PRODUCT_IMAGES_DIR`, served by the public `media.product_image` route. Every write is audited (`product.update`, `product.image`).
 - Owned products (F14-c, `app/api/v1/me_products.py`, U, `docs/api.md` → "Owned products"): `GET /me/products` returns the caller's product lines with a `total {value, lines, qty, unpriced}`; POST merges the same product and purchase price in SQL; PATCH/DELETE of an id that is not the caller's is a 404. **The products total is never part of the collection value**: no collection endpoint or F3 field changed, and `rbvaluesnaps.rbvsn_products_value` is a separate column (users who own only products get a snapshot row with the cards at 0).
 - Products (F14-b, `app/api/v1/products.py`, U, `docs/api.md` → "GET /products"): `GET /products` lists `ProductSummary` (`{id, name, kind, category, set_id, image_src, listed, price {value, source, change_7d_pct, change_30d_pct, as_of} | null, owned_qty}`; contract, additive only) with `q`, `kind[]`, `set[]`, `listed`, 4 sorts (nulls last), disjunctive facets `{kind, set}`, `per_page` 24-96; `GET /products/<id>` adds `description`, latest price `columns` and `lines`; `GET /products/<id>/prices?range=` gives the history. The price is the first non-zero of `avg7`, `trend`, `low` (never foil). Only non-single, non-hidden products; `owned_qty` is 0 until F14-c.
-- `GET /collection/export` (`app/api/v1/collection.py`, U, F3-d, `docs/api.md` → "GET /collection/export"): CSV download, `format=rbapp|cardmarket` (default rbapp) plus the list filters and `only_selling`; UTF-8 BOM, streamed, `X-Rows-Exported`; the Cardmarket file is byte-identical to the Jinja export (golden test), text cells starting with `=+-@` get a leading `'`.
+- `GET /collection/export` (`app/api/v1/collection.py`, U, F3-d, `docs/api.md` → "GET /collection/export"): CSV download, `format=rbapp|cardmarket` (default rbapp) plus the list filters and `only_selling`; UTF-8 BOM, streamed, `X-Rows-Exported`; the Cardmarket file is byte-identical to the old Jinja export (golden bytes frozen in `tests/fixtures/collection_export_cardmarket_golden.csv`), text cells starting with `=+-@` get a leading `'`.
 - Collection writes (F3-c, `app/api/v1/collection.py`, U, `docs/api.md` → "Collection writes"): `POST /collection` merges identical lines, `PATCH /collection/<id>` guards with `if_updated_at` (409 `stale_line`), `DELETE` returns the line so it can be posted back, `split`, `bulk` (all or nothing) and `keep-playset`; quantities that add up change in SQL; ids that are not the user's are a 404. New codes `foil_not_allowed`, `insufficient_quantity`, `stale_line`. Bulk `set.location_id` (F16-x): absent keeps every line's locations, an id puts all the copies of each line there, `null` unassigns them; a locked location that would change is a 409 `location_locked` with `params.codes` and nothing changes.
 - `GET /collection` (`app/api/v1/collection.py`, U, F3-b) returns `{data: {items: [CollectionGroup]}, meta: {page, per_page, total_groups, pages, totals, facets, price_as_of, playset_size}}` (`docs/api.md` → "GET /collection"): groups per printing and foil with their lines, market value and profit/loss, the playset flag, 9 sort keys, line and card filters, disjunctive facets; at most 10 SQL statements. `CollectionLine` and `CollectionGroup` are contracts (additive changes only).
 - `GET /meta/game` (`app/api/v1/meta.py`, P) returns a `GameMeta` (`docs/api.md` → "Data shapes"): modes, domains/types/supertypes/rarities (S1 tuples plus unknown data values), every set with `card_count`, price freshness (`updated_on` from `rbcm_price`, null when empty), `rules: {deck: DECK_RULES}` (F5-a; other keys reserved for F15). Anonymous 200, `Cache-Control: no-cache`. Card objects use `CardSummary` from `app/services/catalog.py::card_summary` (batched prices via `price_summaries`, at most two SQL statements).
@@ -344,18 +319,17 @@ Prefix `/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/sessio
 {"success": false, "error": "Validation Error", "message": "Invalid request data", "details": [{"field": "password", "message": "...", "type": "..."}]}
 ```
 
-Errors may also carry a machine-readable `code` and `params` (`{"code": "locked", "params": {"retry_after": 30}}`); `message` is always the fallback and codeless errors keep the F0 shape. The codes are the `ErrorCode` values of `app/api/error_codes.py`: `invalid_credentials`, `locked`, `rate_limited`, `username_taken`, `email_taken`, `current_password_incorrect`, `captcha_failed`, `csrf_invalid`, `unauthenticated`, `validation_error`, `bad_request` (unreadable body on a `@validate_json` endpoint), `internal_error` (unexpected failure of a legacy endpoint). Each item of `details` keeps `field`, `message`, `type` and adds `code` (`required`, `too_short`, `too_long`, `invalid_format`, `invalid_value`, `out_of_range`) and, when it applies, `params` (`{"min": 8}`). The codes are additive and also appear on the legacy JSON endpoints that use `@validate_json`, the CSRF and 429 handlers and the 401 handler. A new code needs the enum value, the English frontend catalog and the catalog test (`tests/test_error_catalogs.py`). Unexpected failures of legacy endpoints go through `unexpected_failure()` (`app/errors.py`): a clear `message` and `code`, the traceback in the server log, and the exception text only under `detail` for a signed-in admin.
+Errors may also carry a machine-readable `code` and `params` (`{"code": "locked", "params": {"retry_after": 30}}`); `message` is always the fallback and codeless errors keep the F0 shape. The codes are the `ErrorCode` values of `app/api/error_codes.py`: `invalid_credentials`, `locked`, `rate_limited`, `username_taken`, `email_taken`, `current_password_incorrect`, `captcha_failed`, `csrf_invalid`, `unauthenticated`, `validation_error`, `bad_request` (unreadable body on a `@validate_json` endpoint), `internal_error` (unexpected failure; no endpoint has used it since the Jinja web was retired). Each item of `details` keeps `field`, `message`, `type` and adds `code` (`required`, `too_short`, `too_long`, `invalid_format`, `invalid_value`, `out_of_range`) and, when it applies, `params` (`{"min": 8}`). The codes are additive and also appear on the CSRF and 429 handlers and the 401 handler. A new code needs the enum value, the English frontend catalog and the catalog test (`tests/test_error_catalogs.py`). Unreadable `@validate_json` bodies go through `unexpected_failure()` (`app/errors.py`): a clear `message` and `code`, the traceback in the server log, and the exception text only under `detail` for a signed-in admin.
 
 Use `ok()` / `fail()` from `app/api/responses.py`. Error names: `Validation Error`, `Unauthorized`, `Forbidden`, `Not Found`, `Method Not Allowed`, `Conflict`, `Captcha Error`, `CSRF Error`, `Too Many Requests`, `Service Unavailable`, `Internal Server Error`. 500 responses never include exception text.
 
 ## Development Guidelines
 
 ### Before Writing Code
-1. Read the existing patterns in `app/routes/domains/` and `app/services/`
+1. Read the existing patterns in `app/api/` and `app/services/`
 2. Check the schemas in `app/schemas/validators.py`
 3. Check the models in `app/models/` for the data structure
-4. Review templates in `app/templates/` for UI patterns
-5. Check `openspec/` for the spec of the change you are working on
+4. Check `openspec/` for the spec of the change you are working on
 
 ### Code Style
 - PEP 8, type hints where useful
@@ -407,13 +381,14 @@ TEST_POSTGRES_URL=postgresql+psycopg://user:password@localhost:5432/riftbound_te
 ```
 - `tests/conftest.py` sets `RB_ENV=testing`; the default `app` has CSRF, rate limits and captcha **off**.
 - Fixtures: `make_user`, `login_as`, `authenticated_client`, `admin_client`, `other_user_client`, `csrf_app`, `limited_app`, `altcha_app`, `frozen_clock`, `migration_app`, `pg_url`, `spa_dist`, `spa_app`, `card_images_dir`.
-- Request `admin_client` / `authenticated_client` **before** `csrf_app` (they log in through the form).
+- `login_as` and the logged-in client fixtures sign in through `POST /auth/login` with the token of `GET /auth/session`, so they work with `csrf_app` in any order.
+- The login protections (lockout, blocked user, rate limits, remember cookie, captcha replay, CSRF on every unsafe rule) are guarded through the JSON API by `tests/test_api_auth_guards.py`; the old URLs by `tests/test_legacy_redirects.py`.
 - PostgreSQL-marked tests (none today) need a database whose name contains `test`; a unit that adds them re-adds the `pytest -m postgres` CI step (PostgreSQL 18).
 - Nothing in the tests may reach the internet.
 
 ### Security
 - Passwords are hashed with Werkzeug's `generate_password_hash`; minimum 8 characters.
-- All routes except login, register, landing and the public API endpoints require login.
+- All routes except the old-URL redirects, the SPA shell, the media files and the public API endpoints require login.
 - Secrets only through environment variables.
 - File uploads and image paths go through `app/services/card_images.py`: `card_image_path(image, set_id)` (rooted at `CARD_IMAGES_DIR`), never the static folder or the working directory.
 - Cardmarket URLs must be on the allow-list (`CARDMARKET_ALLOWED_HOSTS`).
@@ -475,10 +450,10 @@ HTTP errors are handled in `app/errors.py`: 400, 401, 403, 404, 405, 429, 500 an
 4. Add a route or service and its tests
 
 ### Adding a New Route
-1. Create or update a file in `app/routes/domains/`
-2. Add `@blueprint.route()` with `@login_required` (or `@admin_required`) and `@validate_json(schema)`
+1. Add it to the domain file in `app/api/v1/` (or `app/api/admin/` when it is admin-only); logic goes in `app/services/`
+2. Use `@login_required` (the admin blueprint is guarded as a whole) and `@validate_json(schema)`
 3. Classify it in `tests/test_authz_matrix.py`
-4. Add a template in `app/templates/` and a nav link in `base.html` if it is a page
+4. Document it in `docs/api.md`; screens live in the React app (`frontend/`)
 
 ### Adding Request Validation
 1. Define the schema in `app/schemas/validators.py`
@@ -496,7 +471,6 @@ HTTP errors are handled in `app/errors.py`: 400, 401, 403, 404, 405, 429, 500 an
 - **`flask db check` reports drift**: the model and the migrations disagree; fix one of them.
 - **POST returns 400 "CSRF"**: the request has no token, or Nginx strips `Referer` / does not send `X-Forwarded-Proto`.
 - **Locked out**: `flask users unlock <username>`.
-- **Template not found**: check it exists in `app/templates/`.
 
 ## Frontend
 
@@ -505,7 +479,7 @@ The React app lives in `frontend/` (Node 24, see `.nvmrc`). Work there with `npm
 | Command | What it does |
 |---------|--------------|
 | `npm ci` | Install the exact versions of `package-lock.json` |
-| `npm run dev` | Vite dev server; proxies `/riftbound/api` and `/riftbound/static` to Flask |
+| `npm run dev` | Vite dev server; proxies `/riftbound/api` to Flask |
 | `npm run lint` / `typecheck` | ESLint (folder boundaries, a11y) plus Prettier check / `tsc -b` |
 | `npx vitest run` | Unit and component tests (strict TDD: test first) |
 | `npm run build` then `npm run check:dist` | Production build in `frontend/dist` and its checks (manifest, icons, service worker, altcha chunking) |
@@ -513,8 +487,8 @@ The React app lives in `frontend/` (Node 24, see `.nvmrc`). Work there with `npm
 
 Conventions: dependencies are pinned without `^` or `~` (`frontend/.npmrc`); CSS is layered (`@layer reset, tokens, base, layout, components, utilities`) and every `*.module.css` wraps its rules in `@layer components`; `@media` widths come only from `src/lib/breakpoints.ts`; the background never brightens the map and body text keeps at least 4.5:1 contrast over it (`src/lib/background.ts`).
 
-App shell and preferences (unit e): signed-in pages render inside `frontend/src/shell/AppShell.tsx`; `shell/navRegistry.ts` is the single list behind the topbar, the bottom navigation, the "More" sheet and the home hub (each entry is `spa` or `planned`; nothing in the app links to a Jinja page, guarded by `src/test/no-legacy-links.test.ts`). Interface preferences live in `frontend/src/prefs/` (`rb_prefs_v1` mirror applied before the first render, Auto resolved below 860 px, optimistic PATCH with revert) and are edited at `/riftbound/app/account/interface`. The Jinja layout (`app/templates/base.html`) links to the new app ("Nueva app"). Admin screens live in `frontend/src/admin/` (`AdminLayout` + nav registry, one folder per screen, `admin` i18n namespace). See `docs/frontend.md`.
+App shell and preferences (unit e): signed-in pages render inside `frontend/src/shell/AppShell.tsx`; `shell/navRegistry.ts` is the single list behind the topbar, the bottom navigation, the "More" sheet and the home hub (each entry is `spa` or `planned`; nothing in the app links to a Jinja page, guarded by `src/test/no-legacy-links.test.ts`). Interface preferences live in `frontend/src/prefs/` (`rb_prefs_v1` mirror applied before the first render, Auto resolved below 860 px, optimistic PATCH with revert) and are edited at `/riftbound/app/account/interface`. Admin screens live in `frontend/src/admin/` (`AdminLayout` + nav registry, one folder per screen, `admin` i18n namespace). See `docs/frontend.md`.
 
 PWA (unit f): the app installs as "Rift Manager" (`pwa-options.ts`, vite-plugin-pwa `generateSW`, prompt mode). The worker is `/riftbound/app/sw.js` with scope `/riftbound/app/`; it precaches the app shell only and never touches `/riftbound/api/*`, `/riftbound/static/*` or Jinja pages. `frontend/src/pwa/` holds the "New version available." update toast (`useUpdatePrompt`), the install item (`installPrompt.ts` is started in `app/bootstrap.tsx`; iOS Safari gets `IosInstallDialog`) and the offline behaviour lives in `auth/offline.ts` plus `components/ui/OfflineBanner.tsx` (the shell opens offline when a signed-in hint exists; settings and logout are read-only offline). A plain revert is not a rollback of the PWA: build with `VITE_PWA_SELF_DESTROY=true` first (see `docs/frontend.md`, "Rolling back the PWA"). Icons are committed; `npm run icons` regenerates them and `npm run check:dist` verifies them.
 
-Authentication and API access (unit d): `frontend/src/api/client.ts` is the only code that calls `fetch`. It unwraps `{success, data}`, throws `ApiError` (`kind` http, network, timeout or parse; `code` normalised from `body.code` or derived from the F0 body), keeps the CSRF token in memory only (`api/csrf.ts`, never in web storage), sends `X-CSRFToken` on POST, PATCH, PUT and DELETE, retries once after `csrf_invalid`, and calls the registered unauthorized handler on a 401 from any path except `/auth/login` and `/auth/logout`. The session is the TanStack Query entry `['session']` (`auth/session.ts`); route loaders `requireAuth`, `requireAnon` and `requireAdmin` (`auth/guards.ts`) run before anything renders. `next` is always an absolute `/riftbound/...` path and `auth/safeNext.ts` decides between a router navigation and a full page load. `altcha` is imported only by `auth/AltchaWidget.tsx` (lazy register route) and must keep the version pinned in `requirements.txt`. The app is English-only (owner feedback S21): text lives in `src/i18n/locales/en/*.json`, the only and typed catalog; there is no Spanish catalog, no language toggle, no language preference or detection, and `<html lang>` is `en`. Numbers, money and dates use one English locale in `src/lib/format.ts` (`1,061.52 €`, `5 Oct 2026`, `+10.0%`). The backend still stores the `lang` preference; the app ignores it. A unit that adds strings keeps `src/i18n/catalogCheck.test.ts` green (no empty strings, English plural forms only, no Spanish characters) and writes its tests in English. A backend error code needs `code.<value>` in `locales/en/errors.json`; the unit that adds a code adds a test for it. The Jinja pages keep their own texts. See `docs/frontend.md`.
+Authentication and API access (unit d): `frontend/src/api/client.ts` is the only code that calls `fetch`. It unwraps `{success, data}`, throws `ApiError` (`kind` http, network, timeout or parse; `code` normalised from `body.code` or derived from the F0 body), keeps the CSRF token in memory only (`api/csrf.ts`, never in web storage), sends `X-CSRFToken` on POST, PATCH, PUT and DELETE, retries once after `csrf_invalid`, and calls the registered unauthorized handler on a 401 from any path except `/auth/login` and `/auth/logout`. The session is the TanStack Query entry `['session']` (`auth/session.ts`); route loaders `requireAuth`, `requireAnon` and `requireAdmin` (`auth/guards.ts`) run before anything renders. `next` is always an absolute `/riftbound/...` path and `auth/safeNext.ts` decides between a router navigation and a full page load. `altcha` is imported only by `auth/AltchaWidget.tsx` (lazy register route) and must keep the version pinned in `requirements.txt`. The app is English-only (owner feedback S21): text lives in `src/i18n/locales/en/*.json`, the only and typed catalog; there is no Spanish catalog, no language toggle, no language preference or detection, and `<html lang>` is `en`. Numbers, money and dates use one English locale in `src/lib/format.ts` (`1,061.52 €`, `5 Oct 2026`, `+10.0%`). The backend still stores the `lang` preference; the app ignores it. A unit that adds strings keeps `src/i18n/catalogCheck.test.ts` green (no empty strings, English plural forms only, no Spanish characters) and writes its tests in English. A backend error code needs `code.<value>` in `locales/en/errors.json`; the unit that adds a code adds a test for it. See `docs/frontend.md`.

@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config';
 import { buildPwaOptions } from './pwa-options.ts';
 
 // VITE_BASE: public path of the app (Flask serves the build at /riftbound/app/, D1).
-// VITE_DEV_PROXY: Flask dev server that receives /riftbound/api and /riftbound/static.
+// VITE_DEV_PROXY: Flask dev server that receives /riftbound/api.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   const target = env.VITE_DEV_PROXY || 'http://127.0.0.1:5000';
@@ -20,7 +20,6 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/riftbound/api': { target, changeOrigin: false },
-        '/riftbound/static': { target, changeOrigin: false },
       },
     },
     test: {

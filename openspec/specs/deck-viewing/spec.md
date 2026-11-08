@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
+> **Jinja retirement (2026-11-08, PR 3/3).** The Jinja deck routes (`/riftbound/deck/...`) were removed; `/riftbound/deck` and `/riftbound/deck/view/<any>` answer a 302 to `/riftbound/app/decks`. DECK-1..DECK-4 no longer apply; decks v2 (owner-only, D-F5-9) are specified in `docs/requirements/F5/` and `docs/api.md` → "Decks (F5-d)". Kept as history.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. All scenarios are pytest-testable (SQLite). All decks remain visible to every logged-in user (unchanged); only what is computed from the viewer changes.
 
 ## Requirements
