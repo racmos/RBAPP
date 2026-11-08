@@ -107,8 +107,8 @@ export const NAV: readonly NavEntry[] = [
   {
     id: 'profile',
     icon: 'account',
-    status: 'legacy',
-    legacy: 'profile',
+    status: 'spa',
+    to: '/account/profile',
     placements: ['hub', 'more'],
   },
   {

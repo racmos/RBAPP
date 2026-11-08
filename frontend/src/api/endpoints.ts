@@ -1,5 +1,6 @@
 import { getSession, request, requestFile, requestWithMeta } from './client';
 import type {
+  AccountChanges,
   AdminCatalog,
   CaptchaData,
   CardDetail,
@@ -608,6 +609,10 @@ export const getAdminAuditFacets = (signal?: AbortSignal) =>
 /** `PATCH /me/prefs`: absent fields stay, `null` resets to Auto (PREF-4). Returns the full prefs. */
 export const patchPrefs = async (changes: Partial<Prefs>): Promise<Prefs> =>
   (await request<{ prefs: Prefs }>('/me/prefs', { method: 'PATCH', body: changes })).prefs;
+
+/** `PATCH /me/account`: only the fields sent change; a new password needs the current one. */
+export const patchAccount = async (changes: AccountChanges): Promise<UserPayload> =>
+  (await request<{ user: UserPayload }>('/me/account', { method: 'PATCH', body: changes })).user;
 
 /** `GET /meta/game` (F2-h S2). */
 export const getGameMeta = (signal?: AbortSignal) => request<GameMeta>('/meta/game', { signal });

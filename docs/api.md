@@ -41,6 +41,29 @@ The React app is English-only. The API is unchanged: `GET /auth/session` and `GE
 keep working. The app ignores the value it receives and never sends `lang`. Dropping the column
 needs its own migration (a later unit); until then, do not build anything new on `lang`.
 
+### PATCH /me/account
+
+`app/api/v1/me.py` (`api_v1.patch_me_account`, U), logic in `app/services/account.py`: the
+signed-in user changes their own email and/or password (the React profile page,
+`/riftbound/app/account/profile`; PR 1/3 of the Jinja retirement). Same rules as the Jinja
+profile update (PROF-1, PROF-2).
+
+- Body `AccountUpdate` (`app/schemas/validators.py`): `{email?, password?, current_password?}`.
+  At least `email` or `password`; `email` is trimmed, at most 120 characters and must contain
+  `@`; `password` is 8-128 characters and needs `current_password`; an email-only update does
+  not need the password. Only the fields sent change, all or nothing.
+- 200 -> `{user: {id, username, email, is_admin}}`, the fresh user (never a password). A
+  password change keeps the session (Flask-Login keys it on the user id).
+- 400 `validation_error` with `details[{field, message, type, code}]` (`password` too short,
+  `email` invalid, a missing `current_password`, an empty body).
+- 400 `current_password_incorrect` (`message` "The current password is incorrect"): nothing is
+  written, the email included.
+- 409 `email_taken` (`message` "That email address is already in use"): another account has
+  the address, ignoring case; the caller's own address in another case is fine.
+- 429 `rate_limited` with `Retry-After`: 10 calls per hour per IP (`ACCOUNT_RATE_LIMIT`,
+  shared scope `account`); the limit also caps guesses of the current password.
+- 401 `unauthenticated` for anonymous callers.
+
 ### GET /meta/game
 
 `app/api/v1/meta.py` (`api_v1.meta_game`, P): game metadata for the catalog UI.

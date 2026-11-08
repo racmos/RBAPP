@@ -76,4 +76,22 @@ describe('navRegistry (F2-h S13)', () => {
     }
     expect(legacyHref('decks')).toBe('/riftbound/deck');
   });
+
+  it('flips profile to spa at /account/profile; the classic page stays in the legacy routes', () => {
+    const profile = NAV.find((entry) => entry.id === 'profile');
+    expect(profile).toEqual({
+      id: 'profile',
+      icon: 'account',
+      status: 'spa',
+      to: '/account/profile',
+      placements: ['hub', 'more'],
+    });
+    expect(profile && entryHref(profile)).toBe('/account/profile');
+    for (const placement of ['hub', 'more'] as const) {
+      expect(navEntries(placement, { isAdmin: false }).map((entry) => entry.id)).toContain(
+        'profile',
+      );
+    }
+    expect(legacyHref('profile')).toBe('/riftbound/profile');
+  });
 });

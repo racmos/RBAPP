@@ -245,7 +245,21 @@ the app ignores (English only, see "Language, formats and error codes"). `src/pr
 
 `/account/interface` (`src/account/InterfacePage.tsx`) edits the four interface values and the
 playset size; at 1240 px and above a
-live preview sits beside the controls.
+live preview sits beside the controls. Its header links to the profile page.
+
+**Profile.** `/account/profile` (`src/account/ProfilePage.tsx`, PR 1/3 of the Jinja retirement;
+the nav entry `profile` is `spa`, while `legacy-routes.json` keeps the `profile` key until the
+Jinja page goes) shows the username read-only and two forms, each with its own button, inline
+errors and form alert, saved through `PATCH /me/account` (`patchAccount` in `api/endpoints.ts`):
+**Email** sends only `{email}` and stays disabled while the value is unchanged; **Password**
+sends only `{current_password, password}` after the client checks (current required, new 8-128
+characters as in `auth/registerChecks.ts`, confirmation equal). A success writes the returned
+user into the `['session']` cache (so the new email shows everywhere), toasts and clears the
+password fields; the session survives a password change. `current_password_incorrect` lands on
+the current password field and `email_taken` on the email field (focused), server `details` on
+their fields, a 429 starts the shared retry countdown of the login screen (both buttons
+disabled), anything else is a `FormAlert`. Offline (`useOffline`) every input and button is
+disabled. Strings live in `prefs:profile.*`; the header links back to `/account/interface`.
 
 **How to add a catalog namespace.** Create `locales/en/<ns>.json`, import it in
 `src/i18n/resources.ts`, add the name to `NAMESPACES` and to the `en` resources, and call
