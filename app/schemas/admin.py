@@ -420,3 +420,39 @@ class AdminExpansionMapBody(BaseModel):
 
     set_id: str = Field(min_length=1, max_length=20)
     create_set: Optional[AdminExpansionNewSet] = None
+
+
+# `from` and `to` are the query names of GET /admin/audit; `from` is a Python keyword, so the
+# two dates live on a model built with `create_model` (read them with `getattr`).
+_AuditDates = create_model('_AuditDates', **{'from': (Optional[date], None),
+                                             'to': (Optional[date], None)})
+
+
+class AdminAuditQuery(_AuditDates):
+    """GET /admin/audit query (CM-e): every filter optional; `from` / `to` are inclusive UTC
+    days."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    actor: Optional[str] = Field(default=None, max_length=64)
+    action: Optional[str] = Field(default=None, max_length=48)
+    target_type: Optional[str] = Field(default=None, max_length=24)
+    target_id: Optional[str] = Field(default=None, max_length=64)
+    page: int = Field(default=1, ge=1)
+    per_page: Literal[50, 100, 200] = 50
+
+    _ints = field_validator('page', 'per_page', mode='before')(_page_to_int)
+
+    @field_validator('to', mode='after')
+    @classmethod
+    def _not_before_from(cls, value, info):
+        start = info.data.get('from')
+        if value is not None and start is not None and value < start:
+            raise ValueError('to must not be before from')
+        return value
+
+
+class AdminAuditFacetsQuery(BaseModel):
+    """GET /admin/audit/facets query (CM-e): no parameters."""
+
+    model_config = ConfigDict(extra='forbid')

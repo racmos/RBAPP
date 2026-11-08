@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { axe } from 'vitest-axe';
@@ -24,10 +24,18 @@ const RIOT = {
   placeholder_sets: ['NEW'],
 };
 
-function adminApi() {
+const CARDMARKET = {
+  last_load: { date: '2030-01-01', status: 'partial' },
+  loaded_today: false,
+  job_status: 'error',
+  unmatched: 12,
+  unmapped_expansions: 3,
+};
+
+function adminApi(cardmarket: unknown = CARDMARKET) {
   server.use(
     http.get(`${API}/auth/session`, () => adminSession()),
-    http.get(`${API}/admin/overview`, () => ok({ catalog: CATALOG, riot: RIOT })),
+    http.get(`${API}/admin/overview`, () => ok({ catalog: CATALOG, riot: RIOT, cardmarket })),
   );
 }
 
@@ -131,5 +139,63 @@ describe('OverviewPage (F13-a S6)', () => {
     failing = false;
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await tileValue('Cards')).toBe('4');
+  });
+
+  it(
+    'shows the Cardmarket health with links to the workbench (CM-e)',
+    { timeout: 30000 },
+    async () => {
+      adminApi();
+      const { container } = await renderApp({ path: '/admin', width: 1280 });
+      const band = await screen.findByRole('region', { name: 'Cardmarket' }, LONG);
+      expect(within(band).getByRole('heading', { level: 2, name: 'Cardmarket' })).toBeVisible();
+      expect(within(band).getByText('1 Jan 2030')).toBeVisible();
+      expect(within(band).getByText('Partial')).toBeVisible();
+      expect(within(band).getByText('No load today yet')).toBeVisible();
+      expect(within(band).getByText('Error')).toBeVisible();
+      expect(within(band).getByRole('link', { name: 'Unmatched products: 12' })).toHaveAttribute(
+        'href',
+        '/riftbound/app/admin/cardmarket/matching?type=single',
+      );
+      expect(within(band).getByRole('link', { name: 'Unmapped expansions: 3' })).toHaveAttribute(
+        'href',
+        '/riftbound/app/admin/cardmarket/matching?tab=expansions',
+      );
+      expect(within(band).getByRole('link', { name: 'Open Cardmarket' })).toHaveAttribute(
+        'href',
+        '/riftbound/app/admin/cardmarket',
+      );
+      expect(await axe(container)).toHaveNoViolations();
+    },
+  );
+
+  it(
+    'a fresh Cardmarket state: loaded today, no load job, no load yet',
+    { timeout: 30000 },
+    async () => {
+      adminApi({
+        last_load: null,
+        loaded_today: true,
+        job_status: null,
+        unmatched: 0,
+        unmapped_expansions: 0,
+      });
+      await renderApp({ path: '/admin', width: 1280 });
+      const band = await screen.findByRole('region', { name: 'Cardmarket' }, LONG);
+      expect(within(band).getByText('No load yet.')).toBeVisible();
+      expect(within(band).getByText('Loaded today')).toBeVisible();
+      expect(within(band).getByText('No load job yet.')).toBeVisible();
+      expect(within(band).getByRole('link', { name: 'Unmatched products: 0' })).toBeVisible();
+    },
+  );
+
+  it('an overview without the Cardmarket block shows no band', { timeout: 30000 }, async () => {
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/overview`, () => ok({ catalog: CATALOG, riot: RIOT })),
+    );
+    await renderApp({ path: '/admin', width: 1280 });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Riot' }, LONG)).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Cardmarket' })).toBeNull();
   });
 });

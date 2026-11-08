@@ -1,6 +1,6 @@
-/** Admin navigation (F13-a S6, F13-f S3, F14-d S5, CM-a): one entry per section, in display order. */
+/** Admin navigation (F13-a S6, F13-f S3, F14-d S5, CM-a, CM-e): one entry per section, in display order. */
 export type AdminNavEntry = {
-  id: 'overview' | 'sets' | 'cards' | 'products' | 'cardmarket' | 'riot' | 'changes';
+  id: 'overview' | 'sets' | 'cards' | 'products' | 'cardmarket' | 'riot' | 'changes' | 'audit';
   to: string;
   labelKey:
     | 'nav.overview'
@@ -10,7 +10,8 @@ export type AdminNavEntry = {
     | 'nav.cardmarket'
     | 'nav.riot'
     | 'nav.changes'
-    | 'nav.changesCount';
+    | 'nav.changesCount'
+    | 'nav.audit';
 };
 
 export const ADMIN_NAV: readonly AdminNavEntry[] = [
@@ -21,6 +22,7 @@ export const ADMIN_NAV: readonly AdminNavEntry[] = [
   { id: 'cardmarket', to: '/admin/cardmarket', labelKey: 'nav.cardmarket' },
   { id: 'riot', to: '/admin/riot', labelKey: 'nav.riot' },
   { id: 'changes', to: '/admin/riot/changes', labelKey: 'nav.changes' },
+  { id: 'audit', to: '/admin/audit', labelKey: 'nav.audit' },
 ];
 
 // The label for the changes entry shows the pending count when it is not zero (F13-g S1).

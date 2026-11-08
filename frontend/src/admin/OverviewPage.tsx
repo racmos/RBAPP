@@ -6,11 +6,12 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle } from '@/i18n';
-import { formatDateTime } from '@/lib/format';
-import { getAdminOverview, type AdminRiot } from '@/api/endpoints';
+import { formatDate, formatDateTime } from '@/lib/format';
+import { getAdminOverview, type AdminCardmarketHealth, type AdminRiot } from '@/api/endpoints';
+import { DayStatusBadge, JobStatusBadge } from './cardmarket/parts';
 import styles from './OverviewPage.module.css';
 
-/** Admin overview (F13-a S6): the four catalog counters. */
+/** Admin overview (F13-a S6): the four catalog counters, Riot (F13-g) and Cardmarket (CM-e). */
 export function OverviewPage() {
   const { t } = useTranslation('admin');
   const { t: common } = useTranslation('common');
@@ -70,6 +71,7 @@ export function OverviewPage() {
         ))}
       </div>
       <RiotBand riot={query.data.riot} />
+      {query.data.cardmarket && <CardmarketBand cardmarket={query.data.cardmarket} />}
     </>
   );
 }
@@ -118,6 +120,63 @@ function RiotBand({ riot }: { riot: AdminRiot }) {
             </p>
           </div>
         )}
+      </div>
+    </section>
+  );
+}
+
+/** Cardmarket band (CM-e): the health of the daily load; the counters open the workbench. */
+function CardmarketBand({ cardmarket }: { cardmarket: AdminCardmarketHealth }) {
+  const { t } = useTranslation('admin');
+  const last = cardmarket.last_load;
+  return (
+    <section aria-label={t('overview.cardmarketTitle')}>
+      <h2 className={styles.sectionTitle}>{t('overview.cardmarketTitle')}</h2>
+      <div className={styles.tiles}>
+        <div className={styles.tile}>
+          <p className={styles.label}>{t('cardmarket.lastLoad')}</p>
+          <p className={styles.facts}>
+            {last ? (
+              <>
+                <span>{formatDate(last.date)}</span> <DayStatusBadge status={last.status} />
+              </>
+            ) : (
+              t('cardmarket.noLoad')
+            )}{' '}
+            {cardmarket.loaded_today ? (
+              <Badge tone="success">{t('cardmarket.loadedToday')}</Badge>
+            ) : (
+              <Badge tone="warning">{t('cardmarket.notToday')}</Badge>
+            )}
+          </p>
+        </div>
+        <div className={styles.tile}>
+          <p className={styles.label}>{t('cardmarket.latestJob')}</p>
+          <p className={styles.facts}>
+            {cardmarket.job_status ? (
+              <JobStatusBadge status={cardmarket.job_status} />
+            ) : (
+              t('cardmarket.noJob')
+            )}
+          </p>
+        </div>
+        <div className={styles.tile}>
+          <p className={styles.facts}>
+            <Link to="/admin/cardmarket/matching?type=single">
+              {t('cardmarket.unmatched', { count: cardmarket.unmatched })}
+            </Link>
+          </p>
+          <p className={styles.facts}>
+            <Link to="/admin/cardmarket/matching?tab=expansions">
+              {t('cardmarket.unmappedExpansions', { count: cardmarket.unmapped_expansions })}
+            </Link>
+          </p>
+        </div>
+        <div className={styles.tile}>
+          <p className={styles.facts}>
+            <Link to="/admin/cardmarket">{t('overview.openCardmarket')}</Link>
+          </p>
+        </div>
       </div>
     </section>
   );

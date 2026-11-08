@@ -391,6 +391,30 @@ the mapped one, a "Looks like <Name (ID)> — N of M linked products" button tha
 dialog with that set already chosen (the user still presses Map). The map dialog lists every
 sample product with its low price ("no price", sealed ones marked "(sealed)").
 
+**Overview Cardmarket band (CM-e).** `OverviewPage.tsx` adds a "Cardmarket" section under Riot
+from `GET /admin/overview` → `cardmarket`: last load (date and the day status badge, or "No load
+yet."), "Loaded today" / "No load today yet" (warning), the latest load job status badge (or "No
+load job yet."), "Unmatched products: N" (→ `/admin/cardmarket/matching?type=single`),
+"Unmapped expansions: N" (→ `?tab=expansions`) and "Open Cardmarket" (→ `/admin/cardmarket`).
+An API without the key shows no band.
+
+**Audit (CM-e).** `/admin/audit` (`frontend/src/admin/audit/`, nav entry "Audit" after Changes,
+lazy route under `/admin` behind `requireAdmin`) lists `GET /admin/audit`, read-only. Filters in
+the URL (the API names): Action (select from `GET /admin/audit/facets` with counts; an action of
+the URL that the facets do not list stays selectable), Actor (debounced text), Target type
+(select), From / To (date inputs), Rows per page 50/100/200; `target_id` and `page` are read from
+the URL too; any filter change returns to page 1. The table (cards below 860 px, with the
+"Easier on a computer." hint of the admin layout) shows the time, the actor or "System", the
+action as a readable label with the raw code in its `title` (an unknown action shows its code),
+the target type and id, and a "Details" disclosure with the stored JSON pretty-printed (none
+when the row has no details). `format.ts::targetLink` links a target only where a route can show
+it: a Cardmarket product to the workbench tab that holds it after the action (`?tab=linked&q=`
+for link/relink, `?tab=ignored` for ignore, `?q=` otherwise), an expansion to
+`?tab=expansions&show=all`, a card to `/admin/cards?q=SET-ID`, a product to `/admin/products?q=`,
+a set to `/admin/sets`, the auto-match to `/admin/cardmarket`; jobs and the rest are plain text.
+The list keeps the previous page on screen while the next one loads; loading, empty ("Nothing
+recorded") and error (Retry) states as the other admin screens.
+
 ## Products (F14-e)
 
 `frontend/src/products/` is the products section (nav entry `products`, `spa`, icon `gift`, after
