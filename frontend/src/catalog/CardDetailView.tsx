@@ -272,9 +272,10 @@ export function CardDetailView({
             ) : (
               <ul className={styles.deckList}>
                 {card.in_decks.map((deck) => (
-                  // `deck_id` is not an app deck id yet, so the name is not a link
                   <li key={deck.deck_id}>
-                    {deck.name} — {t('detail.decks.qty', { count: deck.qty })}
+                    <Link to={`/decks/${deck.deck_id}`} className={styles.deckLink}>
+                      {deck.name} — {t('detail.decks.qty', { count: deck.qty })}
+                    </Link>
                   </li>
                 ))}
               </ul>

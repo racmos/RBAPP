@@ -74,9 +74,11 @@ describe('CardDetailView (F2-f S7)', () => {
 
     // Decks
     expect(screen.getByText('In my decks')).toBeVisible();
-    // the deck ids are not the app's deck ids yet: names only, no link to the old web
-    expect(screen.getByText('Fury Chaos — 2 copies')).toBeVisible();
-    expect(screen.queryByRole('link', { name: /Fury Chaos/ })).not.toBeInTheDocument();
+    // each deck links to its page in the app (`deck_id` is the decks v2 id)
+    expect(screen.getByRole('link', { name: 'Fury Chaos — 2 copies' })).toHaveAttribute(
+      'href',
+      '/decks/3',
+    );
   });
 
   it('links to the collection screen filtered by this card (F3-g S2)', async () => {
