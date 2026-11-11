@@ -55,6 +55,27 @@ The 20-list and 100-line limits are enforced in the service (409 `wishlist_limit
 by constraints. There is no arming state: the alert is a daily evaluation (A3). `rbwishlistalerts` is unique per
 (`user`, `name_key`, `set`, `card`, `price_date`) so a re-run of the job the same day cannot duplicate it.
 
+### As built (F3-f-1, migration `0026_wishlists`, models in `app/models/wishlist.py`)
+
+Deviations from the table above (no change to any decision or assumption):
+
+- **No computed target column.** The NULL-safe unique target is an expression unique index instead:
+  `rbwishlistlines_target_uq` on (`list_id`, `name_key`, `coalesce(rbset_id, '*')`, `coalesce(rbcar_id, '*')`,
+  `foil`), and `rbwishlistalerts_target_uq` on (`user_id`, `name_key`, `coalesce(rbset_id, '*')`,
+  `coalesce(rbcar_id, '*')`, `price_date`). Both dialects (PostgreSQL 18, SQLite in the tests) support it, it needs
+  no column the service has to keep in step, and two by-name lines (NULL printing) collide as they should.
+- **Constraints the table did not spell out:** `rbwls_name` must not be blank (`length(trim(name)) >= 1`);
+  `rbwls_position` is NOT NULL, ≥ 1 and unique per user (`rbwishlists_user_position_uq`, like `rblocations`; the
+  service renumbers in two steps as `locations._renumber` does); `rbwal_rbset_id`/`rbwal_rbcar_id` are both or
+  neither like the lines; `rbwal_price` and `rbwal_max_price` are NOT NULL and ≥ 0.
+- **Sizes and types:** `name_key` and `name` VARCHAR(200); set and card ids TEXT like `rbcollection`; the max price
+  and the alert prices NUMERIC(10,2); timestamps are UTC `TIMESTAMP` like the other tables.
+- **Indexes:** no separate index on `rbwsl_list_id`: `rbwishlistlines_target_uq` leads with it, so it serves the
+  cascade and "the lines of a list". `ix_rbwishlistlines_name_key` (alert job, "lists holding this card"),
+  `ix_rbwishlistalerts_user_created` on (`user_id`, `created_at`) ascending (PostgreSQL reads it backwards for newest
+  first), `ix_rbwishlistalerts_user_unread` on (`user_id`) WHERE `rbwal_read_at IS NULL`, and the one-default
+  partial unique index `rbwishlists_user_default_uq` on (`user_id`) WHERE `rbwls_is_default`.
+
 ## API (U, every row scoped to the caller; another user's id is a 404)
 
 | Method | Path | Purpose |
