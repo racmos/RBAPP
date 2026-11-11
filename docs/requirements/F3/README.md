@@ -71,7 +71,7 @@ sealed products and their total (F14); removing the Jinja collection or the `rbc
 - **F3-R2** The legacy `rbcol_selling = 'S'` value is evaluated on the dev data (read-only query, result recorded in the F3-a requirement) and removed: its rows become `Y` or `N` per that evaluation (D-F3-11), the CHECK is narrowed to `('Y','N')`; the API exposes a boolean. (F3-a)
 - **F3-R3** Backfill `sell_qty` from the legacy fields: playset set → `max(0, qty − playset)`; else selling `Y` → `qty`; else 0. `rbcol_playset` is no longer read by the app (replaced by F3-R26/R27); the column stays, deprecated and still written by Jinja, until F11. (F3-a)
 - **F3-R4** Legacy Jinja routes keep `sell_qty` consistent: `update_quantity`, `update_playset`, `bulk_apply` recompute it with the R3 rule; Jinja `export_csv` uses `sell_qty`. (F3-a)
-- **F3-R5** New table `rbwishlist` (user id FK, card by name with optional printing, qty wanted, foil preference, max price, note). (F3-f) **Amended 2026-11-11: several wishlists per user (20 lists, 100 lines each, a default list) with price alerts; see `F3-f-wishlists-design.md`.**
+- **F3-R5** New table `rbwishlist` (user id FK, card by name with optional printing, qty wanted, foil preference, max price, note). (F3-f) **Amended 2026-11-11: several wishlists per user (20 lists, 100 lines each, a starred default list) with daily price alerts; see `F3-f-wishlists-design.md`.**
 - **F3-R6** Exact-duplicate merge on add includes `purchase_price` in the key (lots bought at different prices stay separate). (F3-c)
 - **F3-R26** Each user has a "playset size" setting, default 3, editable (storage: D-F3-9). (F3-a store, F3-b/F3-c API, F3-g UI)
 - **F3-R27** A "keep a playset" check per collection card, stored per user and card name (D-F3-10). A checked name whose kept copies (all printings; D-F3-10 defines "kept") are fewer than the playset size is flagged; nothing is blocked. (F3-a store, F3-b flag, F3-c toggle)
@@ -81,7 +81,7 @@ sealed products and their total (F14); removing the Jinja collection or the `rbc
 - **F3-R8** `POST /collection`, `PATCH /collection/{id}`, `DELETE /collection/{id}`, `POST /collection/{id}/split`, `POST /collection/bulk` — all scoped to the current user, all-or-nothing. (F3-c)
 - **F3-R9** `GET /collection/export?format=rbapp|cardmarket` + the list filters; CSV UTF-8 with BOM. (F3-d)
 - **F3-R10** `POST /collection/import/preview` and `/import/commit` (formats `rbapp`, `cardmarket`; others after samples). (F3-e)
-- **F3-R11** `GET/POST /wishlist`, `PATCH/DELETE /wishlist/{id}`. (F3-f) **Amended 2026-11-11: several wishlists per user (20 lists, 100 lines each, a default list) with price alerts; see `F3-f-wishlists-design.md`.**
+- **F3-R11** `GET/POST /wishlist`, `PATCH/DELETE /wishlist/{id}`. (F3-f) **Amended 2026-11-11: several wishlists per user (20 lists, 100 lines each, a starred default list) with daily price alerts; see `F3-f-wishlists-design.md`.**
 - **F3-R12** `GET /meta/game` adds `conditions` (`MT, NM, EX, GD, LP, PL, PO`, ordered best → worst) and `languages` (D-F3-4). (F3-b)
 - **F3-R13** `CardDetail.my_lines` gains `purchase_price`, `sell_qty`; `CardSummary.owned` unchanged. (F3-b)
 - **F3-R28** `CollectionGroup` exposes `keep_playset` (bool) and `playset_short` (bool, F3-R27); the check is toggled through the write API (shape fixed in the F3-c requirement); the playset size is read and written with the user's settings (D-F3-9). Totals never include sealed products (F14). (F3-b, F3-c)
@@ -97,7 +97,7 @@ sealed products and their total (F14); removing the Jinja collection or the `rbc
 ### Import / export / wishlist UI
 - **F3-R18** Import wizard `/collection/import`: upload or paste → detected format (overridable) → preview table with per-row status and resolution → mode (add / replace quantities) → commit → result summary. (F3-i)
 - **F3-R19** Export dialog: format, scope (all / current filters / only lines on sale), download. (F3-i)
-- **F3-R20** `/collection/wishlist` (tab of the collection): list/table with owned vs wanted, market vs max price; "Añadir a deseos" in the card detail. (F3-j) **Amended 2026-11-11: several wishlists per user (20 lists, 100 lines each, a default list) with price alerts; see `F3-f-wishlists-design.md`.**
+- **F3-R20** `/collection/wishlist` (tab of the collection): list/table with owned vs wanted, market vs max price; "Añadir a deseos" in the card detail. (F3-j) **Amended 2026-11-11: several wishlists per user (20 lists, 100 lines each, a starred default list) with daily price alerts; see `F3-f-wishlists-design.md`.**
 
 ### Offline
 - **F3-R21** Read cache `rb-api-collection` (NetworkFirst 4 s, 200 entries, 14 days) for `GET /collection` and `GET /wishlist`; purged with the user caches; every edit control disabled offline. (F3-k)

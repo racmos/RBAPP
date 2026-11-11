@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F3 / f, plus slices in F3-j, F4-g and F5-f |
-| Status | **Design for owner review. No code until approved.** |
+| Status | **Approved by the owner 2026-11-11 (A1-A6 answered). Next: F3-f-1 migration.** |
 | Replaces | F3-R5 / F3-R11 / F3-R20 of the F3 phase spec (one flat `rbwishlist` table per user) |
 | Risk | Migration (own PR, `pg_dump` before deploy); alert job reads prices daily |
 
@@ -11,8 +11,9 @@
 
 1. **Several lists per user.** At most **20 lists** per user and **100 cards per list**. One list is the
    **default**: "Add to wishlist" saves there unless the user picks another.
-2. **Price alert.** A line may carry a **max price**. When the card's market price reaches it, the user is
-   warned **once each time it is reached**. A line **without a price never alerts**.
+2. **Price alert.** A line may carry a **max price**. After each daily Cardmarket price update, every card whose
+   market price is **at or below** its max price raises **one alert for that day**. A line **without a price
+   never alerts**.
 3. **Alerts screen** (inside the wishlist area). Each alert shows the card and the price reached. Expanding it
    lists the wishlists that hold the card; clicking a list opens that wishlist.
 4. **Owned vs wanted.** A line shows the **quantity wanted**, an indicator with the copies the user already
@@ -21,21 +22,26 @@
 5. **From a deck.** The deck editor has "Add missing cards to a wishlist": the user picks the list and only the
    **missing count** of each card is added to it.
 
-## Assumptions to confirm (owner)
+## Assumptions (A1-A6, answered by the owner 2026-11-11)
 
-- **A1.** "100 cards per list" = 100 **lines** (distinct card targets), not 100 copies. A line's quantity is free
-  (1..99).
-- **A2.** The same card may be in several lists. Within one list a target (name + printing + foil) is unique and
-  adding it again **merges** (quantities add, capped at 99).
-- **A3.** "Each time it is reached" = **crossing**: the alert fires when the market price is at or below the
-  max price and it was above it (or unknown) on the previous check; it fires again only after the price has
-  gone back above the max. One alert per card per crossing, not one per list.
-- **A4.** The default list is created for each user on first use (name "Wishlist"); it can be renamed and a
-  different list can be made the default; the default list can be deleted only after another one is chosen.
-- **A5.** Deleting a list deletes its lines (confirmation in the UI, Undo toast). Alerts already raised stay in
-  the log; the list names they showed become "(deleted list)".
-- **A6.** "Version" = printing (set + card id). A line may target a card **by name** (any printing) or a **specific
-  printing**; the "this version" indicator of a by-name line counts every printing.
+- **A1.** 100 cards per list = 100 **lines** (distinct targets), not 100 copies. A line's quantity is free
+  (1..99). *Confirmed.*
+- **A2.** The same card may be in several lists. Within one list a target is the card **printing (set + number)
+  plus foil** and adding it again **sums the quantities** (capped at 99). A foil copy, or an alternate-art
+  printing of the same card, is a **different line**, never merged. *Confirmed.*
+- **A3.** **Daily alerts, not a one-time crossing.** The `price_alerts` job runs once a day right after the
+  Cardmarket prices are updated. Each day a card's market price is at or below the max price of any of its
+  lines, **one alert is raised for that card and day** (not one per list). If the price stays at or below the
+  max, the alert comes again the next day. No re-arm state is needed. *Corrected by the owner.*
+- **A4.** The user marks the **default list with a star** in the wishlist menu; it stays the default until the
+  user marks another. "Add to wishlist" saves there. The first list is created automatically (name
+  "Wishlist") and starts as the default; renaming is allowed; the default list cannot be deleted until another
+  one is starred. *Confirmed.*
+- **A5.** Deleting a list deletes its lines (confirmation, Undo toast). **Alerts already raised are kept.** An
+  expanded alert shows the lists that hold the card **now**; a deleted list is not listed (it has no link), so
+  nothing points at a list that no longer exists. *Confirmed.*
+- **A6.** A "version" is the **printing: set + number**. An indicator shows the **quantity of copies** owned of
+  that printing; by-name lines (any printing) count every printing. *Confirmed.*
 
 ## Data model (migration `00NN_wishlists`, next free number, own PR)
 
@@ -43,11 +49,11 @@
 |---|---|
 | `rbwishlists` | `rbwls_id` PK; `rbwls_user_id` FK `rbusers.id` ON DELETE CASCADE; `rbwls_name` VARCHAR(80) NOT NULL; `rbwls_is_default` BOOL NOT NULL DEFAULT false; `rbwls_position` INT; `rbwls_created_at`, `rbwls_updated_at`. UNIQUE (`user_id`, lower(`name`)); partial UNIQUE (`user_id`) WHERE `is_default` (one default per user) |
 | `rbwishlistlines` | `rbwsl_id` PK; `rbwsl_list_id` FK `rbwishlists.id` ON DELETE CASCADE; `rbwsl_name_key`, `rbwsl_name`; `rbwsl_rbset_id`, `rbwsl_rbcar_id` TEXT NULL (both or neither; NULL = any printing); `rbwsl_foil` ('any','N','S') DEFAULT 'any'; `rbwsl_qty` SMALLINT 1..99; `rbwsl_max_price` NUMERIC(10,2) NULL CHECK >= 0; `rbwsl_note` VARCHAR(200); `rbwsl_created_at`, `rbwsl_updated_at`. UNIQUE (`list_id`, `name_key`, target key, `foil`), NULL-safe through a computed target column |
-| `rbwishlistalerts` | `rbwal_id` PK; `rbwal_user_id` FK; `rbwal_name_key`, `rbwal_name`; `rbwal_rbset_id`, `rbwal_rbcar_id` NULL; `rbwal_price` NUMERIC(10,2) (price reached); `rbwal_max_price` (threshold at that time); `rbwal_price_date` DATE; `rbwal_created_at`; `rbwal_read_at` NULL. The lists that hold the card are read **live** when the alert is expanded, not stored |
+| `rbwishlistalerts` | `rbwal_id` PK; `rbwal_user_id` FK; `rbwal_name_key`, `rbwal_name`; `rbwal_rbset_id`, `rbwal_rbcar_id` NULL; `rbwal_price` NUMERIC(10,2) (price reached); `rbwal_max_price` (threshold at that time); `rbwal_price_date` DATE (the day of the price update); UNIQUE (`user`, target, `price_date`); `rbwal_created_at`; `rbwal_read_at` NULL. The lists that hold the card are read **live** when the alert is expanded, not stored |
 
 The 20-list and 100-line limits are enforced in the service (409 `wishlist_limit` with `params {max, scope}`), not
-by constraints. Crossing state per target lives in `rbwishlistlines.rbwsl_alert_armed` (BOOL, default true): true
-= may fire, set to false when an alert fires and back to true when the price is above the max again.
+by constraints. There is no arming state: the alert is a daily evaluation (A3). `rbwishlistalerts` is unique per
+(`user`, `name_key`, `set`, `card`, `price_date`) so a re-run of the job the same day cannot duplicate it.
 
 ## API (U, every row scoped to the caller; another user's id is a 404)
 
@@ -71,8 +77,9 @@ printing, foil and non-foil), `owned_other_versions` (copies of other printings 
 ## Alert job (F4-g, `price_alerts`, queued by `daily_prices` after a successful load)
 
 For every line with a `max_price`, compare the card's price (same price resolution as the rest of the app) with
-the max: on a crossing create **one** alert per user and card (not per list), then disarm; re-arm when the price is
-above the max. Lines without a price are skipped. Push notifications reuse the F4 notification infrastructure
+the max: when the price is at or below it, create **one** alert per user, card and day (the lowest max price among
+the user's lines of that card decides; not one per list). Lines without a price are skipped. The job runs once per
+day after a successful price load and is idempotent for the same price date. Push notifications reuse the F4 notification infrastructure
 later; this unit only writes the alerts and exposes them in the wishlist area.
 
 ## UI (F3-j, mobile first like the collection)
@@ -96,4 +103,4 @@ later; this unit only writes the alerts and exposes them in the wishlist area.
 
 ## Open for the owner
 
-A1 to A6 above. Anything else you want different, say it now: changing the table later costs a migration.
+Nothing open. Anything new that changes the tables should be said before F3-f-1: it costs a migration.
