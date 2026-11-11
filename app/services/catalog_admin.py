@@ -12,8 +12,11 @@ from app import db
 from app.models.card import RbCard
 from app.models.collection import RbCollection
 from app.models.deck import RbDeck
+from app.models.deck_v2 import RbDeckHead, RbDeckVersion
 from app.models.set import RbSet
+from app.models.user import User
 from app.services.card_images import card_image_url
+from app.services.decks import _refs, normal_content
 
 
 _DIGIT_RUNS = re.compile(r'(\d+)')
@@ -134,17 +137,54 @@ def list_cards(params) -> tuple[list[dict], int]:
     return [card_item(c) for c in cards[start:start + params.per_page]], total
 
 
-def card_use_count(set_id: str, card_id: str) -> tuple[int, int]:
-    """`(collection lines, decks)` referencing the card (S10).
+def _v2_decks_using(set_id: str, card_id: str) -> set[tuple[int, str, str | None]]:
+    """`{(deck id, owner username, legacy name)}` of the decks v2, of every user, whose
+    CURRENT version references the card in any zone. One statement; the JSON is read in
+    Python (portable over SQLite and PostgreSQL).
 
-    Legacy decks (`rbdecks`) store `{main: [{set, id, qty}], sideboard: [...]}` JSON;
-    the scan reads each deck's JSON once and counts decks, not lines.
+    The workbench counts too: it is not part of the deck for legality or value, but a
+    workbench line is still a reference to the card and would dangle if it were deleted.
+    Older versions are history and do not count. `legacy name` lets the caller recognise
+    the `rbdecks` rows a deck was migrated from.
+    """
+    rows = db.session.query(
+        RbDeckHead.rbdkh_id, User.username, RbDeckHead.rbdkh_legacy_name,
+        RbDeckVersion.rbdkv_content,
+    ).join(
+        User, User.id == RbDeckHead.rbdkh_user_id,
+    ).join(
+        RbDeckVersion, RbDeckVersion.rbdkv_id == RbDeckHead.rbdkh_current_version_id,
+    ).filter(
+        RbDeckVersion.rbdkv_deck_id == RbDeckHead.rbdkh_id,
+    ).all()
+    return {(deck_id, username, legacy_name)
+            for deck_id, username, legacy_name, stored in rows
+            if any(ref['set'] == set_id and ref['id'] == card_id
+                   for _zone, _field, ref, _qty in _refs(normal_content(stored)))}
+
+
+def card_use_count(set_id: str, card_id: str) -> tuple[int, int]:
+    """`(collection lines, decks)` referencing the card (S10). Three statements.
+
+    Decks are counted in both sources, any user:
+    - decks v2: the current version of each deck, every zone including the workbench
+      (`_v2_decks_using`);
+    - legacy decks (`rbdecks`, no longer written, dropped in F11): every row, as before,
+      `{main: [{set, id, qty}], sideboard: [...]}` JSON, one deck per row.
+    A legacy row (any of its seq rows) is not counted when the v2 deck migrated from it (same
+    owner, and its `rbdkh_legacy_name` equals the row's name: the key `flask decks migrate`
+    uses) is already counted, so a migrated deck that holds the card in both sources counts once. A legacy
+    row whose v2 deck no longer holds the card still counts: it is still a reference.
     """
     lines = (RbCollection.query
              .filter_by(rbcol_rbset_id=set_id, rbcol_rbcar_id=card_id).count())
-    decks = 0
-    for (blob,) in db.session.query(RbDeck.rbdck_cards).all():
-        if not isinstance(blob, dict):
+    v2 = _v2_decks_using(set_id, card_id)
+    migrated = {(username, legacy_name) for _id, username, legacy_name in v2
+                if legacy_name is not None}
+    decks = len(v2)
+    for user, name, blob in db.session.query(
+            RbDeck.rbdck_user, RbDeck.rbdck_name, RbDeck.rbdck_cards).all():
+        if not isinstance(blob, dict) or (user, name) in migrated:
             continue
         found = any(
             isinstance(entry, dict) and entry.get('set') == set_id
