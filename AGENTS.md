@@ -111,6 +111,7 @@ riftbound/
 │   │   ├── user_product.py  # RbUserProduct (rbuserproducts): sealed products a user owns (F14-c)
 │   │   ├── playset.py       # RbKeepPlayset (rbkeepplayset): card names a user keeps a playset of (F3-a)
 │   │   ├── location.py      # RbLocation (rblocations), RbCollectionLocation (rbcollection_locations): storage locations and copies per location (F16-a)
+│   │   ├── wishlist.py      # RbWishlist (rbwishlists), RbWishlistLine (rbwishlistlines), RbWishlistAlert (rbwishlistalerts): wishlists, wanted cards, daily price alerts (F3-f-1)
 │   │   ├── import_preview.py # RbImportPreview (rbimportpreviews): parsed import rows for 30 minutes (F3-e)
 │   │   ├── snapshot.py      # RbValueSnapshot (rbvaluesnaps): daily collection value per user (F4-c)
 │   │   └── prefs.py         # RbUserPrefs (rbuserprefs): interface preferences, NULL = Auto; playset size (F3-a)
@@ -239,11 +240,12 @@ The rest (cookies, kill switches, lockout, captcha, proxy hops) is documented in
 ## Conventions
 
 ### Database Naming
-- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbdeckheads`, `rbdeckversions`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, `rbuserproducts`, `rblocations`, `rbcollection_locations`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
+- Tables: `rbusers`, `rbset`, `rbcards`, `rbcollection`, `rbdecks`, `rbdeckheads`, `rbdeckversions`, `rbcardmarket`, `rbproducts`, `rbcaptcha_used`, `rbuserprefs`, `rbjobs`, `rbcardbans`, `rbadminaudit`, `rbcardchanges`, `rbkeepplayset`, `rbvaluesnaps`, `rbimportpreviews`, `rbuserproducts`, `rblocations`, `rbcollection_locations`, `rbwishlists`, `rbwishlistlines`, `rbwishlistalerts`, and the Cardmarket loader tables `rbcm_categories`, `rbcm_expansions`, `rbcm_ignored`, `rbcm_load_history`, `rbcm_price`, `rbcm_product_card_map`, `rbcm_products`
 - Schema: `riftbound`
 - Model classes use the `Rb` prefix (the user model is `User`, table `rbusers`)
 - `rbproducts` (F14-a): keyed by `rbpdt_id_product` (`rbpdt_id_set` nullable), with `rbpdt_category`, `rbpdt_kind` (CHECK `rbproducts_kind_chk`), `rbpdt_kind_locked`, `rbpdt_set_locked`, `rbpdt_hidden`, `rbpdt_listed`, `rbpdt_updated_at`; only `rbpdt_type = 'nonsingle'` rows are products; `products_refresh` never deletes (a product that leaves the file gets `rbpdt_listed = false`)
 - `rbcollection` (F3-a): `rbcol_sell_qty` (0..quantity) is the number of copies for sale and `rbcol_purchase_price` the optional unit purchase price; `rbcol_selling` is only `Y` or `N`; **`rbcol_playset` is deprecated** (no longer read since the Jinja web was retired; dropped in F11). Playset size per user is `rbuserprefs.rbprf_playset_size` (NULL = 3) and the "keep a playset" marks are `rbkeepplayset` (one row per user and `name_key`)
+- `rbwishlists` / `rbwishlistlines` / `rbwishlistalerts` (F3-f-1, migration `0026_wishlists`): wishlists of a user (`rbwls_user_id` → `rbusers.id`, name unique per user ignoring case, position, one default per user through a partial unique index), their wanted cards (`name_key` + optional printing, foil `any`/`N`/`S`, qty 1..99, optional max price; one line per target and list through an expression unique index over `coalesce(set, '*')`, `coalesce(card, '*')`) and the daily price alerts (one per user, target and price date; kept when a list is deleted). Design: `docs/requirements/F3/F3-f-wishlists-design.md`
 - `rbdeckheads` / `rbdeckversions` (F5-c, migration `0025_decks_v2`): decks v2. A head (`rbdkh_user_id` → `rbusers.id`, name unique per user, mode, visibility, share slug, current version, `rbdkh_legacy_name`) has versions (`rbdkv_seq` unique per deck, `rbdkv_content` = content v2 validated by `app/schemas/deck_content.py`, `rbdkv_legacy_id` = the `rbdecks.id` it was copied from). `flask decks migrate [--dry-run] [--strict]` copies the legacy decks (dry run first, see `docs/knowledge/ops-runbook.md` → "Decks v2 migration"); `rbdecks` is no longer written since the Jinja deck pages were retired (F11 drops it)
 
 ### Column Naming

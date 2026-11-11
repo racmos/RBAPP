@@ -12,6 +12,7 @@ from .snapshot import RbValueSnapshot
 from .import_preview import RbImportPreview
 from .user_product import RbUserProduct
 from .location import RbLocation, RbCollectionLocation
+from .wishlist import RbWishlist, RbWishlistLine, RbWishlistAlert
 from .job import RbJob
 from .ban import RbCardBan
 from .audit import RbAdminAudit
