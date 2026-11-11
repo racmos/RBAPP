@@ -14,6 +14,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
 import { formatDate, formatMoney } from '@/lib/format';
+import { AddToWishlist } from '@/wishlists';
 import { CardPriceHistory } from './CardPriceHistory';
 import styles from './CardDetailView.module.css';
 
@@ -220,6 +221,12 @@ export function CardDetailView({
               </>
             )}
           </section>
+
+          <AddToWishlist
+            card={card}
+            className={styles.panel}
+            titleClassName={styles.sectionTitle}
+          />
         </div>
 
         <div className={styles.columnC}>

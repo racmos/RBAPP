@@ -54,6 +54,15 @@ import type {
   Session,
   StorageLocation,
   UserPayload,
+  Wishlist,
+  WishlistLine,
+  WishlistLineCreateBody,
+  WishlistLinePatchBody,
+  WishlistLines,
+  WishlistLinesMeta,
+  WishlistMoveBody,
+  WishlistMoveResult,
+  WishlistPatchBody,
 } from './types';
 
 /** `GET /auth/session` reduced to what the cache keeps; the CSRF token goes to `csrf.ts`. */
@@ -839,3 +848,65 @@ export const shareDeck = (id: number) =>
 
 export const unshareDeck = (id: number) =>
   request<{ share: null }>(`/decks/${id}/share`, { method: 'DELETE' });
+
+// --- Wishlists (F3-f-2) ---
+
+/** `GET /wishlists`: the user's lists in order; the first call creates the default list. */
+export const listWishlists = (signal?: AbortSignal) =>
+  request<{ items: Wishlist[] }>('/wishlists', { signal });
+
+export const createWishlist = (name: string) =>
+  request<Wishlist>('/wishlists', { method: 'POST', body: { name } });
+
+/** Rename and/or star (`is_default: true` unstars the previous default). */
+export const patchWishlist = (id: number, body: WishlistPatchBody) =>
+  request<Wishlist>(`/wishlists/${id}`, { method: 'PATCH', body });
+
+/** Deletes a list that is not the default; the answer can rebuild it (Undo). */
+export const deleteWishlist = (id: number) =>
+  request<{ deleted: Wishlist; lines: WishlistLine[] }>(`/wishlists/${id}`, { method: 'DELETE' });
+
+/** `PUT /wishlists/order`: every id of the user, once, in the new order. */
+export const reorderWishlists = (ids: number[]) =>
+  request<{ items: Wishlist[] }>('/wishlists/order', { method: 'PUT', body: { ids } });
+
+/** `GET /wishlists/:id/lines[?q=]`: every line (at most 100) with its indicators. */
+export const listWishlistLines = async (
+  id: number,
+  q: string,
+  signal?: AbortSignal,
+): Promise<WishlistLines> => {
+  const query = q ? `?${new URLSearchParams({ q }).toString()}` : '';
+  const { data, meta } = await requestWithMeta<{ items: WishlistLine[] }, WishlistLinesMeta>(
+    `/wishlists/${id}/lines${query}`,
+    { signal },
+  );
+  return {
+    items: data.items,
+    meta: meta ?? {
+      total: data.items.length,
+      line_count: data.items.length,
+      max_lines: 100,
+      market_total: 0,
+      unpriced: 0,
+    },
+  };
+};
+
+/** 201 for a new line, 200 with `merged: true` when it summed into the same target. */
+export const addWishlistLine = (id: number, body: WishlistLineCreateBody) =>
+  request<{ line: WishlistLine; merged: boolean }>(`/wishlists/${id}/lines`, {
+    method: 'POST',
+    body,
+  });
+
+export const patchWishlistLine = (id: number, lineId: number, body: WishlistLinePatchBody) =>
+  request<WishlistLine>(`/wishlists/${id}/lines/${lineId}`, { method: 'PATCH', body });
+
+/** The answer can be posted back to restore the line (Undo). */
+export const deleteWishlistLine = (id: number, lineId: number) =>
+  request<{ deleted: WishlistLine }>(`/wishlists/${id}/lines/${lineId}`, { method: 'DELETE' });
+
+/** Moves or copies lines to another list, all or nothing. */
+export const moveWishlistLines = (id: number, body: WishlistMoveBody) =>
+  request<WishlistMoveResult>(`/wishlists/${id}/lines/move`, { method: 'POST', body });

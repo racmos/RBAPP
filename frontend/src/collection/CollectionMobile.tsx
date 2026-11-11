@@ -16,6 +16,7 @@ import { formatMoney } from '@/lib/format';
 import { AddSheet } from './AddSheet';
 import { CollectionFilters } from './CollectionFilters';
 import { CollectionItem } from './CollectionItem';
+import { CollectionTabs } from './CollectionTabs';
 import { ExportDialog } from './ExportDialog';
 import { LineSheet } from './LineSheet';
 import { DEFAULT_PAGE } from './params';
@@ -170,6 +171,7 @@ export function CollectionMobile({ s }: { s: CollectionScreen }) {
 
   return (
     <div className={styles.page}>
+      <CollectionTabs />
       <PageHeader
         title={t('title')}
         subtitle={

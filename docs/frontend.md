@@ -551,6 +551,83 @@ after `products`; top, hub and "More"; strings in the `locations` namespace). AP
 - ESLint: `locations` may import everything below `app` except `collection`; the other features
   import it only through `@/locations`.
 
+## Wishlists (F3-j)
+
+`frontend/src/wishlists/` is the wishlist area, a tab of the collection (no top-level nav entry; strings in
+the `wishlists` namespace). API: `docs/api.md` → "Wishlists (F3-f-2)"; design and owner decisions:
+`docs/requirements/F3/F3-f-wishlists-design.md` (deviations in "As built (F3-j)").
+
+- Routes (lazy, inside the shell, `requireAuth` like every signed-in page): `/collection/wishlists`
+  (`WishlistsPage`) and `/collection/wishlists/alerts` (`AlertsPage`). The router imports
+  `@/wishlists/WishlistsPage` and `@/wishlists/AlertsPage` itself; `@/wishlists` (index) exports only
+  `AddToWishlist` and `useWishlists`, so the card detail does not carry the screens.
+- Tabs: `collection/CollectionTabs.tsx` holds `TabLinks` (a `<nav>` of `NavLink`s, the current one has
+  `aria-current="page"`) and `CollectionTabs` ("Collection sections": Collection | Wishlists), shown on top
+  of `/collection` (mobile and desktop) and of both wishlist screens; the wishlist screens add
+  `WishlistTabs` ("Wishlist sections": Lists | Price alerts, no badge until F4-g). The nav registry entry
+  `collection` is `nested: true` (`NavItem` drops `end`), so Collection stays current on
+  `/collection/wishlists*` (and `/collection/import`).
+- `api/endpoints.ts` + `api/types.ts`: `listWishlists`, `createWishlist`, `patchWishlist`, `deleteWishlist`,
+  `reorderWishlists`, `listWishlistLines` (`{items, meta}`), `addWishlistLine`, `patchWishlistLine`,
+  `deleteWishlistLine`, `moveWishlistLines`; types `Wishlist`, `WishlistLine`, `WishlistLinesMeta`,
+  `WishFoil`, `WishlistMarket`, `WishlistOwned` and the bodies.
+- `queries.ts` — `useWishlists` (`['wishlists']`; the first call of a user without lists creates the
+  default list), `useWishlistLines(id, q)` (`['wishlists', id, 'lines', q]`; the previous answer stays only
+  while the search of the same list changes), `useReorderWishlists` (`PUT /wishlists/order`, optimistic
+  with revert, like the locations), one mutation per write. Every write refreshes `['wishlists']` (lists
+  and lines: the counts change); a line PATCH also puts the saved line in the cache at once.
+  `useRestoreWishlist` is the Undo of a list delete: `POST /wishlists` with the old name, the deleted lines
+  posted back in order (`lineBody`), then `PUT /wishlists/order` to put the list back at its position.
+- `useWishlistsScreen` — `?list=<id>` (absent or unknown = the default, starred list) and `?q=` in the URL
+  (`useSearchNavigation`); opening a list writes its id and clears the search. `errors.ts`
+  (`useWishlistError`) words `wishlist_limit` as "That list is full: at most 100 cards." or "You already
+  have 20 lists, the most you can have. Delete one first."; everything else goes through `translateError`.
+- `ListsMenu` — the lists in order: the star (filled on the default list, named "Default list", disabled
+  with the reason "This is the default list. Star another list to change it."; "Make default" elsewhere →
+  `PATCH {is_default: true}`), the list button (name, "N cards", `aria-current` on the open one) and a
+  per-list `Popover` ("Actions for <name>": Rename, Move up, Move down, Delete; Delete is disabled on the
+  default list with "Star another list first"), then "New list". Below 1240 px it lives in a sheet ("Your
+  wishlists") opened by the list switcher (name, star, count, "Change list"); from 1240 px in a rail
+  next to the lines, where lists can also be dragged onto another (pointer devices; the up/down actions
+  stay for the keyboard). `ListSheets.tsx` (`useListActions`): the new / rename sheet (1-80 characters,
+  "Enter a name.", `already_exists` → "You already have a list with this name." on the field, the limit in
+  the form; a new list opens at once) and the delete `ConfirmDialog` ("Its N cards go with it."), whose
+  toast has Undo; a 409 `wishlist_default` is shown as its error toast.
+- Lines — header strip: Cards "N of 100" (`line_count` / `max_lines`), Market value (`market_total`),
+  Unpriced; a search box (`q`). Phones (`LineCards`): one card per line with the image, name, "SET · #N" or
+  "Any printing", the finish badge (Any finish / Non-foil / Foil), "Market: <price>" ("—" unpriced; the
+  price date as tooltip) with "Reached" / "Not reached" or the muted "No alert price", "Owned: N of this
+  version (n foil)" ("of any printing" for by-name lines), "Other versions: N (a alt art, f foil)" (not for
+  by-name lines; a tooltip explains it), zeros muted (`data-zero`), then the `Stepper` "Wanted" (1-99), the
+  `MoneyField` "Max price" (empty = no alert, `null`), the note (≤ 200, 500 ms) and "Move or copy" /
+  "Remove". From 1240 px `LinesTable` in `TableScroll fit` (Card, Wanted, Max price, Market, This version,
+  Other versions, Note, Actions) with compact inline editors named after the card. Edits save one after
+  another (`useLineSaver`), a failure toasts and reloads. Remove toasts "<name> removed." with Undo (the
+  deleted line posted back). `MoveSheet`: "To list" (the other lists), Move | Copy, the result toast
+  "Moved: n · Merged: n · Skipped: n", errors (the limit) in the sheet.
+- `AddLineSheet` ("Add to <list>"): `CardCombobox`, "Any printing" switch (sends `name` instead of
+  `set_id`/`card_id`), Finish Any / Non-foil / Foil (Foil disabled with "This card has no foil version."
+  when the chosen printing has none), Wanted, "Max price (optional)", "Note (optional)"; it stays open for
+  the next card; "Merged into an existing line." when the API merged; errors in the sheet. The header
+  "Add card" button is left out while the list is empty: the empty state ("No cards in this list yet")
+  offers it.
+- States: skeletons, error with retry (lists and lines separately), empty search ("Clear search"), offline
+  (read-only: every write disabled, `common:offline.editDisabled` under the title).
+- Card detail: `AddToWishlist` (a "Wishlists" panel in `CardDetailView` after "My copies"): "Add to
+  <default list name>" adds one copy of the printing, any finish, to the default list; "Choose list…"
+  opens a sheet with every list. The toast ("Added to <list>." or "Added one more to <list>." when it
+  merged) has "Open list" → `/collection/wishlists?list=<id>`. It reads `GET /wishlists`, which creates
+  the default list of a user who has none. "In wishlists: <names>" is not shown: no endpoint says which
+  lists hold a card without reading every list's lines.
+- `AlertsPage` is a shell until F4-g: title, the explanation, an empty state, no request.
+- Tests: `wishlists/*.test.tsx` and `collection/CollectionTabs.test.tsx` run against an in-memory wishlists
+  API (`src/test/wishlists.ts`: `installWishlists`, `recordWishlistRequests`, `findToast`, fixtures in
+  `src/test/fixtures/wishlists.ts`); the default MSW handlers answer `GET /wishlists` with the default list
+  so card detail tests keep working. ESLint: `eslint.config.js` has no boundary rule for `wishlists` yet
+  (follow-up); the folder follows the feature rules by hand (other features only through `@/wishlists`,
+  the shared collection controls `@/collection/Stepper`, `MoneyField` and `CollectionTabs` as products
+  does).
+
 ## Shared primitives: tables, dropdowns, checkboxes
 
 - **Tables.** Every data table sits in `components/ui/TableScroll`: the box scrolls both ways,

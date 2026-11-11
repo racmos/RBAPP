@@ -105,6 +105,18 @@ export function createAppRoutes(
                   }),
                 },
                 {
+                  path: '/collection/wishlists',
+                  lazy: async () => ({
+                    Component: (await import('@/wishlists/WishlistsPage')).WishlistsPage,
+                  }),
+                },
+                {
+                  path: '/collection/wishlists/alerts',
+                  lazy: async () => ({
+                    Component: (await import('@/wishlists/AlertsPage')).AlertsPage,
+                  }),
+                },
+                {
                   path: '/collection/import',
                   lazy: async () => ({
                     Component: (await import('@/collection')).ImportWizard,

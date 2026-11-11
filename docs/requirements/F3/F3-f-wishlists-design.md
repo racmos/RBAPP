@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F3 / f, plus slices in F3-j, F4-g and F5-f |
-| Status | **Approved by the owner 2026-11-11 (A1-A6 answered).** F3-f-1 done (#130, deployed 2026-11-11); F3-f-2 (lists + lines API) implemented. Next: F3-j UI, F4-g alerts. |
+| Status | **Approved by the owner 2026-11-11 (A1-A6 answered).** F3-f-1 done (#130, deployed 2026-11-11); F3-f-2 (lists + lines API) implemented. F3-j (UI) implemented. Next: F4-g alerts. |
 | Replaces | F3-R5 / F3-R11 / F3-R20 of the F3 phase spec (one flat `rbwishlist` table per user) |
 | Risk | Migration (own PR, `pg_dump` before deploy); alert job reads prices daily |
 
@@ -106,6 +106,35 @@ No change to any decision or assumption. Where this design was silent (full cont
   (the catalog has no art flag, so alternate arts and later reprints both count); `foil` = the foil copies of
   the other printings (only common and uncommon cards have foils, so it is 0 for rarer cards). Computed in
   7 SQL statements whatever the number of lines.
+
+### As built (F3-j, wishlists UI: `frontend/src/wishlists/`, `docs/frontend.md` → "Wishlists (F3-j)")
+
+No change to any decision or assumption, no backend change. Where this design was silent:
+
+- **Where it lives.** `/collection/wishlists` and `/collection/wishlists/alerts` are tabs of the
+  collection ("Collection | Wishlists" on top of both areas, then "Lists | Price alerts" inside the
+  wishlist area); no new top-level nav entry, and Collection stays the current nav entry on them. The open
+  list is `?list=<id>` (absent or unknown = the starred list) and the search `?q=`.
+- **List menu.** Phones: a list switcher (name, star, count) opens the lists in a sheet; desktop: a rail
+  beside the lines. The star itself is the "Make default" action (the default's star is disabled with its
+  reason); the per-list menu has Rename, Move up, Move down and Delete (disabled on the default list with
+  "Star another list first"). On pointer devices the rail's lists can also be dragged.
+- **Undo of a list delete** recreates the list under its name, posts its lines back in order and puts it
+  back at its position (three calls; the list and lines get new ids and dates). If the name was taken in
+  the meantime the Undo fails with that error.
+- **Lines.** "Not reached" is shown when a max price is set and the market is above it (or unpriced); a
+  line without a max price shows the muted "No alert price". "Other versions" is not shown for by-name
+  lines (the API counts every printing as this version). The market price shows its value with the price
+  date as a tooltip (not its source column). The finish of a line is chosen when it is added and not
+  edited afterwards (the API's foil PATCH is not used by the UI yet).
+- **Add.** The sheet stays open for the next card. Foil is disabled when the chosen printing has no foil
+  version; with "Any printing" it is left to the server (`foil_not_allowed`), since another printing of the
+  name may have one.
+- **Card detail.** One tap adds one copy of that printing, any finish, to the default list (the button is
+  named after it); "Choose list…" opens every list. "In wishlists: <names>" is not shown: no endpoint says
+  which lists hold a card without reading every list's lines.
+- **Alerts screen** is a shell (title, explanation, empty state, no request) until F4-g adds the API and
+  the unread badge.
 
 ## API (U, every row scoped to the caller; another user's id is a 404)
 

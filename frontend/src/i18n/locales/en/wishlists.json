@@ -1,0 +1,165 @@
+{
+  "title": "Wishlists",
+  "tabs": {
+    "label": "Collection sections",
+    "collection": "Collection",
+    "wishlists": "Wishlists",
+    "sections": "Wishlist sections",
+    "lists": "Lists",
+    "alerts": "Price alerts"
+  },
+  "loading": "Loading your wishlists",
+  "error": "Your wishlists could not be loaded.",
+  "linesLoading": "Loading the cards of this list",
+  "linesError": "The cards of this list could not be loaded.",
+  "count_one": "{{count}} card",
+  "count_other": "{{count}} cards",
+  "menu": {
+    "title": "Your wishlists",
+    "change": "Change list",
+    "default": "Default list",
+    "makeDefault": "Make default",
+    "defaultFixed": "This is the default list. Star another list to change it.",
+    "actions": "Actions for {{name}}",
+    "rename": "Rename",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "delete": "Delete",
+    "deleteDefault": "Star another list first",
+    "new": "New list",
+    "dragHint": "Drag a list to change the order."
+  },
+  "form": {
+    "newTitle": "New list",
+    "renameTitle": "Rename {{name}}",
+    "name": "Name",
+    "nameHint": "Up to 80 characters.",
+    "create": "Create",
+    "save": "Save",
+    "nameRequired": "Enter a name.",
+    "nameTaken": "You already have a list with this name."
+  },
+  "created": "List “{{name}}” created.",
+  "renamed": "List renamed.",
+  "starred": "“{{name}}” is now your default list.",
+  "confirmDelete": {
+    "title": "Delete “{{name}}”?",
+    "body_one": "Its {{count}} card goes with it.",
+    "body_other": "Its {{count}} cards go with it."
+  },
+  "deleted": "List “{{name}}” deleted.",
+  "undo": "Undo",
+  "restored": "List “{{name}}” restored.",
+  "summary": {
+    "lines": "Cards",
+    "linesValue": "{{count}} of {{max}}",
+    "value": "Market value",
+    "unpriced": "Unpriced"
+  },
+  "search": {
+    "label": "Search this list",
+    "placeholder": "Search by card name"
+  },
+  "empty": {
+    "title": "No cards in this list yet",
+    "body": "Add the cards you are looking for, with the price you would pay."
+  },
+  "emptySearch": "No card in this list matches your search.",
+  "clearSearch": "Clear search",
+  "lines": "Cards in {{name}}",
+  "columns": {
+    "card": "Card",
+    "wanted": "Wanted",
+    "maxPrice": "Max price",
+    "market": "Market",
+    "thisVersion": "This version",
+    "otherVersions": "Other versions",
+    "note": "Note",
+    "actions": "Actions"
+  },
+  "line": {
+    "printing": "{{set}} · #{{card}}",
+    "anyPrinting": "Any printing",
+    "finish": {
+      "any": "Any finish",
+      "N": "Non-foil",
+      "S": "Foil"
+    },
+    "wanted": "Wanted",
+    "wantedOf": "Wanted: {{name}}",
+    "maxPrice": "Max price",
+    "maxPriceOf": "Max price: {{name}}",
+    "noAlert": "No alert price",
+    "reached": "Reached",
+    "notReached": "Not reached",
+    "market": "Market",
+    "marketOf": "Market price",
+    "asOf": "Cardmarket price of {{date}}",
+    "note": "Note",
+    "noteOf": "Note: {{name}}",
+    "ownedThis": "Owned: {{count}} of this version",
+    "ownedAny": "Owned: {{count}} of any printing",
+    "foilPart": "{{count}} foil",
+    "other": "Other versions: {{count}}",
+    "otherDetail": "{{alt}} alt art, {{foil}} foil",
+    "otherHint": "Copies you own of the other printings of this card: alternate arts and reprints, and foils (only common and uncommon cards have a foil version).",
+    "moveCopy": "Move or copy",
+    "moveCopyOf": "Move or copy {{name}}",
+    "remove": "Remove",
+    "removeOf": "Remove {{name}}",
+    "removed": "{{name}} removed.",
+    "restored": "{{name}} is back.",
+    "saved": "Saved."
+  },
+  "move": {
+    "title": "Move or copy {{name}}",
+    "to": "To list",
+    "mode": "Action",
+    "move": "Move",
+    "copy": "Copy",
+    "result": "Moved: {{moved}} · Merged: {{merged}} · Skipped: {{skipped}}",
+    "mergeHint": "A card the other list already has is added to its line (up to 99 copies).",
+    "noOther": "Create another list first."
+  },
+  "add": {
+    "open": "Add card",
+    "title": "Add to {{name}}",
+    "card": "Card",
+    "anyPrinting": "Any printing",
+    "anyPrintingHint": "The line matches every printing of the card name.",
+    "finish": "Finish",
+    "foilNotAvailable": "This card has no foil version.",
+    "qty": "Wanted",
+    "maxPrice": "Max price (optional)",
+    "note": "Note (optional)",
+    "submit": "Add",
+    "chosen": "Chosen: {{name}}",
+    "chooseFirst": "Choose a card first.",
+    "added": "{{name}} added.",
+    "merged": "Merged into an existing line."
+  },
+  "errors": {
+    "listFull": "That list is full: at most {{max}} cards.",
+    "tooManyLists": "You already have {{max}} lists, the most you can have. Delete one first."
+  },
+  "detail": {
+    "title": "Wishlists",
+    "add": "Add to {{name}}",
+    "addFallback": "Add to wishlist",
+    "choose": "Choose list…",
+    "chooseTitle": "Add {{name}} to a list",
+    "added": "Added to {{name}}.",
+    "merged": "Added one more to {{name}}.",
+    "open": "Open list",
+    "hint": "One copy, any finish. Change the quantity and the price in the list."
+  },
+  "alerts": {
+    "title": "Price alerts",
+    "intro": "You will see here the cards of your wishlists whose market price reaches your price, once per day after Cardmarket prices update.",
+    "empty": {
+      "title": "No price alerts yet",
+      "body": "Give a card a max price in one of your wishlists to be told when the market price gets there."
+    },
+    "back": "Back to your lists"
+  }
+}

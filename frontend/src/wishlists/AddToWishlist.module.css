@@ -1,0 +1,62 @@
+@layer components {
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .hint {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .lists {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .list {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .list:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  .list:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .name {
+    font-weight: 700;
+  }
+
+  .star {
+    color: var(--gold);
+    fill: currentColor;
+  }
+
+  .count {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 13px;
+  }
+}

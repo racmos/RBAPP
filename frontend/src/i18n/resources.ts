@@ -10,6 +10,7 @@ import enLocations from './locales/en/locations.json';
 import enNav from './locales/en/nav.json';
 import enPrefs from './locales/en/prefs.json';
 import enProducts from './locales/en/products.json';
+import enWishlists from './locales/en/wishlists.json';
 
 /**
  * Catalogs are bundled and precached: no translation requests at run time (I18N-1). English is
@@ -29,6 +30,7 @@ export const resources = {
     products: enProducts,
     locations: enLocations,
     decks: enDecks,
+    wishlists: enWishlists,
   },
 };
 
@@ -45,5 +47,6 @@ export const NAMESPACES = [
   'products',
   'locations',
   'decks',
+  'wishlists',
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];

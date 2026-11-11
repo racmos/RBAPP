@@ -827,3 +827,104 @@ export type DeckImportPreview = {
 };
 
 export type DeckImportBody = { text: string; name?: string; mode?: GameMode };
+
+// --- Wishlists (F3-f-2) ---
+
+/** `Wishlist` of `GET /wishlists` (keys in the API order). */
+export type Wishlist = {
+  id: number;
+  name: string;
+  /** The starred list: "Add to wishlist" saves there. Exactly one per user. */
+  is_default: boolean;
+  /** 1..n, the user's order. */
+  position: number;
+  line_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/** The finish a line wants: either, non-foil or foil. */
+export type WishFoil = 'any' | 'N' | 'S';
+
+/** The price of a line for its foil wish; a by-name line takes its cheapest printing. */
+export type WishlistMarket = {
+  value: number;
+  source: string | null;
+  as_of: string | null;
+  set_id: string;
+  card_id: string;
+  foil: boolean;
+};
+
+/** Copies in the caller's collection (A6). A by-name line counts every printing as this version. */
+export type WishlistOwned = {
+  this_version: { total: number; foil: number };
+  other_versions: { total: number; alt_art: number; foil: number };
+};
+
+/** `WishlistLine` (contract, additive changes only). */
+export type WishlistLine = {
+  id: number;
+  list_id: number;
+  name: string;
+  /** Both null for a by-name line (any printing). */
+  set_id: string | null;
+  card_id: string | null;
+  /** The printing, or the base printing of a by-name line; null when it left the catalog. */
+  card: CardMini | null;
+  foil: WishFoil;
+  /** Copies wanted, 1..99. */
+  qty: number;
+  /** The alert price (EUR); null = no alert. */
+  max_price: number | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+  market: WishlistMarket | null;
+  /** null without a max price; else market <= max price (false when unpriced). */
+  reached: boolean | null;
+  owned: WishlistOwned;
+};
+
+/** `meta` of `GET /wishlists/:id/lines`. */
+export type WishlistLinesMeta = {
+  /** Lines returned (after `q`). */
+  total: number;
+  /** Lines in the list. */
+  line_count: number;
+  max_lines: number;
+  market_total: number;
+  unpriced: number;
+};
+
+export type WishlistLines = { items: WishlistLine[]; meta: WishlistLinesMeta };
+
+export type WishlistPatchBody = Partial<{ name: string; is_default: boolean }>;
+
+/** Body of `POST /wishlists/:id/lines`: a printing (`set_id` + `card_id`) or a `name`. */
+export type WishlistLineCreateBody = {
+  set_id?: string | null;
+  card_id?: string | null;
+  name?: string | null;
+  foil?: WishFoil;
+  qty?: number;
+  max_price?: number | null;
+  note?: string | null;
+};
+
+export type WishlistLinePatchBody = Partial<{
+  qty: number;
+  foil: WishFoil;
+  max_price: number | null;
+  note: string | null;
+}>;
+
+export type WishlistMoveMode = 'move' | 'copy';
+
+export type WishlistMoveBody = {
+  line_ids: number[];
+  to_list_id: number;
+  mode: WishlistMoveMode;
+};
+
+export type WishlistMoveResult = { moved: number; merged: number; skipped: number };
