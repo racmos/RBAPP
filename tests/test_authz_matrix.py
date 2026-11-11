@@ -98,6 +98,16 @@ MATRIX = {
     'api_v1.share_deck': 'U',                # F5 unit g
     'api_v1.unshare_deck': 'U',
     'api_v1.duplicate_deck': 'U',            # F5 duplicate
+    'api_v1.list_wishlists': 'U',            # F3-f-2 wishlists
+    'api_v1.create_wishlist': 'U',
+    'api_v1.update_wishlist': 'U',
+    'api_v1.delete_wishlist': 'U',
+    'api_v1.reorder_wishlists': 'U',
+    'api_v1.list_wishlist_lines': 'U',
+    'api_v1.create_wishlist_line': 'U',
+    'api_v1.update_wishlist_line': 'U',
+    'api_v1.delete_wishlist_line': 'U',
+    'api_v1.move_wishlist_lines': 'U',
     # --- admin ------------------------------------------------------------
     'api_admin.*': 'A',                     # /riftbound/api/v1/admin/* (F13-a); includes
                                             # /admin/cardmarket/* (CM-a)

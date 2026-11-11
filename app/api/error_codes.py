@@ -43,6 +43,9 @@ class ErrorCode(StrEnum):
     CURRENT_PASSWORD_INCORRECT = 'current_password_incorrect'  # wrong current password, 400
     DECK_LIMIT_EXCEEDED = 'deck_limit_exceeded'   # a deck breaks a hard limit (F5-R9);
                                                   # params.rule, params.max, params.name?, 400
+    WISHLIST_LIMIT = 'wishlist_limit'             # too many wishlists or lines in a list;
+                                                  # params.scope ('lists'|'lines'), params.max, 409
+    WISHLIST_DEFAULT = 'wishlist_default'         # the default wishlist cannot be deleted, 409
 
 
 class DetailCode(StrEnum):
