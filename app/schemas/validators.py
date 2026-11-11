@@ -506,6 +506,84 @@ class DeckExportQuery(BaseModel, extra='ignore'):
     format: str = 'text'
 
 
+# ============== Wishlists (F3-f-2) ==============
+
+_WishlistName = Annotated[str, Field(min_length=1, max_length=80)]
+_WishlistId = Annotated[StrictInt, Field(ge=1)]
+_WishQty = Annotated[StrictInt, Field(ge=1, le=99)]
+_WishFoil = Literal['any', 'N', 'S']
+_CardKey = Annotated[str, Field(min_length=1, max_length=50)]
+
+
+class WishlistCreate(BaseModel, extra='ignore'):
+    """POST /wishlists body: the name is trimmed (1-80 characters)."""
+    name: _WishlistName
+
+    _name = field_validator('name', mode='before')(lambda cls, v: _deck_name(v))
+
+
+class WishlistUpdate(BaseModel, extra='ignore'):
+    """PATCH /wishlists/<id> body: only the keys that were sent change; none is nullable."""
+    name: Optional[_WishlistName] = None
+    is_default: Optional[StrictBool] = None
+
+    _name = field_validator('name', mode='before')(lambda cls, v: _deck_name(v))
+    _nulls = field_validator('name', 'is_default')(lambda cls, v, info: _not_null(v, info))
+
+
+class WishlistOrder(BaseModel, extra='ignore'):
+    """PUT /wishlists/order body: every list id of the user, once."""
+    ids: List[_WishlistId] = Field(..., max_length=1000)
+
+
+class WishlistLinesQuery(BaseModel, extra='ignore'):
+    """GET /wishlists/<id>/lines query: `q` keeps the lines whose name contains it."""
+    q: Optional[str] = Field(None, max_length=200)
+
+
+class WishlistLineCreate(BaseModel, extra='ignore'):
+    """POST /wishlists/<id>/lines body. The target is a printing (`set_id` + `card_id`) or,
+    when both are null, a card `name` (any printing). Extra keys are ignored, so the line
+    returned by a DELETE can be posted back as it is (undo)."""
+    set_id: Optional[_CardKey] = None
+    card_id: Optional[_CardKey] = None
+    name: Optional[str] = Field(None, max_length=200)
+    foil: _WishFoil = 'any'
+    qty: _WishQty = 1
+    max_price: Optional[_Money] = None
+    note: Optional[str] = Field(None, max_length=200)
+
+    _note = field_validator('note')(lambda cls, v: _note(v))
+    _name = field_validator('name')(lambda cls, v: _note(v))
+
+    @model_validator(mode='after')
+    def _one_target(self):
+        if (self.set_id is None) != (self.card_id is None):
+            raise PydanticCustomError('invalid_value', 'set_id and card_id go together')
+        if self.set_id is None and self.name is None:
+            raise PydanticCustomError('missing', 'send set_id and card_id, or name')
+        return self
+
+
+class WishlistLineUpdate(BaseModel, extra='ignore'):
+    """PATCH /wishlists/<id>/lines/<line_id> body: only the keys that were sent change;
+    `null` clears the max price or the note."""
+    qty: Optional[_WishQty] = None
+    foil: Optional[_WishFoil] = None
+    max_price: Optional[_Money] = None
+    note: Optional[str] = Field(None, max_length=200)
+
+    _note = field_validator('note')(lambda cls, v: _note(v))
+    _nulls = field_validator('qty', 'foil')(lambda cls, v, info: _not_null(v, info))
+
+
+class WishlistLinesMove(BaseModel, extra='ignore'):
+    """POST /wishlists/<id>/lines/move body: lines of the list to another list of the user."""
+    line_ids: List[_WishlistId] = Field(..., min_length=1, max_length=100)
+    to_list_id: _WishlistId
+    mode: Literal['move', 'copy']
+
+
 # ============== Card Prices Query ==============
 
 

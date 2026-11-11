@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F3 / f, plus slices in F3-j, F4-g and F5-f |
-| Status | **Approved by the owner 2026-11-11 (A1-A6 answered). Next: F3-f-1 migration.** |
+| Status | **Approved by the owner 2026-11-11 (A1-A6 answered).** F3-f-1 done (#130, deployed 2026-11-11); F3-f-2 (lists + lines API) implemented. Next: F3-j UI, F4-g alerts. |
 | Replaces | F3-R5 / F3-R11 / F3-R20 of the F3 phase spec (one flat `rbwishlist` table per user) |
 | Risk | Migration (own PR, `pg_dump` before deploy); alert job reads prices daily |
 
@@ -75,6 +75,37 @@ Deviations from the table above (no change to any decision or assumption):
   `ix_rbwishlistalerts_user_created` on (`user_id`, `created_at`) ascending (PostgreSQL reads it backwards for newest
   first), `ix_rbwishlistalerts_user_unread` on (`user_id`) WHERE `rbwal_read_at IS NULL`, and the one-default
   partial unique index `rbwishlists_user_default_uq` on (`user_id`) WHERE `rbwls_is_default`.
+
+### As built (F3-f-2, lists and lines API: `app/services/wishlists.py`, `app/api/v1/wishlists.py`)
+
+No change to any decision or assumption. Where this design was silent (full contract in `docs/api.md` → "Wishlists
+(F3-f-2)"):
+
+- **Default list.** The first `GET /wishlists` of a user without lists creates `Wishlist` (race-safe through the
+  unique indexes). A user whose first list comes from `POST /wishlists` (no GET before) gets that list as the
+  default instead, so no list is created that the user did not ask for. `is_default: false` on the default list is
+  a 400 `validation_error` (star another list instead); deleting the default list is a 409 with the new code
+  `wishlist_default`.
+- **Deleting a list** returns the list and its lines (`{deleted, lines}`), so the Undo toast of F3-j can rebuild it.
+- **Line order** is the order the lines were added (by id); `q` filters by name; no paging (≤ 100). The list meta
+  is `{total (returned), line_count (in the list), max_lines, market_total, unpriced}`.
+- **Targets.** `set_id` + `card_id` (both or neither) is a printing target and wins over `name`; otherwise `name`
+  is matched by `name_key` and stored with the catalog's spelling. A by-name `foil: "S"` needs at least one
+  foilable printing of the name (else `foil_not_allowed`).
+- **Merge on add** sums quantities (cap 99) and a sent non-null max price or note replaces the line's; the answer
+  is 200 with `merged: true` (201 for a new line). A foil change by PATCH that collides with another line is a 409
+  `already_exists`, not a silent merge.
+- **Move / copy** merges collisions into the target line (cap 99; the target keeps its max price and note and only
+  fills empty ones); a target line already at 99 counts as `skipped`; with `move` the source line goes away in
+  every case. Only lines that would be new count against the 100-line limit.
+- **Price** (`market`): the line's printing for its foil wish (`any` = the cheaper finish); a by-name line takes
+  the cheapest priced printing of the name, and `market` names the printing and finish that gave it.
+  `reached` is null without a max price and false when there is no market price.
+- **Indicators.** `this_version` = copies of the printing (by-name: every printing); `other_versions.total` =
+  copies of the other printings of the name; `alt_art` = of those, the printings that are not the base printing
+  (the catalog has no art flag, so alternate arts and later reprints both count); `foil` = the foil copies of
+  the other printings (only common and uncommon cards have foils, so it is 0 for rarer cards). Computed in
+  7 SQL statements whatever the number of lines.
 
 ## API (U, every row scoped to the caller; another user's id is a 404)
 

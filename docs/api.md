@@ -698,6 +698,117 @@ which. 200 -> `PublicDeck` (keys in this order):
   slug itself or any other deck's slug.
 - 7 SQL statements (head + owner username, current version, cards, sets, bans, prices ×2).
 
+### Wishlists (F3-f-2)
+
+`app/api/v1/wishlists.py`, all `U`, logic in `app/services/wishlists.py`, tables of migration
+`0026_wishlists` (design: `docs/requirements/F3/F3-f-wishlists-design.md`). Everything is scoped
+to the signed-in user: a list id that is not theirs (or does not exist), or a line id that is
+not in the list of the URL, -> the 404 envelope on every route, never 403. Price alerts
+(`/wishlist-alerts`, the `price_alerts` job) arrive with F4-g and "missing cards to a wishlist"
+with F5-f.
+
+`Wishlist` = `{id, name, is_default (bool), position (1..n, the user's order), line_count,
+created_at, updated_at}` (UTC `YYYY-MM-DDTHH:MM:SSZ`), keys in this order. Names are trimmed,
+1-80 characters, unique per user ignoring case.
+
+- `GET /wishlists` (`api_v1.list_wishlists`) -> `{items: [Wishlist]}` in the user's order. The
+  **first call of a user without lists creates the default list** `Wishlist` (position 1,
+  `is_default: true`); later calls create nothing (a concurrent first call hits the unique
+  indexes, rolls back and reads the other one's list). 2 SQL statements (lists, line counts).
+- `POST /wishlists` (`api_v1.create_wishlist`) `{name}` -> 201 `Wishlist`, last in the order.
+  A user's **first** list (no `GET` before) is the default. A name the user already has
+  (ignoring case) -> 409 `already_exists`; the 21st list -> 409 `wishlist_limit` with
+  `params {scope: "lists", max: 20}`; a blank or longer name -> 400 `validation_error` on
+  `name`.
+- `PATCH /wishlists/<id>` (`api_v1.update_wishlist`) any of `{name, is_default}` -> `Wishlist`.
+  `is_default: true` stars the list and unstars the previous default in the same transaction
+  (one default per user). `is_default: false` on the default list -> 400 `validation_error` on
+  `is_default` (there is always a default: star another list instead); on another list it
+  changes nothing. `null` for either key -> 400; a taken name -> 409 `already_exists`.
+- `DELETE /wishlists/<id>` (`api_v1.delete_wishlist`) -> `{deleted: Wishlist, lines:
+  [WishlistLine]}` (as they were, so the UI can rebuild the list for an Undo). Deletes the list
+  and its lines; the order closes up. **The default list cannot be deleted** -> 409
+  `wishlist_default` until another list is starred (so the only list cannot be deleted either).
+  Price alerts already raised are kept (A5).
+- `PUT /wishlists/order` (`api_v1.reorder_wishlists`) `{ids}` -> `{items: [Wishlist]}`: every
+  list id of the user, each once. Missing, repeated, foreign or unknown ids, or `[]` -> 400
+  `validation_error` on `ids`; nothing changes. Positions are renumbered in two steps like
+  locations (the per-user unique position is checked row by row).
+
+**Lines.** A line's target is a card name plus either a printing (`set_id` + `card_id`) or
+none (by name: any printing), plus a foil wish `any` | `N` (non-foil) | `S` (foil).
+
+`WishlistLine` (contract, additive changes only) = `{id, list_id, name, set_id|null,
+card_id|null, card: CardMini|null, foil, qty (1..99), max_price|null (EUR, 2 decimals),
+note|null, created_at, updated_at, market|null, reached|null, owned}`, keys in this order:
+
+- `card`: the `CardMini` of the printing, or of the **base printing** of the name for a by-name
+  line (`catalog.base_printing_keys`); `null` when the card left the catalog. Its `market` is
+  the non-foil price and `owned_total` the copies of that printing, as everywhere.
+- `market` = `{value, source, as_of, set_id, card_id, foil (bool)}`: the price
+  (`price_summaries`, the collection's resolution) of the line's printing for its foil wish
+  (`N` the non-foil price, `S` the foil price, `any` the cheaper of the two). A **by-name line
+  takes the cheapest priced printing** of the name for that foil wish (ties: the first printing
+  in catalog order); `set_id`, `card_id` and `foil` say which printing and finish gave it.
+  `null` when nothing is priced.
+- `reached`: `null` without `max_price`; else `true` when `market.value <= max_price` and
+  `false` otherwise (also when there is no market price).
+- `owned` = `{this_version: {total, foil}, other_versions: {total, alt_art, foil}}`, copies in
+  the caller's collection (never another user's):
+  - `this_version`: copies of the line's printing (both finishes; `foil` = the foil ones). A
+    by-name line counts **every printing** of the name (A6) and its `other_versions` are all 0.
+  - `other_versions.total`: copies of the other printings of the same name (`name_key`).
+  - `other_versions.alt_art`: of those, the copies of printings that are **not the base
+    printing** of the name. The catalog has no art flag, so alternate arts and later reprints
+    both count; the base printing (lowest set and number, digit-only ids first) does not.
+  - `other_versions.foil`: the foil copies of the other printings. Only common and uncommon
+    cards have a foil version (`catalog.is_foilable`), so for rarer cards it is always 0
+    (design decision 4).
+
+Routes:
+
+- `GET /wishlists/<id>/lines[?q=]` (`api_v1.list_wishlist_lines`) -> `{data: {items:
+  [WishlistLine]}, meta: {total, line_count, max_lines: 100, market_total, unpriced}}` in the
+  order the lines were added (by id), no paging (at most 100). `q` keeps the lines whose name
+  contains it (ignoring case and repeated spaces). `total` = lines returned, `line_count` = lines
+  in the list, `market_total` = sum of `market.value x qty` of the returned priced lines (EUR),
+  `unpriced` = returned lines without a market price. **7 SQL statements whatever the number of
+  lines** (list, lines, cards, sets, price mapping, prices, the caller's copies grouped by
+  printing and foil); a write answer (POST/PATCH/DELETE line) costs the same read model.
+- `POST /wishlists/<id>/lines` (`api_v1.create_wishlist_line`) `{set_id?, card_id?, name?,
+  foil = "any", qty = 1 (1..99), max_price? (>= 0, rounded half up to cents; null = none),
+  note? (<= 200, trimmed, empty = none)}` -> `{line: WishlistLine, merged}`: **201** when a line
+  is created, **200** when it merged. The target is the printing when `set_id` and `card_id` are
+  sent (both or neither, else 400; `name` is then ignored), else `name`, matched to the catalog
+  by `name_key` (stored with the catalog's spelling). Unknown printing -> 400 `validation_error`
+  on `card_id`; unknown name -> 400 on `name`; neither -> 400. `foil: "S"` on a card without a
+  foil version (for a by-name line: no printing of the name has one) -> 400 `foil_not_allowed`.
+  **Merge (A2):** the same name + printing + foil in the list adds the quantities (capped at
+  99), and a sent non-null `max_price` or `note` replaces the line's; a foil copy, another
+  printing (alternate art) and a by-name target are different lines. The 101st line -> 409
+  `wishlist_limit` `params {scope: "lines", max: 100}`; a merge never counts as a new line.
+  Extra keys are ignored, so a deleted line posted back as it is restores it (Undo).
+- `PATCH /wishlists/<id>/lines/<line_id>` (`api_v1.update_wishlist_line`) any of `{qty, foil,
+  max_price, note}` -> `WishlistLine`. `max_price: null` / `note: null` clear them; `qty: null`
+  or `foil: null` -> 400. A foil change to `S` on a card without foil -> 400 `foil_not_allowed`;
+  a foil change that gives the target of another line of the list -> **409 `already_exists`**
+  (no silent merge: the user edits or deletes the other line).
+- `DELETE /wishlists/<id>/lines/<line_id>` (`api_v1.delete_wishlist_line`) -> `{deleted:
+  WishlistLine}` (posting it back restores it with a new id).
+- `POST /wishlists/<id>/lines/move` (`api_v1.move_wishlist_lines`) `{line_ids (1-100), to_list_id,
+  mode: "move"|"copy"}` -> `{moved, merged, skipped}`, atomic. Every line id must be a line of
+  the list of the URL (else 404) and `to_list_id` another list of the caller (another user's:
+  404; the same list: 400 on `to_list_id`). A line whose target the other list already has is
+  **merged** (quantities add, capped at 99; the target line keeps its max price and note and
+  takes the moved line's only where it has none): `merged` counts them, `skipped` the ones whose
+  target was already at 99 (nothing added). `moved` counts the lines created in the other list.
+  With `move` the source lines go away in every case; with `copy` they stay. When the new lines
+  do not fit (100 per list) -> 409 `wishlist_limit` `params {scope: "lines", max: 100}` and
+  nothing changes.
+
+New error codes: `wishlist_limit` (409, `params.scope` `lists`|`lines`, `params.max`) and
+`wishlist_default` (409).
+
 ### GET /cards/<set_id>/<card_id>/prices
 
 `app/api/v1/cards.py` (`api_v1.get_card_prices`, U): daily price history.
