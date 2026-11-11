@@ -811,9 +811,14 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   `image` becomes `<stem>.<ext>` (stem of the current image, else `<set lower>_<card>`).
   → 200 `AdminCard`. Audit `card.image` with `{image, bytes}`.
 - `DELETE /admin/cards/<set>/<id>` → 200 `{"deleted": "<SET>-<id>"}`; 409 `card_in_use`
-  (`params: {"collection_lines": n, "decks": m}`) when a collection line or a deck
-  (`rbdck_cards` main/sideboard `{set, id}`) references it. The image file is not deleted.
-  Audit `card.delete`.
+  (`params: {"collection_lines": n, "decks": m}`) when a collection line or a deck of any
+  user references it. `decks` counts distinct decks in both sources: decks v2 (the
+  **current** version only, every zone — legend, champion, main, runes, battlefields,
+  sideboard **and the workbench**: a workbench line is still a reference that would dangle)
+  plus legacy `rbdecks` rows (`rbdck_cards` main/sideboard `{set, id}`, every row). A legacy
+  row is not counted again when the v2 deck migrated from it (same owner,
+  `rbdkh_legacy_name` = `rbdck_name`) already counts, so a migrated deck holding the card in
+  both counts once. Three SQL statements. The image file is not deleted. Audit `card.delete`.
 
 ### Products (F14-d)
 
