@@ -51,7 +51,7 @@ riftbound/
 ├── app/
 │   ├── __init__.py          # App factory, extensions (db, migrate, login, csrf, limiter), blueprints
 │   ├── errors.py            # Error handlers + wants_json() (JSON or HTML negotiation) + html_error_page() (minimal inline page)
-│   ├── security.py          # admin_required / require_admin
+│   ├── security.py          # require_admin (before_request hook of api_admin)
 │   ├── db_schema.py         # Schema name + Alembic options shared by the app and migrations/env.py
 │   ├── api/                 # JSON API
 │   │   ├── error_codes.py   # ErrorCode / DetailCode: machine-readable error `code`s
@@ -141,7 +141,7 @@ riftbound/
 │   │   ├── collection_export.py # CSV export rows and stream: RBAPP and Cardmarket formats (F3-d)
 │   │   ├── collection_read.py # list_collection: groups, lines, prices, P/L, totals, facets (F3-b)
 │   │   ├── collection_write.py # add (merge), edit (stale guard), delete, split, bulk, keep playset (F3-c)
-│   │   ├── collection_rules.py # legacy_sell_qty, kept_copies, playset_size, sync_legacy_sell_qty (F3-a)
+│   │   ├── collection_rules.py # kept_copies, playset_size (F3-a)
 │   │   ├── locations.py     # locations CRUD, order, lock, suggest_next_code, assign/move/remove copies, take_copies in order, release (F16-a)
 │   │   ├── daily_prices.py  # validate_load, classify_unmapped (read-only clear/doubtful decision, CM-b), add_links, match_clear_cases (daily_prices job, F4-b)
 │   │   ├── jobs.py          # enqueue, claim_next, expire_stale, run_pending, list_jobs, last_success_today (job runner)
@@ -153,7 +153,7 @@ riftbound/
 │   │   ├── products.py      # kind_for(category), refresh_products(date): rbproducts catalog (F14-a)
 │   │   ├── user_products.py # owned products: list with total, add (merge in SQL), edit, delete, products_values (F14-c)
 │   │   ├── snapshots.py     # take_snapshots(today): one rbvaluesnaps row per user with a collection (F4-c)
-│   │   ├── pricing.py       # resolve_price (+_with_source), latest_price_for_card, batched price_summaries (F2-b)
+│   │   ├── pricing.py       # resolve_price (+_with_source), batched price_summaries (F2-b)
 │   │   ├── card_images.py   # images_root, card_image_path, card_image_url, import_legacy (CARD_IMAGES_DIR)
 │   │   ├── cardmarket_loader.py
 │   │   ├── cardmarket_matcher.py
@@ -340,13 +340,13 @@ Use `ok()` / `fail()` from `app/api/responses.py`. Error names: `Validation Erro
 ### Request Validation
 Every endpoint that receives JSON uses `@validate_json`:
 ```python
-from app.schemas.validators import SetCreate
+from app.schemas.validators import LocationCreate
 from app.schemas.validation import validate_json
 
-@sets_bp.route('/add', methods=['POST'])
-@admin_required
-@validate_json(SetCreate)
-def add_set():
+@api_v1.post('/locations')
+@login_required
+@validate_json(LocationCreate)
+def create_location():
     data = request.validated_data  # Validated Pydantic model
     ...
 ```

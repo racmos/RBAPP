@@ -114,17 +114,23 @@ describe('CatalogPage (F2-h AC3, AC4, AC7)', () => {
     expect(link).toHaveAttribute('href', '/riftbound/app/cards/OGN/79?domain=Fury');
   });
 
+  // The router state changes before React commits the page (navigations render in a
+  // transition), so the test waits for what the user sees, not only for `where()`. The
+  // detail route is a lazy chunk loaded inside the test, hence a test timeout that fits the
+  // LONG waits (the 5 s default does not, under load).
   it('at 390 px the detail replaces the catalog and back restores it', async () => {
     signedInApi();
     const { where, router } = await renderApp({ path: '/cards?domain=Fury', width: 390 });
     await screen.findByRole('link', { name: /Ayla/ }, LONG);
     await userEvent.click(screen.getByRole('link', { name: /Ayla/ }));
     await waitFor(() => expect(where()).toBe('/cards/OGN/79?domain=Fury'), LONG);
+    expect(await screen.findByRole('button', { name: 'Back' }, LONG)).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Cards' })).not.toBeInTheDocument();
-    router.navigate(-1);
+    void router.navigate(-1);
     await waitFor(() => expect(where()).toBe('/cards?domain=Fury'), LONG);
     expect(await screen.findByRole('heading', { name: 'Cards' }, LONG)).toBeVisible();
-  });
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+  }, 30000);
 
   it('at 1024 px the detail is a modal with close returning to /cards?...', async () => {
     signedInApi();

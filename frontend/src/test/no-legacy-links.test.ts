@@ -5,9 +5,9 @@ import { SRC_DIR } from './css';
 
 /**
  * The app never links back to the old Jinja web (PR 2/3 of the Jinja retirement). The app may
- * only name `/riftbound/api` (the JSON API), `/riftbound/app` (itself), `/riftbound/media` and
- * `/riftbound/static` (files); `safeNext.ts` keeps the bare `/riftbound/` prefix to validate
- * `next` values.
+ * only name `/riftbound/api` (the JSON API), `/riftbound/app` (itself) and `/riftbound/media`
+ * (card and product images); `/riftbound/static` served the Jinja assets and is a 404 since the
+ * retirement. `safeNext.ts` keeps the bare `/riftbound/` prefix to validate `next` values.
  */
 const FORBIDDEN = [
   /\/riftbound\/set/,
@@ -16,6 +16,7 @@ const FORBIDDEN = [
   /\/riftbound\/deck/,
   /\/riftbound\/profile/,
   /\/riftbound\/price/,
+  /\/riftbound\/static/,
   /legacyHref/,
 ];
 /** The old dashboard is the bare product root. */

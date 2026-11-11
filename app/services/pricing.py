@@ -225,17 +225,6 @@ def price_summaries(items):
     return result
 
 
-def latest_price_for_card(rbset_id: str, rbcar_id: str, *, rarity: Optional[str],
-                          foil: str = 'N') -> Optional[float]:
-    """The price of a card from the newest `rbcm_price` row of its product, or None."""
-    id_product = canonical_product_id(rbset_id, rbcar_id, foil)
-    if id_product is None:
-        return None
-    row = (RbcmPrice.query.filter_by(rbprc_id_product=id_product)
-           .order_by(RbcmPrice.rbprc_date.desc()).first())
-    return resolve_price(row, rarity=rarity, foil=foil)
-
-
 def price_as_of() -> Optional[str]:
     """The date (`YYYY-MM-DD`) of the newest `rbcm_price` row, or None when there is none."""
     latest = db.session.query(func.max(RbcmPrice.rbprc_date)).scalar()

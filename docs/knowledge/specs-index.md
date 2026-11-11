@@ -10,8 +10,8 @@ Given/When/Then scenarios. Unit tags `[a]`..`[g]` say which delivery unit built 
 person, `[PG-CI]` = runs in the PostgreSQL CI job, `[vitest]` = frontend test, `[build]` = asserted over the
 production build, `[GH-CI]` = only visible in GitHub Actions.
 
-**Jinja retirement (2026-11-08, PR 3/3).** The Jinja web is gone. `landing-feeds` and `deck-viewing` no
-longer apply; `user-profile` holds for `PATCH /me/account`; the Jinja-only parts of `access-control`,
+**Jinja retirement (2026-11-08, PR 3/3).** The Jinja web is gone. `landing-feeds` and `deck-viewing` (except DECK-1,
+amended to owner-only decks, D-F5-9) no longer apply; `user-profile` holds for `PATCH /me/account`; the Jinja-only parts of `access-control`,
 `csrf-protection`, `login-protection`, `session-security`, `collection-quantity`, `app-shell` (SHELL-10),
 `frontend-auth` (FAUTH-11), `api-v1`, `spa-hosting` and `pwa` are amended by a note at the top of each spec.
 
@@ -115,8 +115,8 @@ Alembic through Flask-Migrate as the only schema builder, scoped to schema `rift
 - MIG-9 Pre-migration backup is documented: `pg_dump -n riftbound` and the restore path
 
 ### deck-viewing (`deck-viewing/spec.md`)
-Correct, private-by-lookup deck viewing (visibility itself stays "every signed-in user sees every deck" until F5).
-- DECK-1 have/missing use the viewer's collection: never the owner's
+Deck visibility. DECK-2..4 are history (Jinja routes, retired); DECK-1 amended by D-F5-9.
+- DECK-1 A deck is visible only to its owner: another user's deck is a 404; shared decks are read through `GET /public/decks/<slug>`
 - DECK-2 Name lookup is scoped to the viewer: `/view/<name>[/<seq>]` resolves only the viewer's decks; others by id
 - DECK-3 versions endpoint works: the current user's versions, newest first, no 500
 - DECK-4 Dead legacy routes removed: the two always-failing deck routes are gone

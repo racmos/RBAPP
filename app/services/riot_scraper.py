@@ -2,7 +2,7 @@
 Riot Card Gallery scraper (fetch + parse only since F13-c).
 Fetches card data from https://riftbound.leagueoflegends.com/en-us/card-gallery/
 and parses it (`fetch_gallery` in `app/services/riot_sync.py` drives it).
-Writes go through the sync engine; `refresh_riot_sets` lists the gallery's set filter.
+Writes go through the sync engine.
 """
 
 from __future__ import annotations
@@ -64,53 +64,6 @@ def _fetch_gallery_json(session: requests.Session) -> list[dict]:
             return blade['cards']['items']
 
     raise ValueError("No cards found in gallery JSON data")
-
-
-def _extract_sets_from_filters(json_data: dict) -> list[dict]:
-    """Extract available sets from the gallery page filter options."""
-    blades = (
-        json_data.get('props', {})
-        .get('pageProps', {})
-        .get('page', {})
-        .get('blades', [])
-    )
-
-    for blade in blades:
-        # Look for filter config in cards blade
-        filters = blade.get('cards', {}).get('filters', [])
-        for f in filters:
-            filter_id = f.get('id', '') or f.get('label', '')
-            # Set filter usually has id "set" or label "Set"
-            if filter_id.lower() in ('set', 'sets', 'expansion'):
-                options = f.get('options', []) or f.get('values', [])
-                return [
-                    {
-                        'id': opt.get('value', opt.get('id', '')),
-                        'label': opt.get('label', opt.get('name', '')),
-                    }
-                    for opt in options
-                    if opt.get('value', opt.get('id', ''))
-                ]
-
-    # Fallback: extract unique sets from cards themselves
-    cards_items = []
-    for blade in blades:
-        if 'cards' in blade and 'items' in blade['cards']:
-            cards_items = blade['cards']['items']
-            break
-
-    seen = {}
-    for card in cards_items:
-        card_id = card.get('id', '')
-        match = re.match(r'([a-zA-Z]+)-', card_id)
-        if match:
-            set_id = match.group(1).upper()
-            if set_id not in seen:
-                # Try to get set name from card data
-                set_name = card.get('set', {}).get('value', {}).get('label', set_id)
-                seen[set_id] = {'id': set_id, 'label': set_name}
-
-    return list(seen.values())
 
 
 def _clean_html(html_text: str) -> str:
@@ -261,37 +214,3 @@ def _download_image(session: requests.Session, url: str, dest_path: str) -> bool
     except Exception as e:
         logger.warning(f"Image download failed {url}: {e}")
         return False
-
-
-# ──────────────────────────────────────────────
-# Public API
-# ──────────────────────────────────────────────
-
-def refresh_riot_sets() -> dict:
-    """
-    Fetch gallery page, extract available set filters.
-    Returns: { success, sets: [{id, label}, ...] }
-    """
-    session = _get_session()
-    try:
-        response = session.get(GALLERY_URL, timeout=30)
-        response.raise_for_status()
-
-        match = re.search(
-            r'<script id="__NEXT_DATA__" type="application/json">(.+?)</script>',
-            response.text,
-        )
-        if not match:
-            return {'success': False, 'message': 'Cannot find JSON data in gallery page', 'sets': []}
-
-        json_data = json.loads(match.group(1))
-        sets = _extract_sets_from_filters(json_data)
-
-        return {
-            'success': True,
-            'sets': sets,
-            'count': len(sets),
-        }
-    except Exception as e:
-        logger.error(f"refresh_riot_sets failed: {e}")
-        return {'success': False, 'message': str(e), 'sets': []}

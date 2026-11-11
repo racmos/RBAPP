@@ -38,6 +38,16 @@ describe('wide panel at 1700 px (F3-h S6)', () => {
     );
   }, 25000);
 
+  it('links each deck of the card to its deck page', async () => {
+    await renderApp({ path: '/collection', width: 1700 });
+    const aside = await panel();
+    const decks = await within(aside).findByRole('region', { name: 'In your decks' }, LONG);
+    expect(await within(decks).findByRole('link', { name: 'Fury Chaos: 2' }, LONG)).toHaveAttribute(
+      'href',
+      '/riftbound/app/decks/3',
+    );
+  }, 25000);
+
   it('follows the row that is clicked', async () => {
     await renderApp({ path: '/collection', width: 1700 });
     const aside = await panel();
