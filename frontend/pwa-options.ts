@@ -57,11 +57,14 @@ export function buildPwaOptions(env: PwaEnv): Partial<VitePWAOptions> {
       globIgnores: [...UNUSED_FONT_SUBSETS.map((subset) => `**/*-${subset}-*.woff2`), '**/*.map'],
       navigateFallback: `${START_URL}index.html`,
       navigateFallbackAllowlist: [/^\/riftbound\/app\//],
-      // API and static files are never answered with the shell; neither is anything that looks
-      // like a file (a missing asset must stay a 404, HOST-3). Legacy Jinja pages are outside the
-      // worker scope by construction.
+      // The API and the media files are never answered with the shell; neither is anything that
+      // looks like a file (a missing asset must stay a 404, HOST-3). The allowlist already keeps
+      // every path outside /riftbound/app/ away from the shell; the denylist repeats it as a guard.
+      // /riftbound/static/ has served nothing since the Jinja web was retired (a 404); it stays
+      // because `scripts/check-dist.mjs` requires it.
       navigateFallbackDenylist: [
         /^\/riftbound\/api\//,
+        /^\/riftbound\/media\//,
         /^\/riftbound\/static\//,
         /\/[^/?]+\.[A-Za-z0-9]{1,8}$/,
       ],

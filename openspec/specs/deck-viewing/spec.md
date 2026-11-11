@@ -2,29 +2,46 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
-> **Jinja retirement (2026-11-08, PR 3/3).** The Jinja deck routes (`/riftbound/deck/...`) were removed; `/riftbound/deck` and `/riftbound/deck/view/<any>` answer a 302 to `/riftbound/app/decks`. DECK-1..DECK-4 no longer apply; decks v2 (owner-only, D-F5-9) are specified in `docs/requirements/F5/` and `docs/api.md` → "Decks (F5-d)". Kept as history.
+> **Jinja retirement (2026-11-08, PR 3/3).** The Jinja deck routes (`/riftbound/deck/...`) were removed; `/riftbound/deck` and `/riftbound/deck/view/<any>` answer a 302 to `/riftbound/app/decks`. DECK-2..DECK-4 no longer apply and are kept as history; DECK-1 is amended below (owner-only decks, D-F5-9); decks v2 are specified in `docs/requirements/F5/` and `docs/api.md` → "Decks (F5-d)" and "Deck sharing (F5-g)".
 
-> Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. All scenarios are pytest-testable (SQLite). All decks remain visible to every logged-in user (unchanged); only what is computed from the viewer changes.
+> Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. All scenarios are pytest-testable (SQLite). Until F5 every logged-in user could see every deck; since D-F5-9 (F5-d) a deck is visible only to its owner (DECK-1).
 
 ## Requirements
 
-### Requirement: DECK-1 have/missing use the viewer's collection [c]
+### Requirement: DECK-1 A deck is visible only to its owner (amended by D-F5-9)
 
-On all three view routes (`/riftbound/deck/view/<int:id>`, `/view/<name>`, `/view/<name>/<seq>`), `have` per card MUST be `min(viewer's total owned quantity across foil variants, needed quantity)` and `missing = needed - have`, computed from the VIEWER's collection, never the owner's.
+A deck MUST be visible only to its owner: every `/riftbound/api/v1/decks/<id>...` route resolves only the caller's decks, and another user's deck answers exactly like an unknown id (404, never 403, nothing disclosed or changed). A deck the owner shared is read by anyone through its share slug, `GET /riftbound/api/v1/public/decks/<slug>` (public, read-only, no workbench, the owner's username only when the deck is public, no collection read: `owned_total` is `null`); an unknown, revoked or malformed slug answers the same 404. Owned copies (`owned_total`) on the owner's routes come from the owner's collection, who is the viewer.
+
+#### Scenario: Another user's deck
+- GIVEN user A owns deck 7 and user B is signed in
+- WHEN B requests `GET /decks/7` (or any write on it)
+- THEN the answer is a 404 envelope and deck 7 is unchanged
+
+#### Scenario: Shared deck
+- GIVEN user A shared deck 7 and got slug `S`
+- WHEN anyone (signed in or not) requests `GET /public/decks/S`
+- THEN the answer is the read-only deck without the workbench, and `owned_total` is `null`
+
+#### Scenario: Revoked link
+- GIVEN user A revoked the share of deck 7
+- WHEN anyone requests `GET /public/decks/S`
+- THEN the answer is a 404
+
+History (f0-foundation `[c]`, Jinja routes, superseded): "DECK-1 have/missing use the viewer's collection". On all three view routes (`/riftbound/deck/view/<int:id>`, `/view/<name>`, `/view/<name>/<seq>`), `have` per card MUST be `min(viewer's total owned quantity across foil variants, needed quantity)` and `missing = needed - have`, computed from the VIEWER's collection, never the owner's.
 
 Because the name routes resolve only the viewer's own decks (DECK-2), the comparison against another user's deck is exercised through the id route (R7).
 
-#### Scenario: Another user's deck
+#### Superseded scenario: Another user's deck
 - GIVEN user A owns deck `Foo` needing 3x `OGN/1` and owns 4 copies; user B owns 1 copy
 - WHEN B views the deck by id
 - THEN the card shows `have=1`, `missing=2`
 
-#### Scenario: Viewer owns none
+#### Superseded scenario: Viewer owns none
 - GIVEN the same deck and user C with no copies
 - WHEN C views it by id
 - THEN `have=0`, `missing=3`
 
-#### Scenario: Owner views own deck
+#### Superseded scenario: Owner views own deck
 - GIVEN the same deck
 - WHEN A views it
 - THEN `have=3`, `missing=0`

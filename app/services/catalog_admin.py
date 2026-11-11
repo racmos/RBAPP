@@ -137,7 +137,7 @@ def list_cards(params) -> tuple[list[dict], int]:
 def card_use_count(set_id: str, card_id: str) -> tuple[int, int]:
     """`(collection lines, decks)` referencing the card (S10).
 
-    Decks store `{main: [{set, id, qty}], sideboard: [...]}` JSON (DeckCards);
+    Legacy decks (`rbdecks`) store `{main: [{set, id, qty}], sideboard: [...]}` JSON;
     the scan reads each deck's JSON once and counts decks, not lines.
     """
     lines = (RbCollection.query

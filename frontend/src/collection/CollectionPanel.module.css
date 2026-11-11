@@ -54,6 +54,15 @@
     font-size: 13px;
   }
 
+  .deckLink {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .deckLink:hover {
+    color: var(--accent);
+  }
+
   .open {
     align-self: flex-start;
     color: var(--accent);

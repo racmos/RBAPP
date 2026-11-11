@@ -61,8 +61,8 @@ def validate_json(schema: type[BaseModel]):
     Decorator to validate JSON request body against a Pydantic schema.
     
     Usage:
-        @validate_json(SetCreate)
-        def add_set():
+        @validate_json(LocationCreate)
+        def create_location():
             data = request.validated_data  # Validated and parsed data
             ...
     """

@@ -73,7 +73,9 @@ export function CollectionPanel({ group }: { group: CollectionGroup | null }) {
           <ul className={styles.lines}>
             {decks.map((deck) => (
               <li key={deck.deck_id}>
-                {t('panel.decksCount', { name: deck.name, qty: deck.qty })}
+                <Link className={styles.deckLink} to={`/decks/${deck.deck_id}`}>
+                  {t('panel.decksCount', { name: deck.name, qty: deck.qty })}
+                </Link>
               </li>
             ))}
           </ul>

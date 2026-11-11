@@ -54,9 +54,8 @@ Top-level layout (only what matters):
 `create_app(**overrides)` runs in this order: load `.env` only if the effective environment is
 development, resolve `RB_ENV`, create `Flask` without a static route (`static_folder=None`), read settings
 from the environment, apply `overrides` (tests), compute SQLAlchemy engine options from the FINAL
-database URI, validate (fail fast), install the SQLite shims (only for `sqlite` URIs: a
-`regexp_replace` function, unused since the Jinja catalog went, and an in-memory database attached as
-`riftbound`), then initialise the
+database URI, validate (fail fast), install the SQLite shim (only for `sqlite` URIs: an
+in-memory database attached as `riftbound`), then initialise the
 extensions, CLI, `ProxyFix` and the blueprints.
 
 Extensions are module-level singletons in `app/__init__.py`:
@@ -116,7 +115,7 @@ answer:
 
 - **Roles.** `rbusers.is_admin` and `is_blocked` change only through the CLI, never through a request.
   `User.is_active` is `not is_blocked`; a blocked user is rejected exactly like a wrong password and
-  loses a live session on the next request. `app/security.py`: `admin_required` (decorator) and
+  loses a live session on the next request. `app/security.py`:
   `require_admin` (a `before_request` hook; the whole `api_admin` blueprint uses it). Anonymous callers
   get a JSON 401 (or the login redirect for HTML), never 403; a signed-in non-admin gets 403.
 - **CSRF.** `CSRFProtect` on every POST/PUT/PATCH/DELETE with no exemptions, API included. Token in the
@@ -321,7 +320,7 @@ repeats it on PostgreSQL 18. Runbook: `docs/migrations.md`.
 - `auth.py`: `authenticate` (lockout state machine), `register_user`, `unlock_user`, rate-limit strings.
 - `captcha.py`: `none` and `altcha` providers, replay store in `rbcaptcha_used`.
 - `prefs.py`: `get_prefs` (never writes), `update_prefs` (creates the row; retries once on a lost race).
-- `pricing.py`: `resolve_price(row, rarity, foil)`, `canonical_product_id`, `latest_price_for_card`.
+- `pricing.py`: `resolve_price(row, rarity, foil)`, `canonical_product_id`.
   Chain for premium (rarity rare, epic or showcase, case-insensitive) OR foil `S`:
   `avg7_foil -> avg7 -> low_foil -> low`. Everything else (common, uncommon, unknown rarity, non-foil):
   `avg7 -> avg7_foil -> low -> low_foil`. NULL and 0 count as missing; no price gives `None`, never 0.
@@ -334,8 +333,7 @@ repeats it on PostgreSQL 18. Runbook: `docs/migrations.md`.
 - `cardmarket_matcher.py`: `auto_match(dry_run, max_groups)` pairs unmapped products to cards by metacard,
   normalised name and price/rarity ranking (Basic Rune: one slot without foil; common/uncommon: normal and
   foil slots; rare/epic: separate card entries), writing `rbcm_product_card_map`.
-- `riot_scraper.py`: the fetch/parse helpers (and `refresh_riot_sets()`, unused since the Jinja price
-  tools went) read the official card
+- `riot_scraper.py`: the fetch/parse helpers read the official card
   gallery (`__NEXT_DATA__` JSON). Since F13-c only `app/services/riot_sync.py` writes from it: `sync`
   inserts new cards, auto-applies differences in active windows and proposes the rest to
   `rbcardchanges` (one transaction per set); the legacy `extract_riot_cards` write path is gone.
@@ -634,12 +632,12 @@ must not strip `Referer`, `limit_req` zone for the auth POSTs). Order for an upg
 | `pg_url` | throw-away PostgreSQL URL from `TEST_POSTGRES_URL`; refuses a name without `test`; drops schema `riftbound` before and after |
 | `spa_dist`, `spa_app` | fake frontend build in a temp dir; `app` pointed at it (no Node needed) |
 
-  Helpers: `tests/auth_helpers.py` (CSRF token extraction, an HTTPS `Browser`), `tests/migration_helpers.py`,
+  Helpers: `tests/auth_helpers.py` (CSRF token payload), `tests/migration_helpers.py`,
   `tests/snapshot_utils.py`. Nothing in the tests may reach the internet.
-- Notable guard tests: `test_authz_matrix.py` (every URL rule classified), `test_docs.py` (AGENTS.md and
-  README match the repo), `test_frontend_contracts.py` (altcha pin, error-code catalogs, legacy routes, doc
-  sections), `test_ci_workflows.py`, `test_migrations.py` (+ `_pg`), `test_nginx_config_doc.py`,
-  `test_spa_hosting.py`, `test_shell_coexistence.py`.
+- Notable guard tests (the older suites were removed by M-a, see AGENTS.md → Testing):
+  `test_authz_matrix.py` (every URL rule classified), `test_smoke.py` (startup), `test_api_auth_guards.py`
+  (lockout, blocked user, rate limits, remember cookie, captcha replay, CSRF on every unsafe rule),
+  `test_legacy_redirects.py` (the old URLs) and `test_error_catalogs.py` (backend/frontend error codes).
 - Frontend: Vitest 5.0.3 in jsdom, about 1181 tests as of 2026-10-21 (unit f). `src/test/setup.ts` polyfills
   `<dialog>`, popover and relative `fetch`, installs the `matchMedia` mock, extends `expect` with axe
   matchers, starts the MSW server with `onUnhandledFrame: 'error'` (an unhandled request fails the test) and
