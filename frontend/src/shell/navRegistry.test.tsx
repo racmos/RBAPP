@@ -16,6 +16,11 @@ describe('navRegistry (F2-h S13)', () => {
     }
   });
 
+  it('marks collection as nested so its wishlist tab keeps it current (F3-j)', () => {
+    const nested = NAV.filter((entry) => entry.nested).map((entry) => entry.id);
+    expect(nested).toEqual(['collection']);
+  });
+
   it('adds products as spa at /products right after collection (F14-e S1)', () => {
     const index = NAV.findIndex((entry) => entry.id === 'products');
     const products = NAV[index];

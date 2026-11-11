@@ -1,0 +1,251 @@
+@layer components {
+  .page {
+    width: 100%;
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--pad);
+  }
+
+  @media (min-width: 1240px) {
+    .page[data-wide] {
+      max-width: var(--maxw-wide);
+    }
+  }
+
+  .note {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .form .note {
+    margin: 0;
+  }
+
+  .alert {
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--red);
+    border-radius: var(--radius-sm);
+    color: var(--red-text);
+    font-weight: 700;
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .chosen {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .choices {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    align-items: end;
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .switcher {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 44px;
+    flex: 1 1 200px;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .switcher:hover {
+    border-color: var(--accent);
+  }
+
+  .switcherName {
+    overflow: hidden;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .listCount {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* The default list's star is filled: the shape and the text say it, not the colour alone. */
+  .starIcon,
+  .starOn svg {
+    color: var(--gold);
+    fill: currentColor;
+  }
+
+  .listTitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+
+  .summary > div {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .summary dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .summary dd {
+    margin: 2px 0 0;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+
+  .search {
+    margin-bottom: 14px;
+  }
+
+  .search input {
+    width: 100%;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .rail {
+    position: sticky;
+    top: calc(64px + var(--gap));
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+  }
+
+  .railTitle {
+    margin: 0 0 10px;
+    font-size: 15px;
+  }
+
+  .main {
+    min-width: 0;
+  }
+
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .lists {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .listRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+  }
+
+  .listRow[data-drop-target] {
+    border-color: var(--accent);
+  }
+
+  .listRow[draggable='true'] {
+    cursor: grab;
+  }
+
+  .openList {
+    display: flex;
+    min-width: 0;
+    min-height: 40px;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .openList:hover {
+    background: rgba(120, 205, 228, 0.08);
+  }
+
+  .openList[aria-current='true'] {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .listName {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .star {
+    color: var(--muted);
+  }
+
+  .rowMenu {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+}

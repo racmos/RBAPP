@@ -27,6 +27,11 @@ type Common = {
   placements: readonly NavPlacement[];
   /** Not rendered for non-admins (UX only: the server still enforces access). */
   adminOnly?: boolean;
+  /**
+   * Also the current entry on the routes below its path (`/collection/wishlists` is a tab of the
+   * collection, F3-j); otherwise only its own path is.
+   */
+  nested?: boolean;
 };
 
 export type NavEntry = Common &
@@ -58,6 +63,7 @@ export const NAV: readonly NavEntry[] = [
     status: 'spa',
     to: '/collection',
     placements: ['top', 'bottom', 'hub', 'more'],
+    nested: true,
   },
   {
     id: 'products',

@@ -20,6 +20,7 @@ import { AddSheet } from './AddSheet';
 import { BulkBar } from './BulkBar';
 import { CollectionFilters } from './CollectionFilters';
 import { CollectionItem } from './CollectionItem';
+import { CollectionTabs } from './CollectionTabs';
 import { CollectionPanel } from './CollectionPanel';
 import { CollectionTable } from './CollectionTable';
 import { ExportDialog } from './ExportDialog';
@@ -229,6 +230,7 @@ export function CollectionDesktop({ s }: { s: CollectionScreen }) {
         </SidePanel>
 
         <div className={styles.main}>
+          <CollectionTabs />
           <PageHeader
             title={t('title')}
             actions={

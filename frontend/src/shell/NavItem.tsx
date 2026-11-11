@@ -14,12 +14,18 @@ type NavItemProps = {
 
 /**
  * One navigation entry (SHELL-5): `spa` is a router link that marks the current page with
- * `aria-current="page"`.
+ * `aria-current="page"` (also below its path when the entry is `nested`).
  */
 export function NavItem({ entry, className, title, onActivate, children }: NavItemProps) {
   if (isSpa(entry)) {
     return (
-      <NavLink to={entry.to} end className={className} title={title} onClick={onActivate}>
+      <NavLink
+        to={entry.to}
+        end={!entry.nested}
+        className={className}
+        title={title}
+        onClick={onActivate}
+      >
         {children}
       </NavLink>
     );

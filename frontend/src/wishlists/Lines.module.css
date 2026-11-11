@@ -1,0 +1,201 @@
+@layer components {
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .card {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px 12px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+  }
+
+  .art {
+    width: 64px;
+  }
+
+  .body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .meta,
+  .prices {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .label {
+    color: var(--muted);
+  }
+
+  .money {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .muted {
+    color: var(--muted-2);
+  }
+
+  .owned {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .owned[data-zero],
+  .numeric[data-zero] {
+    color: var(--muted-2);
+  }
+
+  .controls {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: end;
+  }
+
+  .note {
+    grid-column: 1 / -1;
+  }
+
+  .note input {
+    width: 100%;
+  }
+
+  .actions {
+    display: flex;
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .table th {
+    padding: 8px 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table td {
+    padding: 6px;
+    border-top: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+
+  .table tbody tr:hover {
+    background: rgba(120, 205, 228, 0.05);
+  }
+
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .table th.numeric {
+    text-align: right;
+  }
+
+  .cardCell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .thumb {
+    display: block;
+    width: 32px;
+    flex: 0 0 32px;
+  }
+
+  .cardText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .rowName {
+    font-weight: 700;
+  }
+
+  .qty {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .step {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .step:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .number {
+    width: 56px;
+    text-align: center;
+  }
+
+  .priceCell {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .priceCell .money {
+    width: 84px;
+  }
+
+  .noteInput {
+    width: 100%;
+    min-width: 120px;
+  }
+
+  .rowActions {
+    display: inline-flex;
+    gap: 4px;
+  }
+}

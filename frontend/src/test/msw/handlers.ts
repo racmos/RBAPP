@@ -11,6 +11,7 @@ import {
   withCard,
 } from '@/test/fixtures/collection';
 import { aylaLineLocations } from '@/test/fixtures/locations';
+import { defaultList } from '@/test/fixtures/wishlists';
 import {
   adminProductList,
   boxLine,
@@ -296,6 +297,9 @@ export const handlers = [
   http.post(`${API}/collection/:id/locations/move`, () => ok(aylaLineLocations)),
   // Decks v2 (F5-d): by default the user has none; the deck tests install their own.
   http.get(`${API}/decks`, () => ok({ items: [] })),
+  // Wishlists (F3-f-2): the default list the first GET creates; the wishlist tests install a
+  // whole in-memory API (`@/test/wishlists`).
+  http.get(`${API}/wishlists`, () => ok({ items: [defaultList] })),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {
     const url = new URL(request.url);
