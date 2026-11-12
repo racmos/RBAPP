@@ -1172,7 +1172,7 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   as removable chips under the search ("Active filters") with Clear filters. No keyword, ability,
   legal-only or available-to-add controls until the API serves them.
 - Workspace tabs (F5-i step 4): under the header, actions, save state, limit banner and sticky
-  summary, a "Workspace view" tablist `List | Stats` (arrows, Home, End; local state, not in the URL;
+  summary, a "Workspace view" tablist `List | Stats | Collection` (Collection: F5-f, below; arrows, Home, End; local state, not in the URL;
   the same on phones and in two panes). List holds Legality, Sections, Cards not in the catalog and
   `DeckSections` as before (kept mounted, so folded sections survive); Stats renders `DeckStats`
   from `editor.content` and `editor.book`, so it follows every edit. `decks/deckStats.ts` (pure)
@@ -1187,6 +1187,32 @@ desktop/wide layouts (F5-i), versions and diff screens (F5-j), offline cache (F5
   visually hidden list; bar colours are tokens (`--cyan`, `--orange`, `--muted-2`, `--gold`) and the
   domain colours of `lib/domains.ts`. An empty main deck shows "Add cards to the main deck to see
   its stats.". No Full Art tab until step 5.
+- Deck vs collection (F5-f): a third workspace tab, `List | Stats | Collection`
+  (`decks/DeckCollection.tsx`). It reads `GET /decks/:id/vs-collection` with TanStack Query (key
+  `['decks', 'vs-collection', id]`, `useDeckVsCollection`), mounted only while the tab is open. Every
+  saved change of the deck (autosave, the unmount flush, a restore through `editor.reset`)
+  invalidates that key, so the comparison follows the edits once they are saved: the autosave's
+  1 s debounce is the debounce (a burst of edits is one save and one read), and while the editor has
+  unsaved changes the tab says "Shows the deck as last saved; it updates after the next save.".
+  Tiles: Cards missing (the missing copies added up), Cost to complete (`cost_eur`, with "N cards
+  without price" when `unpriced` > 0), Value you own (`owned_value`). Below, the missing names
+  grouped by the section that first uses them, in the API order: thumbnail, name, "Need N · Have H ·
+  Missing M" and the price of the missing copies (`market x missing`, "No price"). A deck with
+  nothing missing says "You own every card of this deck.". Loading is a skeleton, a failed read an
+  `ErrorState` with retry; offline the last answer stays (read-only) and with none the tab says it
+  needs a connection. "Add missing to wishlist" (header of the tab; disabled with its reason when
+  nothing is missing, while loading or offline) opens `decks/MissingToWishlist.tsx`, a dialog with
+  the user's lists from `GET /wishlists` (`useWishlists` and `WISHLISTS_KEY` from the `@/wishlists`
+  index) as radios, the starred list marked and chosen first, "N cards will be added, each with only
+  the copies this deck misses." and the 100-card note. Add posts `POST /decks/:id/missing-to-wishlist
+  {wishlist_id}` and refreshes the wishlist queries; the toast says "Added N cards to <list>." plus
+  "M already there were updated." (or "Updated M cards already in <list>." / "<list> already has
+  every missing card."), then "K could not be added because the list is full." and "K cards were
+  capped at 99 copies." when the answer skipped some (that toast stays until dismissed), always with
+  "Open list" → `/collection/wishlists?list=<id>`. A 404 (the list was deleted meanwhile) and any
+  other error are shown in the dialog, which stays open. The action is not mirrored in the
+  `DeckActions` row (it needs the comparison the tab reads). Tests: `decks/DeckCollection.test.tsx`
+  over `withVsCollection` (`src/test/decks.ts`).
 - Tests: `src/test/fixtures/decks.ts` builds the decks with the rules library (legality as the server
   computes it), including the shape of the owner's migrated deck (legend, champion, 39 main, 12 runes,
   3 battlefields, 8 sideboard); `src/test/decks.ts` installs them (`withDecks`) and records requests

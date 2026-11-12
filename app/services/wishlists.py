@@ -434,6 +434,61 @@ def delete_line(user, list_id, line_id) -> dict:
     return payload
 
 
+def raise_lines(user, list_id, targets) -> dict:
+    """Make a list hold at least `qty` copies of each target (F5-f, "add the missing cards of
+    a deck"): `targets` are `{name_key, name, set_id, card_id, qty}` printings, in order, each
+    a by-printing line with foil `any`. `list_id` None means the default list (created as
+    `ensure_default` does). A line with that target already there is raised to `qty` (never
+    summed, so the same call twice changes nothing) and keeps its max price and note; one at
+    or above it is left alone. A new line needs room (`MAX_LINES`): the targets that do not fit
+    are skipped with `list_full`; a `qty` above `QTY_MAX` writes `QTY_MAX` and reports the rest
+    with `qty_cap`. One transaction. Returns `{wishlist: {id, name}, added, merged, unchanged,
+    skipped: [{set_id, card_id, missing (copies not put in the list), reason}]}`."""
+    if list_id is None:
+        wishlist = next(row for row in ensure_default(user) if row.rbwls_is_default)
+    else:
+        wishlist = _owned_list(user, list_id)
+    present = {_target_key(row): row for row in db.session.execute(sa.select(
+        RbWishlistLine).where(RbWishlistLine.rbwsl_list_id == wishlist.rbwls_id)).scalars()}
+    out = {'wishlist': {'id': wishlist.rbwls_id, 'name': wishlist.rbwls_name},
+           'added': 0, 'merged': 0, 'unchanged': 0, 'skipped': []}
+    now = clock.utcnow()
+
+    def action():
+        new = []
+        for target in targets:
+            qty = min(QTY_MAX, target['qty'])
+            key = (target['name_key'], target['set_id'], target['card_id'], 'any')
+            hit = present.get(key)
+            if hit is None and len(present) + len(new) >= MAX_LINES:
+                out['skipped'].append({'set_id': target['set_id'], 'card_id': target['card_id'],
+                                       'missing': target['qty'], 'reason': 'list_full'})
+                continue
+            if hit is None:
+                new.append({'rbwsl_list_id': wishlist.rbwls_id,
+                            'rbwsl_name_key': target['name_key'], 'rbwsl_name': target['name'],
+                            'rbwsl_rbset_id': target['set_id'],
+                            'rbwsl_rbcar_id': target['card_id'], 'rbwsl_foil': 'any',
+                            'rbwsl_qty': qty, 'rbwsl_created_at': now, 'rbwsl_updated_at': now})
+                out['added'] += 1
+            elif hit.rbwsl_qty < qty:
+                hit.rbwsl_qty = qty
+                hit.rbwsl_updated_at = now
+                out['merged'] += 1
+            else:
+                out['unchanged'] += 1
+            if target['qty'] > QTY_MAX:
+                out['skipped'].append({'set_id': target['set_id'], 'card_id': target['card_id'],
+                                       'missing': target['qty'] - QTY_MAX, 'reason': 'qty_cap'})
+        if new:                                # one statement whatever the number of lines
+            db.session.execute(sa.insert(RbWishlistLine), new)
+        if out['added'] or out['merged']:
+            wishlist.rbwls_updated_at = now
+        db.session.commit()
+    _rollback_on_error(action)
+    return out
+
+
 def _target_key(line: RbWishlistLine) -> tuple:
     return (line.rbwsl_name_key, line.rbwsl_rbset_id, line.rbwsl_rbcar_id, line.rbwsl_foil)
 

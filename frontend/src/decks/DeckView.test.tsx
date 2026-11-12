@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
-import { withDecks } from '@/test/decks';
+import { withDecks, withVsCollection } from '@/test/decks';
 import { mainCards, rivenDeck } from '@/test/fixtures/decks';
 import { signedIn } from '@/test/locations';
 import { server } from '@/test/msw/server';
@@ -241,7 +241,7 @@ describe('DeckView at 390 px (F5-h stage 1)', () => {
   }, 30000);
 });
 
-describe('workspace tabs List / Stats (F5-i step 4)', () => {
+describe('workspace tabs List / Stats / Collection (F5-i step 4, F5-f)', () => {
   const tabs = () => screen.getByRole('tablist', { name: 'Workspace view' });
   const tab = (name: string) => within(tabs()).getByRole('tab', { name });
 
@@ -251,7 +251,7 @@ describe('workspace tabs List / Stats (F5-i step 4)', () => {
       within(tabs())
         .getAllByRole('tab')
         .map((t) => t.textContent),
-    ).toEqual(['List', 'Stats']);
+    ).toEqual(['List', 'Stats', 'Collection']);
     expect(tab('List')).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'List' })).toBeVisible();
     expect(screen.getByRole('region', { name: 'Legality' })).toBeVisible();
@@ -279,22 +279,35 @@ describe('workspace tabs List / Stats (F5-i step 4)', () => {
   }, 20000);
 
   it('moves between the tabs with the arrow keys, Home and End', async () => {
+    // F5-f: Collection is the last tab and reads the deck against the collection
+    withVsCollection(() => ({
+      missing: [],
+      complete: 0,
+      names: 0,
+      cost_eur: 0,
+      owned_value: 0,
+      unpriced: 0,
+    }));
     await openDeck(41);
     tab('List').focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(tab('Stats')).toHaveFocus();
     expect(tab('Stats')).toHaveAttribute('aria-selected', 'true');
     expect(tab('List')).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('figure', { name: 'Energy curve' })).toBeVisible();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(tab('Collection')).toHaveFocus();
+    expect(tab('Collection')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{ArrowRight}');
     expect(tab('List')).toHaveFocus();
     expect(tab('List')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{ArrowLeft}');
-    expect(tab('Stats')).toHaveAttribute('aria-selected', 'true');
+    expect(tab('Collection')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{Home}');
     expect(tab('List')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{End}');
-    expect(tab('Stats')).toHaveFocus();
-    expect(screen.getByRole('figure', { name: 'Energy curve' })).toBeVisible();
+    expect(tab('Collection')).toHaveFocus();
+    expect(screen.getByRole('tabpanel', { name: 'Collection' })).toBeVisible();
   }, 20000);
 
   it('at 1280 px the tabs sit in the workspace, next to the card browser', async () => {

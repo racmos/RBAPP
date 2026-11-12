@@ -15,6 +15,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { NotFound } from '@/shell/NotFound';
 import { CardBrowser } from './CardBrowser';
 import { DeckActions } from './DeckActions';
+import { DeckCollection } from './DeckCollection';
 import { DeckSections } from './DeckSections';
 import { DeckStats } from './DeckStats';
 import { hardLimitMessage, issueMessage } from './issues';
@@ -199,12 +200,13 @@ function SaveState({ editor }: { editor: DeckEditor }) {
   );
 }
 
-const TABS = ['list', 'stats'] as const;
+const TABS = ['list', 'stats', 'collection'] as const;
 type Tab = (typeof TABS)[number];
 
-/** The workspace views (F5-i step 4): List (the deck as in F5-h) and Stats. Header, save state
- *  and summary stay above them; the choice is local (not in the URL). The List panel stays
- *  mounted, so folded sections survive a visit to Stats. */
+/** The workspace views (F5-i step 4): List (the deck as in F5-h), Stats and Collection (the
+ *  deck against the collection, F5-f). Header, save state and summary stay above them; the
+ *  choice is local (not in the URL). The List panel stays mounted, so folded sections survive a
+ *  visit to the other views. */
 function WorkspaceTabs({ editor, twoPane }: { editor: DeckEditor; twoPane: boolean }) {
   const { t } = useTranslation('decks');
   const id = useId();
@@ -265,6 +267,15 @@ function WorkspaceTabs({ editor, twoPane }: { editor: DeckEditor; twoPane: boole
         className={styles.tabPanel}
       >
         {tab === 'stats' && <DeckStats content={editor.content} book={editor.book} />}
+      </div>
+      <div
+        role="tabpanel"
+        id={`${id}-panel-collection`}
+        aria-labelledby={`${id}-tab-collection`}
+        hidden={tab !== 'collection'}
+        className={styles.tabPanel}
+      >
+        {tab === 'collection' && <DeckCollection editor={editor} />}
       </div>
     </>
   );

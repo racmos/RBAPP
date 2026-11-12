@@ -23,7 +23,7 @@ import {
 } from './editor';
 import { issueMessage } from './issues';
 import { cardLabel, refKey } from './labels';
-import { DECK_LIST_KEY, deckKey, useDeckRules } from './queries';
+import { DECK_LIST_KEY, deckKey, useDeckRules, vsCollectionKey } from './queries';
 import {
   applyChampion,
   applyLegend,
@@ -106,6 +106,7 @@ export function useDeckEditor(deck: DeckDetail) {
         setSavedRevision(sent);
         client.setQueryData(deckKey(deck.id), result);
         void client.invalidateQueries({ queryKey: DECK_LIST_KEY });
+        void client.invalidateQueries({ queryKey: vsCollectionKey(deck.id) });
       } catch (failure) {
         setError(failure);
       } finally {
@@ -140,6 +141,7 @@ export function useDeckEditor(deck: DeckDetail) {
       setSavedRevision(at);
       setError(null);
       client.setQueryData(deckKey(deck.id), next);
+      void client.invalidateQueries({ queryKey: vsCollectionKey(deck.id) });
     },
     [client, deck.id],
   );
@@ -149,7 +151,12 @@ export function useDeckEditor(deck: DeckDetail) {
       if (last.dirty && !last.blocked && !last.offline) {
         void putDeckContent(deck.id, last.content)
           .then((result) => client.setQueryData(deckKey(deck.id), result))
-          .then(() => client.invalidateQueries({ queryKey: DECK_LIST_KEY }))
+          .then(() =>
+            Promise.all([
+              client.invalidateQueries({ queryKey: DECK_LIST_KEY }),
+              client.invalidateQueries({ queryKey: vsCollectionKey(deck.id) }),
+            ]),
+          )
           .catch(() => undefined);
       }
     },

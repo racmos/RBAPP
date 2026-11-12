@@ -1,7 +1,7 @@
 """Decks v2 endpoints (F5-d): GET/POST /decks, GET/PATCH/DELETE /decks/<id>,
 PUT /decks/<id>/content, versions, restore and diff; duplicate; text import and export (F5-e);
-share link and the public read-only deck (F5-g). Only the owner sees a deck (D-F5-9), except
-through its share link."""
+share link and the public read-only deck (F5-g); the deck against the collection and "missing
+to wishlist" (F5-f). Only the owner sees a deck (D-F5-9), except through its share link."""
 from flask import abort, current_app, request
 from flask_login import current_user, login_required
 from werkzeug.exceptions import NotFound
@@ -13,11 +13,12 @@ from app.api.v1 import api_v1
 from app.errors import http_error_response
 from app.schemas.validation import validate_json, validate_query
 from app.schemas.validators import (DeckContentPut, DeckCreate, DeckDiffQuery, DeckDuplicate,
-                                    DeckExportQuery, DeckImport, DeckImportPreview, DeckPatch,
-                                    DeckVersionCreate)
-from app.services import deck_share, decks
+                                    DeckExportQuery, DeckImport, DeckImportPreview,
+                                    DeckMissingToWishlist, DeckPatch, DeckVersionCreate)
+from app.services import deck_share, deck_vs_collection, decks
 from app.services.decks import (DeckNotFound, DuplicateName, FormatUnknown, HardLimitExceeded,
                                 UnknownCards, VersionNotFound)
+from app.services.wishlists import ListNotFound
 
 PUBLIC_DECK_RATE_LIMIT = '60 per minute'
 
@@ -55,7 +56,7 @@ def _guarded(action):
     except FormatUnknown:
         return fail('Bad Request', 'The deck format is not recognised. Use the text format.',
                     400, code=ErrorCode.IMPORT_FORMAT_UNKNOWN)
-    except (DeckNotFound, VersionNotFound):
+    except (DeckNotFound, VersionNotFound, ListNotFound):
         abort(404)
 
 
@@ -225,3 +226,31 @@ def diff_deck_versions(deck_id):
     """Per zone, what was added, removed or changed from version `a` to version `b`."""
     query = request.validated_query
     return _guarded(lambda: _json(decks.diff(current_user, deck_id, query.a, query.b)))
+
+
+@api_v1.get('/decks/<int:deck_id>/vs-collection')
+@login_required
+def deck_vs_collection_view(deck_id):
+    """The current version against the caller's collection: the missing copies per card name,
+    the cost to complete it and the value already owned (F5-f)."""
+    return _guarded(lambda: _json(deck_vs_collection.vs_collection(current_user, deck_id)))
+
+
+def _missing_to_wishlist(deck_id, wishlist_id=None):
+    return _guarded(lambda: _json(deck_vs_collection.missing_to_wishlist(
+        current_user, deck_id, wishlist_id)))
+
+
+@validate_json(DeckMissingToWishlist)
+def _missing_to_chosen_wishlist(deck_id):
+    return _missing_to_wishlist(deck_id, request.validated_data.wishlist_id)
+
+
+@api_v1.post('/decks/<int:deck_id>/missing-to-wishlist')
+@login_required
+def missing_to_wishlist(deck_id):
+    """Put the missing copies of the deck in a wishlist (`{wishlist_id?}`; none = the default
+    list): one line per missing name raised to its missing count (F5-f)."""
+    if not request.get_data():
+        return _missing_to_wishlist(deck_id)
+    return _missing_to_chosen_wishlist(deck_id)

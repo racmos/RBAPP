@@ -828,6 +828,49 @@ export type DeckImportPreview = {
 
 export type DeckImportBody = { text: string; name?: string; mode?: GameMode };
 
+// --- Deck vs collection (F5-f) ---
+
+/** A deck section that holds cards (the workbench is not part of the deck). */
+export type DeckSectionZone =
+  'legend' | 'champion' | 'main' | 'runes' | 'battlefields' | 'sideboard';
+
+/** One card name of the deck with missing copies: `card` is the deck's printing of it (the
+ *  first in deck order), `zone` the first section that uses it; copies count per name across
+ *  printings. */
+export type DeckMissingCard = {
+  card: CardMini;
+  zone: DeckSectionZone;
+  need: number;
+  have: number;
+  missing: number;
+};
+
+/** `GET /decks/:id/vs-collection`: the current version against the caller's collection. */
+export type DeckVsCollection = {
+  missing: DeckMissingCard[];
+  /** Names fully owned, and every name of the deck. */
+  complete: number;
+  names: number;
+  /** Missing copies x the price of the deck's printing (EUR); `unpriced` names add 0. */
+  cost_eur: number;
+  /** min(need, have) x price over every name (EUR). */
+  owned_value: number;
+  unpriced: number;
+};
+
+export type MissingSkipReason = 'list_full' | 'qty_cap';
+
+/** `POST /decks/:id/missing-to-wishlist`: lines added, raised (`merged`) or already enough
+ *  (`unchanged`); `skipped[].missing` = the copies of that card left out of the list. */
+export type MissingToWishlistResult = {
+  wishlist: { id: number; name: string };
+  added: number;
+  merged: number;
+  unchanged: number;
+  skipped: { card: CardMini; missing: number; reason: MissingSkipReason }[];
+  total_missing_names: number;
+};
+
 // --- Wishlists (F3-f-2) ---
 
 /** `Wishlist` of `GET /wishlists` (keys in the API order). */

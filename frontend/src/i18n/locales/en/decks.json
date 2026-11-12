@@ -421,7 +421,8 @@
   "tabs": {
     "label": "Workspace view",
     "list": "List",
-    "stats": "Stats"
+    "stats": "Stats",
+    "collection": "Collection"
   },
   "stats": {
     "title": "Deck stats",
@@ -457,5 +458,51 @@
     "keywords": "Keywords",
     "keywordsHint": "Read from the ability text, so the counts are approximate.",
     "noKeywords": "No keywords found."
+  },
+  "vs": {
+    "title": "Deck vs collection",
+    "hint": "Copies count per card name, any printing, foil or not, including copies for sale. The workbench does not count.",
+    "stale": "Shows the deck as last saved; it updates after the next save.",
+    "loading": "Loading the comparison with your collection",
+    "error": "The comparison with your collection could not be loaded.",
+    "offline": "You are offline.",
+    "offlineNoData": "You are offline. Comparing the deck with your collection needs a connection.",
+    "nothingMissing": "Nothing is missing: you own every copy this deck needs.",
+    "cardsMissing": "Cards missing",
+    "cost": "Cost to complete",
+    "owned": "Value you own",
+    "unpriced_one": "{{count}} card without price",
+    "unpriced_other": "{{count}} cards without price",
+    "empty": "You own every card of this deck.",
+    "missingIn": "Missing cards: {{section}}",
+    "counts": "Need {{need}} · Have {{have}} · Missing {{missing}}",
+    "noPrice": "No price",
+    "toWishlist": "Add missing to wishlist",
+    "pickTitle": "Add missing cards to a wishlist",
+    "willAdd_one": "{{count}} card will be added, with only the copies this deck misses.",
+    "willAdd_other": "{{count}} cards will be added, each with only the copies this deck misses.",
+    "limitNote": "A wishlist holds at most 100 cards. Cards already in the list are raised to the missing copies, never added twice.",
+    "pickList": "Wishlist",
+    "loadingLists": "Loading your wishlists",
+    "listsError": "Your wishlists could not be loaded.",
+    "defaultList": "Default list",
+    "listCount_one": "{{count}} card",
+    "listCount_other": "{{count}} cards",
+    "add": "Add",
+    "listGone": "That wishlist no longer exists. Choose another one.",
+    "openList": "Open list",
+    "result": {
+      "added_one": "Added {{count}} card to {{name}}.",
+      "added_other": "Added {{count}} cards to {{name}}.",
+      "merged_one": "{{count}} already there was updated.",
+      "merged_other": "{{count}} already there were updated.",
+      "updatedOnly_one": "Updated {{count}} card already in {{name}}.",
+      "updatedOnly_other": "Updated {{count}} cards already in {{name}}.",
+      "nothingNew": "{{name}} already has every missing card.",
+      "listFull_one": "{{count}} could not be added because the list is full.",
+      "listFull_other": "{{count}} could not be added because the list is full.",
+      "capped_one": "{{count}} card was capped at 99 copies.",
+      "capped_other": "{{count}} cards were capped at 99 copies."
+    }
   }
 }

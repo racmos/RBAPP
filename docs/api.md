@@ -464,8 +464,8 @@ New error codes: `location_over_quantity` (409, `params.max`, `params.requested`
 `app/services/deck_rules.py` (F5-a). Only the owner sees a deck (D-F5-9): another user's deck,
 an unknown id or an unknown version seq -> the 404 envelope on every route, never 403;
 anonymous -> 401 `unauthenticated`. Text import/export: "Deck import/export (F5-e)" below; the
-share link and the public deck: "Deck sharing (F5-g)" below; deck vs collection (F5-f) is not
-here yet.
+share link and the public deck: "Deck sharing (F5-g)" below; the deck against the collection
+and "missing to wishlist": "Deck vs collection (F5-f)" below.
 
 Shapes (keys in this order):
 
@@ -698,6 +698,68 @@ which. 200 -> `PublicDeck` (keys in this order):
   slug itself or any other deck's slug.
 - 7 SQL statements (head + owner username, current version, cards, sets, bans, prices ×2).
 
+### Deck vs collection (F5-f)
+
+`app/api/v1/decks.py` over `app/services/deck_vs_collection.py` (F5-R11 and its 2026-11-11
+amendment; owner decision 5 of `docs/requirements/F3/F3-f-wishlists-design.md`). Both routes
+are U and owner only: another user's deck or an unknown id -> the 404 envelope; anonymous ->
+401 `unauthenticated`. The public deck (`GET /public/decks/<slug>`) is not touched.
+
+Counting (product.md DECK-1): copies count per card **name** (`name_key`) across printings, over
+legend, champion, main, runes, battlefields and sideboard of the **current version**; the
+workbench is not part of the deck. For each name: `need` = the copies the deck uses (every
+printing and zone added), `have` = the copies of that name in the caller's collection (every
+printing, foil or not, every line **including the copies marked for sale**), `missing = max(0,
+need - have)`. A name stands for **the deck's printing of it**: the first one in deck order
+(content order: legend, champion, main, runes, battlefields, sideboard). Cards missing from the
+catalog are left out (they have no name). The price of a name is the deck value's price of that
+printing (`price_summaries` market, the non-foil chain, EUR).
+
+`GET /decks/<id>/vs-collection` (`api_v1.deck_vs_collection_view`) -> 200 (keys in this order):
+
+```
+{missing: [{card: CardMini, zone, need, have, missing}], complete, names, cost_eur,
+ owned_value, unpriced}
+```
+
+- `missing` lists only the names with `missing > 0`, ordered by section (`zone` = the first
+  section that uses the name, in the content order above), then by name (`name_sort_key`).
+  `card` is the `CardMini` of the deck's printing (`owned_total` = the caller's copies of that
+  printing, `market` its price).
+- `complete` = names fully owned, `names` = every name of the deck.
+- `cost_eur` = sum over the missing names of `missing x price`; names without a price add 0 and
+  are counted in `unpriced` (names, not copies).
+- `owned_value` = sum over **every** name of `min(need, have) x price` (what the caller already
+  owns toward the deck).
+- 8 SQL statements whatever the size of the deck (user, head, current version, cards, sets,
+  prices x2, the caller's copies of the deck's names).
+
+`POST /decks/<id>/missing-to-wishlist` (`api_v1.missing_to_wishlist`), body `{wishlist_id?}`
+(optional; absent, empty or `null` = the caller's default list, created like the first `GET
+/wishlists` does; a non-integer or < 1 -> 400 `validation_error`; another user's list or an
+unknown id -> 404). One **by-printing** line per missing name: the deck's printing, foil `any`,
+no max price, no note, in the `vs-collection` order. -> 200 (keys in this order):
+
+```
+{wishlist: {id, name}, added, merged, unchanged,
+ skipped: [{card: CardMini, missing, reason: "list_full" | "qty_cap"}], total_missing_names}
+```
+
+- **The line is raised to the missing count, never summed.** A line of the list with the same
+  target (name, printing, foil `any`) below `missing` is set to `missing` (`merged`; it keeps its
+  max price and note); one already at or above it is left alone (`unchanged`). So a second call
+  changes nothing: only "the number of cards missing in that deck" is ever wanted. This is not
+  the `POST /wishlists/<id>/lines` merge (which adds quantities). A by-name line, or a line of the
+  same printing with foil `N` or `S`, is another target (A2) and is not looked at.
+- **Limits.** A new line needs room in the list (100 lines): the names that do not fit are
+  skipped with `list_full` (`missing` = all their copies) and the rest goes on, in order; raising
+  an existing line never needs room. A `missing` above 99 writes 99 and reports the rest
+  (`missing` = the copies left out) with `qty_cap`. Never all-or-nothing, never a 409: one
+  transaction, 200 whenever the deck and the list are valid (nothing missing -> `added: 0`).
+- `total_missing_names` = the names with missing copies. The deck itself never changes.
+- 12 SQL statements whatever the number of missing names (the 8 above, the lists, the lines of
+  the list, one INSERT for the new lines, the list's date); raised lines add their UPDATE.
+
 ### Wishlists (F3-f-2)
 
 `app/api/v1/wishlists.py`, all `U`, logic in `app/services/wishlists.py`, tables of migration
@@ -705,7 +767,8 @@ which. 200 -> `PublicDeck` (keys in this order):
 to the signed-in user: a list id that is not theirs (or does not exist), or a line id that is
 not in the list of the URL, -> the 404 envelope on every route, never 403. Price alerts
 (`/wishlist-alerts`, the `price_alerts` job) are in "Wishlist alerts (F4-g-2)" below; "missing
-cards to a wishlist" arrives with F5-f.
+cards to a wishlist" is `POST /decks/<id>/missing-to-wishlist` in "Deck vs collection (F5-f)"
+above.
 
 `Wishlist` = `{id, name, is_default (bool), position (1..n, the user's order), line_count,
 created_at, updated_at}` (UTC `YYYY-MM-DDTHH:MM:SSZ`), keys in this order. Names are trimmed,
