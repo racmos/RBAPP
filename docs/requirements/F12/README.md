@@ -79,6 +79,11 @@ monitoring, e-mail delivery (no mail server, product.md), app store packaging.
   alerts, not new runners.
 - Tests (owner, 2026-10-22, unit M-a): each F12 unit writes its own tests and re-creates the removed guard of
   the area it touches.
+- **Production data reset** (owner, 2026-11-11): the dev server is still the one promoted (D-F12-6 option A),
+  but its data is reset first: every table is emptied except the Cardmarket daily loads and a few curated tables
+  (owner decisions 2026-11-12), the sets are re-created, the catalog is downloaded again from Riot, the
+  Cardmarket mapping is regenerated, only `rbadmin`, `racmos` and `rbqa` remain. Prerequisite unit **RESET**, after F9 (a-e, h-j) and F11-f, before F9-f/F9-g and F12:
+  `RESET-production-data-reset.md` (design, helper CLI requirement RESET-a/b, owner runbook, owner decisions).
 
 ## Requirements
 
@@ -246,6 +251,7 @@ None planned. The production database is built by the existing revisions. Option
 
 | ID | Title | Depends on | Size | Risk | Summary |
 |---|---|---|---|---|---|
+| RESET (prerequisite) | Production data reset: helper CLI (RESET-a `flask users create`, RESET-b `flask reset production-data`) + owner runbook | F9 (a-e, h-j), F11-f | ~850 | Risk: item 1 + item 6 (deletes almost every row; sequences only testable on PostgreSQL) | `RESET-production-data-reset.md`; the owner runs the reset by hand (USER) after a rehearsal on a copy. |
 | F12-a | Server config + logging | F11 | ~450 | Risk: item 5 + item 2 (runtime config; log redaction) | `gunicorn.conf.py`, request-id + redacted logging, security headers, `validate_settings` production checks, `.env.example`, unit template. |
 | F12-b | CSP enforcing | F1-g | ~300 | Risk: item 2 (a wrong policy breaks the app) | `SPA_CSP=enforce`, policy on the app and the error pages (the new landing adopts it in F11-b), tests per entry, docs. |
 | F12-c | Release artifacts + deploy script | F12-a | ~550 | Risk: item 5 (delivery pipeline) | `release.yml` artifact + checksum, `scripts/deploy.sh` (dry-run/apply/rollback, atomic swap, smoke checks), docs. |
