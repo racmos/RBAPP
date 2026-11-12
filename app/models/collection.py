@@ -18,8 +18,6 @@ class RbCollection(db.Model):
                            name='rbcollection_purchase_price_chk'),
         db.CheckConstraint('rbcol_sell_qty BETWEEN 0 AND rbcol_quantity',
                            name='rbcollection_sell_qty_chk'),
-        db.CheckConstraint('rbcol_playset IS NULL OR rbcol_playset IN (1, 2, 3)',
-                           name='rbcollection_playset_chk'),
         db.CheckConstraint('rbcol_quantity >= 1', name='rbcollection_quantity_chk'),
         db.Index('idx_rbcollection_selling', 'rbcol_user', 'rbcol_selling'),
         db.Index('idx_rbcollection_user_card_foil',
@@ -42,8 +40,6 @@ class RbCollection(db.Model):
     # Entero NOT NULL (QTY-1): el rango 1..9999 lo valida la app y el CHECK >= 1.
     rbcol_quantity = db.Column(db.Integer, nullable=False, comment='Cantidad de cartas')
     rbcol_selling = db.Column(db.Text, default='N', comment='Indica si la carta está a la venta (Y/N)')
-    # Deprecated (F3-a): no longer read since the Jinja web was retired; dropped in F11.
-    rbcol_playset = db.Column(db.Integer, nullable=True, comment='Nº de copias reservadas para playset (1, 2 o 3)')
     rbcol_sell_price = db.Column(db.Numeric, nullable=True, comment='Precio de venta unitario sobre el sobrante (quantity - playset)')
     rbcol_purchase_price = db.Column(db.Numeric(10, 2), nullable=True,
                                      comment='Precio de compra unitario (opcional)')

@@ -2,6 +2,8 @@
 
 Source: change f1-app-shell (archived 2026-10-22)
 
+> **Legacy schema cleanup (F11-f, migration `0028_legacy_schema_cleanup`, 2026-11-12).** The `lang` preference no longer exists: the column `rbprf_lang` and its CHECK `rbuserprefs_lang_chk` were dropped (the app is English-only). `GET`/`PATCH /me/prefs` carry five keys (`density`, `accent`, `bg_intensity`, `collection_view`, `playset_size`); a `lang` sent by an old client is ignored like any unknown key (never a 400). The `lang` parts of PREF-1..PREF-4 and their scenarios are kept as history.
+
 > Tags: `[c]` = backend unit (migration + API), `[e]` = frontend unit (change f1-app-shell). `[PG-CI]` = runs in the PostgreSQL CI job. `[vitest]` = frontend unit test (jsdom/MSW). Untagged backend scenarios are pytest-testable (SQLite). All routes are under `/riftbound/api/v1`. Preferences are account-level (not per device). `NULL` = Auto / product default.
 
 ## Requirements

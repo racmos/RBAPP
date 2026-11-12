@@ -6,8 +6,8 @@ around a release (pre-release and the 14 days after) while differences found
 in the `monthly` (or `none`) window wait in `rbcardchanges` for the admin
 (F13-g). One DB transaction per set: a set that fails rolls back only itself.
 
-`rbcar_banned` is never written here (D-F2-2, D-F13-10): new cards are
-inserted with the column default `'N'`, and updates skip the field.
+Bans are never written here (D-F2-2, D-F13-10): they live in `rbcardbans`
+(`flask bans`); the legacy `rbcar_banned` column was dropped in F11-f.
 """
 import logging
 import os
@@ -278,8 +278,7 @@ def _process_set(set_id, cards, today, session, summary, job_id, moment) -> bool
         seen.add(card_id)
         card = stored.get(card_id)
         if card is None:
-            card = RbCard(rbcar_rbset_id=set_id, rbcar_id=card_id,
-                          rbcar_banned='N')
+            card = RbCard(rbcar_rbset_id=set_id, rbcar_id=card_id)
             legend = is_legend(parsed['rbcar_type'])
             for field in SYNCED_FIELDS:
                 setattr(card, _column(field),

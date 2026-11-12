@@ -13,7 +13,7 @@ from app import db
 from app.schemas.prefs_domain import sql_in
 from app.utils import clock
 
-# Fields the sync compares and may propose (S5). `rbcar_banned` is never one.
+# Fields the sync compares and may propose (S5). Bans are never one (rbcardbans).
 SYNCED_FIELDS = ('rbcar_name', 'rbcar_domain', 'rbcar_type', 'rbcar_tags',
                  'rbcar_energy', 'rbcar_power', 'rbcar_might', 'rbcar_ability',
                  'rbcar_rarity', 'rbcar_artist', 'image_url', 'image')

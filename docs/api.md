@@ -35,11 +35,12 @@ Public endpoints under `/riftbound/api/v1/` (auth and preferences live in
 
 ### The `lang` preference (English-only app, owner feedback S21)
 
-The React app is English-only. The API is unchanged: `GET /auth/session` and `GET`/`PATCH
-/me/prefs` still carry `lang` (`es`, `en` or `null`), validated by `PrefsUpdate` and stored in
-`rbuserprefs.rbprf_lang` with its CHECK `rbuserprefs_lang_chk`, so older clients and stored rows
-keep working. The app ignores the value it receives and never sends `lang`. Dropping the column
-needs its own migration (a later unit); until then, do not build anything new on `lang`.
+The React app is English-only. Since F11-f (migration `0028_legacy_schema_cleanup`, D-F11-9)
+there is no `lang` preference: `GET /auth/session` and `GET`/`PATCH /me/prefs` carry **five**
+keys (`density`, `accent`, `bg_intensity`, `collection_view`, `playset_size`) and the column
+`rbuserprefs.rbprf_lang` with its CHECK `rbuserprefs_lang_chk` is gone. An old client that still
+sends `lang` in `PATCH /me/prefs` is not refused: like any unknown key it is ignored and nothing
+is stored (`tests/test_api_prefs_keys.py`).
 
 ### PATCH /me/account
 
@@ -174,13 +175,14 @@ different product), `printings: [CardMini]` (every printing of the name by
 printings of other names sharing ≥1 tag, most shared tags first, then name),
 `ban_info` (`ban_info(name)`, `[]` when legal), `my_lines` (the current user's
 rows of this printing ordered by foil N first, condition, language, id; each
-`{id, foil (bool), qty, condition, language, selling, sell_price, playset,
-updated_at (UTC `…Z`)}`), `in_decks` (the current user's decks v2: the current
+`{id, foil (bool), qty, condition, language, selling, sell_price,
+updated_at (UTC `…Z`)}`; the legacy `playset` key, read from the dropped column
+`rbcol_playset`, left in F11-f), `in_decks` (the current user's decks v2: the current
 version of each deck; `{deck_id, name, qty}` where `deck_id` is the deck id of
 `GET /decks/<id>` and the app route `/decks/:id`, and `qty` sums every printing of
 the same name over legend, champion, main, runes, battlefields and sideboard, never
 the workbench; missing-card entries skipped; only decks with `qty > 0`, ordered by
-name; one SQL statement). The legacy `rbdecks` table is not read. `in_wishlists`
+name; one SQL statement). The legacy `rbdecks` table was dropped in F11-f. `in_wishlists`
 (F3-j follow-ups, additive): the current user's wishlists that hold this printing
 now, `[{id, name, is_default, qty}]` in the user's list order (`position`); a list
 holds it when it has a line of the card's `name_key` whose printing is this
@@ -1040,7 +1042,8 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   (`set_id`, `invalid_value`); duplicate key → 409 `already_exists` (`field: card_id`).
   Audit `card.create`.
 - `PATCH /admin/cards/<set>/<id>` any `AdminCardInput` field except the keys
-  (sending `set_id`/`card_id` → 400 `invalid_value`; `rbcar_banned` is never accepted) →
+  (sending `set_id`/`card_id` → 400 `invalid_value`; `rbcar_banned` or `banned` → 400: bans
+  live only in `rbcardbans`, managed with `flask bans`; the column was dropped in F11-f) →
   200. Unknown card → 404. Audit `card.update` with `{field: [old, new]}`.
 - `POST /admin/cards/<set>/<id>/image` (multipart, field `file`): ≤ 2 097 152 bytes
   (else 400 `out_of_range`, `params.max`); type by magic bytes — PNG `89 50 4E 47`,
@@ -1050,13 +1053,10 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   → 200 `AdminCard`. Audit `card.image` with `{image, bytes}`.
 - `DELETE /admin/cards/<set>/<id>` → 200 `{"deleted": "<SET>-<id>"}`; 409 `card_in_use`
   (`params: {"collection_lines": n, "decks": m}`) when a collection line or a deck of any
-  user references it. `decks` counts distinct decks in both sources: decks v2 (the
-  **current** version only, every zone — legend, champion, main, runes, battlefields,
-  sideboard **and the workbench**: a workbench line is still a reference that would dangle)
-  plus legacy `rbdecks` rows (`rbdck_cards` main/sideboard `{set, id}`, every row). A legacy
-  row is not counted again when the v2 deck migrated from it (same owner,
-  `rbdkh_legacy_name` = `rbdck_name`) already counts, so a migrated deck holding the card in
-  both counts once. Three SQL statements. The image file is not deleted. Audit `card.delete`.
+  user references it. `decks` counts the distinct decks v2 of any user (the **current**
+  version only, every zone — legend, champion, main, runes, battlefields, sideboard **and the
+  workbench**: a workbench line is still a reference that would dangle). Two SQL statements
+  (the legacy `rbdecks` scan left with the table in F11-f). The image file is not deleted. Audit `card.delete`.
 
 ### Products (F14-d)
 

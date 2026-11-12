@@ -7,7 +7,6 @@ from app.schemas.prefs_domain import sql_in
 from app.utils import clock
 
 NAME_MAX_LENGTH = 80
-LEGACY_NAME_MAX_LENGTH = 200
 NOTE_MAX_LENGTH = 200
 SHARE_SLUG_MAX_LENGTH = 24
 
@@ -16,9 +15,8 @@ class RbDeckHead(db.Model):
     """One deck of a user (F5-c, D-F5-1): name, game mode, visibility and share link. Its
     contents live in `rbdeckversions`; `rbdkh_current_version_id` is the version the editor
     shows (no foreign key: heads and versions would reference each other; the deck services
-    keep it pointing at one of the deck's versions). `rbdkh_legacy_name` is the `rbdecks`
-    name the deck was migrated from (NULL for a deck created in v2). Names match
-    migration 0025."""
+    keep it pointing at one of the deck's versions). Names match migration 0025 (0028
+    dropped the legacy provenance column `rbdkh_legacy_name`)."""
     __tablename__ = 'rbdeckheads'
     __table_args__ = (
         db.ForeignKeyConstraint(
@@ -45,8 +43,6 @@ class RbDeckHead(db.Model):
                                  comment='Read-only share link slug (NULL = not shared)')
     rbdkh_current_version_id = db.Column(db.BigInteger, nullable=True,
                                          comment='Current version (rbdeckversions.rbdkv_id)')
-    rbdkh_legacy_name = db.Column(db.String(LEGACY_NAME_MAX_LENGTH), nullable=True,
-                                  comment='rbdecks name it was migrated from (NULL = new)')
     rbdkh_created_at = db.Column(db.DateTime, nullable=False, default=lambda: clock.utcnow(),
                                  comment='When the deck was created (UTC)')
     rbdkh_updated_at = db.Column(db.DateTime, nullable=False, default=lambda: clock.utcnow(),
@@ -55,16 +51,14 @@ class RbDeckHead(db.Model):
 
 class RbDeckVersion(db.Model):
     """One version of a deck (F5-c): content v2 (`app/schemas/deck_content.py`), its number
-    in the deck and an optional note. `rbdkv_legacy_id` is the `rbdecks.id` it was copied
-    from (no foreign key: `rbdecks` goes away in F11), which makes `flask decks migrate`
-    idempotent. Names match migration 0025."""
+    in the deck and an optional note. Names match migration 0025 (0028 dropped the legacy
+    provenance column `rbdkv_legacy_id` and its unique constraint)."""
     __tablename__ = 'rbdeckversions'
     __table_args__ = (
         db.ForeignKeyConstraint(
             ['rbdkv_deck_id'], ['riftbound.rbdeckheads.rbdkh_id'],
             name='rbdeckversions_deck_fk', ondelete='CASCADE'),
         db.UniqueConstraint('rbdkv_deck_id', 'rbdkv_seq', name='rbdeckversions_deck_seq_uq'),
-        db.UniqueConstraint('rbdkv_legacy_id', name='rbdeckversions_legacy_uq'),
         db.CheckConstraint('rbdkv_seq >= 1', name='rbdeckversions_seq_chk'),
         {"schema": "riftbound", "comment": 'Decks v2: versions of each deck (F5).'},
     )
@@ -78,7 +72,5 @@ class RbDeckVersion(db.Model):
                               comment='Content v2 (legend, champion, zones)')
     rbdkv_note = db.Column(db.String(NOTE_MAX_LENGTH), nullable=True,
                            comment='Free note (optional)')
-    rbdkv_legacy_id = db.Column(db.Integer, nullable=True,
-                                comment='rbdecks.id it was migrated from (NULL = new)')
     rbdkv_created_at = db.Column(db.DateTime, nullable=False, default=lambda: clock.utcnow(),
                                  comment='When the version was saved (UTC)')

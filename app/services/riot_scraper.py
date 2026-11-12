@@ -193,7 +193,6 @@ def _parse_card(card_json: dict) -> Optional[dict]:
         'rbcar_ability': _clean_html(ability_html),
         'rbcar_rarity': rarity,
         'rbcar_artist': artist,
-        'rbcar_banned': 'N',
         'image_url': image_url,
         'image': image_filename,
     }

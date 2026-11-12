@@ -8,10 +8,8 @@ from app import db
 from app.models.audit import RbAdminAudit
 from app.models.card import RbCard
 from app.models.collection import RbCollection
-from app.models.deck import RbDeck
-from app.models.deck_v2 import RbDeckHead, RbDeckVersion
+from app.models.deck_v2 import RbDeckVersion
 from app.models.set import RbSet
-from app.models.user import User
 from app.services import catalog_admin
 from tests.deck_api_helpers import content, line, make_deck, ref
 
@@ -39,10 +37,8 @@ def catalog(app, make_user):
     user = make_user('owner')
     db.session.add(RbCollection(rbcol_user=user.username, rbcol_rbset_id='OGN',
                                 rbcol_rbcar_id='1', rbcol_quantity=1))
-    db.session.add(RbDeck(rbdck_user=user.username, rbdck_name='Deck',
-                          rbdck_cards={'main': [{'set': 'SFD', 'id': '1', 'qty': 2}],
-                                       'sideboard': []}))
     db.session.commit()
+    make_deck(name='Deck', body=content(main=[line('SFD', '1', 2)]), user=user.username)
     return app
 
 
@@ -184,9 +180,12 @@ class TestPatch:
             assert any(d['field'] == field and d['code'] == 'invalid_value'
                        for d in payload(resp)['details'])
 
-    def test_banned_is_refused(self, admin_client, catalog):
-        resp = admin_client.patch(f'{URL}/OGN/1', json={'rbcar_banned': 'S'})
+    @pytest.mark.parametrize('field', ['rbcar_banned', 'banned'])
+    def test_banned_is_refused(self, admin_client, catalog, field):
+        # Bans live in rbcardbans (`flask bans`); `rbcar_banned` was dropped in F11-f.
+        resp = admin_client.patch(f'{URL}/OGN/1', json={field: 'S'})
         assert resp.status_code == 400
+        assert any(d['field'] == field for d in payload(resp)['details'])
 
     def test_unknown_card_is_404(self, admin_client):
         assert admin_client.patch(f'{URL}/OGN/999', json={'name': 'X'}).status_code == 404
@@ -273,56 +272,7 @@ class TestDeleteDecksV2:
         _v2_deck('Other', main=[line('OGN', '10', 1)], workbench=[line('OGN', '10', 1)])
         assert admin_client.delete(f'{URL}/OGN/2').status_code == 200
 
-    def test_v2_and_legacy_decks_add_up(self, admin_client, catalog):
-        _v2_deck('V2', main=[line('OGN', '2', 1)])
-        db.session.add(RbDeck(rbdck_user='owner', rbdck_name='Legacy only',
-                              rbdck_cards={'main': [{'set': 'OGN', 'id': '2', 'qty': 1}],
-                                           'sideboard': []}))
-        db.session.commit()
-        assert _in_use(admin_client) == {'collection_lines': 0, 'decks': 2}
-
-    def test_a_legacy_only_reference_still_blocks(self, admin_client, catalog):
-        db.session.add(RbDeck(rbdck_user='owner', rbdck_name='Legacy only',
-                              rbdck_cards={'main': [],
-                                           'sideboard': [{'set': 'OGN', 'id': '2', 'qty': 1}]}))
-        db.session.commit()
-        assert _in_use(admin_client) == {'collection_lines': 0, 'decks': 1}
-
-    def _migrated(self, v2_zones, legacy_has_card=True, legacy_name='Old name'):
-        """A legacy deck of `owner` and the v2 deck migrated from it (renamed since)."""
-        cards = [{'set': 'OGN', 'id': '2', 'qty': 1}] if legacy_has_card else []
-        db.session.add(RbDeck(rbdck_user='owner', rbdck_name=legacy_name,
-                              rbdck_cards={'main': cards, 'sideboard': []}))
-        db.session.commit()
-        deck_id = _v2_deck('Renamed', **v2_zones)
-        head = db.session.get(RbDeckHead, deck_id)
-        head.rbdkh_legacy_name = legacy_name
-        db.session.commit()
-
-    def test_a_migrated_deck_in_both_sources_counts_once(self, admin_client, catalog):
-        self._migrated({'main': [line('OGN', '2', 1)]})
-        assert _in_use(admin_client) == {'collection_lines': 0, 'decks': 1}
-
-    def test_a_migrated_deck_that_dropped_the_card_still_blocks_by_its_legacy_row(
-            self, admin_client, catalog):
-        self._migrated({'main': [line('OGN', '10', 1)]})
-        assert _in_use(admin_client) == {'collection_lines': 0, 'decks': 1}
-
-    def test_a_migrated_deck_that_added_the_card_blocks(self, admin_client, catalog):
-        self._migrated({'workbench': [line('OGN', '2', 1)]}, legacy_has_card=False)
-        assert _in_use(admin_client) == {'collection_lines': 0, 'decks': 1}
-
-    def test_another_users_legacy_deck_of_the_same_name_is_not_merged(
-            self, admin_client, catalog, make_user):
-        make_user('someone')
-        db.session.add(RbDeck(rbdck_user='someone', rbdck_name='Old name',
-                              rbdck_cards={'main': [{'set': 'OGN', 'id': '2', 'qty': 1}],
-                                           'sideboard': []}))
-        db.session.commit()
-        self._migrated({'main': [line('OGN', '2', 1)]}, legacy_has_card=False)
-        assert _in_use(admin_client) == {'collection_lines': 0, 'decks': 2}
-
-    def test_the_guard_runs_three_statements(self, app, catalog):
+    def test_the_guard_runs_two_statements(self, app, catalog):
         for n in range(5):
             _v2_deck(f'Deck {n}', main=[line('OGN', '2', 1)])
         counted = []
@@ -335,4 +285,4 @@ class TestDeleteDecksV2:
             assert catalog_admin.card_use_count('OGN', '2') == (0, 5)
         finally:
             event.remove(db.engine, 'before_cursor_execute', before)
-        assert len(counted) == 3, counted
+        assert len(counted) == 2, counted

@@ -95,7 +95,6 @@ def seed_gallery_card(set_id, card_id, **overrides):
     parsed = next(c for c in GALLERY['cards']
                   if c['rbcar_rbset_id'] == set_id and c['rbcar_id'] == card_id)
     data = dict(parsed)
-    data.pop('rbcar_banned', None)
     data.update(overrides)
     db.session.add(RbCard(**{k: v for k, v in data.items()
                               if k in RbCard.__table__.columns}))
@@ -166,7 +165,6 @@ class TestInserts:
         assert RbCard.query.count() == 3
         card = RbCard.query.filter_by(rbcar_rbset_id='OGN', rbcar_id='1').one()
         assert card.rbcar_name == 'Alpha Unit'
-        assert card.rbcar_banned == 'N'
         assert sorted(network.urls) == ['https://img.test/ogn_1.png',
                                         'https://img.test/ogn_2.png',
                                         'https://img.test/ogs_5.png']
@@ -243,10 +241,17 @@ class TestActiveWindow:
         ogn = next(s for s in result['sets'] if s['set_id'] == 'OGN')
         assert ogn['unchanged'] == 2 and ogn['applied'] == 0
 
-    def test_banned_is_never_written(self, app, network, gallery, monkeypatch):
+    def test_bans_are_never_written(self, app, network, gallery, monkeypatch):
+        # Bans live in rbcardbans only (`flask bans`); the sync never touches them.
+        from app.models.ban import RbCardBan
+        from app.services.bans import name_key
         make_set('OGN', ACTIVE_RELEASE)
-        seed_gallery_card('OGN', '1', rbcar_banned='Y')
-        seed_gallery_card('OGN', '2', rbcar_banned='Y')
+        seed_gallery_card('OGN', '1')
+        seed_gallery_card('OGN', '2')
+        db.session.add(RbCardBan(rbban_name_key=name_key('Alpha Unit'), rbban_name='Alpha Unit',
+                                 rbban_mode='1v1', rbban_since=date(2026, 1, 1)))
+        db.session.commit()
+        before = [(b.rbban_name_key, b.rbban_mode, b.rbban_since) for b in RbCardBan.query]
 
         import copy
         only_ogn = copy.deepcopy(GALLERY)
@@ -255,7 +260,9 @@ class TestActiveWindow:
         monkeypatch.setattr(riot_sync, 'fetch_gallery', lambda: only_ogn)
         run(set_codes=['OGN'])
 
-        assert {c.rbcar_banned for c in RbCard.query.all()} == {'Y'}
+        db.session.expire_all()
+        assert [(b.rbban_name_key, b.rbban_mode, b.rbban_since)
+                for b in RbCardBan.query] == before
 
 
 class TestMonthlyWindow:

@@ -68,7 +68,7 @@ def create_card():
 @api_admin.patch('/cards/<set_id>/<card_id>')
 @validate_json(AdminCardPatch)
 def update_card(set_id, card_id):
-    """Edit a card; keys and `rbcar_banned` are refused by the schema (S8)."""
+    """Edit a card; keys and unknown fields are refused by the schema (S8)."""
     card = RbCard.query.filter_by(rbcar_rbset_id=set_id, rbcar_id=card_id).one_or_none()
     if card is None:
         return _unknown('Card', set_id, card_id)

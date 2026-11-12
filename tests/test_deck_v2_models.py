@@ -36,8 +36,8 @@ def test_a_deck_defaults_to_private_without_slug(app, make_user):
     db.session.commit()
     db.session.add(version(deck))
     db.session.commit()
-    assert (deck.rbdkh_visibility, deck.rbdkh_share_slug, deck.rbdkh_current_version_id,
-            deck.rbdkh_legacy_name) == ('private', None, None, None)
+    assert (deck.rbdkh_visibility, deck.rbdkh_share_slug,
+            deck.rbdkh_current_version_id) == ('private', None, None)
     assert RbDeckVersion.query.one().rbdkv_content == {'v': 2}
 
 

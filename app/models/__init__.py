@@ -3,7 +3,6 @@ from .set import RbSet
 from .card import RbCard
 from .collection import RbCollection
 from .market import RbCardMarket
-from .deck import RbDeck
 from .deck_v2 import RbDeckHead, RbDeckVersion
 from .captcha import RbCaptchaUsed
 from .prefs import RbUserPrefs

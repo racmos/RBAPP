@@ -117,7 +117,7 @@ D-F10-5, D-F10-8, D-F10-9 and D-F10-11 moved to F13 (D-F13-12 to D-F13-15): the 
 
 - **D-F10-1** — `is_admin` stays CLI-only: *yes.* · **D-F10-2** — password reset = temporary password + forced change.
 - **D-F10-3** — admin can reset a user's 2FA.
-- **D-F10-7** — drop `rbcar_banned` in F11-f. · **D-F10-10** — where the users' `sets` page goes: *F2 catalog.*
+- **D-F10-7** — drop `rbcar_banned` in F11-f: *done (migration 0028).* · **D-F10-10** — where the users' `sets` page goes: *F2 catalog.*
 
 ## F9 Account
 
@@ -137,7 +137,7 @@ with F8, after production.
 - **D-F11-3** — permanent 301 redirects from Jinja URLs: *owner 2026-11-08: 302, not 301 (the landing returns at `/` in F8); done in PR 3/3 of the Jinja retirement.* · **D-F11-4** — Playwright E2E in CI.
 - **D-F11-5** — Lighthouse manual with thresholds. · **D-F11-6** — Riot disclaimer: English verbatim + Spanish.
 - **D-F11-7** — replace the 5.3 MB landing frame animation. · **D-F11-8** — delete legacy JSON endpoints: *done with the Jinja web (2026-11-08).*
-- **D-F11-9** — drop obsolete columns (optional unit). · **D-F11-10** — landing ES + EN. · **D-F11-11** — landing design from tokens.
+- **D-F11-9** — drop obsolete columns: *owner 2026-11-12: now, in F11-f (migration `0028_legacy_schema_cleanup`: `rbdecks`, `rbcol_playset`, `rbcar_banned`, `rbprf_lang`, `rbdkh_legacy_name`, `rbdkv_legacy_id`; `rbcol_selling` stays).* · **D-F11-10** — landing ES + EN. · **D-F11-11** — landing design from tokens.
 - **D-F11-12** — what `/` shows between go-live and the new landing (F11-b): *hide the placeholder blocks with fabricated items (small change in F11-d or F12); full rebuild with F8.* Owner 2026-11-08: `/` redirects (302) to the app until F8.
 
 ## F12 Production

@@ -12,7 +12,7 @@ class RbCardBan(db.Model):
 
     A ban covers every printing of the name: rows are keyed by
     `app.services.bans.name_key`, not by card id. This table is the only source
-    of bans; the legacy `rbcar_banned` flag is not read. The names match
+    of bans (the legacy `rbcar_banned` flag was dropped in F11-f). The names match
     migration 0009.
     """
     __tablename__ = 'rbcardbans'

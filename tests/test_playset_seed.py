@@ -76,7 +76,7 @@ def test_the_collection_is_left_alone(migration_app):
     _line('OGN', '1', 'ana', 3)
     before = rows('SELECT rbcol_id, rbcol_playset, rbcol_selling, rbcol_sell_qty '
                   'FROM riftbound.rbcollection')
-    upgrade()
+    upgrade('0015_playset')     # 0028 drops rbcol_playset (F11-f)
     assert rows('SELECT rbcol_id, rbcol_playset, rbcol_selling, rbcol_sell_qty '
                 'FROM riftbound.rbcollection') == before
 
@@ -93,7 +93,7 @@ def test_downgrade_drops_the_table(migration_app):
     upgrade('0014_collection_selling')
     _catalog()
     _line('OGN', '1', 'ana', 3)
-    upgrade()
+    upgrade('0015_playset')     # 0028 drops rbcol_playset (F11-f)
     downgrade('0014_collection_selling')
     from tests.migration_helpers import tables
     assert 'rbkeepplayset' not in tables()

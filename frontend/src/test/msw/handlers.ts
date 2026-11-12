@@ -30,7 +30,6 @@ export const USER_TOKEN = 'token-user';
 
 export const USER = { id: 7, username: 'ada', email: 'ada@example.com', is_admin: false };
 export const NO_PREFS = {
-  lang: null,
   density: null,
   accent: null,
   bg_intensity: null,

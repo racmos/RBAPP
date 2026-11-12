@@ -159,7 +159,7 @@ What the table holds, and how it behaves:
 | Column                  | Type                                                                | Allowed values (CHECK)        |
 | ----------------------- | ------------------------------------------------------------------- | ----------------------------- |
 | `rbprf_user_id`         | INTEGER, primary key, foreign key to `rbusers.id` ON DELETE CASCADE | an existing user              |
-| `rbprf_lang`            | VARCHAR(2) NULL                                                     | `es`, `en`                    |
+| `rbprf_lang`            | VARCHAR(2) NULL (dropped by `0028_legacy_schema_cleanup`, F11-f)    | `es`, `en`                    |
 | `rbprf_density`         | VARCHAR(10) NULL                                                    | `compact`, `regular`, `comfy` |
 | `rbprf_accent`          | VARCHAR(10) NULL                                                    | `cyan`, `orange`              |
 | `rbprf_bg_intensity`    | SMALLINT NULL                                                       | 0 to 100                      |
@@ -178,6 +178,26 @@ Rollback of this step: `flask db downgrade 0005_login_protection` (drops
 `rbuserprefs`; the stored preferences are lost, the users are kept), then revert the
 code. Run the downgrade while the NEW code is stopped, or the session endpoint will
 fail until the revert.
+
+## Legacy schema cleanup: upgrade to 0028, then restart at once (F11-f)
+
+`0028_legacy_schema_cleanup` (D-F11-9) drops the table `rbdecks` and the columns
+`rbcollection.rbcol_playset` (+ CHECK `rbcollection_playset_chk`), `rbcards.rbcar_banned`,
+`rbuserprefs.rbprf_lang` (+ CHECK `rbuserprefs_lang_chk`), `rbdeckheads.rbdkh_legacy_name` and
+`rbdeckversions.rbdkv_legacy_id` (+ unique `rbdeckversions_legacy_uq`). **Data loss**: those rows
+and values are gone; the downgrade re-creates the structure only, empty (no data is converted: a
+production data reset follows). The code that read them left in the same PR, and the previous
+code reads the dropped columns, so:
+
+```bash
+venv/bin/python scripts/db_backup.py   # pg_dump first; check the file (docs/knowledge/ops-runbook.md)
+flask db upgrade                       # 0028
+flask db check                         # "No new upgrade operations detected."
+sudo systemctl restart rbapp           # right after the upgrade: old code reads dropped columns
+```
+
+Rollback: `flask db downgrade 0027_jobs_price_alerts` with the previous code gives the
+structure back empty; the values come back only from the dump.
 
 ## The legacy-table backup contains personal data
 

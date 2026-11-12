@@ -6,7 +6,7 @@ from sqlalchemy import event
 from werkzeug.security import generate_password_hash
 
 from app import db
-from app.models import (RbCard, RbCollection, RbDeck, RbDeckHead, RbDeckVersion, RbSet,
+from app.models import (RbCard, RbCollection, RbDeckHead, RbDeckVersion, RbSet,
                         RbWishlist, RbWishlistLine, RbcmPrice, RbcmProductCardMap, User)
 from app.services import bans
 from tests.deck_api_helpers import content, line, make_deck, ref
@@ -87,7 +87,7 @@ def _seed_detail(app, decks=True):
         db.session.add_all([
             RbCollection(rbcol_rbset_id='OGN', rbcol_rbcar_id='79',
                          rbcol_foil='S', rbcol_user='testuser', rbcol_quantity=1,
-                         rbcol_selling='Y', rbcol_sell_price=5.5, rbcol_playset=1,
+                         rbcol_selling='Y', rbcol_sell_price=5.5,
                          rbcol_purchase_price=7.5, rbcol_sell_qty=1,
                          rbcol_condition='EX', rbcol_language='Spanish',
                          rbcol_chadat=datetime(2026, 10, 2, 9, 30)),
@@ -104,10 +104,6 @@ def _seed_detail(app, decks=True):
         db.session.add(User(username='otheruser', email='other@test.com',
                             password_hash=generate_password_hash(
                                 'testpass123', method='pbkdf2:sha256:1000')))
-        # A legacy `rbdecks` row is not a source any more: decks v2 are.
-        db.session.add(RbDeck(rbdck_user='testuser', rbdck_name='Legacy', rbdck_seq=1,
-                              rbdck_cards={'main': [{'set': 'OGN', 'id': '79', 'qty': 3}],
-                                           'sideboard': []}))
         db.session.commit()
         bans.add_ban('Jinx, Loose Cannon', ['1v1'], reason='Too strong')
         if decks:
@@ -232,14 +228,13 @@ class TestBansOwnedAndDecks:
         foil_line = lines[1]
         assert foil_line['selling'] is True
         assert foil_line['sell_price'] == 5.5
-        assert foil_line['playset'] == 1
         assert foil_line['condition'] == 'EX'
         assert foil_line['language'] == 'Spanish'
         assert foil_line['updated_at'] == '2026-10-02T09:30:00Z'
         assert foil_line['purchase_price'] == 7.5
         assert foil_line['sell_qty'] == 1
         assert set(foil_line) == {'id', 'foil', 'qty', 'condition', 'language',
-                                  'selling', 'sell_price', 'playset', 'updated_at',
+                                  'selling', 'sell_price', 'updated_at',
                                   'purchase_price', 'sell_qty'}
 
     def test_in_decks_reads_the_current_version_of_my_v2_decks(self, authenticated_client,
@@ -265,17 +260,6 @@ class TestBansOwnedAndDecks:
             resp = authenticated_client.get(f'/riftbound/api/v1/decks/{deck["deck_id"]}')
             assert resp.status_code == 200
             assert resp.get_json()['data']['name'] == deck['name']
-
-    def test_in_decks_ignores_legacy_only_decks(self, authenticated_client, app):
-        _seed_detail(app)
-        with app.app_context():
-            db.session.add(RbDeck(rbdck_user='testuser', rbdck_name='Zeta', rbdck_seq=1,
-                                  rbdck_cards={'main': [{'set': 'SFD', 'id': '257',
-                                                         'qty': 2}], 'sideboard': []}))
-            db.session.commit()
-        decks = authenticated_client.get(URL).get_json()['data']['in_decks']
-        assert 'Legacy' not in [d['name'] for d in decks]
-        assert 'Zeta' not in [d['name'] for d in decks]
 
     def test_in_decks_of_the_other_user(self, authenticated_client, app):
         _seed_detail(app)

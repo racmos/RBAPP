@@ -13,7 +13,7 @@ from app.schemas.deck_content import VISIBILITIES, DeckContentV2
 from app.schemas.game_domain import CONDITIONS, GAME_MODES
 from app.schemas.prefs_domain import (ACCENTS, BG_INTENSITY_MAX, BG_INTENSITY_MIN,
                                       PLAYSET_SIZE_MAX, PLAYSET_SIZE_MIN,
-                                      COLLECTION_VIEWS, DENSITIES, LANGS)
+                                      COLLECTION_VIEWS, DENSITIES)
 
 # One rule for every way of choosing a password: profile update, CLI, registration.
 PASSWORD_MIN_LENGTH = 8
@@ -690,10 +690,10 @@ class PrefsUpdate(BaseModel):
 
     Every field is optional and `None` means Auto. The caller applies only
     `model_fields_set`: absent = unchanged, `null` = reset. Unknown fields are
-    ignored (never stored), so an older server tolerates a newer client.
+    ignored (never stored), so an older server tolerates a newer client and an
+    old client's `lang` (dropped in F11-f) is ignored, not refused.
     `bg_intensity` is a strict integer: `true`, `50.0` and `"50"` are refused.
     """
-    lang: Optional[_one_of(LANGS)] = None
     density: Optional[_one_of(DENSITIES)] = None
     accent: Optional[_one_of(ACCENTS)] = None
     bg_intensity: Optional[Annotated[StrictInt, Field(ge=BG_INTENSITY_MIN,
