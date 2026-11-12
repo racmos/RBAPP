@@ -121,12 +121,21 @@ D-F10-5, D-F10-8, D-F10-9 and D-F10-11 moved to F13 (D-F13-12 to D-F13-15): the 
 
 ## F9 Account
 
-- **D-F9-1** — e-mail optional, unverified. · **D-F9-2** — account deletion with 10-day grace.
-- **D-F9-3** — no public profile; drop social links. · **D-F9-4** — TOTP secrets encrypted at rest.
-- **D-F9-5** — OAuth can create accounts; never auto-link by e-mail. · **D-F9-6** — 2FA also after OAuth sign-in.
-- **D-F9-7** — username not editable. · **D-F9-8** — API key read-only.
-- **D-F9-9** — non-remembered sessions expire after 12 h idle. · **D-F9-10** — new deps: Pillow, pyotp, segno, cryptography, Authlib.
-- **D-F9-11** — store only an IP prefix for sessions. · **D-F9-12** — avatars visible to signed-in users only.
+Answered by the owner on 2026-11-12 (recorded in `docs/requirements/F9/README.md` → "Owner decisions" and
+in the unit requirements `F9-a..j`); they leave this list:
+- **D-F9-1** — e-mail optional, unverified: `rbusers.email` nullable, unique ignoring case when present (F9-b).
+- **D-F9-2** — account deletion: **none**. F9-k (scheduled deletion with grace period) is deferred and not
+  built; the purge outline stays in the F9 spec ("Deferred").
+- **D-F9-3 / D-F9-12** — profile private: no public page, no social links; display name and avatar visible
+  to signed-in users only (F9-b, F9-c).
+- **D-F9-2fa** — 2FA optional for everyone, admins included; lost device: recovery codes, then admin reset
+  (F10; `flask users reset-2fa` until then, F9-d).
+
+Kept as recommended (no change from the earlier spec): D-F9-4 TOTP secrets encrypted (Fernet,
+`TOTP_ENCRYPTION_KEY`) · D-F9-5 OAuth can create accounts, never auto-link by e-mail · D-F9-6 2FA also
+after OAuth · D-F9-7 username not editable · D-F9-8 API key read-only · D-F9-9 non-remembered sessions
+end after 12 h idle · D-F9-10 new pins Pillow, pyotp, segno, cryptography, Authlib · D-F9-11 IP prefix
+only. Nothing open for F9.
 
 ## F11 Close
 
