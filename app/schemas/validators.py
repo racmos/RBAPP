@@ -515,6 +515,12 @@ _WishFoil = Literal['any', 'N', 'S']
 _CardKey = Annotated[str, Field(min_length=1, max_length=50)]
 
 
+class DeckMissingToWishlist(BaseModel, extra='ignore'):
+    """POST /decks/<id>/missing-to-wishlist body (F5-f): the target list; absent or null = the
+    default list."""
+    wishlist_id: Optional[_WishlistId] = None
+
+
 class WishlistCreate(BaseModel, extra='ignore'):
     """POST /wishlists body: the name is trimmed (1-80 characters)."""
     name: _WishlistName

@@ -4,5 +4,5 @@
  * `@/wishlists/AlertsPage`, so the card detail does not carry them.
  */
 export { AddToWishlist } from './AddToWishlist';
-export { useWishlists } from './queries';
+export { useWishlists, WISHLISTS_KEY } from './queries';
 export { useAlertsBadge } from './alertQueries';

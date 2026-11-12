@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F3 / f, plus slices in F3-j, F4-g and F5-f |
-| Status | **Approved by the owner 2026-11-11 (A1-A6 answered).** F3-f-1 done (#130, deployed 2026-11-11); F3-f-2 (lists + lines API) implemented. F3-j (UI) implemented. F4-g-1 (job kind) implemented; F4-g-2 (alert job, alerts API, alerts screen, unread badge) implemented. Next: F5-f. |
+| Status | **Approved by the owner 2026-11-11 (A1-A6 answered).** F3-f-1 done (#130, deployed 2026-11-11); F3-f-2 (lists + lines API) implemented. F3-j (UI) implemented. F4-g-1 (job kind) implemented; F4-g-2 (alert job, alerts API, alerts screen, unread badge) implemented. F5-f (deck vs collection, missing to wishlist) implemented. |
 | Replaces | F3-R5 / F3-R11 / F3-R20 of the F3 phase spec (one flat `rbwishlist` table per user) |
 | Risk | Migration (own PR, `pg_dump` before deploy); alert job reads prices daily |
 
@@ -166,6 +166,32 @@ No change to any decision or assumption. Where this design was silent (full cont
   shows on the "Price alerts" tab and on the "Wishlists" tab of the collection, not when the count is 0, the
   call failed or the app is offline.
 - **Push notifications** are still F4-f/F4-i: this unit only writes the alerts and shows them in the app.
+
+### As built (F5-f, deck vs collection and "missing to wishlist": `app/services/deck_vs_collection.py`, `wishlists.raise_lines`, `frontend/src/decks/DeckCollection.tsx`, `MissingToWishlist.tsx`)
+
+Decision 5 as built. Full contract in `docs/api.md` → "Deck vs collection (F5-f)", screen in
+`docs/frontend.md` → "Decks UI (F5-h)" → "Deck vs collection (F5-f)". Where the design was silent:
+
+- **What is missing.** Per card name across printings (DECK-1), over the deck without the
+  workbench, current version. `have` counts every copy of the name in the collection: every
+  printing, foil or not, and the copies marked for sale too (they are still owned). Storage
+  locations play no part yet: locked deck locations (F16-e) are not subtracted.
+- **Which line.** One **by-printing** line per missing name: the deck's printing of it (the first
+  one in deck order), foil `any`, no max price, no note. A by-name line, or a `N`/`S` line of that
+  printing, is another target (A2) and is left alone.
+- **Re-clicking is harmless (decision of this unit).** "Only the missing count is added" is read
+  as "the list should want exactly what the deck misses": a line already holding that target is
+  **raised to the missing count, never summed** (it keeps its max price and note), and one already
+  at or above it is left unchanged. So a second click adds nothing. This differs on purpose from
+  the A2 merge of `POST /wishlists/<id>/lines`, which sums.
+- **Limits.** The 100-line limit counts only new lines: the names are added in the deck order
+  until the list is full and the rest is reported (`skipped`, `list_full`); raising a line never
+  needs room. A missing count above 99 writes 99 and reports the rest (`qty_cap`). Partial adds are
+  fine (one transaction, never a 409); nothing missing is a 200 with nothing added.
+- **Default list.** Without `wishlist_id` the default list is used, created lazily like the first
+  `GET /wishlists`; the UI always sends the chosen list (the starred one is chosen first).
+- **Mirror in the deck actions.** Not done: the action lives in the editor's "Collection" tab,
+  which already has the comparison it needs.
 
 ## API (U, every row scoped to the caller; another user's id is a 404)
 

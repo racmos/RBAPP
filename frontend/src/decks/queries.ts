@@ -8,10 +8,12 @@ import {
   exportDeckText,
   getDeck,
   getDeckVersion,
+  getDeckVsCollection,
   importDeck,
   listCards,
   listDeckVersions,
   listDecks,
+  missingToWishlist,
   patchDeck,
   previewDeckImport,
   restoreDeckVersion,
@@ -21,6 +23,7 @@ import {
 import type { DeckCreateBody, DeckImportBody, DeckPatchBody } from '@/api/types';
 import { ApiError } from '@/api/errors';
 import { useGameMeta } from '@/catalog';
+import { WISHLISTS_KEY } from '@/wishlists';
 import { rulesFromMeta, type RulesContext } from './rules';
 
 const STALE_MS = 60 * 1000;
@@ -28,6 +31,8 @@ export const DECKS_KEY = ['decks'] as const;
 export const DECK_LIST_KEY = ['decks', 'list'] as const;
 export const deckKey = (id: number) => ['decks', 'detail', id] as const;
 const versionsKey = (id: number) => ['decks', 'versions', id] as const;
+/** The deck against the collection (F5-f); every saved change of the deck invalidates it. */
+export const vsCollectionKey = (id: number) => ['decks', 'vs-collection', id] as const;
 
 const notFound = (error: unknown) => error instanceof ApiError && error.status === 404;
 const retry = (count: number, error: unknown) => !notFound(error) && count < 1;
@@ -199,4 +204,25 @@ export function useShareDeck(id: number) {
 export function useUnshareDeck(id: number) {
   const refresh = useRefreshList();
   return useMutation({ mutationFn: () => unshareDeck(id), onSuccess: refresh });
+}
+
+/** `GET /decks/:id/vs-collection`: the missing copies per card name, cost and owned value. */
+export function useDeckVsCollection(id: number) {
+  return useQuery({
+    queryKey: vsCollectionKey(id),
+    queryFn: ({ signal }) => getDeckVsCollection(id, signal),
+    staleTime: STALE_MS,
+    retry,
+    enabled: validId(id),
+  });
+}
+
+/** `POST /decks/:id/missing-to-wishlist` into the list `wishlistId`; the lists and their lines
+ *  change, so the wishlist queries are refreshed. */
+export function useMissingToWishlist(id: number) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (wishlistId: number) => missingToWishlist(id, wishlistId),
+    onSuccess: () => client.invalidateQueries({ queryKey: WISHLISTS_KEY }),
+  });
 }

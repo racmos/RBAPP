@@ -27,6 +27,7 @@ import type {
   DeckShare,
   DeckVersionDetail,
   DeckVersionItem,
+  DeckVsCollection,
   GameMeta,
   ImportMode,
   ImportPreview,
@@ -67,6 +68,7 @@ import type {
   WishlistAlertsMeta,
   WishlistMoveResult,
   WishlistPatchBody,
+  MissingToWishlistResult,
 } from './types';
 
 /** `GET /auth/session` reduced to what the cache keeps; the CSRF token goes to `csrf.ts`. */
@@ -852,6 +854,17 @@ export const shareDeck = (id: number) =>
 
 export const unshareDeck = (id: number) =>
   request<{ share: null }>(`/decks/${id}/share`, { method: 'DELETE' });
+
+/** The current version against the caller's collection (F5-f). */
+export const getDeckVsCollection = (id: number, signal?: AbortSignal) =>
+  request<DeckVsCollection>(`/decks/${id}/vs-collection`, { signal });
+
+/** The missing copies of a deck into a wishlist (the default list without `wishlistId`). */
+export const missingToWishlist = (id: number, wishlistId?: number) =>
+  request<MissingToWishlistResult>(`/decks/${id}/missing-to-wishlist`, {
+    method: 'POST',
+    body: wishlistId ? { wishlist_id: wishlistId } : {},
+  });
 
 // --- Wishlists (F3-f-2) ---
 
