@@ -300,6 +300,15 @@ export const handlers = [
   // Wishlists (F3-f-2): the default list the first GET creates; the wishlist tests install a
   // whole in-memory API (`@/test/wishlists`).
   http.get(`${API}/wishlists`, () => ok({ items: [defaultList] })),
+  // Wishlist price alerts (F4-g-2): none, so no unread badge; the alert tests install
+  // `installAlerts` (`@/test/wishlists`).
+  http.get(`${API}/wishlist-alerts`, () =>
+    HttpResponse.json({
+      success: true,
+      data: { items: [] },
+      meta: { page: 1, per_page: 25, total: 0, pages: 0, unread_count: 0 },
+    }),
+  ),
   http.get(`${API}/cards/:setId/:cardId`, () => ok(cardDetail)),
   http.get(`${API}/cards/:setId/:cardId/prices`, ({ request }) => {
     const url = new URL(request.url);

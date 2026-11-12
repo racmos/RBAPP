@@ -564,7 +564,8 @@ the `wishlists` namespace). API: `docs/api.md` → "Wishlists (F3-f-2)"; design 
 - Tabs: `collection/CollectionTabs.tsx` holds `TabLinks` (a `<nav>` of `NavLink`s, the current one has
   `aria-current="page"`) and `CollectionTabs` ("Collection sections": Collection | Wishlists), shown on top
   of `/collection` (mobile and desktop) and of both wishlist screens; the wishlist screens add
-  `WishlistTabs` ("Wishlist sections": Lists | Price alerts, no badge until F4-g). The nav registry entry
+  `WishlistTabs` ("Wishlist sections": Lists | Price alerts; the unread badge since F4-g-2, see "Wishlist
+  alerts (F4-g-2)"). The nav registry entry
   `collection` is `nested: true` (`NavItem` drops `end`), so Collection stays current on
   `/collection/wishlists*` (and `/collection/import`).
 - `api/endpoints.ts` + `api/types.ts`: `listWishlists`, `createWishlist`, `patchWishlist`, `deleteWishlist`,
@@ -619,7 +620,7 @@ the `wishlists` namespace). API: `docs/api.md` → "Wishlists (F3-f-2)"; design 
   merged) has "Open list" → `/collection/wishlists?list=<id>`. It reads `GET /wishlists`, which creates
   the default list of a user who has none. "In wishlists: <names>" is not shown: no endpoint says which
   lists hold a card without reading every list's lines.
-- `AlertsPage` is a shell until F4-g: title, the explanation, an empty state, no request.
+- `AlertsPage` was a shell in F3-j; F4-g-2 made it the alerts screen (next section).
 - Tests: `wishlists/*.test.tsx` and `collection/CollectionTabs.test.tsx` run against an in-memory wishlists
   API (`src/test/wishlists.ts`: `installWishlists`, `recordWishlistRequests`, `findToast`, fixtures in
   `src/test/fixtures/wishlists.ts`); the default MSW handlers answer `GET /wishlists` with the default list
@@ -627,6 +628,45 @@ the `wishlists` namespace). API: `docs/api.md` → "Wishlists (F3-f-2)"; design 
   (follow-up); the folder follows the feature rules by hand (other features only through `@/wishlists`,
   the shared collection controls `@/collection/Stepper`, `MoneyField` and `CollectionTabs` as products
   does).
+
+## Wishlist alerts (F4-g-2)
+
+The price alerts screen and the unread badge, in `frontend/src/wishlists/` (strings under `alerts.*` of the
+`wishlists` namespace). API: `docs/api.md` → "Wishlist alerts (F4-g-2)"; decisions: "As built (F4-g-2)" in
+`docs/requirements/F3/F3-f-wishlists-design.md`.
+
+- `api/endpoints.ts` + `api/types.ts`: `listWishlistAlerts({unread, page, perPage})` (`{items, meta}`),
+  `listWishlistAlertLists(id)`, `readWishlistAlerts(ids?)` (no ids = every unread alert); types
+  `WishlistAlert`, `WishlistAlertsMeta`, `WishlistAlerts`, `WishlistAlertList`.
+- `alertQueries.ts` — every key below `['wishlist-alerts']`: `useWishlistAlerts(unread)` (infinite query
+  `['wishlist-alerts', 'list', unread]`, 25 a page), `useAlertLists(id, enabled)` (`[..., id, 'lists']`),
+  `useMarkAlertsRead()` (the loaded pages get `read_at` at once, so an alert read while open stays on screen
+  even under "Unread only"; then the badge is read again, and "mark all" also reloads the pages),
+  `useUnreadAlertCount()` (`['wishlist-alerts', 'badge']`: `GET /wishlist-alerts?unread=true&per_page=25`,
+  its `meta.unread_count`, no retry) and `useAlertsBadge()` (that count, or nothing when 0, failed or
+  offline), exported from `@/wishlists`.
+- Badge: `collection/CollectionTabs.tsx` gives `TabLink` an optional `badge {count, label}` drawn by
+  `TabBadge` (a pill after the label, `role="img"` named "N unread alerts", "99+" above 99). The "Wishlists"
+  tab of `CollectionTabs` (so also on `/collection`) and the "Price alerts" tab of `WishlistTabs` carry it;
+  both read the one shared query. The default MSW handlers answer `GET /wishlist-alerts` with no alerts, so
+  no other test sees a badge.
+- `AlertsPage` (`/collection/wishlists/alerts`): the tabs, "Price alerts" with the explanation, the
+  "Unread only" switch (`?unread=true` in the URL, replace navigation) and "Mark all as read" (disabled
+  offline, while saving and when nothing is unread; toast "Every alert is marked as read."). Then the list
+  "Your price alerts", newest first: per alert the card image (thumb, decorative), the name (`h2`), an unread
+  dot with the hidden text "Unread", "SET · #N" or "Any printing", "Reached <price> (your price <max>)" and
+  "Price of <date>"; a "Lists with this card" button (`aria-expanded`, `aria-controls`) opens the lists that
+  hold the card now (`GET /wishlist-alerts/<id>/lists`, read when opened): each a link to
+  `/collection/wishlists?list=<id>`, the star on the default list, "Wanted: N · max <price>"; "No list holds
+  this card now." when none does (a deleted list is never there); its own loading and error with Retry.
+  Expanding an unread alert marks it read (online only); opening the screen marks nothing. "Show more" loads
+  the next 25. States: skeleton, error with Retry, empty ("No price alerts yet" with how to get them; under
+  "Unread only": "No unread alerts" with "Show all alerts"), offline read-only (`common:offline.editDisabled`,
+  nothing is marked read).
+- Tests: `wishlists/AlertsPage.test.tsx` (list, paging, filter in the URL, empty states, errors, expand and
+  lists, marking read, badges on both tabs, offline, axe at 390 and 1280 px) against an in-memory alerts API
+  (`installAlerts`, `manyAlerts` in `src/test/wishlists.ts`; fixtures `aylaAlert`, `emberAlert`, `tokenAlert`,
+  `aylaAlertLists` in `src/test/fixtures/wishlists.ts`).
 
 ## Shared primitives: tables, dropdowns, checkboxes
 

@@ -1,0 +1,140 @@
+@layer components {
+  .items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+  }
+
+  /* Unread: the dot and its hidden text say it, the border only adds to them. */
+  .item[data-unread] {
+    border-color: var(--accent);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .art {
+    width: 56px;
+  }
+
+  .body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    flex: none;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+
+  .meta,
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .reached {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .toggle {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    align-self: flex-start;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .toggle:hover {
+    border-color: var(--accent);
+  }
+
+  .toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .panel {
+    padding-top: 4px;
+    border-top: 1px solid var(--line);
+  }
+
+  .lists {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .listRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+  }
+
+  .listLink {
+    color: var(--text);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .listLink:hover {
+    text-decoration-color: var(--accent);
+  }
+
+  .more {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+  }
+}

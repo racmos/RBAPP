@@ -102,9 +102,9 @@ jobs running past their timeout as `error`, then claims each queued job, runs it
 even when a job failed (the failure is on the job). Overlapping runs are safe: the unit wraps the runner
 in `flock -n /run/riftbound/jobs.lock` and each job is claimed with a conditional `UPDATE`. Kinds today:
 `heartbeat` (diagnostic, 60 s timeout), `daily_prices` (daily Cardmarket load, 1800 s timeout, F4-b below) and `value_snapshot` (F4-c below).
-`price_alerts` (F4-g): allowed by migration `0027_jobs_price_alerts`; kind registered in F4-g-2, no timer:
-queued by `daily_prices`. Rollback: the 0027 downgrade refuses while `price_alerts` jobs exist
-(`DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'price_alerts';`).
+`price_alerts` (F4-g-2, "Wishlist price alerts" below): allowed by migration `0027_jobs_price_alerts`,
+registered since F4-g-2, no timer: queued by `daily_prices`. Rollback: the 0027 downgrade refuses while
+`price_alerts` jobs exist (`DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'price_alerts';`).
 
 Templates: `docs/systemd/` (`riftbound-jobs.service` + `.timer`). They use the same user, working
 directory and environment file as `docs/riftbound.service`; adapt them to the values in `ops.local.md`.
@@ -280,7 +280,7 @@ The `value_snapshot` job (timeout 900 s, no params) stores, for every user with 
 line, today's collection value in `rbvaluesnaps` (value, cost, copies, distinct printings, lines without a
 price), priced by the same code as `GET /collection`. When `daily_prices` succeeds, its last step queues it
 and the job runner (which keeps claiming queued jobs) runs it right after the load; `daily_prices` shows
-`"queued": ["value_snapshot", "products_refresh"]` in its result (F14-a). A snapshot that cannot be queued never
+`"queued": ["value_snapshot", "products_refresh", "price_alerts"]` in its result (F14-a, F4-g-2). A snapshot that cannot be queued never
 fails the price load.
 A second run the same day replaces that day's rows; the history cannot be rebuilt later, so do not delete rows.
 
@@ -330,6 +330,31 @@ downgrade refuses while `products_refresh` jobs exist (`DELETE FROM riftbound.rb
 'products_refresh';`); the 0019 downgrade refuses while a product has no set (`rbpdt_id_set IS NULL`; set it
 or delete those rows) and drops the new columns (category, kind, locks, hidden, listed), so only with the
 owner's go-ahead.
+
+### Wishlist price alerts (F4-g-2)
+
+The `price_alerts` job (timeout 900 s, no params) raises the wishlist price alerts of the latest Cardmarket
+price load (`rbwishlistalerts`; rule in `docs/api.md` → "Wishlist alerts (F4-g-2)"): for every user, one
+alert per card target and price date when any wishlist line of that target with a max price is at or below
+it. `daily_prices` queues it last, after `value_snapshot` and `products_refresh` (each on its own: one
+active or failing does not stop the others, and none can fail the price load). The price date is the newest
+`rbcm_price` date, so a second run on the same load creates nothing (`alerts_created: 0`); the next load
+raises the alerts again while the prices stay low. No price load at all is an error (`price_alerts: no
+Cardmarket prices loaded`); any param is an error.
+
+By hand (for example to check the job after a deploy): `venv/bin/flask jobs enqueue price_alerts`, then
+`venv/bin/flask jobs list`. Read the counts of the latest job (`price_date`, `lines_checked` = lines with a max
+price, `cards_checked` = user + card targets, `alerts_created`, `skipped_no_price` = targets without a price):
+
+```bash
+venv/bin/flask shell <<< "from app.models import RbJob as J; j = J.query.filter_by(rbjob_kind='price_alerts').order_by(J.rbjob_id.desc()).first(); print(j.rbjob_id, j.rbjob_status, j.rbjob_result or j.rbjob_message)"
+```
+
+Expected: `success`, `price_date` = the date of the last load, and on a second run the same day
+`alerts_created: 0`. Install: no migration (`0027_jobs_price_alerts` must already be applied), restart the
+service and rebuild the frontend; the first alerts come with the next `daily_prices` run. Rollback: revert the
+code; the alerts already raised stay in `rbwishlistalerts` (harmless; the 0026 downgrade would drop them with
+the wishlists, so only with the owner's go-ahead).
 
 ## Decks v2 migration (F5-c)
 

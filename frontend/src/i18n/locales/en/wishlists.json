@@ -160,6 +160,29 @@
       "title": "No price alerts yet",
       "body": "Give a card a max price in one of your wishlists to be told when the market price gets there."
     },
-    "back": "Back to your lists"
+    "emptyUnread": {
+      "title": "No unread alerts",
+      "action": "Show all alerts"
+    },
+    "back": "Back to your lists",
+    "list": "Your price alerts",
+    "loading": "Loading your price alerts",
+    "error": "Your price alerts could not be loaded.",
+    "reached": "Reached {{price}} (your price {{max}})",
+    "date": "Price of {{date}}",
+    "unread": "Unread",
+    "unreadOnly": "Unread only",
+    "markAll": "Mark all as read",
+    "markedAll": "Every alert is marked as read.",
+    "markError": "The alerts could not be marked as read.",
+    "showMore": "Show more",
+    "lists": "Lists with this card",
+    "listsLoading": "Loading the lists",
+    "listsError": "The lists could not be loaded.",
+    "noLists": "No list holds this card now.",
+    "wanted": "Wanted: {{qty}}",
+    "wantedMax": "Wanted: {{qty}} · max {{price}}",
+    "badge_one": "{{count}} unread alert",
+    "badge_other": "{{count}} unread alerts"
   }
 }

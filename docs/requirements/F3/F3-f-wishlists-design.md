@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Phase / unit | F3 / f, plus slices in F3-j, F4-g and F5-f |
-| Status | **Approved by the owner 2026-11-11 (A1-A6 answered).** F3-f-1 done (#130, deployed 2026-11-11); F3-f-2 (lists + lines API) implemented. F3-j (UI) implemented. Next: F4-g alerts. |
+| Status | **Approved by the owner 2026-11-11 (A1-A6 answered).** F3-f-1 done (#130, deployed 2026-11-11); F3-f-2 (lists + lines API) implemented. F3-j (UI) implemented. F4-g-1 (job kind) implemented; F4-g-2 (alert job, alerts API, alerts screen, unread badge) implemented. Next: F5-f. |
 | Replaces | F3-R5 / F3-R11 / F3-R20 of the F3 phase spec (one flat `rbwishlist` table per user) |
 | Risk | Migration (own PR, `pg_dump` before deploy); alert job reads prices daily |
 
@@ -136,6 +136,37 @@ No change to any decision or assumption, no backend change. Where this design wa
 - **Alerts screen** is a shell (title, explanation, empty state, no request) until F4-g adds the API and
   the unread badge.
 
+### As built (F4-g-2, alert job, alerts API and screen: `app/services/wishlist_alerts.py`, `app/jobs/price_alerts.py`, `app/api/v1/wishlist_alerts.py`, `frontend/src/wishlists/AlertsPage.tsx`)
+
+No change to any decision or assumption. Where this design was silent (full contract in `docs/api.md` →
+"Wishlist alerts (F4-g-2)", screen in `docs/frontend.md` → "Wishlist alerts (F4-g-2)"):
+
+- **Several lines, one card (owner, 2026-11-12).** An alert is raised when the price is at or below the max
+  price of **any** line of that card (A3 "any of its lines"); the alert stores the **lowest max price among the
+  lines that were met** and that line's price. The "Alert job" sentence above was corrected accordingly.
+- **What "one card" is.** The lines of a user are grouped by the alert's unique key (`name_key`, set, card): a
+  printing line and a by-name line of the same name raise separate alerts (the by-name one with no printing);
+  the finishes (`any`/`N`/`S`) of one printing share one alert, each line compared with its own price for its
+  foil wish. Lines without a market price take no part; a card without any priced line is counted as
+  `skipped_no_price`.
+- **Price and day.** The price is `WishlistLine.market` (one shared function, `wishlists.cheapest_market`);
+  the day is the newest `rbcm_price` date (`price_as_of`), not the wall-clock day, so a re-run on the same load
+  is a no-op and a day without a new load raises nothing new. A product missing from the latest load keeps its
+  last price, as everywhere in the app.
+- **Job.** `price_alerts` (900 s, no params) is queued by `daily_prices` last, after `value_snapshot` and
+  `products_refresh`; no Cardmarket price at all is a job error. The INSERT skips the rows already there and
+  ignores unique conflicts (PostgreSQL and SQLite). 7 SQL statements whatever the number of lines.
+- **Lists holding the card now.** A by-name alert matches every line of the name; a printing alert the lines
+  of that printing and the by-name lines of the name. Each list shows the wanted quantity (its matching lines
+  added) and their lowest max price.
+- **Read state.** Opening the screen marks nothing; expanding an unread alert marks it read (online only), and
+  "Mark all as read" marks every one. `POST /wishlist-alerts/read` ignores unknown and other users' ids.
+- **Unread badge.** No count endpoint and `GET /wishlists` is unchanged: the badge reads `GET
+  /wishlist-alerts?unread=true&per_page=25` for `meta.unread_count` (2 statements when nothing is unread). It
+  shows on the "Price alerts" tab and on the "Wishlists" tab of the collection, not when the count is 0, the
+  call failed or the app is offline.
+- **Push notifications** are still F4-f/F4-i: this unit only writes the alerts and shows them in the app.
+
 ## API (U, every row scoped to the caller; another user's id is a 404)
 
 | Method | Path | Purpose |
@@ -158,8 +189,9 @@ printing, foil and non-foil), `owned_other_versions` (copies of other printings 
 ## Alert job (F4-g, `price_alerts`, queued by `daily_prices` after a successful load)
 
 For every line with a `max_price`, compare the card's price (same price resolution as the rest of the app) with
-the max: when the price is at or below it, create **one** alert per user, card and day (the lowest max price among
-the user's lines of that card decides; not one per list). Lines without a price are skipped. The job runs once per
+the max: when the price is at or below the max of **any** of the user's lines of that card, create **one** alert
+per user, card and day (not one per list); the alert stores the lowest max price among the lines that were met
+(owner, 2026-11-12). Lines without a price are skipped. The job runs once per
 day after a successful price load and is idempotent for the same price date. Push notifications reuse the F4 notification infrastructure
 later; this unit only writes the alerts and exposes them in the wishlist area.
 

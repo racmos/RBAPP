@@ -928,3 +928,49 @@ export type WishlistMoveBody = {
 };
 
 export type WishlistMoveResult = { moved: number; merged: number; skipped: number };
+
+// --- Wishlist price alerts (F4-g-2) ---
+
+/** `WishlistAlert` of `GET /wishlist-alerts`: a card that reached a wishlist max price one day. */
+export type WishlistAlert = {
+  id: number;
+  name: string;
+  /** The printing, or the base printing of a by-name alert; null when it left the catalog. */
+  card: CardMini | null;
+  /** Both null for a by-name alert (any printing). */
+  set_id: string | null;
+  card_id: string | null;
+  /** The market price reached (EUR). */
+  price: number;
+  /** The lowest max price of the user's lines that the price met (EUR). */
+  max_price: number;
+  /** The day of the Cardmarket price update, `YYYY-MM-DD`. */
+  price_date: string;
+  created_at: string;
+  /** null while unread. */
+  read_at: string | null;
+};
+
+/** `meta` of `GET /wishlist-alerts`. */
+export type WishlistAlertsMeta = {
+  page: number;
+  per_page: number;
+  /** Alerts that match the filter. */
+  total: number;
+  pages: number;
+  /** Every unread alert of the user, whatever the filter (the badge). */
+  unread_count: number;
+};
+
+export type WishlistAlerts = { items: WishlistAlert[]; meta: WishlistAlertsMeta };
+
+/** A list of `GET /wishlist-alerts/:id/lists`: holds the alert's card now. */
+export type WishlistAlertList = {
+  id: number;
+  name: string;
+  is_default: boolean;
+  /** Copies wanted in that list (its matching lines added). */
+  qty: number;
+  /** The lowest max price of its matching lines; null when none has one. */
+  max_price: number | null;
+};

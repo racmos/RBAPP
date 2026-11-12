@@ -584,6 +584,37 @@ class WishlistLinesMove(BaseModel, extra='ignore'):
     mode: Literal['move', 'copy']
 
 
+def _query_int(value):
+    """A digit string of a query to an int; anything else is left to Pydantic."""
+    if isinstance(value, str) and value.lstrip('-').isdigit():
+        return int(value)
+    return value
+
+
+def _query_flag(value):
+    """`true` / `false` (any case) of a query string; anything else is left to Pydantic."""
+    if isinstance(value, str) and value.lower() in ('true', 'false'):
+        return value.lower() == 'true'
+    return value
+
+
+class WishlistAlertsQuery(BaseModel, extra='ignore'):
+    """GET /wishlist-alerts query (F4-g-2): `unread=true` keeps the unread alerts."""
+    unread: StrictBool = False
+    page: int = Field(default=1, ge=1, le=10000)
+    per_page: Literal[25, 50, 100] = 25
+
+    _ints = field_validator('page', 'per_page', mode='before')(
+        lambda cls, v: _query_int(v))
+    _flag = field_validator('unread', mode='before')(lambda cls, v: _query_flag(v))
+
+
+class WishlistAlertsRead(BaseModel, extra='ignore'):
+    """POST /wishlist-alerts/read body (F4-g-2): `ids` absent, null or empty = every unread
+    alert of the caller."""
+    ids: Optional[List[_WishlistId]] = Field(None, max_length=500)
+
+
 # ============== Card Prices Query ==============
 
 

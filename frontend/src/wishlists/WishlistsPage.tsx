@@ -14,6 +14,7 @@ import { up } from '@/lib/breakpoints';
 import { formatMoney } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AddLineSheet } from './AddLineSheet';
+import { useAlertsBadge } from './alertQueries';
 import { LineCards, LinesTable } from './Lines';
 import { useListActions } from './ListSheets';
 import { ListsMenu, type ListActions } from './ListsMenu';
@@ -23,16 +24,26 @@ import styles from './Wishlists.module.css';
 
 const SEARCH_DELAY_MS = 300;
 
-/** "Lists | Price alerts": the two screens of the wishlist area (F3-j). */
+/**
+ * "Lists | Price alerts": the two screens of the wishlist area (F3-j); Price alerts carries the
+ * unread badge (F4-g-2).
+ */
 export function WishlistTabs() {
   const { t } = useTranslation('wishlists');
+  const unread = useAlertsBadge();
   return (
     <TabLinks
       label={t('tabs.sections')}
       size="sm"
       links={[
         { to: '/collection/wishlists', label: t('tabs.lists') },
-        { to: '/collection/wishlists/alerts', label: t('tabs.alerts') },
+        {
+          to: '/collection/wishlists/alerts',
+          label: t('tabs.alerts'),
+          badge: unread
+            ? { count: unread, label: t('alerts.badge', { count: unread }) }
+            : undefined,
+        },
       ]}
     />
   );

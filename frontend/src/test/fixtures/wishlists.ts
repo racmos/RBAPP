@@ -1,4 +1,11 @@
-import type { CardMini, CardSummary, Wishlist, WishlistLine } from '@/api/types';
+import type {
+  CardMini,
+  CardSummary,
+  Wishlist,
+  WishlistAlert,
+  WishlistAlertList,
+  WishlistLine,
+} from '@/api/types';
 import { basicRune, champion, foilCommon, token } from './cards';
 
 const STAMP = '2026-11-10T09:00:00Z';
@@ -133,3 +140,65 @@ export const defaultList = wishlist({
 export const tradesList = wishlist({ id: 2, name: 'Trades', position: 2, line_count: 1 });
 
 export const wishlistLines: WishlistLine[] = [aylaWish, emberWish, runeWish, tokenWish];
+
+// --- Price alerts (F4-g-2) ---
+
+export const alert = (
+  overrides: Partial<WishlistAlert> & { id: number; name: string },
+): WishlistAlert => ({
+  card: null,
+  set_id: null,
+  card_id: null,
+  price: 1,
+  max_price: 1,
+  price_date: '2026-10-20',
+  created_at: '2026-10-20T07:00:00Z',
+  read_at: null,
+  ...overrides,
+});
+
+/** Ayla reached 2.50 € on 21 Oct (newest, unread). */
+export const aylaAlert = alert({
+  id: 31,
+  name: champion.name,
+  card: miniOf(champion, 3),
+  set_id: 'OGN',
+  card_id: '79',
+  price: 2.5,
+  max_price: 3,
+  price_date: '2026-10-21',
+  created_at: '2026-10-21T07:00:00Z',
+});
+
+/** Ember Wisp by name reached 0.15 € on 20 Oct (unread). */
+export const emberAlert = alert({
+  id: 30,
+  name: foilCommon.name,
+  card: miniOf(foilCommon),
+  price: 0.15,
+  max_price: 0.2,
+  price_date: '2026-10-20',
+  created_at: '2026-10-20T07:00:00Z',
+});
+
+/** Spark Token reached 0.05 € on 19 Oct, already read. */
+export const tokenAlert = alert({
+  id: 29,
+  name: token.name,
+  card: miniOf(token),
+  set_id: token.set_id,
+  card_id: token.card_id,
+  price: 0.05,
+  max_price: 0.1,
+  price_date: '2026-10-19',
+  created_at: '2026-10-19T07:00:00Z',
+  read_at: '2026-10-19T09:00:00Z',
+});
+
+export const wishlistAlerts: WishlistAlert[] = [aylaAlert, emberAlert, tokenAlert];
+
+/** The lists that hold Ayla now: the default list and Trades. */
+export const aylaAlertLists: WishlistAlertList[] = [
+  { id: 1, name: 'Wishlist', is_default: true, qty: 2, max_price: 3 },
+  { id: 2, name: 'Trades', is_default: false, qty: 1, max_price: null },
+];

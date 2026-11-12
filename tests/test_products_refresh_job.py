@@ -128,27 +128,30 @@ def loaded(monkeypatch):
 
 def test_daily_prices_queues_the_snapshot_then_the_refresh(app, loaded):
     result = daily_prices_job.run({})
-    assert result['queued'] == ['value_snapshot', 'products_refresh']
+    assert result['queued'] == ['value_snapshot', 'products_refresh', 'price_alerts']
     assert kinds_queued() == [('value_snapshot', 'queued', {}),
-                              ('products_refresh', 'queued', {})]
+                              ('products_refresh', 'queued', {}),
+                              ('price_alerts', 'queued', {})]
 
 
 def test_an_active_refresh_is_skipped_and_the_snapshot_still_queued(app, loaded, caplog):
     caplog.set_level('INFO')
     jobs_service.enqueue('products_refresh')
     result = daily_prices_job.run({})
-    assert result['queued'] == ['value_snapshot']
+    assert result['queued'] == ['value_snapshot', 'price_alerts']
     assert kinds_queued() == [('products_refresh', 'queued', {}),
-                              ('value_snapshot', 'queued', {})]
+                              ('value_snapshot', 'queued', {}),
+                              ('price_alerts', 'queued', {})]
     assert 'products_refresh not queued' in caplog.text
 
 
 def test_an_active_snapshot_does_not_stop_the_refresh(app, loaded):
     jobs_service.enqueue('value_snapshot')
     result = daily_prices_job.run({})
-    assert result['queued'] == ['products_refresh']
+    assert result['queued'] == ['products_refresh', 'price_alerts']
     assert kinds_queued() == [('value_snapshot', 'queued', {}),
-                              ('products_refresh', 'queued', {})]
+                              ('products_refresh', 'queued', {}),
+                              ('price_alerts', 'queued', {})]
 
 
 def test_a_snapshot_that_cannot_be_queued_does_not_stop_the_refresh(app, loaded, monkeypatch):
@@ -160,9 +163,10 @@ def test_a_snapshot_that_cannot_be_queued_does_not_stop_the_refresh(app, loaded,
         return real(kind, *args, **kwargs)
     monkeypatch.setattr(jobs_service, 'enqueue', flaky)
     result = daily_prices_job.run({})
-    assert result['queued'] == ['products_refresh']
+    assert result['queued'] == ['products_refresh', 'price_alerts']
     assert result['validation'] == {'date': '20300101'}
-    assert kinds_queued() == [('products_refresh', 'queued', {})]
+    assert kinds_queued() == [('products_refresh', 'queued', {}),
+                              ('price_alerts', 'queued', {})]
 
 
 def test_a_refresh_that_cannot_be_queued_never_fails_the_load(app, loaded, monkeypatch):
@@ -174,8 +178,9 @@ def test_a_refresh_that_cannot_be_queued_never_fails_the_load(app, loaded, monke
         return real(kind, *args, **kwargs)
     monkeypatch.setattr(jobs_service, 'enqueue', flaky)
     result = daily_prices_job.run({})
-    assert result['queued'] == ['value_snapshot']
-    assert kinds_queued() == [('value_snapshot', 'queued', {})]
+    assert result['queued'] == ['value_snapshot', 'price_alerts']
+    assert kinds_queued() == [('value_snapshot', 'queued', {}),
+                              ('price_alerts', 'queued', {})]
 
 
 def test_a_failed_load_queues_no_refresh(app, monkeypatch):

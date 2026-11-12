@@ -1,13 +1,22 @@
 import { screen, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
-import type { CardSummary, Wishlist, WishlistLine, WishFoil } from '@/api/types';
+import type {
+  CardSummary,
+  Wishlist,
+  WishlistAlert,
+  WishlistAlertList,
+  WishlistLine,
+  WishFoil,
+} from '@/api/types';
 import { cardList } from './fixtures/cards';
 import {
+  aylaAlertLists,
   defaultList,
   line,
   miniOf,
   tradesList,
   wishlist,
+  wishlistAlerts,
   wishlistLines,
 } from './fixtures/wishlists';
 import { API, failure, ok, signedInSession } from './msw/handlers';
@@ -341,3 +350,90 @@ export async function findToast(text: string) {
   const stack = await screen.findByRole('region', { name: 'Notifications' }, { timeout: 10000 });
   return within(stack).findByText(text, {}, { timeout: 10000 });
 }
+
+// --- Price alerts (F4-g-2) ---
+
+type AlertsState = {
+  alerts: WishlistAlert[];
+  lists: Record<number, WishlistAlertList[]>;
+  /** Every request to `/wishlist-alerts` (method, path without the API prefix, query, body). */
+  sent: Sent[];
+};
+
+const READ_AT = '2026-11-12T08:00:00Z';
+
+/**
+ * An in-memory alerts API (F4-g-2 contract, `docs/api.md` "Wishlist alerts"): the list newest
+ * first with `unread`, `page`, `per_page` and `meta.unread_count`, the lists of an alert (404 for
+ * an unknown one) and `POST /read` (every unread alert when `ids` is absent). Tests read `state`.
+ */
+export function installAlerts(
+  alerts: WishlistAlert[] = wishlistAlerts,
+  lists: Record<number, WishlistAlertList[]> = { 31: aylaAlertLists },
+) {
+  const state: AlertsState = { alerts: clone(alerts), lists: clone(lists), sent: [] };
+  const record = async (request: Request) => {
+    const url = new URL(request.url);
+    let body: Record<string, unknown> | null = null;
+    if (request.method === 'POST') body = (await request.clone().json()) as Record<string, unknown>;
+    state.sent.push({
+      method: request.method,
+      path: url.pathname.replace(API, ''),
+      search: url.search,
+      body,
+    });
+  };
+  server.use(
+    http.get(`${API}/wishlist-alerts`, async ({ request }) => {
+      await record(request);
+      const params = new URL(request.url).searchParams;
+      const perPage = Number(params.get('per_page') ?? 25);
+      const page = Number(params.get('page') ?? 1);
+      const unread = params.get('unread') === 'true';
+      const ordered = [...state.alerts].sort(
+        (a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id,
+      );
+      const matching = unread ? ordered.filter((item) => item.read_at === null) : ordered;
+      const items = matching.slice((page - 1) * perPage, page * perPage);
+      return HttpResponse.json({
+        success: true,
+        data: { items },
+        meta: {
+          page,
+          per_page: perPage,
+          total: matching.length,
+          pages: Math.ceil(matching.length / perPage),
+          unread_count: state.alerts.filter((item) => item.read_at === null).length,
+        },
+      });
+    }),
+    http.get(`${API}/wishlist-alerts/:id/lists`, async ({ params, request }) => {
+      await record(request);
+      const found = state.alerts.find((item) => String(item.id) === params.id);
+      if (!found) return failure(404, { error: 'Not Found' });
+      return ok({ items: state.lists[found.id] ?? [] });
+    }),
+    http.post(`${API}/wishlist-alerts/read`, async ({ request }) => {
+      await record(request);
+      const { ids } = (await request.json()) as { ids?: number[] };
+      let marked = 0;
+      for (const item of state.alerts) {
+        if (item.read_at === null && (!ids || ids.length === 0 || ids.includes(item.id))) {
+          item.read_at = READ_AT;
+          marked += 1;
+        }
+      }
+      return ok({ marked });
+    }),
+  );
+  return state;
+}
+
+/** `count` unread alerts, newest first by id (ids `count`..1). */
+export const manyAlerts = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    ...wishlistAlerts[0]!,
+    id: index + 1,
+    name: `Card ${index + 1}`,
+    created_at: new Date(Date.UTC(2026, 9, 1, 7, index)).toISOString().replace('.000', ''),
+  }));

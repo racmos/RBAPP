@@ -704,8 +704,8 @@ which. 200 -> `PublicDeck` (keys in this order):
 `0026_wishlists` (design: `docs/requirements/F3/F3-f-wishlists-design.md`). Everything is scoped
 to the signed-in user: a list id that is not theirs (or does not exist), or a line id that is
 not in the list of the URL, -> the 404 envelope on every route, never 403. Price alerts
-(`/wishlist-alerts`, the `price_alerts` job) arrive with F4-g and "missing cards to a wishlist"
-with F5-f.
+(`/wishlist-alerts`, the `price_alerts` job) are in "Wishlist alerts (F4-g-2)" below; "missing
+cards to a wishlist" arrives with F5-f.
 
 `Wishlist` = `{id, name, is_default (bool), position (1..n, the user's order), line_count,
 created_at, updated_at}` (UTC `YYYY-MM-DDTHH:MM:SSZ`), keys in this order. Names are trimmed,
@@ -808,6 +808,63 @@ Routes:
 
 New error codes: `wishlist_limit` (409, `params.scope` `lists`|`lines`, `params.max`) and
 `wishlist_default` (409).
+
+### Wishlist alerts (F4-g-2)
+
+`app/api/v1/wishlist_alerts.py`, all `U`, logic in `app/services/wishlist_alerts.py`, table
+`rbwishlistalerts` (migration `0026_wishlists`; design `docs/requirements/F3/F3-f-wishlists-design.md`
+D2, A3, A5 and "As built (F4-g-2)"). Everything is scoped to the signed-in user: another user's
+alert id (or an unknown one) -> the 404 envelope.
+
+**How alerts are raised** (job `price_alerts`, queued by `daily_prices` after `value_snapshot` and
+`products_refresh`; `flask jobs enqueue price_alerts` by hand, no params). For the price date of the
+latest Cardmarket load (the newest `rbcm_price` date, the app's `price_as_of`, not the wall-clock
+day), every wishlist line **with** a `max_price` is priced exactly as `WishlistLine.market` (the
+line's printing for its foil wish; a by-name line takes the cheapest priced printing of the name).
+The lines of one user are grouped by the alert target `(name_key, set_id, card_id)`: a printing
+target and the by-name target of the same name alert separately; the finishes of one printing share
+one alert; lines of the same target in several lists share one alert. A group raises **one alert
+for that user, target and price date when any of its priced lines is at or below its max price**;
+the alert stores the **lowest max price among the lines that were met** (`max_price`) and that
+line's market (`price`; ties: the lower price). Lines without a max price are never read; lines
+without a market price take no part. Re-running the job for the same price date creates nothing
+(the rows already there are skipped and the INSERT ignores conflicts on the unique index); the next
+load raises the alert again while the price stays at or below the max (no arming state). Alerts are
+not linked to a list: deleting a list keeps them (A5). The job result is `{price_date,
+lines_checked, cards_checked, alerts_created, skipped_no_price}` (lines with a max price, user +
+target groups, alerts inserted, groups without a priced line); no price load at all -> the job ends
+`error` with `price_alerts: no Cardmarket prices loaded`; any param -> `price_alerts takes no params`.
+7 SQL statements whatever the number of lines (price date, lines, cards, price mapping, prices, the
+day's alerts, one INSERT).
+
+`WishlistAlert` (contract, additive changes only) = `{id, name, card: CardMini|null, set_id|null,
+card_id|null, price, max_price, price_date (YYYY-MM-DD), created_at, read_at|null}` (UTC
+`YYYY-MM-DDTHH:MM:SSZ`), keys in this order. `card` is the printing, or for a by-name alert (`set_id`
+and `card_id` null) the base printing of the name, as `WishlistLine.card` (its `market` is today's
+non-foil price and `owned_total` the caller's copies of that printing); `null` when the printing
+left the catalog. `price` is the market price reached and `max_price` the threshold that was met.
+
+- `GET /wishlist-alerts[?unread=true&page=1&per_page=25]` (`api_v1.list_wishlist_alerts`) ->
+  `{data: {items: [WishlistAlert]}, meta: {page, per_page, total, pages, unread_count}}`, newest first
+  (raised time, then id). `unread=true|false` (default false) keeps the unread ones; `page` >= 1;
+  `per_page` 25 | 50 | 100 (default 25); anything else -> 400 `validation_error` on that field. `total`
+  and `pages` count what matches the filter (`pages` 0 when nothing does); `unread_count` is every
+  unread alert of the caller, whatever the filter. A page after the last is `items: []`. **2 SQL
+  statements when the page is empty** (counts, page), **7 with alerts on it** (+ cards, sets, price
+  mapping, prices, the caller's copies), whatever the page size. The SPA's unread badge reads
+  `?unread=true&per_page=25` for its `meta.unread_count` (no separate count endpoint; `GET /wishlists`
+  is unchanged).
+- `GET /wishlist-alerts/<id>/lists` (`api_v1.wishlist_alert_lists`) -> `{items: [{id, name,
+  is_default, qty, max_price|null}]}`: the caller's wishlists that hold the card **now**, in the
+  user's list order. A by-name alert matches every line of the name; a printing alert matches the
+  lines of that printing and the by-name lines of the name. `qty` adds the matching lines of the list
+  (every finish), `max_price` is their lowest max price (null when none has one). A deleted list is
+  simply not there. 2 SQL statements.
+- `POST /wishlist-alerts/read` (`api_v1.read_wishlist_alerts`) `{ids?: [int >= 1] (at most 500)}` ->
+  `{marked}`. `ids` absent, `null` or `[]` marks **every** unread alert of the caller; otherwise the
+  unread ones among `ids`. Alerts already read keep their `read_at`; unknown ids and other users' ids
+  are **ignored** (never a 404, never touched), so `marked` counts only what changed. A bad body
+  (`ids` not a list of positive integers, more than 500) -> 400 `validation_error`, nothing changes.
 
 ### GET /cards/<set_id>/<card_id>/prices
 

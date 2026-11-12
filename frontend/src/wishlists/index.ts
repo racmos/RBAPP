@@ -5,3 +5,4 @@
  */
 export { AddToWishlist } from './AddToWishlist';
 export { useWishlists } from './queries';
+export { useAlertsBadge } from './alertQueries';
