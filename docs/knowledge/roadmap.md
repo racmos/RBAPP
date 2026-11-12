@@ -28,7 +28,7 @@ Rows follow the agreed order (first unit of each phase). A phase split across th
 | F6 Stats | Distributions by domain/rarity/type/set, top value, value over time. | F4-c (snapshots) | Planned |
 | F7 Sales | Sales table, listings from lines on sale, margin, Cardmarket export. | F3, F4 | Planned |
 | F10 Admin | React admin (rest): users, Cardmarket tools and mappings, bans per mode, audit, event moderation. Catalog admin and Riot sync moved to F13; the legacy price CSV is dropped. | F13 (foundation), F9 (users), F2-a (bans), F4 | Planned |
-| F9 Account | Profile + avatar, TOTP 2FA, server-side sessions/devices, API key; **Google/Discord login (F9-f) just before production**. | F1 | Planned |
+| F9 Account | Profile + avatar, TOTP 2FA, server-side sessions/devices, API key; **Google/Discord login (F9-f, F9-g) just before production**. No account deletion (owner 2026-11-12, F9-k deferred). | F1, F11-f | Planned (spec and units a..j written 2026-11-12) |
 | F11 Close | a11y audit, performance, final docs, Riot disclaimer, legacy schema cleanup. Jinja was retired early (2026-11-08, PRs 1-3/3 of the Jinja retirement). **Without** the new landing (F11-a/b move with F8). | F2-F7, F9, F10 | Planned |
 | F12 Production | Final URL/server, HTTPS, new secrets, production DB from Alembic, backups, monitoring, CSP enforcing, licensing. | F11 | Planned |
 | F15 Rules app | After production, before events: select cards that interact; answers only from the official Core Rules, Tournament Rules and FAQ; stored queries returned when repeated. Specified when the phase starts. | F12 | Planned |
@@ -75,7 +75,7 @@ decides.
 - **Jobs, snapshots and push** — F4-a creates the job runner: table `rbjobs` + `flask jobs run-pending`
   (lock, run by a systemd timer every minute; no Celery/Redis). F4 uses it for the daily Cardmarket load and
   the daily collection-value snapshot; F13 registers the Riot sync kinds; F10-d adds the admin-triggered
-  Cardmarket kinds. Every later phase only registers job kinds, never a second runner. F8 uses it for scraper imports and reminders; F9-k for scheduled account deletion.
+  Cardmarket kinds. Every later phase only registers job kinds, never a second runner. F8 uses it for scraper imports and reminders; F9-a for the daily session purge (`sessions_purge`).
   F4-f adds Web Push (VAPID keys in env vars, subscriptions table, service-worker push handler via
   `importScripts`, notification-preference categories; F8 adds "event reminders") and a `recent_sales`
   dashboard slot that F7 fills. F6 reads the snapshots.
@@ -83,8 +83,8 @@ decides.
   `selling` switch, `sell_qty`, `sell_price`, sub-lines as separate `rbcol_id` rows and
   `PATCH /collection/{id}`; condition and language enums in `/meta/game`. F7 relies on exactly this.
 - **Identity in new tables** — new tables reference `rbusers.id` (like `rbuserprefs`); the legacy
-  `rbcollection` and `rbdecks` keep the username reference (D-F3-6). F9-k's account purge must list every
-  table that references a user, across all phases.
+  `rbcollection` and `rblocations` keep the username reference (D-F3-6, F16; `rbdecks` was dropped in F11-f). An account purge (deferred F9-k, not built)
+  would have to list every table that references a user, across all phases (list in the F9 spec, "Deferred").
 - **Error codes** — each code is introduced once and reused: `insufficient_quantity` (F3-c; F7 adds
   `params.index`), `already_exists` (F13 duplicate set/card, which runs first; reused by F3 wishlist, F4 watchlist and F5 deck names),
   `import_format_unknown` (F3, reused by F5). Each phase spec lists its new codes; F2 adds none.
@@ -118,7 +118,7 @@ Unit tables (ID, title, dependencies, size, risk) are in each phase spec. Summar
 | F6 Stats | a stats API · b chart components · c stats page (nav flip, offline) | Can swap with F7. |
 | F7 Sales | a sales table + create API · b lifecycle · c listings + summary API · d export · e UI listings + sell · f UI history, export, wide rail | Export stays byte-identical to today's Cardmarket export (D-F7-4). |
 | F10 Admin | b users API · c users UI + forced password change · d Cardmarket job kinds · g mappings API port · h mappings UI · i bans admin · j events moderation · k audit UI (the Jinja admin is already gone) | a, e and f moved to F13. Users admin (b, c) waits for F9. j needs F8-a, so it waits for F8. The legacy price CSV generator is dropped. Desktop-first. |
-| F9 Account | a server-side sessions · b profile + password + re-auth API · c avatar · d TOTP enrolment · e 2FA at sign-in · f OAuth backend + owner guide · g OAuth UI · h API key · i account shell + profile UI · j security + API UI · k scheduled account deletion | f and g just before F12 (the owner creates the OAuth apps following the guide). New deps to approve (D-F9-10). |
+| F9 Account | a server-side sessions · b profile + optional e-mail + re-auth API · c avatar · d TOTP enrolment · e 2FA at sign-in · h API key · i account shell + profile UI · j security + API UI · f OAuth backend + owner guide · g OAuth UI | `docs/requirements/F9/F9-{a..j}-*.md`. Order a → b → (c, d, h) → e → i → j → production reset → f → g (the owner creates the OAuth apps following the guide). New pins Pillow, pyotp, segno, cryptography, Authlib (D-F9-10). k (scheduled account deletion) deferred by the owner 2026-11-12: not built. |
 | F11 Close | c about + licences · d, e retire Jinja (**done early**, PRs 1-3/3 of the Jinja retirement, 2026-11-08) · f legacy schema cleanup (optional; `rbdecks`, `rbcol_playset`, `rbcar_banned`, ...) · g E2E + axe harness · h a11y fixes + audit · i performance · j final docs | a (public feeds API) and b (new landing) move with F8, after production. |
 | F12 Production | a server config + logging · b CSP enforcing · c release artifact + deploy script · d backups + restore check · e monitoring + alerting · f production Nginx template + runbook · h licensing + privacy pages · i data export/import (optional) · j go-live record | g (card images out of the code tree) moved to unit M-d. b depended on F11-b (new landing), now after production: see the F12 spec. Many USER steps (host level). |
 | F15 Rules app | outline only | `docs/requirements/F15/README.md`. Specified when the phase starts. |

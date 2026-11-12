@@ -40,6 +40,8 @@ Phase order: `docs/knowledge/roadmap.md`. Phase IDs are identifiers, not order. 
 | F15 | `F15/README.md` | Phase spec outline (Rules app; added by M-b; specified when the phase starts). |
 | **Batch 1** | `BATCH-1.md` | **Ready (2026-10-25)** — 32 units run autonomously in order: M-d, F13-a…g, F2-b…i + F2-k, F3-a/b, F4-c, F3-c/d/e/g/h/i, F14-a…f. Decisions in `docs/knowledge/decisions-2026-10-25.md`. |
 | F2-j, F2-l | `F2/F2-j-*.md`, `F2/F2-l-*.md` | Drafts, deferred to batch 2. |
+| F9 | `F9/README.md` | Phase spec updated 2026-11-12 (owner decisions; account deletion deferred, F9-k not built). |
+| F9-a…j | `F9/F9-a-sessions.md`, `F9-b-profile-reauth.md`, `F9-c-avatar.md`, `F9-d-totp-enrolment.md`, `F9-e-2fa-sign-in.md`, `F9-f-oauth-backend.md`, `F9-g-oauth-ui.md`, `F9-h-api-key.md`, `F9-i-account-shell-profile-ui.md`, `F9-j-security-api-ui.md` | **Ready (2026-11-12)**. Order a → b → (c, d, h) → e → i → j → production reset → f → g. Migration units (a, b, d, h, f) go in their own PRs. |
 
 Batch 1 (`BATCH-1.md`) lists the unit requirements written on 2026-10-25 for M-d, F13, F2, F3, F4-c and F14.
 The other phases have a phase spec only; their unit requirements are written when the phase starts.
