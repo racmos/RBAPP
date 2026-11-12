@@ -50,8 +50,21 @@ export function useWishlistLines(id: number | null, q: string) {
   });
 }
 
-/** Every wishlist write changes the counts of the lists and the lines: refresh both. */
-const refreshAll = (client: QueryClient) => client.invalidateQueries({ queryKey: WISHLISTS_KEY });
+/**
+ * The card details (`['cards', 'detail', set, card]`, `@/catalog`): their `in_wishlists` names the
+ * lists that hold the card, so a write to the lines makes them stale (the open one refetches).
+ */
+const CARD_DETAIL_KEY = ['cards', 'detail'] as const;
+
+/**
+ * Every wishlist write changes the counts of the lists and the lines, and the lists a card
+ * detail names: refresh all of them.
+ */
+const refreshAll = (client: QueryClient) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: WISHLISTS_KEY }),
+    client.invalidateQueries({ queryKey: CARD_DETAIL_KEY }),
+  ]);
 
 export function useCreateWishlist() {
   const client = useQueryClient();
@@ -169,7 +182,10 @@ export function usePatchWishlistLine() {
           ? { ...data, items: data.items.map((item) => (item.id === saved.id ? saved : item)) }
           : data,
       );
-      await client.invalidateQueries({ queryKey: ['wishlists', listId, 'lines'] });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['wishlists', listId, 'lines'] }),
+        client.invalidateQueries({ queryKey: CARD_DETAIL_KEY }),
+      ]);
     },
   });
 }

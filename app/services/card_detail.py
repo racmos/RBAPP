@@ -1,8 +1,8 @@
 """Card detail and price history (F2-d S1-S9).
 
 Reads only: the catalog (`rbcards`/`rbset`), the Cardmarket tables filled by
-the daily load (F4-b), the user's collection rows and decks v2 (the current
-version of each `rbdeckheads` row), and the ban table (F2-a). One batched query per data need; filtering and ordering run in Python
+the daily load (F4-b), the user's collection rows, decks v2 (the current
+version of each `rbdeckheads` row) and wishlists (F3-j follow-ups), and the ban table (F2-a). One batched query per data need; filtering and ordering run in Python
 (no PostgreSQL-only SQL), like `card_list`.
 """
 import datetime as _datetime
@@ -10,8 +10,8 @@ import datetime as _datetime
 from sqlalchemy import tuple_
 
 from app import db
-from app.models import (RbCard, RbCollection, RbDeckHead, RbDeckVersion, RbSet, RbcmPrice,
-                        RbcmProductCardMap, User)
+from app.models import (RbCard, RbCollection, RbDeckHead, RbDeckVersion, RbSet, RbWishlist,
+                        RbWishlistLine, RbcmPrice, RbcmProductCardMap, User)
 from app.services import bans as bans_service
 from app.services import catalog
 from app.services.pricing import price_summaries, resolve_price_with_source
@@ -176,6 +176,7 @@ def get_card_detail(set_id, card_id, username):
     name_by_card = {(c.rbcar_rbset_id, c.rbcar_id): catalog.name_key(c.rbcar_name)
                     for c in all_cards}
     in_decks = _in_decks(username, wanted, name_by_card)
+    in_wishlists = _in_wishlists(username, wanted, key)
 
     tags = {t.casefold() for t in catalog.parse_tags(card.rbcar_tags)}
     candidates = []
@@ -239,6 +240,7 @@ def get_card_detail(set_id, card_id, username):
             'updated_at': _iso_utc(row.rbcol_chadat),
         } for row in my_lines],
         'in_decks': in_decks,
+        'in_wishlists': in_wishlists,
     })
     return summary
 
@@ -270,6 +272,42 @@ def _in_decks(username, wanted, name_by_card):
         if total > 0:
             in_decks.append({'deck_id': deck_id, 'name': name, 'qty': total})
     return in_decks
+
+
+def _in_wishlists(username, wanted, key):
+    """`[{id, name, is_default, qty}]` of the user's wishlists that hold the printing `key`
+    now, in the user's list order; one statement. A line holds it when it wants the name
+    `wanted` and either that printing or any printing (NULL set and number); `qty` sums those
+    lines of the list (two finishes of the printing add up). Lists without one are absent."""
+    if not username:
+        return []
+    set_id, card_id = key
+    rows = db.session.query(
+        RbWishlist.rbwls_id, RbWishlist.rbwls_name, RbWishlist.rbwls_is_default,
+        RbWishlist.rbwls_position, RbWishlistLine.rbwsl_qty,
+    ).join(
+        User, User.id == RbWishlist.rbwls_user_id,
+    ).join(
+        RbWishlistLine, RbWishlistLine.rbwsl_list_id == RbWishlist.rbwls_id,
+    ).filter(
+        User.username == username,
+        RbWishlistLine.rbwsl_name_key == wanted,
+        db.or_(
+            db.and_(RbWishlistLine.rbwsl_rbset_id == set_id,
+                    RbWishlistLine.rbwsl_rbcar_id == card_id),
+            db.and_(RbWishlistLine.rbwsl_rbset_id.is_(None),
+                    RbWishlistLine.rbwsl_rbcar_id.is_(None)),
+        ),
+    ).all()
+    lists = {}
+    for list_id, name, is_default, position, qty in rows:
+        entry = lists.setdefault(list_id, {
+            'position': position,
+            'item': {'id': list_id, 'name': name, 'is_default': bool(is_default), 'qty': 0},
+        })
+        entry['item']['qty'] += qty or 0
+    return [entry['item'] for entry in sorted(
+        lists.values(), key=lambda entry: (entry['position'], entry['item']['id']))]
 
 
 def _foilable(card):

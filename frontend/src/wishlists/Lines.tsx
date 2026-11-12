@@ -10,7 +10,7 @@ import { Icon } from '@/components/ui/Icon';
 import { TableScroll } from '@/components/ui/TableScroll';
 import {
   AlertState,
-  FinishBadge,
+  FinishSelect,
   MarketValue,
   NoteInput,
   QTY_MAX,
@@ -47,7 +47,13 @@ export function LineCard({ line, offline, onMove }: LineProps) {
         <h3 className={styles.name}>{line.name}</h3>
         <p className={styles.meta}>
           <span>{printing(line)}</span>
-          <FinishBadge line={line} />
+          <FinishSelect
+            className={styles.finish}
+            line={line}
+            label={t('line.finish.label')}
+            disabled={offline}
+            save={save}
+          />
         </p>
         <p className={styles.prices}>
           <span className={styles.label}>{`${t('line.market')}:`}</span>
@@ -218,7 +224,13 @@ function Row({ line, offline, onMove }: LineProps) {
             <span className={styles.rowName}>{name}</span>
             <span className={styles.meta}>
               <span>{printing(line)}</span>
-              <FinishBadge line={line} />
+              <FinishSelect
+                className={styles.finish}
+                line={line}
+                label={t('line.finishOf', { name })}
+                disabled={offline}
+                save={save}
+              />
             </span>
           </span>
         </span>

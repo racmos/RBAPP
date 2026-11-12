@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -116,6 +116,36 @@ describe('CardDetailView (F2-f S7)', () => {
     expect(screen.getByText("You don't have this card yet.")).toBeVisible();
     expect(screen.getByText('No related cards.')).toBeVisible();
     expect(screen.getByText('Not in any of your decks.')).toBeVisible();
+  });
+
+  it('names the wishlists that hold the card, each linking to its list (F3-j follow-ups)', async () => {
+    await renderView({
+      presentation: 'page',
+      card: {
+        ...cardDetail,
+        in_wishlists: [
+          { id: 1, name: 'Wishlist', is_default: true, qty: 2 },
+          { id: 7, name: 'Trades', is_default: false, qty: 1 },
+        ],
+      },
+    });
+    const panel = screen.getByRole('region', { name: 'Wishlists' });
+    expect(within(panel).getByText(/In wishlists:/)).toBeVisible();
+    expect(within(panel).getByRole('link', { name: 'Wishlist (2)' })).toHaveAttribute(
+      'href',
+      '/collection/wishlists?list=1',
+    );
+    expect(within(panel).getByRole('link', { name: 'Trades (1)' })).toHaveAttribute(
+      'href',
+      '/collection/wishlists?list=7',
+    );
+  });
+
+  it('says nothing about wishlists when no list holds the card (F3-j follow-ups)', async () => {
+    await renderView({ presentation: 'page', card: { ...cardDetail, in_wishlists: [] } });
+    const panel = screen.getByRole('region', { name: 'Wishlists' });
+    expect(within(panel).queryByText(/In wishlists:/)).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('renders modal heading as h2 inside the wrapper', async () => {

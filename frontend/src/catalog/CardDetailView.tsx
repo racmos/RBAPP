@@ -224,6 +224,7 @@ export function CardDetailView({
 
           <AddToWishlist
             card={card}
+            inWishlists={card.in_wishlists}
             className={styles.panel}
             titleClassName={styles.sectionTitle}
           />

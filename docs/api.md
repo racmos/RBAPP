@@ -162,7 +162,7 @@ GET /riftbound/api/v1/cards?domain=Fury&sort=price&dir=desc&per_page=2
 `CardSummary` shape plus the keys below. Lookup is exact on both segments;
 a missing card answers 404 with the standard envelope. Anonymous → JSON 401.
 Filtering, ordering and user scoping run in Python over batched queries
-(at most 10 SQL statements).
+(at most 11 SQL statements: 10 before `in_wishlists`, F3-j follow-ups).
 
 Response: `data: CardDetail` = `CardSummary` plus `ability` (text|null),
 `artist` (already in the summary), `set: {id, name, released_on (ISO|null)}`,
@@ -180,7 +180,14 @@ version of each deck; `{deck_id, name, qty}` where `deck_id` is the deck id of
 `GET /decks/<id>` and the app route `/decks/:id`, and `qty` sums every printing of
 the same name over legend, champion, main, runes, battlefields and sideboard, never
 the workbench; missing-card entries skipped; only decks with `qty > 0`, ordered by
-name; one SQL statement). The legacy `rbdecks` table is not read.
+name; one SQL statement). The legacy `rbdecks` table is not read. `in_wishlists`
+(F3-j follow-ups, additive): the current user's wishlists that hold this printing
+now, `[{id, name, is_default, qty}]` in the user's list order (`position`); a list
+holds it when it has a line of the card's `name_key` whose printing is this
+printing or is any printing (NULL set and number; a line of another printing of
+the name does not count); `qty` sums those lines of the list (two finishes of the
+printing add up); lists without such a line are absent, `[]` when none; never
+another user's lists; one SQL statement.
 
 ```http
 GET /riftbound/api/v1/cards/OGN/79

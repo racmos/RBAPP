@@ -35,6 +35,14 @@
     font-weight: 800;
   }
 
+  /* The finish of a line, edited in place (F3-j follow-ups): as compact as the badge it replaced. */
+  .meta .finish {
+    width: auto;
+    min-height: 32px;
+    padding-block: 2px;
+    font-size: 13px;
+  }
+
   .meta,
   .prices {
     display: flex;

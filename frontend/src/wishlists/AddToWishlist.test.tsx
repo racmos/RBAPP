@@ -69,6 +69,26 @@ describe('Card detail: Add to wishlist (F3-j)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   }, 30000);
 
+  it('the card detail names the new list once the card is added (F3-j follow-ups)', async () => {
+    installWishlists();
+    const { section } = await openCard();
+    // Ayla is already in the default list (2 copies)
+    expect(
+      await within(section).findByRole('link', { name: 'Wishlist (2)' }, LONG),
+    ).toHaveAttribute('href', expect.stringMatching(/\/collection\/wishlists\?list=1$/));
+    expect(within(section).queryByRole('link', { name: /^Trades/ })).toBeNull();
+    await userEvent.click(within(section).getByRole('button', { name: 'Choose list…' }));
+    const sheet = await screen.findByRole('dialog', {
+      name: "Add Ayla, Fury's Champion to a list",
+    });
+    await userEvent.click(within(sheet).getByRole('button', { name: /^Trades/ }));
+    expect(await within(section).findByRole('link', { name: 'Trades (1)' }, LONG)).toHaveAttribute(
+      'href',
+      expect.stringMatching(/\/collection\/wishlists\?list=2$/),
+    );
+    expect(within(section).getByRole('link', { name: 'Wishlist (2)' })).toBeVisible();
+  }, 30000);
+
   it('a full list answers with the limit', async () => {
     installWishlists();
     server.use(

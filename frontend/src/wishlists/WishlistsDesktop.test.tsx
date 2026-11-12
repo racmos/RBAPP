@@ -103,6 +103,46 @@ describe('Wishlists from 1240 px (F3-j)', () => {
     );
   }, 20000);
 
+  it('edits the finish in the table, foil only when the card has one (F3-j follow-ups)', async () => {
+    const sent = recordWishlistRequests();
+    installWishlists();
+    await openPage();
+    await table();
+    const ayla = within(rowOf("Ayla, Fury's Champion")).getByRole('combobox', {
+      name: "Finish: Ayla, Fury's Champion",
+    });
+    expect(within(ayla).getByRole('option', { name: 'Foil' })).toBeDisabled();
+    const ember = within(rowOf('Ember Wisp')).getByRole('combobox', {
+      name: 'Finish: Ember Wisp',
+    });
+    expect(ember).toHaveValue('S');
+    await userEvent.selectOptions(ember, 'Any finish');
+    await waitFor(() =>
+      expect(writes(sent)).toContainEqual(
+        expect.objectContaining({
+          method: 'PATCH',
+          path: '/wishlists/1/lines/102',
+          body: { foil: 'any' },
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        within(rowOf('Ember Wisp')).getByRole('combobox', { name: 'Finish: Ember Wisp' }),
+      ).toHaveValue('any'),
+    );
+  }, 20000);
+
+  it('offline: the finish cannot change in the table (F3-j follow-ups)', async () => {
+    installWishlists();
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    await openPage();
+    await table();
+    expect(
+      within(rowOf('Ember Wisp')).getByRole('combobox', { name: 'Finish: Ember Wisp' }),
+    ).toBeDisabled();
+  }, 20000);
+
   it('opens another list from the rail', async () => {
     installWishlists();
     const { where } = await openPage();

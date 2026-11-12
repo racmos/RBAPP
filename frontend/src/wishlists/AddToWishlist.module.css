@@ -1,4 +1,19 @@
 @layer components {
+  .inLists {
+    margin: 0 0 10px;
+    font-size: 14px;
+  }
+
+  .inListLink {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .inListLink:hover {
+    text-decoration: underline;
+  }
+
   .actions {
     display: flex;
     flex-wrap: wrap;

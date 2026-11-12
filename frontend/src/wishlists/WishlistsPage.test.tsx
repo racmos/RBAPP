@@ -4,7 +4,8 @@ import { http } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import { clearToasts } from '@/components/ui/toastStore';
-import { defaultList, tradesList } from '@/test/fixtures/wishlists';
+import { foilCommon } from '@/test/fixtures/cards';
+import { defaultList, line, miniOf, tradesList, wishlistLines } from '@/test/fixtures/wishlists';
 import { API, failure } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
@@ -420,6 +421,79 @@ describe('Wishlists at 390 px (F3-j): the lines', () => {
     expect(state.lines.find((item) => item.id === 101)?.qty).toBe(3);
   }, 20000);
 
+  it('changes the finish of a line (PATCH foil) (F3-j follow-ups)', async () => {
+    const state = installWishlists();
+    const sent = recordWishlistRequests();
+    await openPage();
+    await cards();
+    const finish = within(cardOf("Ayla, Fury's Champion")).getByRole('combobox', {
+      name: 'Finish',
+    });
+    expect(finish).toHaveValue('any');
+    await userEvent.selectOptions(finish, 'Non-foil');
+    await waitFor(() =>
+      expect(writes(sent)).toEqual([
+        expect.objectContaining({
+          method: 'PATCH',
+          path: '/wishlists/1/lines/101',
+          body: { foil: 'N' },
+        }),
+      ]),
+    );
+    expect(await findToast('Saved.')).toBeVisible();
+    expect(
+      within(cardOf("Ayla, Fury's Champion")).getByRole('combobox', { name: 'Finish' }),
+    ).toHaveValue('N');
+    expect(state.lines.find((item) => item.id === 101)?.foil).toBe('N');
+  }, 20000);
+
+  it('a finish another line of the list has: the 409 is explained and the finish goes back (F3-j follow-ups)', async () => {
+    const emberPlain = line({
+      id: 104,
+      list_id: 1,
+      name: foilCommon.name,
+      set_id: 'OGN',
+      card_id: '12',
+      card: miniOf(foilCommon),
+      foil: 'N',
+    });
+    const state = installWishlists(undefined, [...wishlistLines, emberPlain]);
+    await openPage();
+    await cards();
+    const ember = screen
+      .getAllByRole('combobox', { name: 'Finish' })
+      .find((select) => (select as HTMLSelectElement).value === 'S')!;
+    await userEvent.selectOptions(ember, 'Non-foil');
+    expect(await findToast('Another line of this list already has that finish.')).toBeVisible();
+    await waitFor(() => expect(ember).toHaveValue('S'));
+    expect(state.lines.find((item) => item.id === 102)?.foil).toBe('S');
+  }, 20000);
+
+  it('foil_not_allowed from the server: the finish goes back with its message (F3-j follow-ups)', async () => {
+    const state = installWishlists();
+    await openPage('/collection/wishlists?list=2');
+    await cards('Trades');
+    const finish = within(cardOf('Spark Token')).getByRole('combobox', { name: 'Finish' });
+    await userEvent.selectOptions(finish, 'Foil');
+    expect(await findToast('This card has no foil version.')).toBeVisible();
+    await waitFor(() => expect(finish).toHaveValue('any'));
+    expect(state.lines.find((item) => item.id === 201)?.foil).toBe('any');
+  }, 20000);
+
+  it('offers no foil finish for a card without a foil version (F3-j follow-ups)', async () => {
+    installWishlists();
+    await openPage();
+    await cards();
+    const foilOf = (name: string) =>
+      within(within(cardOf(name)).getByRole('combobox', { name: 'Finish' })).getByRole('option', {
+        name: 'Foil',
+      });
+    // a rare and a rune have no foil version; a common has one
+    expect(foilOf("Ayla, Fury's Champion")).toBeDisabled();
+    expect(foilOf('Fury Rune')).toBeDisabled();
+    expect(foilOf('Ember Wisp')).toBeEnabled();
+  }, 20000);
+
   it('sets and clears the max price (PATCH max_price) and saves the note', async () => {
     const sent = recordWishlistRequests();
     installWishlists();
@@ -604,6 +678,7 @@ describe('Wishlists at 390 px (F3-j): the lines', () => {
     expect(within(ayla).getByRole('spinbutton', { name: 'Wanted' })).toBeDisabled();
     expect(within(ayla).getByRole('spinbutton', { name: 'Max price' })).toBeDisabled();
     expect(within(ayla).getByRole('textbox', { name: 'Note' })).toBeDisabled();
+    expect(within(ayla).getByRole('combobox', { name: 'Finish' })).toBeDisabled();
     expect(within(ayla).getByRole('button', { name: 'Remove' })).toBeDisabled();
     expect(within(ayla).getByRole('button', { name: 'Move or copy' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Add card' })).toBeDisabled();

@@ -596,14 +596,25 @@ the `wishlists` namespace). API: `docs/api.md` → "Wishlists (F3-f-2)"; design 
   toast has Undo; a 409 `wishlist_default` is shown as its error toast.
 - Lines — header strip: Cards "N of 100" (`line_count` / `max_lines`), Market value (`market_total`),
   Unpriced; a search box (`q`). Phones (`LineCards`): one card per line with the image, name, "SET · #N" or
-  "Any printing", the finish badge (Any finish / Non-foil / Foil), "Market: <price>" ("—" unpriced; the
+  "Any printing", the finish select "Finish" (Any finish / Non-foil / Foil; see "Finish edit" below),
+  "Market: <price>" ("—" unpriced; the
   price date as tooltip) with "Reached" / "Not reached" or the muted "No alert price", "Owned: N of this
   version (n foil)" ("of any printing" for by-name lines), "Other versions: N (a alt art, f foil)" (not for
   by-name lines; a tooltip explains it), zeros muted (`data-zero`), then the `Stepper` "Wanted" (1-99), the
   `MoneyField` "Max price" (empty = no alert, `null`), the note (≤ 200, 500 ms) and "Move or copy" /
   "Remove". From 1240 px `LinesTable` in `TableScroll fit` (Card, Wanted, Max price, Market, This version,
-  Other versions, Note, Actions) with compact inline editors named after the card. Edits save one after
-  another (`useLineSaver`), a failure toasts and reloads. Remove toasts "<name> removed." with Undo (the
+  Other versions, Note, Actions) with compact inline editors named after the card (the finish select
+  "Finish: <name>" under the name). Edits save one after another (`useLineSaver`), a failure toasts and
+  reloads.
+- Finish edit (F3-j follow-ups, `lineParts.tsx::FinishSelect`): a native `Select` in place of the old
+  finish badge; a change sends `PATCH /wishlists/<id>/lines/<line_id> {foil}` and shows the new finish at
+  once while it saves ("Saved." toast). "Foil" is disabled when the line's card has no foil version
+  (`canWantFoil`: the line's `card`, the printing or the base printing of a by-name line, is not a rune and
+  is common or uncommon, the rule of `app/services/catalog.py::is_foilable`; a line already foil keeps it
+  enabled); the API has the last word. A 409 `already_exists` (another line of the list has that target
+  and finish) toasts "Another line of this list already has that finish." and `foil_not_allowed` toasts
+  its catalog message ("This card has no foil version."); both go back to the stored finish (the list
+  reloads). Disabled offline. Remove toasts "<name> removed." with Undo (the
   deleted line posted back). `MoveSheet`: "To list" (the other lists), Move | Copy, the result toast
   "Moved: n · Merged: n · Skipped: n", errors (the limit) in the sheet.
 - `AddLineSheet` ("Add to <list>"): `CardCombobox`, "Any printing" switch (sends `name` instead of
@@ -618,16 +629,24 @@ the `wishlists` namespace). API: `docs/api.md` → "Wishlists (F3-f-2)"; design 
   <default list name>" adds one copy of the printing, any finish, to the default list; "Choose list…"
   opens a sheet with every list. The toast ("Added to <list>." or "Added one more to <list>." when it
   merged) has "Open list" → `/collection/wishlists?list=<id>`. It reads `GET /wishlists`, which creates
-  the default list of a user who has none. "In wishlists: <names>" is not shown: no endpoint says which
-  lists hold a card without reading every list's lines.
+  the default list of a user who has none. Above the buttons, when `CardDetail.in_wishlists` (F3-j
+  follow-ups) is not empty, "In wishlists: <Name> (qty), …" names the lists holding the card now, each a
+  router link to `/collection/wishlists?list=<id>` (`CardDetailView` passes `inWishlists`). Every
+  wishlist write (`queries.ts::refreshAll` and the line PATCH) also invalidates the card details
+  (`['cards', 'detail']`), so the list shows as soon as the card is added.
 - `AlertsPage` was a shell in F3-j; F4-g-2 made it the alerts screen (next section).
 - Tests: `wishlists/*.test.tsx` and `collection/CollectionTabs.test.tsx` run against an in-memory wishlists
   API (`src/test/wishlists.ts`: `installWishlists`, `recordWishlistRequests`, `findToast`, fixtures in
   `src/test/fixtures/wishlists.ts`); the default MSW handlers answer `GET /wishlists` with the default list
-  so card detail tests keep working. ESLint: `eslint.config.js` has no boundary rule for `wishlists` yet
-  (follow-up); the folder follows the feature rules by hand (other features only through `@/wishlists`,
-  the shared collection controls `@/collection/Stepper`, `MoneyField` and `CollectionTabs` as products
-  does).
+  so card detail tests keep working; `installWishlists` also serves `GET /cards/:set/:id` with
+  `in_wishlists` computed from its state and its line PATCH answers the finish conflicts (409
+  `already_exists`, `foil_not_allowed`) like the API.
+- ESLint (F3-j follow-ups): `wishlists` is a folder of `eslint.config.js`. It may import everything below
+  `app`, like `products` (the shared collection controls `@/collection/Stepper`, `MoneyField` and
+  `CollectionTabs` included), and storage locations only through `@/locations`; `lib`, `api` and
+  `components/ui` may not import it, and the other features (`shell`, `account`, `catalog`,
+  `collection`, `products`, `decks`, `locations`) import it only through `@/wishlists`. Tested in
+  `src/test/eslint-boundaries.test.ts`.
 
 ## Wishlist alerts (F4-g-2)
 
@@ -883,7 +902,7 @@ Device storage keys: `rb_cards_view` (`grid` | `list` | `table`), `rb_cards_face
 - `context.ts` — the outlet context type (`presentation`, `siblings`, `onClose`).
 
 `catalog` sits in the `shell`/`account` boundary group (it may import everything below, never
-`app`). "Manage in the collection" is a router link to `/collection`; "In my decks" lists deck
+`app`; `locations` and `wishlists` only through their index). "Manage in the collection" is a router link to `/collection`; "In my decks" lists deck
 names without links, because `in_decks[].deck_id` is still the old `rbdecks` id, not a
 `/decks/:id` id. The detail data comes from `getCard` (`GET
 /riftbound/api/v1/cards/<set>/<id>`, F2-d); the MSW handler serves the `cardDetail` fixture.
