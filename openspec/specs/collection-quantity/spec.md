@@ -4,6 +4,8 @@ Source: change f0-foundation (archived 2026-10-19)
 
 > **Jinja retirement (2026-11-08, PR 3/3).** QTY-1 (integer storage) still holds. QTY-2..QTY-4 described the Jinja collection (list sort, `/riftbound/collection/add`, `import_csv`), removed with the Jinja web; the API equivalents are F3-b (sort), F3-c (merge in SQL) and F3-e (validated import).
 
+> **Legacy schema cleanup (F11-f, migration `0028_legacy_schema_cleanup`, 2026-11-12).** `rbcol_playset` was dropped; the "Export arithmetic" scenario (quantity minus playset) is history: copies for sale are `rbcol_sell_qty`.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. `[PG-CI]` = verify in the PostgreSQL CI job; `[MANUAL]` = manual/ops check. Untagged scenarios are pytest-testable on SQLite.
 
 ## Requirements

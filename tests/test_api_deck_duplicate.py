@@ -44,7 +44,6 @@ class TestDuplicate:
         assert deck == data(api.get(f"{BASE}/{deck['id']}"))
         head = head_row(deck['id'])
         assert head.rbdkh_user_id == user_id() and head.rbdkh_share_slug is None
-        assert head.rbdkh_legacy_name is None
         assert versions(deck['id']) == [(1, AZIR, None)]
 
     def test_copies_the_current_version_not_the_newest_and_no_version_note(self, api):

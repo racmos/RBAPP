@@ -213,13 +213,13 @@ the English fallback; `code` and `params` are additive. Error names in use: `Val
 | `POST /auth/login` | P | body `{username, password, remember?}` (`remember` strict boolean, default false). 200 `{user}`; 401 `invalid_credentials`; 429 `locked` + `Retry-After`; 400 `validation_error` |
 | `POST /auth/logout` | U | 200 `{}`; anonymous gets JSON 401 |
 | `POST /auth/register` | P | body `{username, email, password, altcha?}`. 201 `{user:{id, username}}`, no session; 400 `captcha_failed` (`Captcha Error`); 409 `username_taken` / `email_taken` (`Conflict`); 429 |
-| `GET /me/prefs` | U | `{prefs:{lang, density, accent, bg_intensity, collection_view}}`; never creates a row |
-| `PATCH /me/prefs` | U | absent key = unchanged, `null` = Auto, invalid value = 400 and nothing stored (all-or-nothing), unknown keys ignored; returns all five |
+| `GET /me/prefs` | U | `{prefs:{density, accent, bg_intensity, collection_view, playset_size}}` (no `lang` since F11-f); never creates a row |
+| `PATCH /me/prefs` | U | absent key = unchanged, `null` = Auto, invalid value = 400 and nothing stored (all-or-nothing), unknown keys ignored (an old client's `lang` too); returns all five |
 
 Register validation (`RegisterRequest`): username `[A-Za-z0-9_.-]{3,32}`, email at most 120 chars with a
 simple `x@y.z` pattern, password 8 to 128. Login only requires non-empty username and password, so
 legacy usernames keep working. Duplicate e-mail is compared case-insensitively. `is_admin` in a request
-body is ignored. Preference domains (`app/schemas/prefs_domain.py`): `lang` es|en; `density`
+body is ignored. Preference domains (`app/schemas/prefs_domain.py`): `density`
 compact|regular|comfy; `accent` cyan|orange; `bg_intensity` integer 0..100 (strict: `true`, `50.0`
 and `"50"` are refused); `collection_view` table|grid.
 
@@ -253,13 +253,12 @@ Schema `riftbound`. Tables use the `rb` prefix; columns use the table prefix (`r
 |---|---|---|---|
 | `rbusers` | `User` (`user.py`) | `id` | `username` (unique, 64), `email` (unique, 120), `password_hash`, `created_at`, `is_admin`, `is_blocked`, `failed_login_count`, `locked_until`, `last_login_at`. Other tables reference `username` (collection, decks) or `id` (prefs) |
 | `rbset` | `RbSet` (`set.py`) | `rbset_id` (text) | `rbset_name`, `rbset_ncard` (smallint), `rbset_outdat` (date). Parent of `rbcards` |
-| `rbcards` | `RbCard` (`card.py`) | (`rbcar_rbset_id`, `rbcar_id`), both text | `rbcar_name`, `_domain`, `_type`, `_tags`, `_energy`, `_power`, `_might` (smallint), `_ability`, `_rarity`, `_artist`, `_banned`, `image_url`, `image`. FK to `rbset` (cascade). `image_src` property builds `/riftbound/media/cards/<folder>/<image>` (M-d) |
-| `rbcollection` | `RbCollection` (`collection.py`) | `rbcol_id` (synthetic bigint) | `rbcol_rbset_id`, `rbcol_rbcar_id` (FK to `rbcards`), `rbcol_user` (FK to `rbusers.username`), `rbcol_foil`, `rbcol_quantity` (integer), `rbcol_selling`, `rbcol_playset`, `rbcol_sell_price` (numeric), `rbcol_condition`, `rbcol_language`, `rbcol_chadat` |
-| `rbdecks` | `RbDeck` (`deck.py`) | `id` | `rbdck_user` (FK to `rbusers.username`), `rbdck_name`, `rbdck_seq`, `rbdck_snapshot`, `rbdck_description`, `rbdck_mode`, `rbdck_format`, `rbdck_max_set`, `rbdck_ncards`, `rbdck_orden`, `rbdck_cards` (JSONB). Unique (`rbdck_user`, `rbdck_name`, `rbdck_seq`) |
+| `rbcards` | `RbCard` (`card.py`) | (`rbcar_rbset_id`, `rbcar_id`), both text | `rbcar_name`, `_domain`, `_type`, `_tags`, `_energy`, `_power`, `_might` (smallint), `_ability`, `_rarity`, `_artist`, `image_url` (`_banned` dropped in F11-f), `image`. FK to `rbset` (cascade). `image_src` property builds `/riftbound/media/cards/<folder>/<image>` (M-d) |
+| `rbcollection` | `RbCollection` (`collection.py`) | `rbcol_id` (synthetic bigint) | `rbcol_rbset_id`, `rbcol_rbcar_id` (FK to `rbcards`), `rbcol_user` (FK to `rbusers.username`), `rbcol_foil`, `rbcol_quantity` (integer), `rbcol_selling`, `rbcol_sell_price` (numeric), `rbcol_condition`, `rbcol_language`, `rbcol_chadat` |
 | `rbcardmarket` | `RbCardMarket` (`market.py`) | (`rbcmk_snapshot`, `rbcmk_rbset_id`, `rbcmk_rbcar_id`, `rbcmk_foil`) | `rbcmk_name`, `rbcmk_price`. FK to `rbcards`. No route or service reads it (legacy) |
 | `rbproducts` | `RbProducts` (`cardmarket.py`) | (`rbpdt_id_set`, `rbpdt_id_product`) | curated product master: `rbpdt_name`, `_description`, `_type`, `_image_url`, `_image`. Read and written only by admin price routes |
 | `rbcaptcha_used` | `RbCaptchaUsed` (`captcha.py`) | `rbcap_hash` (sha256, 64) | `rbcap_expires_at`; index on expiry. Replay store of ALTCHA |
-| `rbuserprefs` | `RbUserPrefs` (`prefs.py`) | `rbprf_user_id` | FK to `rbusers.id` ON DELETE CASCADE; `rbprf_lang`, `_density`, `_accent`, `_bg_intensity` (smallint), `_collection_view`, `rbprf_updated_at`. All preference columns nullable (NULL = Auto), five named CHECKs. Row created on the first PATCH |
+| `rbuserprefs` | `RbUserPrefs` (`prefs.py`) | `rbprf_user_id` | FK to `rbusers.id` ON DELETE CASCADE; `rbprf_density`, `_accent`, `_bg_intensity` (smallint), `_collection_view`, `rbprf_updated_at`. All preference columns nullable (NULL = Auto), five named CHECKs. Row created on the first PATCH |
 | `rbcm_categories` | `RbcmCategory` | `rbcat_id` | `rbcat_name` |
 | `rbcm_expansions` | `RbcmExpansion` | `rbexp_id` | `rbexp_name`, `rbexp_rbset_id` (soft link to `rbset`, NULL = unmapped; partial index on NULL) |
 | `rbcm_ignored` | `RbcmIgnored` | (`rbig_id_product`, `rbig_name`) | `rbig_ignored_at`. Products an admin hid in the mappings browser |
@@ -269,7 +268,7 @@ Schema `riftbound`. Tables use the `rb` prefix; columns use the table prefix (`r
 | `rbcm_products` | `RbcmProduct` | (`rbprd_date`, `rbprd_id_product`) | `rbprd_name`, category and expansion ids, `rbprd_id_metacard`, `rbprd_type` (single or nonsingle). Every `Rbcm*` model and `RbProducts` live in `app/models/cardmarket.py` |
 
 Quirks to know before touching data:
-- **Ownership is by username, not id.** `rbcollection.rbcol_user` and `rbdecks.rbdck_user` hold the
+- **Ownership is by username, not id.** `rbcollection.rbcol_user` holds the
   username (FK `ON UPDATE CASCADE ON DELETE RESTRICT`). Always scope by `current_user.username`.
 - **`rbcol_id` is a synthetic key.** Several rows may share (set, card, foil, user) when they differ in
   selling flag, price, condition or language; adding an exact duplicate merges by an atomic SQL
@@ -277,19 +276,13 @@ Quirks to know before touching data:
 - **`rbcol_quantity` is an integer 1..9999** (CHECK `>= 1`); never text.
 - **`rbcol_foil`** is `'N'` or `'S'` (S = foil; Spanish "si"). Foil is refused for Rare, Epic and Showcase.
 - **`rbcol_selling`** is `'Y'` or `'N'` in the application (the DB CHECK also allows `'S'`, which the app
-  never writes). **`rbcol_playset`** is NULL or 1..3 and means "copies kept back for a playset"; the
-  sellable surplus is `quantity - coalesce(playset, 0)`; setting it auto-flips `selling` (Y when quantity
-  exceeds it, else N). CSV export of "for sale" lines uses that surplus.
+  never writes). The legacy `rbcol_playset` was dropped in F11-f: copies for sale are `rbcol_sell_qty`,
+  the playset size is `rbuserprefs.rbprf_playset_size` and the marks are `rbkeepplayset`.
 - **`rbcol_condition`** is one of MT, NM, EX, GD, LP, PL, PO or NULL; **`rbcol_language`** is free text.
-- **`rbcar_banned`** is a single text column, `'N'` (default) or `'S'` (banned), one value for the whole
-  card. Per-mode bans (1v1 vs 2v2) do not exist yet; they need a new table (see product decisions).
-- **`rbdck_cards`** JSON shape: `{"main": [{"set": "<set id>", "id": "<card id>", "qty": 1..99}],
-  "sideboard": [ ...same... ]}`. **`rbdck_snapshot`** is the full timestamp at which that version was
-  saved (UTC, naive). A deck "version" is a row: same user and name, higher `rbdck_seq` (next = max + 1).
-  `rbdck_ncards` is the sum of quantities (stored as 1 when the sum is 0). `rbdck_mode` is `1v1` (default)
-  or any string up to 50 chars, `rbdck_format` defaults to `Standard`; the deck list offers `Standard` and
-  `Limited`, `1v1` and `2v2`. Deck visibility today: the list page shows every user's decks to every
-  signed-in user; `/deck/view/<id>` opens any deck by id (have/missing use the VIEWER's collection).
+- Bans are per card name and game mode in `rbcardbans` (F2-a); the legacy `rbcar_banned` column was
+  dropped in F11-f.
+- `rbdecks` (legacy decks, `rbdck_*` columns) was dropped in F11-f (migration 0028); decks live in
+  `rbdeckheads` / `rbdeckversions` (F5-c).
 - **Card ids are text** such as `1`, `7a`, `79*`; natural sort extracts the leading digits. Promo sets end
   in `X` (for example `OGNX`); their image folder comes from the file-name prefix (`ogn_257.png` lives in
   `ogn/`), not from the set id.
@@ -360,7 +353,7 @@ gets the F8 landing back):
 | `/riftbound/price` | `/riftbound/app/admin/cardmarket` |
 
 Any other old path (the HTMX partials, `/frames/*`, `/riftbound/static/*`, the flat JSON helpers) is a 404.
-The legacy tables (`rbdecks`, `rbcol_playset`, ...) stay until F11.
+The legacy schema (`rbdecks`, `rbcol_playset`, `rbcar_banned`, `rbprf_lang`, ...) was dropped in F11-f (migration 0028).
 
 ## 7. Frontend (`frontend/`)
 
@@ -464,7 +457,7 @@ then the detail `message`. Card names and abilities are data and are not transla
 
 ### 7.5 Preferences
 
-Five account values: `lang`, `density`, `accent`, `bg_intensity`, `collection_view`; `null` = Auto.
+Account values: `density`, `accent`, `bg_intensity`, `collection_view` (and `playset_size`); `null` = Auto. No `lang` (English-only; dropped in F11-f).
 - `rb_prefs_v1` (localStorage) mirrors the server copy; corrupt or out-of-domain values are dropped.
 - Auto resolves per device (`prefs/resolve.ts`): viewport below 860 px (`down('md')`) is "phone":
   density `compact`, collection view `grid`; otherwise `regular` and `table`; accent `orange`; background 100.

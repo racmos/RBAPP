@@ -356,42 +356,27 @@ service and rebuild the frontend; the first alerts come with the next `daily_pri
 code; the alerts already raised stay in `rbwishlistalerts` (harmless; the 0026 downgrade would drop them with
 the wishlists, so only with the owner's go-ahead).
 
-## Decks v2 migration (F5-c)
+## Legacy schema cleanup (F11-f, migration 0028)
 
-Revision `0025_decks_v2` creates `rbdeckheads` and `rbdeckversions` and copies nothing; `flask decks
-migrate` copies the legacy `rbdecks` rows into them (one deck per user and name, one version per row;
-routing rules in `docs/requirements/F5/F5-c-decks-v2-data.md` S4-S8). `rbdecks` is never modified; since
-the Jinja web was retired (PR 3/3, after a dry run showed 0 new decks) nothing writes it any more, so there
-is nothing left to copy and no final run is due (F11 drops the table).
-Order, with the owner's go-ahead:
+The decks v2 copy (F5-c, `flask decks migrate`) is history: the command, the `RbDeck` model and the
+copy service were removed in F11-f, and revision `0028_legacy_schema_cleanup` drops `rbdecks`, the
+provenance columns `rbdkh_legacy_name` / `rbdkv_legacy_id`, `rbcol_playset`, `rbcar_banned` and
+`rbprf_lang` (D-F11-9). **Data loss**: those rows and values are gone (dev had 3 `rbdecks` rows, all
+copied to v2; a production data reset follows); the downgrade re-creates the structure only. The
+previous code reads the dropped columns, so restart right after the upgrade. Order, with the owner's
+go-ahead:
 
 ```bash
-pg_dump -h <host> -U <user> -d <database> -n riftbound -Fc -f ~/backups/rbapp/riftbound_pre_f5c-0025_$(date +%Y%m%d_%H%M).dump
-venv/bin/flask db upgrade                     # to 0025_decks_v2 (tables only)
+venv/bin/python scripts/db_backup.py          # pg_dump first; check the new file in ~/backups/rbapp
+git pull --ff-only                            # the F11-f code
+venv/bin/flask db upgrade                     # 0028_legacy_schema_cleanup
 venv/bin/flask db check                       # "No new upgrade operations detected."
-# restart the service
-venv/bin/flask decks migrate --dry-run        # report per deck, changes nothing: send it to the owner
-venv/bin/flask decks migrate                  # only after the owner has read the report
-venv/bin/flask decks migrate --dry-run        # every deck "up to date"
+# restart the service at once (command in ops.local.md): the old code reads the dropped columns
+cd frontend && npm ci && npm run build && npm run check:dist   # the frontend changed too
 ```
 
-The report prints, per deck, the new name and mode, and per version the legend, the champion, the counts
-per zone and every card moved to the workbench or left out (unknown card ids, malformed lines) with why;
-`Total: ...` sums it up. `--strict` exits 1 and writes nothing when a line is unresolved. The real run
-writes everything in one transaction and ends with `Done: N decks created, N updated, N versions copied.`
-It is idempotent: a legacy row is copied once (`rbdkv_legacy_id`). Do not run it again for real now that
-the Jinja deck pages are gone: a deck deleted in v2 would come back from its legacy rows.
-
-Read the result:
-
-```bash
-venv/bin/flask shell <<< "from app.models import RbDeckHead as H, RbDeckVersion as V; [print(h.rbdkh_id, h.rbdkh_user_id, h.rbdkh_name, h.rbdkh_mode, h.rbdkh_current_version_id) for h in H.query]; [print(v.rbdkv_deck_id, v.rbdkv_seq, v.rbdkv_legacy_id, v.rbdkv_note) for v in V.query]"
-```
-
-Undo the copy only: `DELETE FROM riftbound.rbdeckheads WHERE rbdkh_legacy_name IS NOT NULL;` (versions
-go with their deck) while nothing has been saved in v2. Rollback of the schema: `venv/bin/flask db
-downgrade 0024_locations` drops both tables with every v2 deck and version (`rbdecks` stays); last
-resort: restore the dump.
+Rollback: check out the previous code, `venv/bin/flask db downgrade 0027_jobs_price_alerts` (structure
+back, empty), restart; the values come back only by restoring the dump.
 
 ## Card images (from M-d)
 

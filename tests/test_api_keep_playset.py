@@ -105,9 +105,9 @@ class TestPlaysetSizePreference:
         assert patch(None).get_json()['data']['prefs']['playset_size'] is None
 
     def test_other_prefs_keep_their_values(self, api):
-        api.patch(PREFS, json={'lang': 'en', 'playset_size': 5})
+        api.patch(PREFS, json={'accent': 'cyan', 'playset_size': 5})
         prefs = api.patch(PREFS, json={'density': 'comfy'}).get_json()['data']['prefs']
-        assert (prefs['lang'], prefs['playset_size'], prefs['density']) == ('en', 5, 'comfy')
+        assert (prefs['accent'], prefs['playset_size'], prefs['density']) == ('cyan', 5, 'comfy')
 
     @pytest.mark.parametrize('value, params', [(0, {'min': 1}), (10, {'max': 9}), (-3, {'min': 1})])
     def test_out_of_range_is_refused(self, api, value, params):

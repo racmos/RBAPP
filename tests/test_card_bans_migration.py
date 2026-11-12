@@ -120,7 +120,7 @@ def test_rbcar_banned_is_not_a_source_and_is_left_untouched(migration_app):
     run("INSERT INTO riftbound.rbset (rbset_id, rbset_name) VALUES ('OGN', 'Origins')")
     run("INSERT INTO riftbound.rbcards (rbcar_rbset_id, rbcar_id, rbcar_name, rbcar_banned) "
         "VALUES ('OGN', '79', 'Jinx, Loose Cannon', 'S'), ('OGN', '80', 'Called Shot', 'N')")
-    upgrade()
+    upgrade('0009_card_bans')   # 0028 drops rbcar_banned (F11-f)
     assert rows(SELECT_SEED) == SEED
     downgrade('0008_jobs_daily_prices')
     assert rows('SELECT rbcar_id, rbcar_banned FROM riftbound.rbcards ORDER BY rbcar_id') == [

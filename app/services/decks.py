@@ -33,7 +33,6 @@ from app.schemas.game_domain import GAME_MODES
 from app.services import bans as bans_service
 from app.services import catalog, deck_rules, deck_text
 from app.services.card_detail import _card_mini
-from app.services.deck_migration import catalog_card
 from app.services.pricing import price_summaries
 from app.utils import clock
 
@@ -122,7 +121,7 @@ class _Catalog:
     def __init__(self, user):
         rows = db.session.query(RbCard).all()
         self.rows = {(c.rbcar_rbset_id, c.rbcar_id): c for c in rows}
-        self.rules = {key: catalog_card(c) for key, c in self.rows.items()}
+        self.rules = {key: catalog.rules_card(c) for key, c in self.rows.items()}
         self.variants = {}
         for c in rows:
             name = bans_service.name_key(c.rbcar_name)

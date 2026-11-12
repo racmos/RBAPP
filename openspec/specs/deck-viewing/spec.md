@@ -4,6 +4,8 @@ Source: change f0-foundation (archived 2026-10-19)
 
 > **Jinja retirement (2026-11-08, PR 3/3).** The Jinja deck routes (`/riftbound/deck/...`) were removed; `/riftbound/deck` and `/riftbound/deck/view/<any>` answer a 302 to `/riftbound/app/decks`. DECK-2..DECK-4 no longer apply and are kept as history; DECK-1 is amended below (owner-only decks, D-F5-9); decks v2 are specified in `docs/requirements/F5/` and `docs/api.md` → "Decks (F5-d)" and "Deck sharing (F5-g)".
 
+> **Legacy schema cleanup (F11-f, migration `0028_legacy_schema_cleanup`, 2026-11-12).** The legacy table `rbdecks` was dropped and `flask decks migrate` removed; decks live only in decks v2.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. All scenarios are pytest-testable (SQLite). Until F5 every logged-in user could see every deck; since D-F5-9 (F5-d) a deck is visible only to its owner (DECK-1).
 
 ## Requirements

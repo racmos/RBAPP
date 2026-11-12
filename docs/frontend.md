@@ -154,9 +154,9 @@ the same safe `next`.
 and typed: a missing key fails `npm run typecheck`. There is no Spanish catalog, no ES/EN toggle
 (login screen, topbar, "More" sheet), no language setting in `/account/interface`, no language
 detection (`navigator.languages`, `rb_lang`) and no language in the `rb_prefs_v1` mirror;
-`createI18n()` always starts in `en` and `<html lang>` is always `en`. The backend still stores
-and sends the `lang` preference (`rbprf_lang`, see `docs/api.md`); the app ignores it and never
-sends it.
+`createI18n()` always starts in `en` and `<html lang>` is always `en`. The backend has no `lang`
+preference since F11-f (`rbprf_lang` dropped, see `docs/api.md`); the app never sends it and a
+stray `lang` from an older server changes nothing.
 
 What was removed: `locales/es/*`, `LanguageToggle`, `AccountLanguageToggle`,
 `i18n/resolveLang.ts` (`resolveLang`, `storeLang`, `initialLang`...), the `Lang` type and every
@@ -168,7 +168,7 @@ that English is the only bundled language with every namespace, that no string i
 every plural group has the forms English needs (`_one`, `_other`) and none it never uses (a
 `_many` is a Spanish leftover), and that no string has Spanish-only characters (`á é í ó ú ñ ¿
 ¡`). `src/i18n/englishOnly.test.tsx` checks the screens: no language control anywhere, an
-account that stored `lang: 'es'` still gets English, `PATCH /me/prefs` never carries `lang`.
+stray `lang: 'es'` in the session still gives English, `PATCH /me/prefs` never carries `lang`.
 Tests are written in English and query the English texts.
 
 **Formats.** `src/lib/format.ts` is the only formatter and uses one locale, `LOCALE = 'en-GB'`:
@@ -248,8 +248,8 @@ PR 3/3 such a page is one of the 302 redirects back into the app. Flask no longe
 `/riftbound/static/` at all (the PWA keeps it in its navigation denylist, harmless).
 
 **Preferences.** The app uses four interface values (`density`, `accent`, `bg_intensity`,
-`collection_view`; `null` is Auto) plus `playset_size`. The account also stores `lang`, which
-the app ignores (English only, see "Language, formats and error codes"). `src/prefs/`:
+`collection_view`; `null` is Auto) plus `playset_size`, the five keys of the server prefs (no
+`lang`: English only, see "Language, formats and error codes"). `src/prefs/`:
 
 - `bootstrap.ts` runs before React renders: it reads the `rb_prefs_v1` mirror (corrupt or
   out-of-domain values are dropped), resolves Auto for the viewport and writes
@@ -903,8 +903,8 @@ Device storage keys: `rb_cards_view` (`grid` | `list` | `table`), `rb_cards_face
 
 `catalog` sits in the `shell`/`account` boundary group (it may import everything below, never
 `app`; `locations` and `wishlists` only through their index). "Manage in the collection" is a router link to `/collection`; "In my decks" lists deck
-names without links, because `in_decks[].deck_id` is still the old `rbdecks` id, not a
-`/decks/:id` id. The detail data comes from `getCard` (`GET
+names without links (when this was written `in_decks[].deck_id` was the old `rbdecks` id; it is
+the decks v2 id since the card detail read decks v2, and `rbdecks` was dropped in F11-f). The detail data comes from `getCard` (`GET
 /riftbound/api/v1/cards/<set>/<id>`, F2-d); the MSW handler serves the `cardDetail` fixture.
 
 ## Collection (F3-g)

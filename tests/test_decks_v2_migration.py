@@ -125,8 +125,7 @@ def test_round_trip_and_drift_leave_rbdecks_untouched(migration_app):
     run("INSERT INTO riftbound.rbset (rbset_id, rbset_name) VALUES ('OGN', 'Origins')")
     run(LEGACY)
     legacy = rows('SELECT * FROM riftbound.rbdecks')
-    upgrade()
-    assert drift() == []
+    upgrade(REVISION)           # 0028 (F11-f) drops rbdecks: check it at 0025
     assert rows('SELECT * FROM riftbound.rbdecks') == legacy
     assert rows('SELECT COUNT(*) FROM riftbound.rbdeckheads') == [(0,)]   # tables only
     run(HEAD, **_head())

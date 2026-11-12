@@ -93,6 +93,13 @@ def parse_tags(text):
     return seen
 
 
+def rules_card(card):
+    """The fields the deck rules engine reads (`deck_rules.py`), parsed like `CardSummary`."""
+    card_type, supertype = parse_type(card.rbcar_type)
+    return {'name': card.rbcar_name, 'type': card_type, 'supertype': supertype,
+            'domains': parse_domains(card.rbcar_domain), 'tags': parse_tags(card.rbcar_tags)}
+
+
 def keywords_of(ability):
     """Game keywords of an ability text (F5-i), approximate: no column stores them.
 

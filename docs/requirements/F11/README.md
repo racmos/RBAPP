@@ -147,6 +147,12 @@ Out:
 None required. Optional `00xx_legacy_cleanup` (D-F11-9): drop columns proven unused (candidates:
 `rbcar_banned` after F2's ban table, `rbcol_playset` (replaced in F3) and other legacy selling columns, legacy deck fields
 if F5 migrated them). Downgrade re-creates the columns empty, so it needs a backup and owner approval.
+
+**Built (F11-f, 2026-11-12):** D-F11-9 decided by the owner (drop now). `0028_legacy_schema_cleanup`
+drops the table `rbdecks`, `rbcol_playset`, `rbcar_banned`, `rbprf_lang` and the decks v2 provenance
+columns `rbdkh_legacy_name` / `rbdkv_legacy_id`; `rbcol_selling` stays (still used). `flask decks
+migrate`, `RbDeck` and the copy service are gone; the preferences payload has five keys (no `lang`).
+Deploy: `pg_dump` first, restart right after the upgrade (`docs/knowledge/ops-runbook.md`).
 Indexes from F11-R18 come as their own small revision. Risk: item 1.
 
 ## API
@@ -183,7 +189,7 @@ States: live blocks with skeleton, hidden when empty or on error. i18n: namespac
 | F11-c | About + licences | F1 (shell) | ~400 | Risk: item 5 (licence tooling at build time) | About page, generated licence list, disclaimer in auth screens, help section. |
 | F11-d | Retire Jinja: user modules | F2-F7, F9 flipped | ~550 | Risk: item 2 + item 3 (login redirect; bookmarks/installed apps) | Redirect map, `login_view` to the app, standalone error pages, removal of user-module templates/routes, matrix + tests. |
 | F11-e | Retire Jinja: admin + leftovers | F10 done, F11-d | ~450 | Risk: item 3 (removing legacy endpoints) | Remove `price_bp`, `price.html`, base layout, static/vendor leftovers, `legacy` nav status, `legacy-routes.json`, docs. |
-| F11-f | Legacy schema cleanup (optional) | F11-e, D-F11-9 | ~250 | Risk: item 1 (drops columns) | One reversible revision dropping columns proven unused; backup-first deploy. |
+| F11-f | Legacy schema cleanup (built 2026-11-12, migration `0028_legacy_schema_cleanup`) | F11-e, D-F11-9 | ~250 | Risk: item 1 (drops columns) | One reversible revision dropping columns proven unused; backup-first deploy. |
 | F11-g | E2E + axe harness | F11-d | ~600 | Risk: item 5 (new CI job and dev dependencies) | Playwright + axe, seeded SQLite command, CI job, route matrix at 2 widths × 2 roles. |
 | F11-h | a11y fixes + audit report | F11-g | ~500 | Risk: item 6 (screen-reader checks are manual) | Fixes from the harness and §7.4 checklist, `docs/a11y-audit.md`, owner manual passes. |
 | F11-i | Performance pass | F11-e | ~500 | Risk: item 1 if indexes are added | Budgets in `check:dist`, rendering fixes, query-count tests, indexes, Lighthouse record. |
@@ -201,7 +207,7 @@ States: live blocks with skeleton, hidden when empty or on error. i18n: namespac
 | D-F11-6 | Disclaimer wording, placement, translation | English only / English + Spanish | English verbatim + Spanish translation, landing + auth + About | F11-b, F11-c |
 | D-F11-7 | Scroll animation (81 frames, ~5.3 MB) | keep / short video / drop | Replace with one optimised hero image (or drop) | F11-b |
 | D-F11-8 | Delete legacy JSON endpoints | delete / keep for scripts | Delete (only Jinja used them); the API key (F9) covers scripts | F11-d, F11-e |
-| D-F11-9 | Drop obsolete columns | now / never | Optional unit after F11-e, owner approves the list | F11-f |
+| D-F11-9 | Drop obsolete columns | now / never | **Decided 2026-11-12: now** (`rbdecks`, `rbcol_playset`, `rbcar_banned`, `rbprf_lang`, `rbdkh_legacy_name`, `rbdkv_legacy_id`; keep `rbcol_selling`) | F11-f |
 | D-F11-10 | Landing language | ES only / ES + EN by browser language with toggle | ES + EN (browser language, toggle stored locally) | F11-b |
 | D-F11-11 | Landing design (design-handoff §10-13) | from tokens / commissioned | From tokens; owner reviews screenshots | F11-b |
 | D-F11-12 | What does `/` show between go-live (F12) and the new landing (F11-b, after production)? | the current draft as is / the draft with its placeholder blocks hidden | Hide the blocks that show fabricated items (a small change in F11-d or F12) so production shows no invented content; the full rebuild stays with F8 | F12-j |

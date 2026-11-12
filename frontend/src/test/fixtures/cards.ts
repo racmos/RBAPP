@@ -265,7 +265,6 @@ export const cardDetail: CardDetail = {
       language: 'ES',
       selling: false,
       sell_price: null,
-      playset: false,
       updated_at: '2026-10-24T10:00:00Z',
     },
     {
@@ -276,7 +275,6 @@ export const cardDetail: CardDetail = {
       language: 'EN',
       selling: true,
       sell_price: 1.5,
-      playset: false,
       updated_at: '2026-10-24T10:00:00Z',
     },
   ],

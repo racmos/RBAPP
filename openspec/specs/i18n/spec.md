@@ -2,6 +2,8 @@
 
 Source: change f1-app-shell (archived 2026-10-22)
 
+> **Legacy schema cleanup (F11-f, migration `0028_legacy_schema_cleanup`, 2026-11-12).** The account preference `lang` was dropped (the app has been English-only since owner feedback S21): the language resolution order and the toggle described here are history.
+
 > Tags: all requirements are unit `[d]` of change f1-app-shell (the language toggle UI is `[e]`). `[vitest]` = Vitest + Testing Library. Languages: `es` (default) and `en`. Card names and abilities are data, not UI, and are NOT translated.
 
 ## Requirements

@@ -284,8 +284,7 @@ def test_round_trip_leaves_the_other_tables_and_data_alone_and_has_no_drift(migr
     run("INSERT INTO riftbound.rbcards (rbcar_rbset_id, rbcar_id, rbcar_name) "
         "VALUES ('OGN', '1', 'Alpha')")
     run(COLLECTION)
-    upgrade()
-    assert drift() == []
+    upgrade(REVISION)           # 0028 (F11-f) drops rbdecks: compare the tables at 0026
     assert tables() == before | NEW_TABLES
     run(LIST, **_list())
     run(LINE, **_line())

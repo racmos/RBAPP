@@ -2,6 +2,8 @@
 
 Source: change f0-foundation (archived 2026-10-19)
 
+> **Legacy schema cleanup (F11-f, migration `0028_legacy_schema_cleanup`, 2026-11-12).** The table `rbdecks` (MIG-5) and the columns `rbcol_playset` (with `rbcollection_playset_chk`) and `rbcar_banned` were dropped; the scenarios that use them describe the revisions before 0028 and are kept as history.
+
 > Tags: `[a]`..`[e]` = delivery unit of change f0-foundation. `[PG-CI]` = verify in the PostgreSQL CI job; `[MANUAL]` = manual/ops check; `[GH-CI]` = only observable in GitHub Actions. Untagged scenarios are pytest-testable on SQLite with a `riftbound` schema attached (as `tests/conftest.py` does). "Baseline" = revision reproducing `dev-schema-snapshot.txt` (16 tables, incl. legacy `old1_rbusers`, `old_rbdecks`). Revisions of change f0-foundation, in order: baseline, legacy drop + FK repoint [b], quantity [b], admin columns [c], lockout columns [d].
 
 ## Requirements

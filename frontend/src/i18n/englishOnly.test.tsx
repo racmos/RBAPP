@@ -8,7 +8,8 @@ import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 
 const LONG = { timeout: 10000 };
-/** The backend still stores and sends `lang` (column `rbprf_lang`); the app ignores it. */
+/** The backend dropped `lang` (F11-f, column `rbprf_lang`); a stray `lang` from an older
+    server or a stale cache must still change nothing. */
 const SPANISH_ACCOUNT = { ...NO_PREFS, lang: 'es' };
 const patches: Array<Record<string, unknown>> = [];
 
@@ -43,7 +44,7 @@ describe('English-only app (owner feedback S21)', () => {
     expect(document.documentElement.lang).toBe('en');
   });
 
-  it('an account that stored Spanish still gets English, and the topbar has no toggle', async () => {
+  it('a stray Spanish `lang` still gets English, and the topbar has no toggle', async () => {
     signedIn();
     await renderApp({ path: '/', width: 1440 });
     const banner = await screen.findByRole('banner', {}, LONG);

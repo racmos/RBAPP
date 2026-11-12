@@ -4,7 +4,7 @@ The format every deck site exports (owner sample `docs/requirements/F5/samples/
 deck-export-text-1.txt`): blocks `Legend:`, `Champion:`, `MainDeck:`, `Battlefields:`,
 `Rune Pool:` and `Sideboard:`, each with `N Card Name` lines. Nothing here touches Flask or the
 database: the caller passes the catalog (`{(set, id): card}` with the rules engine fields,
-`deck_migration.catalog_card`) and the base printings.
+`catalog.rules_card`) and the base printings.
 
 Import (owner, 2026-11-04): the text always loads. Nothing is dropped silently: every line that
 does not land as written gives a warning `{line, text, reason_code, params}`; a card in a block

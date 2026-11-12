@@ -6,8 +6,8 @@ export type UserPayload = { id: number; username: string; email: string; is_admi
 export type AccountChanges = { email?: string; password?: string; current_password?: string };
 
 /** The stored interface preferences; `null` means Auto (PREF-2). `playset_size` (F3) is not an
-    interface preference: `null` means 3 copies. The backend still stores and sends `lang`
-    (`rbprf_lang`); the app is English-only (owner feedback S21) and ignores it. */
+    interface preference: `null` means 3 copies. The app is English-only (owner feedback
+    S21): there is no `lang` key (dropped in F11-f). */
 export type Prefs = {
   density: 'compact' | 'regular' | 'comfy' | null;
   accent: 'orange' | 'cyan' | null;
@@ -243,7 +243,6 @@ export type MyLine = {
   language: string;
   selling: boolean;
   sell_price: number | null;
-  playset: boolean;
   updated_at: string;
 };
 
