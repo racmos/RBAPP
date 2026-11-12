@@ -102,6 +102,9 @@ jobs running past their timeout as `error`, then claims each queued job, runs it
 even when a job failed (the failure is on the job). Overlapping runs are safe: the unit wraps the runner
 in `flock -n /run/riftbound/jobs.lock` and each job is claimed with a conditional `UPDATE`. Kinds today:
 `heartbeat` (diagnostic, 60 s timeout), `daily_prices` (daily Cardmarket load, 1800 s timeout, F4-b below) and `value_snapshot` (F4-c below).
+`price_alerts` (F4-g): allowed by migration `0027_jobs_price_alerts`; kind registered in F4-g-2, no timer:
+queued by `daily_prices`. Rollback: the 0027 downgrade refuses while `price_alerts` jobs exist
+(`DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'price_alerts';`).
 
 Templates: `docs/systemd/` (`riftbound-jobs.service` + `.timer`). They use the same user, working
 directory and environment file as `docs/riftbound.service`; adapt them to the values in `ops.local.md`.
