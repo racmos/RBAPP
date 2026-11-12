@@ -5,8 +5,8 @@ when it did not succeed). It loads the three Cardmarket files with the
 default allow-listed URLs, validates what was loaded, links the clear
 auto-match cases and lists the doubtful ones for review (D-F4-2, D-F4-10).
 Any failure is a `JobFailed`, so the job ends `error` (nothing is linked) and
-the retry fires. On success its last step queues `value_snapshot` (F4-c, F4-R4)
-and then `products_refresh` (F14-a).
+the retry fires. On success its last step queues `value_snapshot` (F4-c, F4-R4),
+then `products_refresh` (F14-a) and then `price_alerts` (F4-g-2).
 """
 import logging
 
@@ -18,8 +18,8 @@ from app.services.cardmarket_loader import CardmarketLoader
 logger = logging.getLogger(__name__)
 
 
-# Queued in this order after a successful load (F4-c S4, F14-a S5).
-FOLLOW_UPS = ('value_snapshot', 'products_refresh')
+# Queued in this order after a successful load (F4-c S4, F14-a S5, F4-g-2).
+FOLLOW_UPS = ('value_snapshot', 'products_refresh', 'price_alerts')
 
 
 def _queue_follow_ups() -> list[str]:

@@ -35,6 +35,22 @@
     color: var(--text);
   }
 
+  .badge {
+    display: inline-flex;
+    min-width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
   .tab:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: -2px;

@@ -108,6 +108,9 @@ MATRIX = {
     'api_v1.update_wishlist_line': 'U',
     'api_v1.delete_wishlist_line': 'U',
     'api_v1.move_wishlist_lines': 'U',
+    'api_v1.list_wishlist_alerts': 'U',      # F4-g-2 wishlist price alerts
+    'api_v1.wishlist_alert_lists': 'U',
+    'api_v1.read_wishlist_alerts': 'U',
     # --- admin ------------------------------------------------------------
     'api_admin.*': 'A',                     # /riftbound/api/v1/admin/* (F13-a); includes
                                             # /admin/cardmarket/* (CM-a)

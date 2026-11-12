@@ -105,7 +105,7 @@ describe('Wishlists at 390 px (F3-j): routes and tabs', () => {
     expect(decodeURIComponent(where())).toContain('/riftbound/app/collection/wishlists');
   }, 20000);
 
-  it('the alerts screen is a shell with its explanation and no requests', async () => {
+  it('the alerts screen explains itself and reads no wishlist (F4-g-2: no alerts yet)', async () => {
     const sent = recordWishlistRequests();
     await openPage('/collection/wishlists/alerts');
     expect(
@@ -116,7 +116,8 @@ describe('Wishlists at 390 px (F3-j): routes and tabs', () => {
         'You will see here the cards of your wishlists whose market price reaches your price, once per day after Cardmarket prices update.',
       ),
     ).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'No price alerts yet' })).toBeVisible();
+    // F4-g-2: the empty state comes once the (empty) alerts have loaded
+    expect(await screen.findByRole('heading', { name: 'No price alerts yet' }, LONG)).toBeVisible();
     const sections = screen.getByRole('navigation', { name: 'Wishlist sections' });
     expect(within(sections).getByRole('link', { name: 'Price alerts' })).toHaveAttribute(
       'aria-current',
@@ -125,7 +126,7 @@ describe('Wishlists at 390 px (F3-j): routes and tabs', () => {
     expect(sent).toEqual([]);
   }, 20000);
 
-  it('the alerts shell is axe clean', async () => {
+  it('the alerts screen without alerts is axe clean', async () => {
     const { container } = await openPage('/collection/wishlists/alerts');
     await screen.findByRole('heading', { level: 1, name: 'Price alerts' }, LONG);
     expect(await axe(container)).toHaveNoViolations();

@@ -61,6 +61,10 @@ import type {
   WishlistLines,
   WishlistLinesMeta,
   WishlistMoveBody,
+  WishlistAlertList,
+  WishlistAlert,
+  WishlistAlerts,
+  WishlistAlertsMeta,
   WishlistMoveResult,
   WishlistPatchBody,
 } from './types';
@@ -910,3 +914,41 @@ export const deleteWishlistLine = (id: number, lineId: number) =>
 /** Moves or copies lines to another list, all or nothing. */
 export const moveWishlistLines = (id: number, body: WishlistMoveBody) =>
   request<WishlistMoveResult>(`/wishlists/${id}/lines/move`, { method: 'POST', body });
+
+// --- Wishlist price alerts (F4-g-2) ---
+
+export type WishlistAlertsQuery = { unread?: boolean; page?: number; perPage?: 25 | 50 | 100 };
+
+/** `GET /wishlist-alerts`: newest first; `meta.unread_count` counts every unread alert. */
+export const listWishlistAlerts = async (
+  { unread = false, page = 1, perPage = 25 }: WishlistAlertsQuery = {},
+  signal?: AbortSignal,
+): Promise<WishlistAlerts> => {
+  const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+  if (unread) params.set('unread', 'true');
+  const { data, meta } = await requestWithMeta<{ items: WishlistAlert[] }, WishlistAlertsMeta>(
+    `/wishlist-alerts?${params.toString()}`,
+    { signal },
+  );
+  return {
+    items: data.items,
+    meta: meta ?? {
+      page,
+      per_page: perPage,
+      total: data.items.length,
+      pages: data.items.length ? 1 : 0,
+      unread_count: data.items.filter((item) => item.read_at === null).length,
+    },
+  };
+};
+
+/** `GET /wishlist-alerts/:id/lists`: the user's lists that hold the alert's card now. */
+export const listWishlistAlertLists = (id: number, signal?: AbortSignal) =>
+  request<{ items: WishlistAlertList[] }>(`/wishlist-alerts/${id}/lists`, { signal });
+
+/** `POST /wishlist-alerts/read`: the alerts `ids`, or every unread one when `ids` is absent. */
+export const readWishlistAlerts = (ids?: number[]) =>
+  request<{ marked: number }>('/wishlist-alerts/read', {
+    method: 'POST',
+    body: ids && ids.length ? { ids } : {},
+  });

@@ -502,6 +502,31 @@ def move_lines(user, list_id, line_ids, to_list_id, mode: str) -> dict:
 
 # --- read model ----------------------------------------------------------------------------
 
+def cheapest_market(prices: dict, keys, foil: str) -> dict | None:
+    """The cheapest price among the printings `keys` for the foil wish `foil` (`N` the
+    non-foil price, `S` the foil price, `any` either finish), from `price_summaries` output;
+    ties keep the first printing of `keys`. `{value (cents, float), source, as_of, set_id,
+    card_id, foil (bool)}` or None. The one rule behind `WishlistLine.market` and the
+    `price_alerts` job (F4-g-2)."""
+    best = None
+    for k in keys:
+        summary = prices.get(k)
+        if not summary:
+            continue
+        for is_foil, field in ((False, 'market'), (True, 'market_foil')):
+            if (foil == 'N' and is_foil) or (foil == 'S' and not is_foil):
+                continue
+            value = summary.get(field)
+            if value is None or (best is not None and value >= best['value']):
+                continue
+            best = {'value': value, 'source': summary.get(f'{field}_source'),
+                    'as_of': summary.get('as_of'), 'set_id': k[0], 'card_id': k[1],
+                    'foil': is_foil}
+    if best is not None:
+        best['value'] = float(_money(best['value']))
+    return best
+
+
 class _ReadContext:
     """The catalog, prices and owned copies the lines of one response need, in a fixed number
     of SQL statements whatever the number of lines: cards, sets, the price mapping and price
@@ -543,26 +568,6 @@ class _ReadContext:
         foil = sum(self.owned.get(k, {}).get('foil', 0) for k in keys)
         return {'total': total, 'foil': foil}
 
-    def _market(self, keys, foil: str) -> dict | None:
-        """The cheapest price among `keys` for the foil wish (`any` takes either finish)."""
-        best = None
-        for k in keys:
-            summary = self.prices.get(k)
-            if not summary:
-                continue
-            for is_foil, field in ((False, 'market'), (True, 'market_foil')):
-                if (foil == 'N' and is_foil) or (foil == 'S' and not is_foil):
-                    continue
-                value = summary.get(field)
-                if value is None or (best is not None and value >= best['value']):
-                    continue
-                best = {'value': value, 'source': summary.get(f'{field}_source'),
-                        'as_of': summary.get('as_of'), 'set_id': k[0], 'card_id': k[1],
-                        'foil': is_foil}
-        if best is not None:
-            best['value'] = float(_money(best['value']))
-        return best
-
     def payload(self, line: RbWishlistLine) -> dict:
         group = self.by_name.get(line.rbwsl_name_key, [])
         if line.rbwsl_rbset_id is not None:
@@ -573,7 +578,7 @@ class _ReadContext:
             mine = list(group)
         others = [k for k in group if k not in mine and k != shown]
         card = self.cards.get(shown) if shown is not None else None
-        market = self._market(mine, line.rbwsl_foil)
+        market = cheapest_market(self.prices, mine, line.rbwsl_foil)
         max_price = line.rbwsl_max_price
         reached = None
         if max_price is not None:
