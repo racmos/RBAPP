@@ -22,6 +22,7 @@ const FOLDERS = [
   'products',
   'locations',
   'decks',
+  'wishlists',
   'app',
 ];
 
@@ -97,7 +98,7 @@ export default defineConfig(
     }),
   ),
   // shell, account, catalog, collection, products and decks: everything below, never app;
-  // storage locations (F16) only through their index.
+  // storage locations (F16) and wishlists (F3-j) only through their index.
   boundary(
     [
       'src/shell/**/*.{ts,tsx}',
@@ -108,10 +109,14 @@ export default defineConfig(
       'src/decks/**/*.{ts,tsx}',
     ],
     ['app'],
-    { deepOnly: ['locations'] },
+    { deepOnly: ['locations', 'wishlists'] },
   ),
-  // locations (F16): everything below, never app; it never needs the collection screens.
-  boundary(['src/locations/**/*.{ts,tsx}'], ['app', 'collection']),
+  // wishlists (F3-j): what products may import (the collection parts they share included),
+  // never app; storage locations only through their index.
+  boundary(['src/wishlists/**/*.{ts,tsx}'], ['app'], { deepOnly: ['locations'] }),
+  // locations (F16): everything below, never app; it never needs the collection screens;
+  // wishlists only through their index.
+  boundary(['src/locations/**/*.{ts,tsx}'], ['app', 'collection'], { deepOnly: ['wishlists'] }),
   // deck rules (F5-b): pure functions, the twin of app/services/deck_rules.py. Only their
   // sibling modules: no alias, no package, no node, no DOM. Their tests are exempt.
   {

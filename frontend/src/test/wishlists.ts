@@ -8,7 +8,7 @@ import type {
   WishlistLine,
   WishFoil,
 } from '@/api/types';
-import { cardList } from './fixtures/cards';
+import { cardDetail, cardList } from './fixtures/cards';
 import {
   aylaAlertLists,
   defaultList,
@@ -95,7 +95,25 @@ export function installWishlists(
       (list) => list.id !== except && list.name.toLowerCase() === name.trim().toLowerCase(),
     );
 
+  // The card detail's `in_wishlists` (F3-j follow-ups) read from the same state: the lists with
+  // a line of the card name for that printing or any printing, in list order, qty summed.
+  const inWishlists = (setId: string, cardId: string) =>
+    ordered().flatMap((list) => {
+      const held = state.lines.filter(
+        (item) =>
+          item.list_id === list.id &&
+          item.name === cardDetail.name &&
+          (item.set_id === null || (item.set_id === setId && item.card_id === cardId)),
+      );
+      if (held.length === 0) return [];
+      const qty = held.reduce((sum, item) => sum + item.qty, 0);
+      return [{ id: list.id, name: list.name, is_default: list.is_default, qty }];
+    });
+
   server.use(
+    http.get(`${API}/cards/:setId/:cardId`, ({ params }) =>
+      ok({ ...cardDetail, in_wishlists: inWishlists(String(params.setId), String(params.cardId)) }),
+    ),
     http.get(`${API}/wishlists`, () => ok({ items: ordered() })),
     http.post(`${API}/wishlists`, async ({ request }) => {
       const { name } = (await request.json()) as { name: string };
@@ -283,6 +301,29 @@ export function installWishlists(
       );
       if (!item) return failure(404, { error: 'Not Found' });
       const body = (await request.json()) as Partial<WishlistLine>;
+      if (body.foil !== undefined && body.foil !== item.foil) {
+        const moved = { ...item, foil: body.foil };
+        if (
+          state.lines.some(
+            (other) =>
+              other.id !== item.id && other.list_id === item.list_id && sameTarget(other, moved),
+          )
+        ) {
+          return conflict('already_exists', 'The list already has this card with that foil.');
+        }
+        const card = cardList.items.find((entry) =>
+          item.set_id === null
+            ? entry.name === item.name
+            : entry.set_id === item.set_id && entry.card_id === item.card_id,
+        );
+        if (body.foil === 'S' && !card?.foilable) {
+          return failure(400, {
+            error: 'Bad Request',
+            message: 'This card has no foil version.',
+            code: 'foil_not_allowed',
+          });
+        }
+      }
       Object.assign(item, body);
       if ('max_price' in body) {
         item.reached =

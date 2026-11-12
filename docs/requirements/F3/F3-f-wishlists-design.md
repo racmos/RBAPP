@@ -125,16 +125,38 @@ No change to any decision or assumption, no backend change. Where this design wa
 - **Lines.** "Not reached" is shown when a max price is set and the market is above it (or unpriced); a
   line without a max price shows the muted "No alert price". "Other versions" is not shown for by-name
   lines (the API counts every printing as this version). The market price shows its value with the price
-  date as a tooltip (not its source column). The finish of a line is chosen when it is added and not
-  edited afterwards (the API's foil PATCH is not used by the UI yet).
+  date as a tooltip (not its source column). The finish of a line can be changed in place since the F3-j
+  follow-ups (below).
 - **Add.** The sheet stays open for the next card. Foil is disabled when the chosen printing has no foil
   version; with "Any printing" it is left to the server (`foil_not_allowed`), since another printing of the
   name may have one.
 - **Card detail.** One tap adds one copy of that printing, any finish, to the default list (the button is
-  named after it); "Choose list…" opens every list. "In wishlists: <names>" is not shown: no endpoint says
-  which lists hold a card without reading every list's lines.
+  named after it); "Choose list…" opens every list. "In wishlists: <names>" came with the F3-j follow-ups
+  (below).
 - **Alerts screen** is a shell (title, explanation, empty state, no request) until F4-g adds the API and
   the unread badge.
+
+### As built (F3-j follow-ups: finish edit, `in_wishlists`, lint boundary)
+
+No change to any decision or assumption, no migration. The three things F3-j left short of this design:
+
+- **Finish edit.** The finish of a line (Any finish / Non-foil / Foil) is a select in the line card and the
+  table row, saved with `PATCH /wishlists/<id>/lines/<line_id> {foil}`. "Foil" is disabled when the line's
+  card has no foil version: the UI reads it from the line's `card` (the printing, or the base printing of a
+  by-name line) with the rule of `catalog.is_foilable` (not a rune, common or uncommon), since the line
+  contract carries no `foilable`; the server still decides (`foil_not_allowed`), so a by-name line whose base
+  printing has no foil but another printing has one cannot be set to Foil from the line (it can when added).
+  A 409 `already_exists` (another line of the list has that target and finish: A2) is worded "Another line of
+  this list already has that finish."; both refusals go back to the stored finish.
+- **"In wishlists" on the card detail.** `GET /cards/<set>/<id>` gained `in_wishlists: [{id, name,
+  is_default, qty}]` (additive): the caller's lists holding that printing now, through a line of the
+  printing or a by-name line of the name (a line of another printing of the name does not count), in list
+  order, `qty` summed per list (two finishes add up). One SQL statement (the card detail goes from 10 to 11).
+  The "Wishlists" panel names them, each a link to `/collection/wishlists?list=<id>`; every wishlist write
+  invalidates the card details, so a card just added shows its list at once.
+- **Lint boundary.** `wishlists` is a folder of `frontend/eslint.config.js`: it imports what `products`
+  imports (the shared collection controls included) and other features import it only through
+  `@/wishlists`.
 
 ### As built (F4-g-2, alert job, alerts API and screen: `app/services/wishlist_alerts.py`, `app/jobs/price_alerts.py`, `app/api/v1/wishlist_alerts.py`, `frontend/src/wishlists/AlertsPage.tsx`)
 

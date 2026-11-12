@@ -1,9 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { WishlistLine, WishlistLinePatchBody } from '@/api/types';
+import { ApiError } from '@/api/errors';
+import type { WishFoil, WishlistLine, WishlistLinePatchBody } from '@/api/types';
 import { DebouncedInput } from '@/catalog';
 import { Badge } from '@/components/ui/Badge';
+import { Select } from '@/components/ui/Select';
 import { pushToast } from '@/components/ui/toastStore';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useWishlistError } from './errors';
@@ -22,6 +24,9 @@ export const NOTE_MAX = 200;
 /** The note as the API stores it: trimmed, empty = none. */
 export const cleanNote = (value: string): string | null => value.trim() || null;
 
+/** What a save may say instead of the catalog message: the 409 `already_exists` of a finish. */
+export type SaveOptions = { alreadyExists?: string };
+
 /**
  * Saves changes of one line, one after another, so a quick second edit never overtakes the first.
  * A failure shows its message and reloads the list, so the screen shows what is stored.
@@ -35,13 +40,15 @@ export function useLineSaver(line: WishlistLine) {
   const { list_id: listId, id } = line;
 
   return useCallback(
-    (body: WishlistLinePatchBody) => {
+    (body: WishlistLinePatchBody, options: SaveOptions = {}) => {
       const run = async () => {
         try {
           await patch.mutateAsync({ listId, lineId: id, body });
           pushToast({ kind: 'success', message: t('line.saved'), duration: 1500 });
         } catch (error) {
-          pushToast({ kind: 'error', message: message(error) });
+          const conflict =
+            error instanceof ApiError && error.code === 'already_exists' && options.alreadyExists;
+          pushToast({ kind: 'error', message: conflict || message(error) });
           await client.invalidateQueries({ queryKey: ['wishlists', listId] });
         }
       };
@@ -93,11 +100,64 @@ export function usePrintingLabel() {
       : t('line.anyPrinting');
 }
 
-/** The finish the line wants; text, never colour alone. */
-export function FinishBadge({ line }: { line: WishlistLine }) {
+export const FINISHES: readonly WishFoil[] = ['any', 'N', 'S'];
+
+/**
+ * Whether the line's card has a foil version, from the card it shows (the printing, or the base
+ * printing of a by-name line): never a rune, else commons and uncommons only, the rule of
+ * `app/services/catalog.py::is_foilable`. The API has the last word (`foil_not_allowed`).
+ */
+export function canWantFoil(line: WishlistLine): boolean {
+  if (line.foil === 'S') return true;
+  if (!line.card) return false;
+  const rarity = line.card.rarity.toLowerCase();
+  return line.card.type.toLowerCase() !== 'rune' && (rarity === 'common' || rarity === 'uncommon');
+}
+
+/**
+ * The finish of a line as a select (F3-j follow-ups): Any finish, Non-foil or Foil (Foil only when
+ * the card has one). The new finish shows at once while it saves; a refused one (another line of
+ * the list already has it, or the card has no foil) goes back to the stored finish.
+ */
+export function FinishSelect({
+  line,
+  label,
+  disabled,
+  save,
+  className,
+}: {
+  line: WishlistLine;
+  label: string;
+  disabled: boolean;
+  save: (body: WishlistLinePatchBody, options?: SaveOptions) => Promise<unknown>;
+  className?: string;
+}) {
   const { t } = useTranslation('wishlists');
+  const [pending, setPending] = useState<WishFoil | null>(null);
+  const latest = useRef(0);
+  const foil = canWantFoil(line);
   return (
-    <Badge tone={line.foil === 'S' ? 'accent' : 'neutral'}>{t(`line.finish.${line.foil}`)}</Badge>
+    <Select
+      className={className}
+      aria-label={label}
+      value={pending ?? line.foil}
+      disabled={disabled}
+      onChange={(event) => {
+        const next = event.target.value as WishFoil;
+        if (next === (pending ?? line.foil)) return;
+        const turn = ++latest.current;
+        setPending(next);
+        void save({ foil: next }, { alreadyExists: t('line.finishTaken') }).finally(() => {
+          if (latest.current === turn) setPending(null);
+        });
+      }}
+    >
+      {FINISHES.map((value) => (
+        <option key={value} value={value} disabled={value === 'S' && !foil}>
+          {t(`line.finish.${value}`)}
+        </option>
+      ))}
+    </Select>
   );
 }
 

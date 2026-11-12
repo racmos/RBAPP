@@ -12,11 +12,9 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Switch } from '@/components/ui/Switch';
 import { pushToast } from '@/components/ui/toastStore';
 import { useWishlistError } from './errors';
-import { NOTE_MAX, QTY_MAX, QTY_MIN, cleanNote } from './lineParts';
+import { FINISHES, NOTE_MAX, QTY_MAX, QTY_MIN, cleanNote } from './lineParts';
 import { useAddWishlistLine } from './queries';
 import styles from './Wishlists.module.css';
-
-const FINISHES: WishFoil[] = ['any', 'N', 'S'];
 
 /**
  * Adds a card to a list (F3-j): a printing, or with "Any printing" the card name; the finish, the

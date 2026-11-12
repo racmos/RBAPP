@@ -281,4 +281,5 @@ export const cardDetail: CardDetail = {
     },
   ],
   in_decks: [{ deck_id: 3, name: 'Fury Chaos', qty: 2 }],
+  in_wishlists: [],
 };

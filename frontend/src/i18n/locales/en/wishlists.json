@@ -81,10 +81,13 @@
     "printing": "{{set}} · #{{card}}",
     "anyPrinting": "Any printing",
     "finish": {
+      "label": "Finish",
       "any": "Any finish",
       "N": "Non-foil",
       "S": "Foil"
     },
+    "finishOf": "Finish: {{name}}",
+    "finishTaken": "Another line of this list already has that finish.",
     "wanted": "Wanted",
     "wantedOf": "Wanted: {{name}}",
     "maxPrice": "Max price",
@@ -151,7 +154,9 @@
     "added": "Added to {{name}}.",
     "merged": "Added one more to {{name}}.",
     "open": "Open list",
-    "hint": "One copy, any finish. Change the quantity and the price in the list."
+    "hint": "One copy, any finish. Change the quantity and the price in the list.",
+    "inWishlists": "In wishlists:",
+    "inWishlist": "{{name}} ({{qty}})"
   },
   "alerts": {
     "title": "Price alerts",

@@ -107,6 +107,56 @@ describe('ESLint boundaries (F2-e S13)', () => {
     expect(index[0].errorCount).toBe(0);
   });
 
+  const wishlistsFile = (name: string) => join(process.cwd(), 'src/wishlists', name);
+
+  it('flags a wishlists component that imports from app (F3-j follow-ups)', async () => {
+    const result = await lint(
+      "import { createAppRoutes } from '@/app/routes';\nexport const A = () => createAppRoutes;\n",
+      wishlistsFile('Bad.tsx'),
+    );
+    expect(result[0].errorCount).toBeGreaterThan(0);
+    expect(result[0].messages.some((m) => m.message.includes('folder boundaries'))).toBe(true);
+  });
+
+  it('keeps the wishlists out of the lower folders (F3-j follow-ups)', async () => {
+    for (const folder of ['lib', 'api', 'components/ui']) {
+      const result = await lint(
+        "import { useWishlists } from '@/wishlists';\nexport const A = useWishlists;\n",
+        join(process.cwd(), 'src', folder, 'Bad.ts'),
+      );
+      expect(
+        result[0].messages.some((m) => m.message.includes('folder boundaries')),
+        folder,
+      ).toBe(true);
+    }
+  });
+
+  it('lets the wishlists use the api, the ui, the catalog and the collection parts they share (F3-j follow-ups)', async () => {
+    const result = await lint(
+      "import { listWishlists } from '@/api/endpoints';\nimport { useOffline } from '@/auth';\nimport { CardImage } from '@/components/card';\nimport { Button } from '@/components/ui/Button';\nimport { Stepper } from '@/collection/Stepper';\nimport { MoneyField } from '@/collection/MoneyField';\nimport { CollectionTabs } from '@/collection/CollectionTabs';\nimport { useLocations } from '@/locations';\nexport const A = [listWishlists, useOffline, CardImage, Button, Stepper, MoneyField, CollectionTabs, useLocations];\n",
+      wishlistsFile('Okay.tsx'),
+    );
+    expect(result[0].errorCount).toBe(0);
+  });
+
+  it('lets other features read the wishlists through their index only (F3-j follow-ups)', async () => {
+    for (const folder of ['catalog', 'collection', 'decks', 'products', 'locations', 'shell']) {
+      const deep = await lint(
+        "import { useWishlists } from '@/wishlists/queries';\nexport const A = useWishlists;\n",
+        join(process.cwd(), 'src', folder, 'Deep.tsx'),
+      );
+      expect(
+        deep[0].messages.some((m) => m.message.includes('through its index')),
+        folder,
+      ).toBe(true);
+      const index = await lint(
+        "import { useWishlists } from '@/wishlists';\nexport const A = useWishlists;\n",
+        join(process.cwd(), 'src', folder, 'Index.tsx'),
+      );
+      expect(index[0].errorCount, folder).toBe(0);
+    }
+  });
+
   const rulesFile = (name: string) => join(process.cwd(), 'src/decks/rules', name);
   const folderErrors = (result: ESLint.LintResult[]) =>
     result[0].messages.filter((m) => m.ruleId === 'no-restricted-imports').length;

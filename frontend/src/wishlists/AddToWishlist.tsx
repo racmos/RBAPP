@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
-import type { Wishlist } from '@/api/types';
+import { Link, useNavigate } from 'react-router';
+import type { InWishlist, Wishlist } from '@/api/types';
 import { useOffline } from '@/auth';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
@@ -13,6 +13,8 @@ import styles from './AddToWishlist.module.css';
 
 type Props = {
   card: { set_id: string; card_id: string; name: string };
+  /** The user's lists that hold this printing now (`CardDetail.in_wishlists`), named with links. */
+  inWishlists?: InWishlist[];
   /** The panel and heading look of the page that hosts it. */
   className?: string;
   titleClassName?: string;
@@ -22,8 +24,10 @@ type Props = {
  * "Add to wishlist" of the card detail (F3-j): one tap adds one copy of this printing, any
  * finish, to the default (starred) list, named on the button; "Choose list…" picks another.
  * Reading the lists creates the default list of a user who has none yet (`GET /wishlists`).
+ * Above the buttons, "In wishlists:" names the lists that hold the card now, each a link to it
+ * (F3-j follow-ups); every wishlist write refreshes the card detail, so a new list shows at once.
  */
-export function AddToWishlist({ card, className, titleClassName }: Props) {
+export function AddToWishlist({ card, inWishlists = [], className, titleClassName }: Props) {
   const { t } = useTranslation('wishlists');
   const navigate = useNavigate();
   const offline = useOffline();
@@ -60,6 +64,19 @@ export function AddToWishlist({ card, className, titleClassName }: Props) {
       <h2 id="wishlist-add-title" className={titleClassName}>
         {t('detail.title')}
       </h2>
+      {inWishlists.length > 0 && (
+        <p className={styles.inLists}>
+          {t('detail.inWishlists')}{' '}
+          {inWishlists.map((list, index) => (
+            <span key={list.id}>
+              {index > 0 && ', '}
+              <Link to={`/collection/wishlists?list=${list.id}`} className={styles.inListLink}>
+                {t('detail.inWishlist', { name: list.name, qty: list.qty })}
+              </Link>
+            </span>
+          ))}
+        </p>
+      )}
       <div className={styles.actions}>
         <Button
           size="sm"

@@ -254,6 +254,15 @@ export type InDeck = {
   qty: number;
 };
 
+/** One of the current user's wishlists that holds this printing now (F3-j follow-ups). */
+export type InWishlist = {
+  id: number;
+  name: string;
+  is_default: boolean;
+  /** Copies wanted in that list: its lines of this printing or of any printing, summed. */
+  qty: number;
+};
+
 /** `CardSummary` mirrors the contract in `docs/api.md` (F2-b). */
 export type CardSummary = {
   set_id: string;
@@ -290,6 +299,7 @@ export type CardDetail = CardSummary & {
   ban_info: BanInfo[];
   my_lines: MyLine[];
   in_decks: InDeck[];
+  in_wishlists: InWishlist[];
 };
 
 export type SuccessEnvelope<T> = { success: true; data: T; meta?: Record<string, unknown> };

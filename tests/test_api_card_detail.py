@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash
 
 from app import db
 from app.models import (RbCard, RbCollection, RbDeck, RbDeckHead, RbDeckVersion, RbSet,
-                        RbcmPrice, RbcmProductCardMap, User)
+                        RbWishlist, RbWishlistLine, RbcmPrice, RbcmProductCardMap, User)
 from app.services import bans
 from tests.deck_api_helpers import content, line, make_deck, ref
 
@@ -285,6 +285,94 @@ class TestBansOwnedAndDecks:
         assert [(d['name'], d['qty']) for d in decks] == [('Aggro', 3)]
 
 
+def _wishlist(name, position, lines, *, user='testuser', is_default=False):
+    """A wishlist of `user` with `lines` = [(name, set_id, card_id, foil, qty)]
+    (set_id/card_id None = any printing); returns its id."""
+    owner = User.query.filter_by(username=user).one()
+    wishlist = RbWishlist(rbwls_user_id=owner.id, rbwls_name=name, rbwls_position=position,
+                          rbwls_is_default=is_default)
+    db.session.add(wishlist)
+    db.session.flush()
+    for card_name, set_id, card_id, foil, qty in lines:
+        db.session.add(RbWishlistLine(rbwsl_list_id=wishlist.rbwls_id,
+                                      rbwsl_name_key=bans.name_key(card_name),
+                                      rbwsl_name=card_name, rbwsl_rbset_id=set_id,
+                                      rbwsl_rbcar_id=card_id, rbwsl_foil=foil, rbwsl_qty=qty))
+    db.session.commit()
+    return wishlist.rbwls_id
+
+
+JINX = 'Jinx, Loose Cannon'
+
+
+class TestInWishlists:
+    """F3-j follow-ups: the caller's wishlists that hold the card now."""
+
+    def _in_wishlists(self, client, url=URL):
+        return client.get(url).get_json()['data']['in_wishlists']
+
+    def test_a_printing_line_shows_with_its_list(self, authenticated_client, app):
+        _seed_detail(app)
+        with app.app_context():
+            list_id = _wishlist('Wanted', 1, [(JINX, 'OGN', '79', 'any', 2)],
+                                is_default=True)
+        assert self._in_wishlists(authenticated_client) == [
+            {'id': list_id, 'name': 'Wanted', 'is_default': True, 'qty': 2}]
+
+    def test_a_by_name_line_shows_on_every_printing(self, authenticated_client, app):
+        _seed_detail(app)
+        with app.app_context():
+            list_id = _wishlist('Any art', 1, [(JINX, None, None, 'any', 3)])
+        expected = [{'id': list_id, 'name': 'Any art', 'is_default': False, 'qty': 3}]
+        assert self._in_wishlists(authenticated_client) == expected
+        assert self._in_wishlists(authenticated_client,
+                                  '/riftbound/api/v1/cards/SFD/257') == expected
+
+    def test_a_line_of_another_printing_does_not_match(self, authenticated_client, app):
+        _seed_detail(app)
+        with app.app_context():
+            list_id = _wishlist('Other art', 1, [(JINX, 'SFD', '257', 'any', 1)])
+        assert self._in_wishlists(authenticated_client) == []
+        assert self._in_wishlists(authenticated_client,
+                                  '/riftbound/api/v1/cards/SFD/257') == [
+            {'id': list_id, 'name': 'Other art', 'is_default': False, 'qty': 1}]
+
+    def test_lines_of_one_list_sum_their_qty(self, authenticated_client, app):
+        _seed_detail(app)
+        with app.app_context():
+            list_id = _wishlist('Both finishes', 1, [
+                (JINX, 'OGN', '79', 'N', 2), (JINX, 'OGN', '79', 'S', 1),
+                (JINX, None, None, 'any', 4), (JINX, 'SFD', '257', 'any', 9),
+                ('Alpha Fury', 'OGN', '1', 'any', 7)])
+        assert self._in_wishlists(authenticated_client) == [
+            {'id': list_id, 'name': 'Both finishes', 'is_default': False, 'qty': 7}]
+
+    def test_several_lists_follow_the_list_order(self, authenticated_client, app):
+        _seed_detail(app)
+        with app.app_context():
+            third = _wishlist('Zeta', 3, [(JINX, 'OGN', '79', 'any', 1)])
+            first = _wishlist('Omega', 1, [(JINX, None, None, 'any', 2)], is_default=True)
+            _wishlist('Empty for Jinx', 2, [('Alpha Fury', 'OGN', '1', 'any', 1)])
+        assert [(w['id'], w['name'], w['qty']) for w in
+                self._in_wishlists(authenticated_client)] == [
+            (first, 'Omega', 2), (third, 'Zeta', 1)]
+
+    def test_another_users_lists_never_show(self, authenticated_client, app):
+        _seed_detail(app)
+        with app.app_context():
+            _wishlist('Theirs', 1, [(JINX, 'OGN', '79', 'any', 5)], user='otheruser')
+            mine = _wishlist('Mine', 1, [(JINX, None, None, 'any', 1)])
+        assert self._in_wishlists(authenticated_client) == [
+            {'id': mine, 'name': 'Mine', 'is_default': False, 'qty': 1}]
+        from tests.conftest import login_as
+        other = login_as(app.test_client(), 'otheruser')
+        assert [w['name'] for w in self._in_wishlists(other)] == ['Theirs']
+
+    def test_no_lines_is_an_empty_list(self, authenticated_client, app):
+        _seed_detail(app)
+        assert self._in_wishlists(authenticated_client) == []
+
+
 class TestStatementBound:
     def _count_statements(self, app, client, url):
         counts = []
@@ -301,9 +389,21 @@ class TestStatementBound:
                 event.remove(db.engine, 'before_cursor_execute', listener)
         return len(counts)
 
-    def test_detail_under_10_statements(self, authenticated_client, app):
+    def test_detail_statement_budget(self, authenticated_client, app):
+        # 10 before the F3-j follow-ups, plus one for `in_wishlists`.
         _seed_detail(app)
-        assert self._count_statements(app, authenticated_client, URL) <= 10
+        assert self._count_statements(app, authenticated_client, URL) <= 11
+
+    def test_in_wishlists_costs_one_statement_whatever_the_lists(self, authenticated_client,
+                                                                app):
+        _seed_detail(app)
+        before = self._count_statements(app, authenticated_client, URL)
+        with app.app_context():
+            for n in range(5):
+                _wishlist(f'List {n}', n + 1, [(JINX, 'OGN', '79', 'N', 1),
+                                               (JINX, None, None, 'any', 1)])
+        assert self._count_statements(app, authenticated_client, URL) == before
+        assert len(authenticated_client.get(URL).get_json()['data']['in_wishlists']) == 5
 
     def test_in_decks_costs_the_same_with_more_decks(self, authenticated_client, app):
         _seed_detail(app)
