@@ -5,7 +5,7 @@ Login, lockout and registration live in `app.services.auth` and
 GET /auth/session and sends it as `X-CSRFToken`.
 """
 from flask import request
-from flask_login import current_user, login_required, login_user, logout_user
+from flask_login import current_user, login_required, logout_user
 from flask_wtf.csrf import generate_csrf
 
 from app import limiter
@@ -15,6 +15,7 @@ from app.api.v1 import api_v1
 from app.schemas.validation import validate_json
 from app.schemas.validators import LoginRequest, RegisterRequest
 from app.services import auth as auth_service
+from app.services import sessions as sessions_service
 from app.services.auth import (AuthStatus, DuplicateUserError, LOGIN_RATE_LIMIT,
                                REGISTER_RATE_LIMIT)
 from app.services.captcha import FORM_FIELD as CAPTCHA_FIELD, get_captcha_provider
@@ -62,7 +63,9 @@ def auth_login():
     result = auth_service.authenticate(credentials.username, credentials.password)
 
     if result.status is AuthStatus.OK:
-        login_user(result.user, remember=credentials.remember)
+        # One server-side session row per sign-in (F9-a S5); the body is unchanged.
+        sessions_service.sign_in(result.user, remember=credentials.remember,
+                                 auth_method='password')
         return ok({'user': user_payload(result.user)})
 
     if result.status is AuthStatus.LOCKED:
@@ -77,6 +80,11 @@ def auth_login():
 @api_v1.post('/auth/logout')
 @login_required
 def auth_logout():
+    """End the server-side session, then the cookies (F9-a S8): the old Flask session or
+    remember cookie can never sign in again."""
+    session_id = sessions_service.current_id()
+    if session_id is not None:
+        sessions_service.revoke(current_user.id, session_id)
     logout_user()
     return ok({})
 

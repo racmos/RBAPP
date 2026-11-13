@@ -268,7 +268,26 @@ def frozen_clock(monkeypatch):
     from app.utils import clock
     frozen = FrozenClock(datetime(2030, 1, 1, 12, 0, 0))
     monkeypatch.setattr(clock, 'utcnow', frozen)
+    _restamp_sessions(frozen.now)
     return frozen
+
+
+def _restamp_sessions(now):
+    """Server-side sessions (F9-a) signed in before the clock was frozen (a test asking for
+    `authenticated_client` before `frozen_clock`) count as signed in at the frozen time;
+    otherwise a jump to 2030 would leave them idle for years and sign the client out."""
+    from flask import has_app_context
+    if not has_app_context():
+        return
+    import sqlalchemy as sa
+    from app.models import RbSession
+    if not sa.inspect(db.engine).has_table('rbsessions', schema='riftbound'):
+        return
+    db.session.execute(sa.update(RbSession).values(
+        rbses_created_at=now, rbses_last_seen_at=now, rbses_reauth_at=now,
+        rbses_expires_at=sa.case((RbSession.rbses_remember.is_(True), now + timedelta(days=30)),
+                                 else_=None)))
+    db.session.commit()
 
 
 # --- Migrations (unit b) ------------------------------------------------------

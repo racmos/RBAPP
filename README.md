@@ -102,11 +102,12 @@ The first admin can only be created from the server shell; no request can grant 
 ```bash
 flask users promote <username>      # make admin (aliases: make-admin)
 flask users demote <username>       # remove admin (alias: revoke-admin)
-flask users block <username>        # refuse logins and drop the session
+flask users block <username>        # refuse logins and end every session
 flask users unblock <username>
-flask users set-password <username> # hidden prompt
+flask users set-password <username> # hidden prompt; ends every session of the user
 flask users unlock <username>       # clear a login lockout
 flask users list
+flask sessions purge [--dry-run]    # delete the ended sign-in sessions (also a daily job)
 ```
 
 ## JSON API

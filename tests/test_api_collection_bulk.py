@@ -84,7 +84,8 @@ class TestSet:
                     row.rbcol_sell_qty) == ('NM', 'English', 'Y', row.rbcol_quantity)
 
     def test_stamps_the_change_time(self, api, frozen_clock):
-        frozen_clock.advance(days=1)
+        # An hour later, not a day: a session idle for 12 hours ends (F9-a).
+        frozen_clock.advance(hours=1)
         bulk(api, **{'set': {'condition': 'GD'}})
         assert {r.rbcol_chadat for r in all_rows()} == {frozen_clock()}
 

@@ -228,3 +228,232 @@ class TestCsrf:
                                headers={'X-CSRFToken': api_csrf_token(client)})
         assert response.status_code == 200
         assert authenticated(client)
+
+
+# --- Unchanged contracts (F9-a S16, CHAR: written and passing before server-side sessions) --
+
+class TestUnchangedContracts:
+    def test_the_login_body_is_the_user(self, app, client, make_user):
+        user = make_user('u')
+        response = login(client)
+        assert response.status_code == 200
+        assert response.get_json() == {
+            'success': True,
+            'data': {'user': {'id': user.id, 'username': 'u', 'email': 'u@test.com',
+                              'is_admin': False}}}
+
+    def test_the_anonymous_session_body(self, app, client):
+        data = client.get(SESSION).get_json()['data']
+        assert sorted(data) == ['authenticated', 'csrf_token']
+        assert data['authenticated'] is False
+
+    def test_the_signed_in_session_body(self, app, client, make_user):
+        user = make_user('u')
+        login(client)
+        data = client.get(SESSION).get_json()['data']
+        assert sorted(data) == ['authenticated', 'csrf_token', 'prefs', 'user']
+        assert data['authenticated'] is True
+        assert data['user'] == {'id': user.id, 'username': 'u', 'email': 'u@test.com',
+                                'is_admin': False}
+        assert sorted(data['prefs']) == ['accent', 'bg_intensity', 'collection_view',
+                                         'density', 'playset_size']
+
+    def test_cookie_flags_without_secure_outside_production(self, app, client, make_user):
+        make_user('u')
+        response = login(client, remember=True)
+        for name in ('session', 'remember_token'):
+            [cookie] = set_cookies(response, name)
+            assert 'HttpOnly' in cookie, name
+            assert 'SameSite=Lax' in cookie, name
+            assert 'Secure' not in cookie, name
+
+    def test_cookie_flags_with_secure_when_configured(self, app, client, make_user):
+        app.config['SESSION_COOKIE_SECURE'] = True
+        app.config['REMEMBER_COOKIE_SECURE'] = True
+        make_user('u')
+        response = login(client, remember=True)
+        for name in ('session', 'remember_token'):
+            [cookie] = set_cookies(response, name)
+            assert 'Secure' in cookie, name
+            assert 'HttpOnly' in cookie and 'SameSite=Lax' in cookie, name
+
+    def test_the_remember_cookie_lasts_thirty_days(self, app, client, make_user):
+        make_user('u')
+        [cookie] = set_cookies(login(client, remember=True), 'remember_token')
+        expires = cookie.split('Expires=', 1)[1].split(';', 1)[0]
+        from datetime import datetime, timezone
+        from email.utils import parsedate_to_datetime
+        left = parsedate_to_datetime(expires) - datetime.now(timezone.utc)
+        assert 29 < left.total_seconds() / 86400 <= 30
+
+
+# --- Server-side sessions (F9-a S5, S8, S9, S15) ----------------------------------------------
+
+UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0'
+
+
+def session_rows():
+    import sqlalchemy as sa
+    from app import db
+    from app.models import RbSession
+    db.session.expire_all()
+    return db.session.execute(sa.select(RbSession).order_by(RbSession.rbses_id)).scalars().all()
+
+
+def cookie_value(client, name):
+    cookie = client.get_cookie(name)
+    return cookie.value if cookie is not None else None
+
+
+class TestServerSideSessions:
+    @pytest.mark.parametrize('remember', [False, True])
+    def test_login_creates_one_session_row(self, app, make_user, frozen_clock, remember):
+        from datetime import timedelta
+        user = make_user('u')
+        client = app.test_client()
+        response = client.post(LOGIN, json={'username': 'u', 'password': DEFAULT_PASSWORD,
+                                            'remember': remember},
+                               headers={'User-Agent': UA},
+                               environ_base={'REMOTE_ADDR': '198.51.100.23'})
+        assert response.status_code == 200
+        [row] = session_rows()
+        now = frozen_clock.now
+        assert (row.rbses_user_id, row.rbses_remember, row.rbses_auth_method, row.rbses_mfa) == (
+            user.id, remember, 'password', False)
+        assert row.rbses_expires_at == (now + timedelta(days=30) if remember else None)
+        assert row.rbses_created_at == row.rbses_last_seen_at == row.rbses_reauth_at == now
+        assert (row.rbses_user_agent, row.rbses_ip_prefix) == (UA, '198.51.100.0/24')
+        assert row.rbses_revoked_at is None
+        assert authenticated(client)
+
+    def test_a_failed_login_creates_no_row(self, app, client, make_user):
+        make_user('u')
+        assert login(client, password='wrong-pass').status_code == 401
+        make_user('b', is_blocked=True)
+        assert login(client, username='b').status_code == 401
+        assert session_rows() == []
+
+    def test_the_cookies_carry_the_session_identity_not_the_user_id(self, app, client,
+                                                                   make_user):
+        from flask_login.utils import decode_cookie
+        user = make_user('u')
+        login(client, remember=True)
+        with client.session_transaction() as flask_session:
+            identity = flask_session['_user_id']
+        assert identity.startswith('s:') and identity != str(user.id)
+        assert decode_cookie(cookie_value(client, 'remember_token')) == identity
+
+    def test_logout_revokes_the_session_and_the_old_cookie_is_anonymous(self, app, client,
+                                                                        make_user):
+        make_user('u')
+        login(client)
+        old = cookie_value(client, 'session')
+        assert client.post(f'{API}/auth/logout').status_code == 200
+        [row] = session_rows()
+        assert row.rbses_revoked_at is not None
+        client.set_cookie('session', old)
+        assert not authenticated(client)
+        assert client.get(f'{API}/me/prefs').status_code == 401
+
+    def test_the_remember_cookie_signs_in_through_its_row_until_logout(self, app, client,
+                                                                       make_user):
+        make_user('u')
+        login(client, remember=True)
+        remember = cookie_value(client, 'remember_token')
+        client.delete_cookie('session')
+        assert authenticated(client)
+        assert len(session_rows()) == 1            # the cookie reused the row, made none
+        client.post(f'{API}/auth/logout')
+        fresh = app.test_client()
+        fresh.set_cookie('remember_token', remember)
+        assert not authenticated(fresh)
+
+    def test_the_remember_cookie_stops_after_30_days(self, app, client, make_user,
+                                                     frozen_clock):
+        make_user('u')
+        login(client, remember=True)
+        client.delete_cookie('session')
+        frozen_clock.advance(days=29, hours=23)
+        assert authenticated(client)
+        client.delete_cookie('session')
+        frozen_clock.advance(hours=1)
+        assert not authenticated(client)
+
+    def test_a_session_idle_for_12_hours_is_anonymous(self, app, client, make_user,
+                                                      frozen_clock):
+        make_user('u')
+        login(client)
+        frozen_clock.advance(hours=11, minutes=59)
+        assert authenticated(client)
+        frozen_clock.advance(hours=12)
+        assert not authenticated(client)
+
+    def test_a_pre_f9_session_cookie_is_anonymous(self, app, client, make_user):
+        user = make_user('u')
+        with client.session_transaction() as flask_session:
+            flask_session['_user_id'] = str(user.id)
+            flask_session['_fresh'] = True
+        assert not authenticated(client)
+        response = client.get(f'{API}/me/prefs')
+        assert (response.status_code, response.get_json()['code']) == (401, 'unauthenticated')
+        assert session_rows() == []
+
+    def test_a_pre_f9_remember_cookie_is_anonymous(self, app, client, make_user):
+        from flask_login.utils import encode_cookie
+        user = make_user('u')
+        client.set_cookie('remember_token', encode_cookie(str(user.id)))
+        assert not authenticated(client)
+        assert client.get(f'{API}/me/prefs').status_code == 401
+        assert session_rows() == []
+
+    def test_a_password_change_ends_the_other_sessions_and_keeps_this_one(self, app,
+                                                                         make_user):
+        make_user('u')
+        here, there = app.test_client(), app.test_client()
+        login(here)
+        login(there, remember=True)
+        response = here.patch(f'{API}/me/account', json={
+            'current_password': DEFAULT_PASSWORD, 'password': 'brand-new-pass'})
+        assert response.status_code == 200
+        assert authenticated(here)
+        there.delete_cookie('session')            # the remember cookie alone, too
+        assert not authenticated(there)
+        assert [r.rbses_revoked_at is None for r in session_rows()] == [True, False]
+
+    def test_an_email_change_ends_nothing(self, app, make_user):
+        make_user('u')
+        here, there = app.test_client(), app.test_client()
+        login(here)
+        login(there)
+        assert here.patch(f'{API}/me/account', json={'email': 'new@test.com'}).status_code == 200
+        assert authenticated(here) and authenticated(there)
+        assert [r.rbses_revoked_at for r in session_rows()] == [None, None]
+
+    def test_a_wrong_current_password_ends_nothing(self, app, make_user):
+        make_user('u')
+        here, there = app.test_client(), app.test_client()
+        login(here)
+        login(there)
+        response = here.patch(f'{API}/me/account', json={
+            'current_password': 'not-it', 'password': 'brand-new-pass'})
+        assert response.status_code == 400
+        assert authenticated(there)
+
+    def test_a_lost_email_race_with_a_password_change_ends_nothing(self, app, make_user,
+                                                                   monkeypatch):
+        import sqlalchemy as sa
+        from app.services import account
+        make_user('u')
+        make_user('taken', email='taken@test.com')
+        here, there = app.test_client(), app.test_client()
+        login(here)
+        login(there)
+        # The pre-check misses the other account, as when it registers at the same moment.
+        monkeypatch.setattr(account, 'func', type('F', (), {
+            'lower': staticmethod(lambda column: sa.literal('never-matches'))}))
+        response = here.patch(f'{API}/me/account', json={
+            'email': 'taken@test.com', 'current_password': DEFAULT_PASSWORD,
+            'password': 'brand-new-pass'})
+        assert (response.status_code, response.get_json()['code']) == (409, 'email_taken')
+        assert authenticated(here) and authenticated(there)
+        assert [r.rbses_revoked_at for r in session_rows()] == [None, None]

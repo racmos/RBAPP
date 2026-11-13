@@ -31,10 +31,11 @@ UNITS = ['riftbound-jobs.service', 'riftbound-jobs.timer', 'riftbound-daily.serv
          'riftbound-daily.timer', 'riftbound-daily-retry.service',
          'riftbound-daily-retry.timer', 'riftbound-riot-sync-am.service',
          'riftbound-riot-sync-am.timer', 'riftbound-riot-sync-pm.service',
-         'riftbound-riot-sync-pm.timer', 'riftbound-backup.service', 'riftbound-backup.timer']
+         'riftbound-riot-sync-pm.timer', 'riftbound-backup.service', 'riftbound-backup.timer',
+         'riftbound-sessions-purge.service', 'riftbound-sessions-purge.timer']
 
 
-def test_exactly_the_twelve_templates_exist():
+def test_exactly_the_fourteen_templates_exist():
     assert sorted(p.name for p in SYSTEMD.iterdir()) == sorted(UNITS)
 
 
@@ -168,4 +169,32 @@ def test_runbook_nightly_backup_section():
     section = runbook.split('## Nightly backup', 1)[1].split('\n## ', 1)[0]
     for needle in ('scripts/db_backup.py', 'riftbound-backup.timer', 'enable --now',
                    'disable --now', 'riftbound_pre_', 'ls -l ~/backups/rbapp'):
+        assert needle in section, needle
+
+
+# --- F9-a S14: the daily session purge -------------------------------------------------------
+
+def test_sessions_purge_units():
+    service = _directives(SYSTEMD / 'riftbound-sessions-purge.service')
+    assert service['ExecStart'] == (
+        f'{VENV_FLASK} jobs enqueue sessions_purge --unless-succeeded-today')
+    jobs_unit = _directives(SYSTEMD / 'riftbound-jobs.service')
+    for key in ('User', 'Group', 'WorkingDirectory', 'Environment', 'EnvironmentFile'):
+        assert service[key] == jobs_unit[key], key
+    timer = _directives(SYSTEMD / 'riftbound-sessions-purge.timer')
+    assert timer['OnCalendar'] == '*-*-* 04:15:00 Europe/Madrid'
+    assert timer['Persistent'] == 'true'
+    assert timer['Unit'] == 'riftbound-sessions-purge.service'
+    assert timer['WantedBy'] == 'timers.target'
+
+
+def test_runbook_sessions_purge_section():
+    section = _scheduled_jobs_section().split('### Session purge (F9-a)', 1)[1].split('\n### ', 1)[0]
+    for needle in ('riftbound-sessions-purge.service', 'riftbound-sessions-purge.timer',
+                   'systemctl enable --now riftbound-sessions-purge.timer',
+                   'systemctl disable --now riftbound-sessions-purge.timer',
+                   'flask sessions purge --dry-run', 'flask jobs enqueue sessions_purge',
+                   'flask jobs list',
+                   "DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'sessions_purge'",
+                   'flask db downgrade 0028_legacy_schema_cleanup', 'signs in again'):
         assert needle in section, needle

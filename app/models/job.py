@@ -7,7 +7,7 @@ from app.utils import clock
 # Kinds the database accepts. Every unit that registers a job kind
 # (app/jobs/) extends this tuple and `ck_rbjobs_kind` with its own migration.
 JOB_KINDS = ('heartbeat', 'daily_prices', 'riot_sync', 'value_snapshot', 'products_refresh',
-             'price_alerts')
+             'price_alerts', 'sessions_purge')
 JOB_STATUSES = ('queued', 'running', 'success', 'error')
 ACTIVE_STATUSES = ('queued', 'running')
 MESSAGE_MAX_LENGTH = 300

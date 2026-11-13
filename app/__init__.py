@@ -144,10 +144,12 @@ def create_app(**overrides):
     from app.api.admin import api_admin
     app.register_blueprint(api_admin)
 
-    from app.models import User
+    # Identity = a server-side session (F9-a): `s:<token>` -> the user of an active
+    # session; anything else (a pre-F9 plain user id) is anonymous.
     @login.user_loader
-    def load_user(id):
-        return User.query.get(int(id))
+    def load_user(raw_id):
+        from app.services.sessions import load_identity
+        return load_identity(raw_id)
 
     # Register error handlers
     from app.errors import register_error_handlers

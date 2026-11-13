@@ -13,6 +13,7 @@ from .user_product import RbUserProduct
 from .location import RbLocation, RbCollectionLocation
 from .wishlist import RbWishlist, RbWishlistLine, RbWishlistAlert
 from .job import RbJob
+from .session import RbSession
 from .ban import RbCardBan
 from .audit import RbAdminAudit
 from .card_change import RbCardChange

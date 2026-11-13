@@ -110,7 +110,16 @@ def test_the_upgrade_drops_the_legacy_schema_and_keeps_every_other_row(migration
             'rbdeckversions_seq_chk'} <= _constraint_names('rbdeckversions')
     assert {key: rows(sql) for key, sql in KEPT.items()} == kept
     assert rows("SELECT rbcol_selling FROM riftbound.rbcollection") == [('Y',)]   # kept
-    assert drift() == []
+    assert _drift_before_later_revisions() == []
+
+
+def _drift_before_later_revisions():
+    """Drift at this revision, leaving out the tables later revisions add (0029: rbsessions)."""
+    later = {'rbsessions'}
+    ops = [op for entry in drift() for op in (entry if isinstance(entry, list) else [entry])]
+    return [op for op in ops
+            if getattr(op[1], 'name', None) not in later
+            and getattr(getattr(op[1], 'table', None), 'name', None) not in later]
 
 
 def test_the_downgrade_recreates_the_structure_empty(migration_app):

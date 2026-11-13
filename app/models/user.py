@@ -32,6 +32,16 @@ class User(UserMixin, db.Model):
     locked_until = db.Column(db.DateTime, nullable=True)
     last_login_at = db.Column(db.DateTime, nullable=True)
 
+    # The session this object was loaded or signed in through (F9-a), set by
+    # app.services.sessions; plain attributes, never stored on rbusers.
+    session_token = None
+    session_id = None
+
+    def get_id(self):
+        """What Flask-Login keeps in the session and remember cookies: `s:<token>` of the
+        server-side session (F9-a S2). None without a session: never logged in by id."""
+        return f's:{self.session_token}' if self.session_token else None
+
     @property
     def is_active(self):
         """Flask-Login reads this: a blocked user can't log in and loses the

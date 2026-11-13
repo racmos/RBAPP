@@ -43,8 +43,8 @@ def patch_me_prefs():
 def patch_me_account():
     """Change the caller's email and/or password; returns the fresh user.
 
-    The limit also caps guesses of the current password. The session stays valid after a
-    password change (Flask-Login keys it on the user id).
+    The limit also caps guesses of the current password. A password change ends every other
+    session of the user; this one stays signed in (F9-a S9).
     """
     data = request.validated_data
     status = account_service.update_account(current_user, data.email, data.password,
