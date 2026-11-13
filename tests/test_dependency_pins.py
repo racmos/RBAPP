@@ -68,7 +68,8 @@ def test_the_table_shows_the_pinned_version_of_every_package_it_names():
 @pytest.mark.parametrize('package', ['flask', 'sqlalchemy', 'flask-sqlalchemy', 'psycopg',
                                      'alembic', 'flask-migrate', 'flask-login', 'flask-wtf',
                                      'flask-limiter', 'altcha', 'pydantic', 'pytest',
-                                     'pytest-cov', 'gunicorn', 'pillow'])
+                                     'pytest-cov', 'gunicorn', 'pillow', 'pyotp', 'segno',
+                                     'cryptography'])
 def test_the_table_names_each_main_package(package):
     assert package in _table_mentions(_technology_table()), \
         f'the AGENTS.md technology table does not show {package} with its version'
@@ -85,3 +86,15 @@ def test_the_frontend_altcha_equals_the_python_pin():
     package = json.loads((ROOT / 'frontend' / 'package.json').read_text(encoding='utf-8'))
     versions = {**package.get('dependencies', {}), **package.get('devDependencies', {})}
     assert versions['altcha'] == _pins()['altcha']
+
+
+@pytest.mark.parametrize('package', ['pyotp', 'segno', 'cryptography', 'cffi', 'pycparser'])
+def test_the_two_factor_packages_are_pinned(package):
+    """F9-d S1: pyotp, segno, cryptography and the two packages cryptography needs."""
+    assert package in _pins()
+
+
+@pytest.mark.parametrize('package', ['pyotp', 'segno', 'cryptography'])
+def test_the_two_factor_packages_are_shown_with_the_same_version(package):
+    """F9-d S1."""
+    assert _table_mentions(_technology_table())[package] == [_pins()[package]]

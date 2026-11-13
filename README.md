@@ -45,6 +45,7 @@ Settings come from environment variables only (see [.env.example](.env.example),
 | `CARD_IMAGES_DIR` | Absolute path of the card images data directory (`ogn/`, `ogs/`, ...), served at `/riftbound/media/cards/` and written by the admin upload and the Riot scraper (default `<project>/data/card-images`, git-ignored; a relative path stops the app). The images are not in git; `flask images import-legacy` copies the old `app/static/images/cards/` tree in |
 | `PRODUCT_IMAGES_DIR` | Absolute path of the product images directory, served at `/riftbound/media/products/` and written by the admin upload (default `<project>/data/product-images`, git-ignored; a relative path stops the app) |
 | `AVATAR_DIR` | Absolute path of the avatars directory: two WebP files per user (256 and 64 px), written by `POST /riftbound/api/v1/me/avatar` and served to signed-in users only (default `<project>/data/avatars`, git-ignored; a relative path stops the app; created on the first upload) |
+| `TOTP_ENCRYPTION_KEY` | Fernet key (URL-safe base64 of 32 bytes) that encrypts the two-factor (TOTP) secrets. Required in production; in development unset means two-factor authentication is unavailable. Generate it with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`, keep it only in the service environment and back it up apart from the database dumps: losing it means every user's 2FA must be reset (see `docs/knowledge/ops-runbook.md`) |
 
 ## Running
 
@@ -109,6 +110,7 @@ flask users unblock <username>
 flask users set-password <username> # hidden prompt; ends every session of the user
 flask users unlock <username>       # clear a login lockout
 flask users list
+flask users reset-2fa <username>    # remove two-factor authentication; ends every session of the user
 flask sessions purge [--dry-run]    # delete the ended sign-in sessions (also a daily job)
 ```
 

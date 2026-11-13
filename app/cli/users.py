@@ -7,7 +7,8 @@ bootstrapped: `flask users promote <username>`).
 Every command that takes a username exits 1 with a message naming the user
 when it does not exist, and changes nothing. `promote`, `demote`, `block` and
 `unblock` are idempotent. `block` and `set-password` end every session of the
-user (F9-a) and say how many. Passwords are only ever read from a hidden prompt
+user (F9-a) and say how many; `reset-2fa` removes the user's two-factor authentication
+and ends every session too (F9-d). Passwords are only ever read from a hidden prompt
 and never printed; `list` never shows hashes.
 """
 import click
@@ -19,7 +20,7 @@ from app.schemas.validators import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH
 from app.services import sessions
 from app.utils import clock
 
-users_cli = AppGroup('users', help='Manage user accounts (roles, blocking, passwords).')
+users_cli = AppGroup('users', help='Manage user accounts (roles, blocking, passwords, 2FA).')
 
 
 def _find_user(username: str) -> User:
@@ -90,6 +91,19 @@ def set_password(username):
     ended = sessions.revoke_all(user.id, commit=False)    # every session, in one transaction
     db.session.commit()
     click.echo(f"Password updated for '{username}'; {ended} session(s) ended")
+
+
+@users_cli.command('reset-2fa')
+@click.argument('username')
+def reset_2fa(username):
+    """Remove USERNAME's two-factor authentication and end all their sessions (F9-d)."""
+    from app.services import mfa
+    user = _find_user(username)
+    ended = mfa.reset(user)
+    if ended is None:
+        click.echo(f"'{username}' has no two-factor authentication")
+        return
+    click.echo(f"Two-factor authentication removed for '{username}'; {ended} session(s) ended")
 
 
 @users_cli.command('list')

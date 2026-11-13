@@ -821,3 +821,9 @@ class ReauthRequest(BaseModel):
         if (self.password is None) == (self.code is None):
             raise ValueError('Send either a password or a code')
         return self
+
+
+class MfaCode(BaseModel):
+    """POST /me/2fa/enable and /me/2fa/disable body (F9-d S8, S9): a TOTP code or, to turn 2FA
+    off, a recovery code. Its shape is checked by `app.services.mfa`."""
+    code: str = Field(..., min_length=1, max_length=32)

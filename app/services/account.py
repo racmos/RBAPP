@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.models import User
-from app.services import sessions
+from app.services import mfa, sessions
 
 ACCOUNT_RATE_LIMIT = '10/hour'
 CURRENT_PASSWORD_INCORRECT = 'The current password is incorrect'
@@ -79,18 +79,25 @@ NO_TWO_FACTOR = 'Two-factor authentication is not enabled'
 class ReauthStatus(StrEnum):
     OK = 'ok'
     WRONG_PASSWORD = 'wrong_password'
+    WRONG_CODE = 'wrong_code'
     NO_PASSWORD = 'no_password'
     NO_TWO_FACTOR = 'no_two_factor'
 
 
 def reauthenticate(user, password=None, code=None):
-    """Check the password (or, from F9-d, a TOTP `code`) of `user` and, when it is right, set
+    """Check the password or a TOTP `code` (F9-d S13) of `user` and, when it is right, set
     `reauth_at = now` on the CURRENT session only. Returns `(status, reauth_at or None)`.
 
-    A wrong password writes nothing and never touches `failed_login_count` (the route is
-    rate limited instead)."""
+    A code needs 2FA on and is checked like every TOTP code (window, replay; the accepted
+    step is committed with `reauth_at`); recovery codes are not accepted here. A wrong
+    password or code writes nothing and never touches `failed_login_count` (the route is
+    rate limited instead). `mfa.MfaUnavailable` propagates (the route answers 503)."""
     if code is not None:
-        return ReauthStatus.NO_TWO_FACTOR, None
+        if not mfa.is_enabled(user.id):
+            return ReauthStatus.NO_TWO_FACTOR, None
+        if not mfa.verify_totp(user, code):
+            return ReauthStatus.WRONG_CODE, None
+        return ReauthStatus.OK, sessions.mark_reauth(sessions.current_id())
     if not user.has_password:
         return ReauthStatus.NO_PASSWORD, None
     if not user.check_password(password):

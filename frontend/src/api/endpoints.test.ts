@@ -2,8 +2,16 @@
     the right method, path and body. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearCsrfToken, setCsrfToken } from './csrf';
-import { getMe, patchMe, reauth } from './endpoints';
-import type { MeData } from './types';
+import {
+  disableMfa,
+  enableMfa,
+  getMe,
+  patchMe,
+  reauth,
+  regenerateRecoveryCodes,
+  setupMfa,
+} from './endpoints';
+import type { MeData, MfaSetup, RecoveryCodes } from './types';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -88,5 +96,56 @@ describe('profile endpoints (F9-b S14)', () => {
     const calls = mockFetchJson({ reauth_until: '2030-01-01T12:10:00Z' });
     await reauth({ code: '123456' });
     expect(calls[0].init.body).toBe('{"code":"123456"}');
+  });
+});
+
+/** AC7 (F9-d S18): the two-factor endpoints. */
+describe('two-factor endpoints', () => {
+  const CODES: RecoveryCodes = {
+    recovery_codes: ['abcde-fghjk', 'mnpqr-stuvw'],
+    revoked_sessions: 2,
+  };
+
+  it('setupMfa posts /me/2fa/setup without a body', async () => {
+    setCsrfToken('token-4');
+    const setup: MfaSetup = {
+      secret: 'ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567',
+      otpauth_uri:
+        'otpauth://totp/Rift%20Manager:ada?secret=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567&issuer=Rift%20Manager',
+      qr: 'data:image/svg+xml;charset=utf-8,%3Csvg%3E%3C/svg%3E',
+    };
+    const calls = mockFetchJson(setup);
+    expect(await setupMfa()).toEqual(setup);
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/2fa/setup');
+    expect(calls[0].init.method).toBe('POST');
+    expect(calls[0].init.body).toBeUndefined();
+    expect((calls[0].init.headers as Record<string, string>)['X-CSRFToken']).toBe('token-4');
+  });
+
+  it('enableMfa posts the code and returns the recovery codes', async () => {
+    setCsrfToken('token-5');
+    const calls = mockFetchJson(CODES);
+    expect(await enableMfa('123456')).toEqual(CODES);
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/2fa/enable');
+    expect(calls[0].init.method).toBe('POST');
+    expect(calls[0].init.body).toBe('{"code":"123456"}');
+  });
+
+  it('disableMfa posts a TOTP or recovery code', async () => {
+    setCsrfToken('token-6');
+    const calls = mockFetchJson({ revoked_sessions: 1 });
+    expect(await disableMfa('abcde-fghjk')).toEqual({ revoked_sessions: 1 });
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/2fa/disable');
+    expect(calls[0].init.method).toBe('POST');
+    expect(calls[0].init.body).toBe('{"code":"abcde-fghjk"}');
+  });
+
+  it('regenerateRecoveryCodes posts /me/2fa/recovery-codes without a body', async () => {
+    setCsrfToken('token-7');
+    const calls = mockFetchJson(CODES);
+    expect(await regenerateRecoveryCodes()).toEqual(CODES);
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/2fa/recovery-codes');
+    expect(calls[0].init.method).toBe('POST');
+    expect(calls[0].init.body).toBeUndefined();
   });
 });

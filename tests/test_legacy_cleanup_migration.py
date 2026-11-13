@@ -115,8 +115,9 @@ def test_the_upgrade_drops_the_legacy_schema_and_keeps_every_other_row(migration
 
 def _drift_before_later_revisions():
     """Drift at this revision, leaving out what later revisions add (0029: rbsessions; 0030:
-    rbuserprofile, nullable `rbusers.email` / `password_hash`, `rbusers.password_changed_at`)."""
-    later = {'rbsessions', 'rbuserprofile'}
+    rbuserprofile, nullable `rbusers.email` / `password_hash`, `rbusers.password_changed_at`;
+    0031: rbusermfa, rbrecoverycodes)."""
+    later = {'rbsessions', 'rbuserprofile', 'rbusermfa', 'rbrecoverycodes'}
     later_user_columns = {'email', 'password_hash', 'password_changed_at'}
     ops = [op for entry in drift() for op in (entry if isinstance(entry, list) else [entry])]
 

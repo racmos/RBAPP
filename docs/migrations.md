@@ -246,6 +246,33 @@ up to 20 usernames), and in offline `--sql` mode: give those accounts an e-mail
 or delete them first. **Data loss**: it drops `rbuserprofile` (every display name, bio, country,
 city and avatar reference) and `rbusers.password_changed_at`.
 
+## Two-factor authentication: key first, upgrade to 0031, then restart at once (F9-d)
+
+`0031_mfa` creates `riftbound.rbusermfa` (`rbusermfa_pkey` on `rbmfa_user_id`, `rbusermfa_user_fk`
+ON DELETE CASCADE; `rbmfa_secret_enc` TEXT NOT NULL, `rbmfa_enabled_at` TIMESTAMP NULL = pending
+setup, `rbmfa_last_step` BIGINT NULL, `rbmfa_created_at` TIMESTAMP NOT NULL) and
+`riftbound.rbrecoverycodes` (`rbrecoverycodes_pkey` on `rbrco_id` BIGINT (INTEGER on SQLite),
+`rbrecoverycodes_user_fk` ON DELETE CASCADE, `rbrco_code_hash` CHAR(64) NOT NULL, `rbrco_used_at`
+TIMESTAMP NULL, index `ix_rbrecoverycodes_user`). Same DDL on PostgreSQL and SQLite; no data is
+converted. The old code runs on the new schema; the new code reads the tables on every `GET /me`,
+so restart right after the upgrade. The new code also needs three packages and, in production,
+`TOTP_ENCRYPTION_KEY`, so both go in before the restart:
+
+```bash
+venv/bin/python scripts/db_backup.py   # pg_dump first; check the file (docs/knowledge/ops-runbook.md)
+venv/bin/pip install -r requirements.txt   # pyotp, segno, cryptography (+ cffi, pycparser)
+# generate TOTP_ENCRYPTION_KEY out of band and put it in the service environment file:
+# docs/knowledge/ops-runbook.md -> "Two-factor key (F9-d)" (never in chat or git)
+flask db upgrade                       # 0031
+flask db check                         # "No new upgrade operations detected."
+sudo systemctl restart rbapp           # right after the upgrade
+```
+
+Rollback: `flask db downgrade 0030_user_profile` and redeploy the previous code. The downgrade has
+no refusal condition. **Data loss**: it drops both tables, so every user's two-factor
+authentication is lost (secrets, pending setups, recovery codes); after a new upgrade those users set
+it up again.
+
 ## The legacy-table backup contains personal data
 
 `legacy_tables_<UTC>.sql` holds **e-mail addresses and password hashes** of the

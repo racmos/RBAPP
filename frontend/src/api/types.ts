@@ -31,8 +31,10 @@ export type ProfileData = {
   updated_at: string | null;
 };
 
-/** The `security` summary of `GET /me` (F9-b S7). `mfa`, `api_key` and `connections` keep these
-    values until F9-d, F9-h and F9-f fill them. */
+/** The `security` summary of `GET /me` (F9-b S7). `mfa` is filled by F9-d S14 (`available` is
+    false while the server has no TOTP key; `pending` = a setup not confirmed yet;
+    `recovery_codes_left` = unused codes, 0 when off); `api_key` and `connections` keep these
+    values until F9-h and F9-f fill them. */
 export type SecuritySummary = {
   has_password: boolean;
   password_changed_at: string | null;
@@ -52,6 +54,14 @@ export type MeData = { user: UserPayload; profile: ProfileData; security: Securi
 export type ProfilePatch = Partial<
   Record<'display_name' | 'bio' | 'country' | 'city', string | null>
 >;
+
+/** `POST /me/2fa/setup` (F9-d S7): the new secret grouped by 4 (`ABCD EFGH …`, the text
+    alternative of the QR), the `otpauth://` URI and the QR code as an SVG data URI. Shown once. */
+export type MfaSetup = { secret: string; otpauth_uri: string; qr: string };
+
+/** `POST /me/2fa/enable` and `/me/2fa/recovery-codes` (F9-d S8, S10): ten one-time codes
+    (`xxxxx-xxxxx`, shown once) and how many other sessions were ended. */
+export type RecoveryCodes = { recovery_codes: string[]; revoked_sessions: number };
 
 /** Body of `POST /me/reauth` (F9-b S11): exactly one of a password or a TOTP code (F9-d). */
 export type ReauthBody = { password: string; code?: never } | { code: string; password?: never };

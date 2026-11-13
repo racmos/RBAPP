@@ -171,6 +171,8 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
     settings['PRODUCT_IMAGES_DIR'] = _images_dir_setting(
         environ, 'PRODUCT_IMAGES_DIR', DEFAULT_PRODUCT_IMAGES_DIR)
     settings['AVATAR_DIR'] = _images_dir_setting(environ, 'AVATAR_DIR', DEFAULT_AVATAR_DIR)
+    # F9-d: Fernet key of the TOTP secrets; checked by `validate_settings` (never logged).
+    settings['TOTP_ENCRYPTION_KEY'] = (environ.get('TOTP_ENCRYPTION_KEY') or '').strip() or None
     settings.update(_session_settings(env, environ))
     settings.update(_protection_settings(env, environ))
     return settings
@@ -253,6 +255,19 @@ def _secret_key_problem(key: Optional[str]) -> Optional[str]:
     return None
 
 
+def totp_key_problem(key: Optional[str]) -> Optional[str]:
+    """Why TOTP_ENCRYPTION_KEY is unusable (never includes the key), or None when it is a
+    Fernet key: URL-safe base64 of 32 bytes (F9-d S2)."""
+    if not key:
+        return 'is missing'
+    from cryptography.fernet import Fernet
+    try:
+        Fernet(key)
+    except (ValueError, TypeError):
+        return 'is not a valid key'
+    return None
+
+
 def validate_settings(cfg: Mapping[str, Any], env: str) -> None:
     """Fail fast on an unsafe configuration (CFG-3, D2).
 
@@ -271,6 +286,14 @@ def validate_settings(cfg: Mapping[str, Any], env: str) -> None:
         problems.append('DATABASE_URL is missing')
     if env == 'production' and cfg.get('DEBUG'):
         problems.append('DEBUG must be off in production (unset FLASK_DEBUG)')
+    # F9-d S2: required in production; optional in development (2FA is then unavailable),
+    # but a key that is set must be valid.
+    totp_problem = totp_key_problem(cfg.get('TOTP_ENCRYPTION_KEY'))
+    if totp_problem and (env == 'production' or totp_problem != 'is missing'):
+        problems.append(f'TOTP_ENCRYPTION_KEY {totp_problem}')
+    elif totp_problem:
+        logger.warning('TOTP_ENCRYPTION_KEY is not set: two-factor authentication is '
+                       'unavailable in this process')
 
     if problems:
         raise ConfigError(

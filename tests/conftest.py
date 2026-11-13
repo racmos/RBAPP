@@ -33,7 +33,15 @@ CONFIG_ENV_NAMES = (
     'PRODUCT_IMAGES_DIR',
     # F9-c
     'AVATAR_DIR',
+    # F9-d
+    'TOTP_ENCRYPTION_KEY',
 )
+
+# F9-d S2: one Fernet key per test session for the default `app` (2FA available in tests).
+# Generated here, never a literal: no test key is ever committed.
+from cryptography.fernet import Fernet  # noqa: E402
+
+TEST_TOTP_KEY = Fernet.generate_key().decode('ascii')
 
 
 @pytest.fixture
@@ -58,7 +66,8 @@ def app():
         TESTING=True,
         SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
         WTF_CSRF_ENABLED=False,
-        SECRET_KEY='test-secret-key'
+        SECRET_KEY='test-secret-key',
+        TOTP_ENCRYPTION_KEY=TEST_TOTP_KEY,
     )
     
     # The fixture keeps one app context open for the whole test, so Flask-Login's
