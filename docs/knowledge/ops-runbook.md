@@ -356,6 +356,54 @@ service and rebuild the frontend; the first alerts come with the next `daily_pri
 code; the alerts already raised stay in `rbwishlistalerts` (harmless; the 0026 downgrade would drop them with
 the wishlists, so only with the owner's go-ahead).
 
+### Session purge (F9-a)
+
+Every sign-in is a row of `rbsessions` (F9-a). Ended rows stay until they are purged: revoked ones (logout,
+"sign out" of a device, a password change, `flask users block|set-password`), remembered ones past their
+30 days and the others idle for 12 hours. The `sessions_purge` job (timeout 300 s, no params) deletes them
+and returns `{purged: n}`; active sessions are never touched. `riftbound-sessions-purge.timer` starts
+`riftbound-sessions-purge.service` every day at 04:15 Europe/Madrid (`Persistent=true`), which queues it
+with `flask jobs enqueue sessions_purge --unless-succeeded-today`; the job runner (`riftbound-jobs.timer`)
+runs it.
+
+Install (sudo, after migration `0029_sessions` is applied) and check:
+
+```bash
+sudo cp docs/systemd/riftbound-sessions-purge.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now riftbound-sessions-purge.timer
+systemctl list-timers riftbound-sessions-purge.timer          # next run
+venv/bin/flask sessions purge --dry-run                       # "Would purge <n> session(s)", deletes nothing
+venv/bin/flask jobs enqueue sessions_purge                    # one run now, then:
+venv/bin/flask jobs list                                      # sessions_purge success, result {purged: n}
+```
+
+`venv/bin/flask sessions purge` runs the same purge at once without the job runner.
+
+Rollback: `sudo systemctl disable --now riftbound-sessions-purge.timer && sudo rm
+/etc/systemd/system/riftbound-sessions-purge.{service,timer} && sudo systemctl daemon-reload`. Before a
+downgrade of `0029_sessions` delete the jobs of this kind
+(`DELETE FROM riftbound.rbjobs WHERE rbjob_kind = 'sessions_purge'`; the downgrade refuses while they
+exist), then `venv/bin/flask db downgrade 0028_legacy_schema_cleanup` and redeploy the previous commit:
+the downgrade drops every session, so every user signs in again once more.
+
+## Server-side sessions (F9-a, migration 0029)
+
+Revision `0029_sessions` adds `rbsessions` and the `sessions_purge` job kind. The identity in the session
+and remember cookies changes from a plain user id to `s:<token>`, so **every user signs in again once**
+after the deploy (old cookies load as anonymous; the app shows its login screen, then stays signed in).
+Announce it to the users before the deploy. Order, with the owner's go-ahead:
+
+```bash
+venv/bin/python scripts/db_backup.py          # pg_dump first; check the new file in ~/backups/rbapp
+git pull --ff-only                            # the F9-a code
+venv/bin/flask db upgrade                     # 0029_sessions
+venv/bin/flask db check                       # "No new upgrade operations detected."
+# restart the service at once (command in ops.local.md): the new code reads rbsessions
+```
+
+Then install the purge timer ("Session purge (F9-a)" above) and run the live checks of
+`docs/requirements/F9/F9-a-sessions.md`. Rollback: as in "Session purge (F9-a)".
+
 ## Legacy schema cleanup (F11-f, migration 0028)
 
 The decks v2 copy (F5-c, `flask decks migrate`) is history: the command, the `RbDeck` model and the

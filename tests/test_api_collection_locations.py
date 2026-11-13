@@ -139,7 +139,10 @@ class TestStatementBound:
         statements = []
 
         def listener(conn, cursor, statement, parameters, context, executemany):
-            statements.append(statement)
+            # The identity lookup of every signed-in request (F9-a: one SELECT of the
+            # server-side session) is not part of the endpoint's budget.
+            if 'rbsessions' not in statement:
+                statements.append(statement)
 
         event.listen(db.engine, 'before_cursor_execute', listener)
         try:

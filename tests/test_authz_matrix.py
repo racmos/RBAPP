@@ -51,6 +51,9 @@ MATRIX = {
     'api_v1.get_me_prefs': 'U',             # unit c of f1-app-shell
     'api_v1.patch_me_prefs': 'U',
     'api_v1.patch_me_account': 'U',
+    'api_v1.list_my_sessions': 'U',          # F9 unit a: signed-in devices
+    'api_v1.revoke_my_session': 'U',
+    'api_v1.revoke_my_other_sessions': 'U',
     'api_v1.list_bans': 'U',                # F2 unit a (D-F2-3)
     'api_v1.list_cards': 'U',                # F2 unit c
     'api_v1.get_card': 'U',                  # F2 unit d
@@ -125,6 +128,9 @@ SESSION_PATH = '/riftbound/api/v1/auth/session'
 OLD_LOGIN = 'legacy_redirects.login'
 # Endpoints that end the caller's session: always requested last.
 LOGOUT_ENDPOINTS = ('api_v1.auth_logout',)
+# Rules that may end the caller's own session (the sample id 1 is the user's first session,
+# F9-a): checked like any U rule, then the client signs in again.
+SESSION_ENDING_ENDPOINTS = ('api_v1.revoke_my_session',)
 JSON = {'Accept': 'application/json'}
 
 
@@ -322,6 +328,8 @@ class TestAuthenticatedRules:
                         return f'{who}: logout did not end the session'
                 elif is_denied(resp):
                     return f'{who} was denied with {resp.status_code}'
+                if rule.endpoint in SESSION_ENDING_ENDPOINTS:
+                    login_as(client, username)
         failed = failures_for(rules, 'U', check)
         assert not failed, '\n'.join(failed)
 

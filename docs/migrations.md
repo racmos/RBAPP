@@ -199,6 +199,29 @@ sudo systemctl restart rbapp           # right after the upgrade: old code reads
 Rollback: `flask db downgrade 0027_jobs_price_alerts` with the previous code gives the
 structure back empty; the values come back only from the dump.
 
+## Server-side sessions: upgrade to 0029, then restart at once (F9-a)
+
+`0029_sessions` creates `riftbound.rbsessions` (one row per sign-in: `rbsessions_pkey`,
+`rbsessions_user_fk` ON DELETE CASCADE, unique `rbsessions_token_hash_key`, CHECK
+`ck_rbsessions_auth_method`, indexes `ix_rbsessions_user_revoked` and `ix_rbsessions_expires_at`)
+and adds `sessions_purge` to `ck_rbjobs_kind`. No data is converted. The new code keeps
+`s:<token>` in the cookies instead of the user id, so **every user signs in again once**: announce
+it before the deploy.
+
+```bash
+venv/bin/python scripts/db_backup.py   # pg_dump first; check the file (docs/knowledge/ops-runbook.md)
+flask db upgrade                       # 0029
+flask db check                         # "No new upgrade operations detected."
+sudo systemctl restart rbapp           # right after the upgrade: the new code reads rbsessions
+```
+
+Then install the purge timer (`docs/knowledge/ops-runbook.md` -> "Session purge (F9-a)").
+
+Rollback: delete the `sessions_purge` jobs first (the downgrade refuses while they exist, and in
+offline `--sql` mode), then `flask db downgrade 0028_legacy_schema_cleanup` and redeploy the
+previous code. **Data loss**: the downgrade drops `rbsessions`, so every session ends and every
+user signs in again once more.
+
 ## The legacy-table backup contains personal data
 
 `legacy_tables_<UTC>.sql` holds **e-mail addresses and password hashes** of the

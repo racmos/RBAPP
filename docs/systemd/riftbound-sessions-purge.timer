@@ -1,0 +1,13 @@
+# Session purge at 04:15 Madrid time, after the 03:30 backup and before the
+# 06:30 Cardmarket load (F9-a).
+# Persistent: a run missed while the host was off happens at the next boot.
+[Unit]
+Description=Riftbound session purge at 04:15 Europe/Madrid
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 Europe/Madrid
+Persistent=true
+Unit=riftbound-sessions-purge.service
+
+[Install]
+WantedBy=timers.target

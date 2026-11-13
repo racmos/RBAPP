@@ -54,7 +54,8 @@ profile update (PROF-1, PROF-2).
   `@`; `password` is 8-128 characters and needs `current_password`; an email-only update does
   not need the password. Only the fields sent change, all or nothing.
 - 200 -> `{user: {id, username, email, is_admin}}`, the fresh user (never a password). A
-  password change keeps the session (Flask-Login keys it on the user id).
+  password change keeps this session and ends every other session of the user in the same
+  transaction (F9-a S9); an email-only change ends nothing.
 - 400 `validation_error` with `details[{field, message, type, code}]` (`password` too short,
   `email` invalid, a missing `current_password`, an empty body).
 - 400 `current_password_incorrect` (`message` "The current password is incorrect"): nothing is
@@ -64,6 +65,59 @@ profile update (PROF-1, PROF-2).
 - 429 `rate_limited` with `Retry-After`: 10 calls per hour per IP (`ACCOUNT_RATE_LIMIT`,
   shared scope `account`); the limit also caps guesses of the current password.
 - 401 `unauthenticated` for anonymous callers.
+
+### Sessions (F9-a)
+
+Every sign-in is a server-side session: one row of `rbsessions` (`app/models/session.py`, logic
+`app/services/sessions.py`). The Flask session cookie and the remember cookie hold `s:<token>`
+(`secrets.token_urlsafe(32)`); only `sha256(token)` is stored, and no response ever carries the
+token or its hash.
+
+- **Lifetime.** A session is active while it is not revoked and, when remembered (`remember: true`
+  at login), before its `expires_at` = sign-in + 30 days (absolute: using it never extends it);
+  when not remembered, within 12 hours of its last use (or until the browser drops the session
+  cookie). `last_seen_at` is written at most once every 5 minutes per session.
+- **Forced re-login once.** Cookies made before F9-a hold a plain user id; they load as anonymous
+  (`GET /auth/session` -> `authenticated: false`, protected routes 401 `unauthenticated`), so every
+  user signs in again once after the deploy. The bodies of `POST /auth/login`, `POST /auth/logout`
+  and `GET /auth/session` are unchanged.
+- **Ending sessions.** `POST /auth/logout` revokes the current session and expires the remember
+  cookie; the old cookies are anonymous afterwards. A password change through `PATCH /me/account`
+  revokes every other session of the user (the current one stays). `flask users set-password` and
+  `flask users block` revoke all of them. A blocked user is anonymous whatever the session.
+- **Purge.** Ended rows are deleted by `flask sessions purge [--dry-run]` and the daily job
+  `sessions_purge` (`docs/knowledge/ops-runbook.md` -> "Session purge (F9-a)").
+
+`Session`:
+
+```json
+{"id": 12, "current": true, "device": "Firefox on Windows",
+ "user_agent": "Mozilla/5.0 (Windows NT 10.0; ...) Firefox/132.0", "ip_prefix": "192.0.2.0/24",
+ "created_at": "2030-01-01T12:00:00Z", "last_seen_at": "2030-01-01T12:05:00Z",
+ "expires_at": null, "remember": false, "auth_method": "password", "mfa": false}
+```
+
+- `device` is computed on read from the User-Agent: browser = first of `Edg/` Edge, `OPR/` or
+  `Opera` Opera, `Firefox/` Firefox, `Chrome/` or `CriOS/` Chrome, `Safari/` Safari, else Browser;
+  OS = first of Windows, `iPhone`/`iPad` iOS, Android, `CrOS` ChromeOS, `Mac OS X`/`Macintosh`
+  macOS, Linux. `"<browser> on <OS>"`, `"<browser>"` without an OS, `"Unknown device"` without a
+  User-Agent.
+- `user_agent` is the sign-in User-Agent cut to 255 characters (null when absent); `ip_prefix` the
+  sign-in address as its IPv4 /24 or IPv6 /48 network (an IPv4-mapped IPv6 address counts as IPv4;
+  null when unreadable). The full address is never stored.
+- Times are UTC, `%Y-%m-%dT%H:%M:%SZ`; `expires_at` is null for sessions that are not remembered.
+  `auth_method` is `password` (`discord` and `google` come with F9-f); `mfa` is false until F9-e.
+
+Endpoints (`app/api/v1/sessions.py`, all U):
+
+| Method | Path | Endpoint | Response |
+|---|---|---|---|
+| GET | `/me/sessions` | `api_v1.list_my_sessions` | `{items: [Session]}`: the caller's active sessions, the current one first, then by `last_seen_at` newest first; at most 3 SQL statements |
+| DELETE | `/me/sessions/<id>` | `api_v1.revoke_my_session` | `{revoked: 1, current}`; ending the current session also signs the caller out like logout (the remember cookie is expired) |
+| DELETE | `/me/sessions` | `api_v1.revoke_my_other_sessions` | `{revoked: n}`: every other active session of the caller; `n` may be 0 |
+
+An id that is not one of the caller's active sessions (another user's, unknown, already revoked or
+expired) is the 404 envelope and nothing changes. No new error code.
 
 ### GET /meta/game
 

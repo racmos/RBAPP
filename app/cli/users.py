@@ -6,7 +6,8 @@ bootstrapped: `flask users promote <username>`).
 
 Every command that takes a username exits 1 with a message naming the user
 when it does not exist, and changes nothing. `promote`, `demote`, `block` and
-`unblock` are idempotent. Passwords are only ever read from a hidden prompt
+`unblock` are idempotent. `block` and `set-password` end every session of the
+user (F9-a) and say how many. Passwords are only ever read from a hidden prompt
 and never printed; `list` never shows hashes.
 """
 import click
@@ -15,6 +16,7 @@ from flask.cli import AppGroup
 from app import db
 from app.models import User
 from app.schemas.validators import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH
+from app.services import sessions
 from app.utils import clock
 
 users_cli = AppGroup('users', help='Manage user accounts (roles, blocking, passwords).')
@@ -55,8 +57,15 @@ def demote(username):
 @users_cli.command('block')
 @click.argument('username')
 def block(username):
-    """Block USERNAME: no login, and any live session ends on its next request."""
-    _set_flag(username, 'is_blocked', True, 'is now blocked', 'is already blocked')
+    """Block USERNAME: no login, and every session of the user ends (F9-a)."""
+    user = _find_user(username)
+    if user.is_blocked:
+        click.echo(f"'{username}' is already blocked")
+        return
+    user.is_blocked = True
+    ended = sessions.revoke_all(user.id, commit=False)
+    db.session.commit()
+    click.echo(f"'{username}' is now blocked; {ended} session(s) ended")
 
 
 @users_cli.command('unblock')
@@ -78,8 +87,9 @@ def set_password(username):
         raise click.ClickException(
             f'The password must have {PASSWORD_MIN_LENGTH} to {PASSWORD_MAX_LENGTH} characters.')
     user.set_password(password)
+    ended = sessions.revoke_all(user.id, commit=False)    # every session, in one transaction
     db.session.commit()
-    click.echo(f"Password updated for '{username}'")
+    click.echo(f"Password updated for '{username}'; {ended} session(s) ended")
 
 
 @users_cli.command('list')

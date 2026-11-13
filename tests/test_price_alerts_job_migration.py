@@ -19,7 +19,8 @@ def kinds():
 
 
 def test_the_model_allows_price_alerts():
-    assert JOB_KINDS == OLD_KINDS + ('price_alerts',)
+    # Later revisions append their kinds (0029 adds sessions_purge).
+    assert JOB_KINDS[:len(OLD_KINDS) + 1] == OLD_KINDS + ('price_alerts',)
 
 
 def test_kind_check_accepts_price_alerts(migration_app):
