@@ -81,7 +81,7 @@ Public. MUST return `data:{authenticated:false,csrf_token:"<non-empty>"}` for an
 #### Scenario: Logged in
 - GIVEN a logged-in user
 - WHEN called
-- THEN `user` has exactly `id, username, email, is_admin` and no hash
+- THEN `user` has `id, username, email` (null when the account has none), `is_admin`, `display_name` and `avatar_url` (F9-b; additive) and no hash
 
 #### Scenario: Prefs without a row
 - GIVEN a logged-in user who never saved preferences

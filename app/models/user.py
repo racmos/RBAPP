@@ -15,8 +15,13 @@ class User(UserMixin, db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), nullable=False)
-    email = db.Column(db.String(120), nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
+    # Optional (F9-b, D-F9-1): NULL = no e-mail. Unique when present; the services compare
+    # it ignoring case.
+    email = db.Column(db.String(120), nullable=True)
+    # NULL = no password (an OAuth-only account, F9-f): password login is refused (F9-b S2).
+    password_hash = db.Column(db.String(256), nullable=True)
+    # Last password change (F9-b S3); NULL = unknown (accounts older than 0030, no backfill).
+    password_changed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: clock.utcnow())
     # Roles / access (ACL-1, D10). Only the CLI (`flask users promote|block`)
     # changes them; no request input ever does.
@@ -48,8 +53,18 @@ class User(UserMixin, db.Model):
         session on the next request (UserMixin.is_authenticated follows it)."""
         return not self.is_blocked
 
+    @property
+    def has_password(self) -> bool:
+        """False for an account without a password (OAuth-only, F9-b S2)."""
+        return self.password_hash is not None
+
     def set_password(self, password):
+        """Store a new password hash and stamp `password_changed_at` (F9-b S3)."""
         self.password_hash = generate_password_hash(password)
+        self.password_changed_at = clock.utcnow()
 
     def check_password(self, password):
+        """False when the account has no password (never raises on a NULL hash)."""
+        if self.password_hash is None:
+            return False
         return check_password_hash(self.password_hash, password)

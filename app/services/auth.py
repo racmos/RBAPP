@@ -7,6 +7,7 @@ are gone (PR 3/3 of the Jinja retirement).
 
     unknown user ............ dummy hash check ........ INVALID
     lock still running ...... dummy hash check ........ LOCKED(retry_after)
+    no password (OAuth) ..... dummy hash check ........ INVALID  (F9-b S2: counts nothing)
     wrong password .......... count + 1; from the 5th failure on, lock ... INVALID
     blocked, right password . nothing changes .......... INVALID  (R4)
     right password .......... reset count and lock ..... OK(user)
@@ -104,6 +105,12 @@ def authenticate(username: str, password: str) -> AuthResult:
         check_password_hash(_dummy_hash(), password)
         return AuthResult(AuthStatus.LOCKED, retry_after=_seconds_left(user.locked_until, now))
 
+    if user.password_hash is None:
+        # An account without a password (OAuth-only, F9-b S2): same work and same answer as a
+        # wrong password, but no failure is counted (nobody can guess a password it lacks).
+        check_password_hash(_dummy_hash(), password)
+        return AuthResult(AuthStatus.INVALID)
+
     if not check_password_hash(user.password_hash, password):
         if user.is_active:                      # a blocked account keeps no failure history
             _register_failure(user, now)
@@ -152,12 +159,14 @@ def register_user(data: RegisterRequest) -> User:
     """Create a plain (never admin) account. Raises DuplicateUserError.
 
     The username is unique as typed (that is the database rule); the e-mail is
-    compared ignoring case, like the profile page does. Registering does NOT log
-    the user in.
+    optional (F9-b S4: None = no e-mail) and, when present, compared ignoring case,
+    like the profile page does. `set_password` stamps `password_changed_at` (S3).
+    Registering does NOT log the user in.
     """
     if User.query.filter_by(username=data.username).first():
         raise DuplicateUserError('username')
-    if User.query.filter(func.lower(User.email) == data.email.lower()).first():
+    if data.email is not None and User.query.filter(
+            func.lower(User.email) == data.email.lower()).first():
         raise DuplicateUserError('email')
 
     user = User(username=data.username, email=data.email)

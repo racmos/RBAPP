@@ -4,7 +4,7 @@ import { http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import type { Session } from '@/api/types';
-import { API, USER, failure, ok, signedInSession } from '@/test/msw/handlers';
+import { API, NO_PREFS, USER, USER_TOKEN, failure, ok, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 
@@ -69,6 +69,27 @@ describe('Profile page (/account/profile)', () => {
     expect(current()).toHaveAttribute('autocomplete', 'current-password');
     expect(fresh()).toHaveAttribute('autocomplete', 'new-password');
     expect(confirm()).toHaveAttribute('autocomplete', 'new-password');
+  }, 20000);
+
+  it('an account without an email shows an empty field and can add one (F9-b S14)', async () => {
+    signedIn();
+    server.use(
+      http.get(`${API}/auth/session`, () =>
+        ok({
+          authenticated: true,
+          csrf_token: USER_TOKEN,
+          user: { ...USER, email: null },
+          prefs: NO_PREFS,
+        }),
+      ),
+    );
+    await openPage();
+    expect(emailInput()).toHaveValue('');
+    expect(saveEmail()).toBeDisabled();
+    await userEvent.type(emailInput(), 'ada@new.example');
+    await userEvent.click(saveEmail());
+    expect(await screen.findByText('Email updated.', {}, LONG)).toBeVisible();
+    expect(patches).toEqual([{ email: 'ada@new.example' }]);
   }, 20000);
 
   it('saves only the email and updates the session everywhere', async () => {

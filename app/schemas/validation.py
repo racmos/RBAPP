@@ -56,6 +56,18 @@ def _detail(error: dict) -> dict:
     return detail
 
 
+def validation_failure(details: list[dict], message: str = 'Invalid request data'):
+    """The 400 `validation_error` body `validate_json` answers with, for a check a route makes
+    after the schema (F9-b S5: the current password, which depends on the account)."""
+    return jsonify({
+        'success': False,
+        'error': 'Validation Error',
+        'message': message,
+        'details': details,
+        'code': ErrorCode.VALIDATION_ERROR.value,
+    }), 400
+
+
 def validate_json(schema: type[BaseModel]):
     """
     Decorator to validate JSON request body against a Pydantic schema.
@@ -81,13 +93,7 @@ def validate_json(schema: type[BaseModel]):
                 validated = schema(**data)
                 request.validated_data = validated
             except ValidationError as e:
-                return jsonify({
-                    'success': False,
-                    'error': 'Validation Error',
-                    'message': 'Invalid request data',
-                    'details': [_detail(err) for err in e.errors()],
-                    'code': ErrorCode.VALIDATION_ERROR.value,
-                }), 400
+                return validation_failure([_detail(err) for err in e.errors()])
             except Exception as e:
                 return unexpected_failure(e, 'Invalid request body', 400, error='Bad Request',
                                           code=ErrorCode.BAD_REQUEST)

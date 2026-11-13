@@ -94,7 +94,7 @@ def set_password(username):
 
 @users_cli.command('list')
 def list_users():
-    """List every account with its role and state (never password hashes)."""
+    """List every account with its role and state (never password hashes); `-` = no e-mail."""
     accounts = User.query.order_by(User.username).all()
     if not accounts:
         click.echo('No users.')
@@ -103,7 +103,7 @@ def list_users():
         locked = user.locked_until is not None and user.locked_until > clock.utcnow()
         flags = [name for name, on in (('admin', user.is_admin), ('blocked', user.is_blocked),
                                        ('locked', locked)) if on]
-        click.echo(f"{user.username}  {user.email}  {','.join(flags)}".rstrip())
+        click.echo(f"{user.username}  {user.email or '-'}  {','.join(flags)}".rstrip())
 
 
 @users_cli.command('unlock')

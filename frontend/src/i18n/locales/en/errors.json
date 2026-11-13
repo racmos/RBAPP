@@ -27,7 +27,8 @@
     "location_locked": "This location is locked. Unlock it first.",
     "deck_limit_exceeded": "The deck goes over a limit (maximum {{max}}).",
     "wishlist_limit": "Limit reached: at most {{max}} {{scope}}.",
-    "wishlist_default": "The default list cannot be deleted. Star another list first."
+    "wishlist_default": "The default list cannot be deleted. Star another list first.",
+    "reauth_required": "Confirm your identity to continue."
   },
   "status": {
     "400": "The request is not valid.",

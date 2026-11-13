@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.api.responses import fail, ok
 from app.api.v1 import api_v1
+from app.schemas.profile_domain import COUNTRY_CODES
 from app.schemas.game_domain import (CARD_TYPES, CONDITIONS, DECK_RULES, DOMAINS, GAME_MODES,
                                      LANGUAGES, RARITIES, SUPERTYPES)
 from app.services.captcha import get_captcha_provider
@@ -43,6 +44,8 @@ def meta_config():
             'required_for': ['register'] if provider != 'none' else [],
         },
         'csrf': {'header': 'X-CSRFToken'},
+        # F9-b S12: the profile country codes; the SPA names them with Intl.DisplayNames.
+        'countries': list(COUNTRY_CODES),
     })
 
 

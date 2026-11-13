@@ -46,6 +46,8 @@ class ErrorCode(StrEnum):
     WISHLIST_LIMIT = 'wishlist_limit'             # too many wishlists or lines in a list;
                                                   # params.scope ('lists'|'lines'), params.max, 409
     WISHLIST_DEFAULT = 'wishlist_default'         # the default wishlist cannot be deleted, 409
+    REAUTH_REQUIRED = 'reauth_required'           # a sensitive action needs a recent
+                                                  # re-authentication; params.methods, 403
 
 
 class DetailCode(StrEnum):

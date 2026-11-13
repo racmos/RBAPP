@@ -15,6 +15,7 @@ from app.api.v1 import api_v1
 from app.schemas.validation import validate_json
 from app.schemas.validators import LoginRequest, RegisterRequest
 from app.services import auth as auth_service
+from app.services import profile as profile_service
 from app.services import sessions as sessions_service
 from app.services.auth import (AuthStatus, DuplicateUserError, LOGIN_RATE_LIMIT,
                                REGISTER_RATE_LIMIT)
@@ -27,9 +28,9 @@ CAPTCHA_MESSAGE = 'Captcha verification failed'
 
 
 def user_payload(user):
-    """The public fields of an account. Never the hash."""
-    return {'id': user.id, 'username': user.username, 'email': user.email,
-            'is_admin': bool(user.is_admin)}
+    """The public fields of an account (F9-b S6: plus `display_name`, `avatar_url`). Never the
+    hash. Built by `app.services.profile.user_payload`."""
+    return profile_service.user_payload(user)
 
 
 @api_v1.get('/auth/session')

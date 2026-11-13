@@ -6,6 +6,7 @@ from .market import RbCardMarket
 from .deck_v2 import RbDeckHead, RbDeckVersion
 from .captcha import RbCaptchaUsed
 from .prefs import RbUserPrefs
+from .profile import RbUserProfile
 from .playset import RbKeepPlayset
 from .snapshot import RbValueSnapshot
 from .import_preview import RbImportPreview
