@@ -12,7 +12,7 @@ from html import escape
 
 from flask import jsonify, make_response, request
 from flask_wtf.csrf import CSRFError
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 from app.api.error_codes import ErrorCode
 
@@ -39,6 +39,12 @@ FRIENDLY_MESSAGES = {
     404: 'The requested resource was not found',
     500: 'An unexpected error occurred',
 }
+
+
+# 413 (F9-c S10): one name and message for any body or file over its limit.
+PAYLOAD_TOO_LARGE = 'Payload Too Large'
+FILE_TOO_LARGE_MESSAGE = 'The file is too large'
+_MB = 1024 * 1024
 
 
 def wants_json():
@@ -142,6 +148,19 @@ def register_error_handlers(app):
         if wants_json():
             return json_error('CSRF Error', error.description, 400, code=ErrorCode.CSRF_INVALID)
         return html_error_page(400, 'Bad Request', error.description)
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def payload_too_large(error):
+        """A body or file over the limit (F9-c S10). The limit is per request
+        (`request.max_content_length`, set by the upload route before anything is read);
+        `params.max_mb` is that limit in whole MB when there is one. Registered by status
+        code, so it wins over the `api_v1` catch-all handler."""
+        if wants_json():
+            limit = request.max_content_length
+            params = {'max_mb': limit // _MB} if limit else None
+            return json_error(PAYLOAD_TOO_LARGE, FILE_TOO_LARGE_MESSAGE, 413,
+                              code=ErrorCode.FILE_TOO_LARGE, params=params)
+        return html_error_page(413, PAYLOAD_TOO_LARGE, FILE_TOO_LARGE_MESSAGE)
 
     @app.errorhandler(429)
     def too_many_requests(error):

@@ -485,6 +485,41 @@ Flask serves them at `/riftbound/media/products/<file>` (public, cached a week).
 - Live check: upload an image on a product in the admin; `curl -sI <URL>/riftbound/media/products/<id>.png`
   → 200 with `Cache-Control: public, max-age=604800`.
 
+## Avatars (F9-c)
+
+Profile photos are user data: not in git, not in the code tree, never public. They live in
+`AVATAR_DIR=<data dir>` in `.env` (absolute path, outside the checkout, owned by the service user, a
+different directory from `CARD_IMAGES_DIR` and `PRODUCT_IMAGES_DIR`; the host value is in
+`ops.local.md`). Unset, the app uses `<project>/data/avatars` (git-ignored; dev and tests only); a
+relative path stops the app (`AVATAR_DIR must be an absolute path`). Each avatar is two files
+directly in the directory, `<user id>-<version>-256.webp` and `<user id>-<version>-64.webp`, written
+only by `POST /riftbound/api/v1/me/avatar` (mode 600, through a temporary `.upload-*.tmp` name in the
+same directory and `os.replace`) and served by Flask only to signed-in users at
+`/riftbound/api/v1/users/<id>/avatar` (private cache). Nginx never serves the directory: no proxy
+change, and do not add an alias for it.
+
+- Install (with the F9-c deploy): `venv/bin/pip install -r requirements.txt` (adds Pillow) **before**
+  the restart, otherwise the app does not start (`ModuleNotFoundError: PIL`). Create the directory,
+  owned by the service user and writable by it, not readable by others
+  (`install -d -m 700 -o <service user> -g <service group> <data dir>`), set `AVATAR_DIR` in `.env`
+  (or keep the default), restart. The app creates the directory on the first upload if it is missing,
+  but only with the right owner if the parent allows it, so create it first. No migration.
+- Permissions: the service user needs read, write and delete in the directory (an upload replaces the
+  previous version's files; a failed delete is only logged, `could not delete avatar file ...`, and
+  leaves a stale file that nothing serves).
+- Backup: the nightly backup (`scripts/db_backup.py`) dumps the database only; it does **not** copy
+  `AVATAR_DIR`. The directory is the only copy of the photos: copy it with the database backup
+  (`tar -C <data dir> -czf <backup folder>/avatars-<date>.tar.gz .`, private folder, personal data);
+  F12 schedules it with the image directories. Restoring files without the matching database rows (or
+  the reverse) only shows no avatar (404) for those users; nothing breaks.
+- Stray files: `.upload-*.tmp` files are left only if the process dies mid-write; they and files of
+  versions no row names can be deleted at any time.
+- Live check (after the deploy): `POST /riftbound/api/v1/me/avatar` with a phone photo → 200
+  `{avatar_url}`; that URL answers `image/webp` 256x256 to a second signed-in account; a private window
+  gets 401.
+- Rollback: revert the PR, redeploy (Pillow can stay installed). Uploaded files stay in `AVATAR_DIR`,
+  harmless; the profile rows keep the stem and version (the reverted code ignores them).
+
 ## Jinja retirement (PR 3/3)
 
 The Jinja web (landing, dashboard, auth forms, sets, cards, collection, decks, price tools, profile,

@@ -1,7 +1,8 @@
 /** Shapes of the JSON API v1 (`/riftbound/api/v1`). Mirrors the backend envelope (API-1). */
 
 /** The public fields of an account (F9-b S6): `email` is optional (`null` = none),
-    `display_name` comes from the private profile, `avatar_url` is `null` until F9-c. */
+    `display_name` comes from the private profile, `avatar_url` is the versioned
+    `/riftbound/api/v1/users/<id>/avatar?v=<n>` (F9-c S8) or `null` without an avatar. */
 export type UserPayload = {
   id: number;
   username: string;

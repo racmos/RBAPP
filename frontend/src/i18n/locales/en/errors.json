@@ -28,7 +28,9 @@
     "deck_limit_exceeded": "The deck goes over a limit (maximum {{max}}).",
     "wishlist_limit": "Limit reached: at most {{max}} {{scope}}.",
     "wishlist_default": "The default list cannot be deleted. Star another list first.",
-    "reauth_required": "Confirm your identity to continue."
+    "reauth_required": "Confirm your identity to continue.",
+    "image_invalid": "That file is not a supported image. Use a JPEG, PNG, WebP or GIF of at least 64 by 64 pixels.",
+    "file_too_large": "The file is too large (maximum {{max_mb}} MB)."
   },
   "status": {
     "400": "The request is not valid.",

@@ -56,6 +56,10 @@ DEFAULT_CARD_IMAGES_DIR = str(Path(__file__).resolve().parent / 'data' / 'card-i
 # (`/data/`). Overridden by PRODUCT_IMAGES_DIR, same rules as CARD_IMAGES_DIR.
 DEFAULT_PRODUCT_IMAGES_DIR = str(Path(__file__).resolve().parent / 'data' / 'product-images')
 
+# Root of the avatars (F9-c): `<user id>-<version>-<size>.webp` files. Git-ignored
+# (`/data/`). Overridden by AVATAR_DIR, same rules as CARD_IMAGES_DIR.
+DEFAULT_AVATAR_DIR = str(Path(__file__).resolve().parent / 'data' / 'avatars')
+
 _TRUE_WORDS = frozenset({'1', 'true', 'yes', 'on'})
 _FALSE_WORDS = frozenset({'0', 'false', 'no', 'off'})
 
@@ -116,9 +120,9 @@ def _spa_csp_setting(environ: Mapping[str, str]) -> str:
 
 
 def _images_dir_setting(environ: Mapping[str, str], name: str, default: str) -> str:
-    """CARD_IMAGES_DIR / PRODUCT_IMAGES_DIR: blank keeps `default` (under <project>/data);
-    a relative path stops the app in every environment (it would depend on the working
-    directory). The directory is created on first write, not here."""
+    """CARD_IMAGES_DIR / PRODUCT_IMAGES_DIR / AVATAR_DIR: blank keeps `default` (under
+    <project>/data); a relative path stops the app in every environment (it would depend on
+    the working directory). The directory is created on first write, not here."""
     text = (environ.get(name) or '').strip()
     if not text:
         return default
@@ -166,6 +170,7 @@ def load_settings(env: str, environ: Mapping[str, str]) -> dict[str, Any]:
         environ, 'CARD_IMAGES_DIR', DEFAULT_CARD_IMAGES_DIR)
     settings['PRODUCT_IMAGES_DIR'] = _images_dir_setting(
         environ, 'PRODUCT_IMAGES_DIR', DEFAULT_PRODUCT_IMAGES_DIR)
+    settings['AVATAR_DIR'] = _images_dir_setting(environ, 'AVATAR_DIR', DEFAULT_AVATAR_DIR)
     settings.update(_session_settings(env, environ))
     settings.update(_protection_settings(env, environ))
     return settings

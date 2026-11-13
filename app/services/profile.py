@@ -1,8 +1,8 @@
 """The signed-in user's private profile and security summary (F9-b S6-S8).
 
-The profile (`rbuserprofile`) is private (D-F9-3/12): display name, bio, country, city; the
-avatar comes with F9-c (`avatar_url` is always None here). Reading never creates a row; the
-first `update_profile` does. Times use the F9-a format (`sessions._iso`).
+The profile (`rbuserprofile`) is private (D-F9-3/12): display name, bio, country, city and the
+avatar (F9-c: `avatar_url` from `app.services.avatars`, the versioned URL or None). Reading
+never creates a row; the first `update_profile` (or avatar upload) does. Times use the F9-a format (`sessions._iso`).
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from app import db
 from app.models import RbUserProfile
 from app.security import reauth_until
 from app.services import sessions
+from app.services.avatars import profile_avatar_url
 from app.utils import clock
 
 _LOOKUP = object()
@@ -27,14 +28,15 @@ def get_profile(user_id: int) -> Optional[RbUserProfile]:
 
 def user_payload(user, row=_LOOKUP) -> dict:
     """The public fields of an account (S6): never the hash. `email` may be None;
-    `display_name` comes from the profile; `avatar_url` is None until F9-c. Pass the profile
+    `display_name` comes from the profile; `avatar_url` is the versioned avatar URL or None
+    (F9-c S8). Pass the profile
     `row` (or None) when it is already known, to save the lookup."""
     if row is _LOOKUP:
         row = get_profile(user.id)
     return {'id': user.id, 'username': user.username, 'email': user.email,
             'is_admin': bool(user.is_admin),
             'display_name': row.rbupf_display_name if row is not None else None,
-            'avatar_url': None}
+            'avatar_url': profile_avatar_url(row)}
 
 
 def profile_payload(row: Optional[RbUserProfile]) -> dict:
@@ -42,7 +44,8 @@ def profile_payload(row: Optional[RbUserProfile]) -> dict:
     if row is None:
         return {**dict.fromkeys(PROFILE_FIELDS), 'avatar_url': None, 'updated_at': None}
     return {'display_name': row.rbupf_display_name, 'bio': row.rbupf_bio,
-            'country': row.rbupf_country, 'city': row.rbupf_city, 'avatar_url': None,
+            'country': row.rbupf_country, 'city': row.rbupf_city,
+            'avatar_url': profile_avatar_url(row),
             'updated_at': sessions._iso(row.rbupf_updated_at)}
 
 

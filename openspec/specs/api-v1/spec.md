@@ -14,7 +14,7 @@ Source: change f0-foundation (archived 2026-10-19); updated by change f1-app-she
 
 ### Requirement: API-1 Blueprint and envelope [e]
 
-The API MUST live in a blueprint with prefix `/riftbound/api/v1` and MUST NOT collide with landing `/api/*` routes. Every response from this prefix (including framework errors 400/401/403/404/405/415/429/500 and CSRF errors) MUST use the envelopes above with `Content-Type: application/json`. 500 responses MUST NOT leak stack traces or exception text. An error response MAY carry a machine-readable `code` (lowercase snake_case string) and a `params` object (JSON scalars) so clients can translate without parsing prose; `message` MUST always be present as a fallback. Responses that do not define a code MUST remain valid without these fields. `code` and `params` MUST NOT contain secrets, stack traces or internals.
+The API MUST live in a blueprint with prefix `/riftbound/api/v1` and MUST NOT collide with landing `/api/*` routes. Every response from this prefix (including framework errors 400/401/403/404/405/413/415/429/500 and CSRF errors; 413 carries `code:"file_too_large"`, F9-c) MUST use the envelopes above with `Content-Type: application/json`. 500 responses MUST NOT leak stack traces or exception text. An error response MAY carry a machine-readable `code` (lowercase snake_case string) and a `params` object (JSON scalars) so clients can translate without parsing prose; `message` MUST always be present as a fallback. Responses that do not define a code MUST remain valid without these fields. `code` and `params` MUST NOT contain secrets, stack traces or internals.
 
 #### Scenario: Unknown path with browser Accept
 - GIVEN any client
