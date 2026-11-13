@@ -28,7 +28,14 @@ export const API = '/riftbound/api/v1';
 export const ANON_TOKEN = 'token-anon';
 export const USER_TOKEN = 'token-user';
 
-export const USER = { id: 7, username: 'ada', email: 'ada@example.com', is_admin: false };
+export const USER = {
+  id: 7,
+  username: 'ada',
+  email: 'ada@example.com' as string | null,
+  is_admin: false,
+  display_name: null as string | null,
+  avatar_url: null as string | null,
+};
 export const NO_PREFS = {
   density: null,
   accent: null,
@@ -82,6 +89,7 @@ export const handlers = [
       registration_open: true,
       captcha: { provider: 'none', required_for: [] },
       csrf: { header: 'X-CSRFToken' },
+      countries: ['ES', 'FR', 'GB', 'US'],
     }),
   ),
   http.get(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),

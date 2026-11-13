@@ -54,6 +54,9 @@ MATRIX = {
     'api_v1.list_my_sessions': 'U',          # F9 unit a: signed-in devices
     'api_v1.revoke_my_session': 'U',
     'api_v1.revoke_my_other_sessions': 'U',
+    'api_v1.get_me': 'U',                    # F9 unit b: profile and re-authentication
+    'api_v1.patch_me': 'U',
+    'api_v1.me_reauth': 'U',
     'api_v1.list_bans': 'U',                # F2 unit a (D-F2-3)
     'api_v1.list_cards': 'U',                # F2 unit c
     'api_v1.get_card': 'U',                  # F2 unit d

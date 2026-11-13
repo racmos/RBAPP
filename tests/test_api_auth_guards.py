@@ -240,7 +240,9 @@ class TestUnchangedContracts:
         assert response.get_json() == {
             'success': True,
             'data': {'user': {'id': user.id, 'username': 'u', 'email': 'u@test.com',
-                              'is_admin': False}}}
+                              'is_admin': False,
+                              # F9-b S6: additive keys (the profile's display name, F9-c avatar)
+                              'display_name': None, 'avatar_url': None}}}
 
     def test_the_anonymous_session_body(self, app, client):
         data = client.get(SESSION).get_json()['data']
@@ -254,7 +256,8 @@ class TestUnchangedContracts:
         assert sorted(data) == ['authenticated', 'csrf_token', 'prefs', 'user']
         assert data['authenticated'] is True
         assert data['user'] == {'id': user.id, 'username': 'u', 'email': 'u@test.com',
-                                'is_admin': False}
+                                'is_admin': False, 'display_name': None,   # F9-b S6
+                                'avatar_url': None}
         assert sorted(data['prefs']) == ['accent', 'bg_intensity', 'collection_view',
                                          'density', 'playset_size']
 
@@ -457,3 +460,86 @@ class TestServerSideSessions:
         assert (response.status_code, response.get_json()['code']) == (409, 'email_taken')
         assert authenticated(here) and authenticated(there)
         assert [r.rbses_revoked_at for r in session_rows()] == [None, None]
+
+
+# --- Accounts without a password or an e-mail (F9-b S2, S3, S4) --------------------------------
+
+def _no_password(user):
+    from app import db
+    user.password_hash = None
+    db.session.commit()
+    return user
+
+
+def _stored(username):
+    from app import db
+    db.session.expire_all()
+    return User.query.filter_by(username=username).one()
+
+
+class TestAccountWithoutPassword:
+    def test_login_is_answered_like_a_wrong_password(self, app, client, make_user):
+        _no_password(make_user('u'))
+        for password in (DEFAULT_PASSWORD, 'anything-else'):
+            response = login(client, password=password)
+            assert (response.status_code, response.get_json()) == (401, INVALID)
+        assert not authenticated(client)
+
+    def test_login_runs_the_dummy_check_once(self, app, client, make_user, monkeypatch):
+        from app.services import auth
+        _no_password(make_user('u'))
+        checked = []
+        real = auth.check_password_hash
+        monkeypatch.setattr(auth, 'check_password_hash',
+                            lambda stored, given: checked.append(stored) or real(stored, given))
+        assert login(client).status_code == 401
+        assert checked == [auth._dummy_hash()]
+
+    def test_login_counts_no_failure_and_never_locks(self, app, client, make_user,
+                                                    frozen_clock):
+        _no_password(make_user('u'))
+        for _ in range(7):
+            assert login(client).get_json() == INVALID
+        user = _stored('u')
+        assert (user.failed_login_count, user.locked_until) == (0, None)
+
+    def test_the_model_helpers(self, app, make_user):
+        user = make_user('u')
+        assert user.has_password is True
+        _no_password(user)
+        assert user.has_password is False
+        assert user.check_password('') is False
+        assert user.check_password(DEFAULT_PASSWORD) is False
+
+
+class TestRegisterWithoutEmail:
+    @pytest.mark.parametrize('email', ['absent', None, '', '   '])
+    def test_stores_no_email(self, app, client, email):
+        body = {k: v for k, v in NEW_USER.items() if k != 'email'}
+        if email != 'absent':
+            body['email'] = email
+        response = client.post(REGISTER, json=body)
+        assert response.status_code == 201, response.get_json()
+        assert _stored('newbie').email is None
+
+    def test_two_accounts_without_email_coexist(self, app, client):
+        for name in ('first', 'second'):
+            response = client.post(REGISTER, json={'username': name, 'password': 'longenough1'})
+            assert response.status_code == 201
+        assert [u.email for u in User.query.order_by(User.username)] == [None, None]
+
+    def test_a_present_email_keeps_its_rules(self, app, client, make_user):
+        make_user('taken', email='Taken@Test.com')
+        bad = client.post(REGISTER, json={**NEW_USER, 'email': 'no-at-sign'})
+        assert (bad.status_code, bad.get_json()['details'][0]['field']) == (400, 'email')
+        long = client.post(REGISTER, json={**NEW_USER, 'email': 'a' * 112 + '@test.com'})
+        assert long.get_json()['details'][0]['code'] == 'too_long'
+        taken = client.post(REGISTER, json={**NEW_USER, 'email': ' taken@TEST.com '})
+        assert (taken.status_code, taken.get_json()['code']) == (409, 'email_taken')
+        ok = client.post(REGISTER, json={**NEW_USER, 'email': ' Newbie@Test.com '})
+        assert ok.status_code == 201
+        assert _stored('newbie').email == 'Newbie@Test.com'
+
+    def test_registration_stamps_password_changed_at(self, app, client, frozen_clock):
+        assert client.post(REGISTER, json=NEW_USER).status_code == 201
+        assert _stored('newbie').password_changed_at == frozen_clock.now

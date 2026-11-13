@@ -261,3 +261,21 @@ def session_payload(row: RbSession, current: Optional[int]) -> dict:
         'auth_method': row.rbses_auth_method,
         'mfa': bool(row.rbses_mfa),
     }
+
+
+def mark_reauth(session_id: int):
+    """Set `reauth_at = now` on one session (POST /me/reauth, F9-b S11) and commit; returns
+    the time written. Only that session: the user's other sessions keep their own."""
+    now = clock.utcnow()
+    db.session.execute(sa.update(RbSession).where(RbSession.rbses_id == session_id)
+                       .values(rbses_reauth_at=now)
+                       .execution_options(synchronize_session='fetch'))
+    db.session.commit()
+    return now
+
+
+def count_active(user_id: int) -> int:
+    """How many active sessions `user_id` has (the `GET /me` security summary, F9-b S7)."""
+    return db.session.execute(
+        sa.select(sa.func.count()).select_from(RbSession)
+        .where(RbSession.rbses_user_id == user_id, active_clause(clock.utcnow()))).scalar_one()

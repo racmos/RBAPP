@@ -138,7 +138,7 @@ The default TTL is 5 minutes (`ALTCHA_EXPIRE_SECONDS=300`), not the 20 minutes o
 
 ### Requirement: LOGIN-9 Input validation shared by Jinja and API [d]
 
-Register input MUST be validated by one Pydantic schema: username `^[A-Za-z0-9_.-]{3,32}$`, email valid format and at most 120 chars, password 8-128 chars. Login input MUST only require non-empty username and password (no pattern), so legacy usernames still log in. Duplicate username or email MUST be refused with the existing messages ("Username already exists", "Email already registered"). Registration MUST NOT log the user in.
+Register input MUST be validated by one Pydantic schema: username `^[A-Za-z0-9_.-]{3,32}$`, email optional since F9-b (when present: valid format and at most 120 chars), password 8-128 chars. Login input MUST only require non-empty username and password (no pattern), so legacy usernames still log in. Duplicate username or email MUST be refused with the existing messages ("Username already exists", "Email already registered"). Registration MUST NOT log the user in.
 
 #### Scenario: Invalid fields
 - GIVEN register payloads with username `ab`, `bad name!`, email `x`, password `short7!`

@@ -40,6 +40,7 @@ import type {
   LocationList,
   LocationPatchBody,
   LoginBody,
+  MeData,
   MetaConfig,
   MyProductAddBody,
   MyProductPatchBody,
@@ -51,6 +52,8 @@ import type {
   ProductListMeta,
   ProductPricesData,
   ProductSummary,
+  ProfilePatch,
+  ReauthBody,
   RegisterBody,
   Session,
   StorageLocation,
@@ -628,6 +631,17 @@ export const patchPrefs = async (changes: Partial<Prefs>): Promise<Prefs> =>
 /** `PATCH /me/account`: only the fields sent change; a new password needs the current one. */
 export const patchAccount = async (changes: AccountChanges): Promise<UserPayload> =>
   (await request<{ user: UserPayload }>('/me/account', { method: 'PATCH', body: changes })).user;
+
+/** `GET /me` (F9-b S7): the user, the private profile and the security summary. */
+export const getMe = (signal?: AbortSignal) => request<MeData>('/me', { signal });
+
+/** `PATCH /me` (F9-b S8): absent = unchanged, `null` or blank = cleared. Returns `GET /me`. */
+export const patchMe = (changes: ProfilePatch) =>
+  request<MeData>('/me', { method: 'PATCH', body: changes });
+
+/** `POST /me/reauth` (F9-b S11): re-authenticate the current session for 10 minutes. */
+export const reauth = (body: ReauthBody) =>
+  request<{ reauth_until: string }>('/me/reauth', { method: 'POST', body });
 
 /** `GET /meta/game` (F2-h S2). */
 export const getGameMeta = (signal?: AbortSignal) => request<GameMeta>('/meta/game', { signal });

@@ -95,3 +95,22 @@ class TestSetPassword:
         db.session.expire_all()
         assert db.session.execute(sa.select(User).where(User.username == 'ana')).scalar_one(
         ).check_password(DEFAULT_PASSWORD)
+
+
+class TestF9bProfileChanges:
+    """F9-b S3 and S13."""
+
+    def test_set_password_stamps_password_changed_at(self, cli, make_user, frozen_clock):
+        make_user('ana')
+        result = cli('users', 'set-password', 'ana', input=f'{NEW_PASSWORD}\n{NEW_PASSWORD}\n')
+        assert result.exit_code == 0, result.stderr
+        db.session.expire_all()
+        assert User.query.filter_by(username='ana').one().password_changed_at == frozen_clock.now
+
+    def test_list_prints_a_dash_for_a_missing_email(self, cli, make_user):
+        make_user('ana')
+        make_user('bo', is_admin=True).email = None
+        db.session.commit()
+        result = cli('users', 'list')
+        assert (result.exit_code, result.stdout, result.stderr) == (
+            0, 'ana  ana@test.com\nbo  -  admin\n', '')

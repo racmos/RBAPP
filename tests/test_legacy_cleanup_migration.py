@@ -114,12 +114,21 @@ def test_the_upgrade_drops_the_legacy_schema_and_keeps_every_other_row(migration
 
 
 def _drift_before_later_revisions():
-    """Drift at this revision, leaving out the tables later revisions add (0029: rbsessions)."""
-    later = {'rbsessions'}
+    """Drift at this revision, leaving out what later revisions add (0029: rbsessions; 0030:
+    rbuserprofile, nullable `rbusers.email` / `password_hash`, `rbusers.password_changed_at`)."""
+    later = {'rbsessions', 'rbuserprofile'}
+    later_user_columns = {'email', 'password_hash', 'password_changed_at'}
     ops = [op for entry in drift() for op in (entry if isinstance(entry, list) else [entry])]
+
+    def later_user_column(op):
+        if op[0] == 'add_column':
+            return op[2] == 'rbusers' and op[3].name in later_user_columns
+        return op[0].startswith('modify_') and op[2] == 'rbusers' and op[3] in later_user_columns
+
     return [op for op in ops
             if getattr(op[1], 'name', None) not in later
-            and getattr(getattr(op[1], 'table', None), 'name', None) not in later]
+            and getattr(getattr(op[1], 'table', None), 'name', None) not in later
+            and not later_user_column(op)]
 
 
 def test_the_downgrade_recreates_the_structure_empty(migration_app):

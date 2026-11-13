@@ -329,7 +329,8 @@ export function ProfilePage() {
             </SettingsRow>
           </SettingsCard>
         </div>
-        {user && <EmailForm email={user.email} {...forms} />}
+        {/* An account without an email (F9-b) shows an empty field. */}
+        {user && <EmailForm email={user.email ?? ''} {...forms} />}
         <PasswordForm {...forms} />
       </div>
     </>

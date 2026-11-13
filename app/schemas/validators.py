@@ -2,6 +2,7 @@
 Pydantic schemas for request validation.
 """
 import re
+import unicodedata
 from datetime import datetime, timezone
 from typing import Annotated, Literal, Optional, List
 
@@ -11,6 +12,7 @@ from pydantic_core import PydanticCustomError
 
 from app.schemas.deck_content import VISIBILITIES, DeckContentV2
 from app.schemas.game_domain import CONDITIONS, GAME_MODES
+from app.schemas.profile_domain import BIO_MAX, CITY_MAX, COUNTRY_SET, DISPLAY_NAME_MAX
 from app.schemas.prefs_domain import (ACCENTS, BG_INTENSITY_MAX, BG_INTENSITY_MIN,
                                       PLAYSET_SIZE_MAX, PLAYSET_SIZE_MIN,
                                       COLLECTION_VIEWS, DENSITIES)
@@ -654,7 +656,8 @@ class RegisterRequest(BaseModel):
     """Register input (LOGIN-9) of POST /auth/register. Extra fields (for
     example `is_admin`) are ignored by Pydantic and never reach the model."""
     username: str = Field(...)
-    email: str = Field(...)
+    # Optional (F9-b S4, D-F9-1): absent, null or blank after trim = no e-mail.
+    email: Optional[str] = None
     password: str = Field(..., min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     @field_validator('username')
@@ -667,7 +670,9 @@ class RegisterRequest(BaseModel):
 
     @field_validator('email')
     @classmethod
-    def validate_email(cls, v: str) -> str:
+    def validate_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
         v = v.strip()
         if len(v) > EMAIL_MAX_LENGTH:
             raise PydanticCustomError(
@@ -705,11 +710,17 @@ class PrefsUpdate(BaseModel):
 
 # ============== Profile Schemas ==============
 
-class ProfileUpdate(BaseModel):
-    """Schema for updating profile.
+CURRENT_PASSWORD_REQUIRED = 'current_password is required to change the password'
 
-    Changing the password needs the current one (PROF-2); an email-only update
-    does not.
+
+class ProfileUpdate(BaseModel):
+    """E-mail and password fields of PATCH /me/account.
+
+    F9-b S5: a `null` or blank e-mail (after trim) means "remove it" (the route tells an absent
+    key from a `null` one through `model_fields_set`). Whether a new password needs the
+    current one depends on the account (an account without a password needs a recent
+    re-authentication instead), so that check lives in `app.services.account`, with the same
+    400 body as before (`CURRENT_PASSWORD_REQUIRED`).
     """
     email: Optional[str] = Field(None, max_length=120)
     password: Optional[str] = Field(None, min_length=PASSWORD_MIN_LENGTH,
@@ -722,22 +733,91 @@ class ProfileUpdate(BaseModel):
     def validate_email(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:
             v = v.strip()
+            if not v:
+                return None
             if '@' not in v:
                 raise ValueError('Invalid email format')
         return v
 
-    @model_validator(mode='after')
-    def current_password_goes_with_a_new_password(self):
-        if self.password is not None and not self.current_password:
-            raise ValueError('current_password is required to change the password')
-        return self
-
 
 class AccountUpdate(ProfileUpdate):
-    """PATCH /me/account: a ProfileUpdate that must change something."""
+    """PATCH /me/account: a ProfileUpdate that must change something: the `email` key sent
+    (a value, or `null` / blank to remove it) or a new password."""
 
     @model_validator(mode='after')
     def something_to_change(self):
-        if self.email is None and self.password is None:
+        if 'email' not in self.model_fields_set and self.password is None:
             raise ValueError('Send an email or a new password')
+        return self
+
+
+# ============== Profile and re-authentication (F9-b) ==============
+
+def _has_control(value: str, allowed: str = '') -> bool:
+    """True when `value` holds a control character (Unicode Cc) other than `allowed`."""
+    return any(unicodedata.category(ch) == 'Cc' and ch not in allowed for ch in value)
+
+
+def _profile_text(value: Optional[str], *, label: str, max_length: int,
+                  line_breaks: bool = False) -> Optional[str]:
+    """Trim; blank = None (cleared); then the length and control-character rules (S8)."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if _has_control(value, '\n\r' if line_breaks else ''):
+        raise PydanticCustomError('invalid_format',
+                                  f'{label} must not contain control characters')
+    if len(value) > max_length:
+        raise PydanticCustomError('string_too_long',
+                                  f'{label} must have at most {{max_length}} characters',
+                                  {'max_length': max_length})
+    return value
+
+
+class ProfilePatch(BaseModel):
+    """PATCH /me body (F9-b S8). Absent = unchanged (the route applies `model_fields_set`
+    only); `null` or blank = cleared. Unknown keys (`username`, `email`, ...) are ignored."""
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+
+    @field_validator('display_name')
+    @classmethod
+    def _display_name(cls, v: Optional[str]) -> Optional[str]:
+        return _profile_text(v, label='Display name', max_length=DISPLAY_NAME_MAX)
+
+    @field_validator('bio')
+    @classmethod
+    def _bio(cls, v: Optional[str]) -> Optional[str]:
+        return _profile_text(v, label='Bio', max_length=BIO_MAX, line_breaks=True)
+
+    @field_validator('city')
+    @classmethod
+    def _city(cls, v: Optional[str]) -> Optional[str]:
+        return _profile_text(v, label='City', max_length=CITY_MAX)
+
+    @field_validator('country')
+    @classmethod
+    def _country(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
+        code = v.strip().upper()
+        if code not in COUNTRY_SET:
+            raise PydanticCustomError('invalid_value',
+                                      'Country must be an ISO 3166-1 alpha-2 code')
+        return code
+
+
+class ReauthRequest(BaseModel):
+    """POST /me/reauth body (F9-b S11): exactly one of `password` or `code` (TOTP, F9-d)."""
+    password: Optional[str] = Field(None, min_length=1, max_length=1024)
+    code: Optional[str] = Field(None, max_length=64)
+
+    @model_validator(mode='after')
+    def exactly_one(self):
+        if (self.password is None) == (self.code is None):
+            raise ValueError('Send either a password or a code')
         return self

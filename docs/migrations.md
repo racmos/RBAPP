@@ -222,6 +222,30 @@ offline `--sql` mode), then `flask db downgrade 0028_legacy_schema_cleanup` and 
 previous code. **Data loss**: the downgrade drops `rbsessions`, so every session ends and every
 user signs in again once more.
 
+## User profile: upgrade to 0030, then restart at once (F9-b)
+
+`0030_user_profile` creates `riftbound.rbuserprofile` (one private profile per user:
+`rbuserprofile_pkey` on `rbupf_user_id`, `rbuserprofile_user_fk` ON DELETE CASCADE; display name,
+bio, country, city, avatar file and version, `rbupf_updated_at`) and alters `rbusers` in batch
+mode: `email` and `password_hash` accept NULL (the `rbusers_email_key` UNIQUE constraint stays;
+several NULLs are allowed on PostgreSQL and SQLite) and the new `password_changed_at` TIMESTAMP
+NULL is added without a backfill (NULL = unknown). No data is converted. The old code runs on the
+new schema; the new code needs it (`password_changed_at`), so restart right after the upgrade.
+
+```bash
+venv/bin/python scripts/db_backup.py   # pg_dump first; check the file (docs/knowledge/ops-runbook.md)
+flask db upgrade                       # 0030
+flask db check                         # "No new upgrade operations detected."
+sudo systemctl restart rbapp           # right after the upgrade: the new code reads the new column
+```
+
+Rollback: `flask db downgrade 0029_sessions` and redeploy the previous code. The downgrade
+**refuses, changing nothing,** while an account has no e-mail or no password (the message lists
+up to 20 usernames), and in offline `--sql` mode: give those accounts an e-mail
+(`PATCH /me/account` as the user, or SQL) and a password (`flask users set-password <username>`)
+or delete them first. **Data loss**: it drops `rbuserprofile` (every display name, bio, country,
+city and avatar reference) and `rbusers.password_changed_at`.
+
 ## The legacy-table backup contains personal data
 
 `legacy_tables_<UTC>.sql` holds **e-mail addresses and password hashes** of the

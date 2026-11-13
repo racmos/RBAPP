@@ -47,19 +47,32 @@ is stored (`tests/test_api_prefs_keys.py`).
 `app/api/v1/me.py` (`api_v1.patch_me_account`, U), logic in `app/services/account.py`: the
 signed-in user changes their own email and/or password (the React profile page,
 `/riftbound/app/account/profile`; PR 1/3 of the Jinja retirement). Same rules as the Jinja
-profile update (PROF-1, PROF-2).
+profile update (PROF-1, PROF-2), plus the optional e-mail and the accounts without a password
+of F9-b (S5).
 
 - Body `AccountUpdate` (`app/schemas/validators.py`): `{email?, password?, current_password?}`.
-  At least `email` or `password`; `email` is trimmed, at most 120 characters and must contain
-  `@`; `password` is 8-128 characters and needs `current_password`; an email-only update does
-  not need the password. Only the fields sent change, all or nothing.
-- 200 -> `{user: {id, username, email, is_admin}}`, the fresh user (never a password). A
-  password change keeps this session and ends every other session of the user in the same
+  The `email` key must be **sent** (a value, or `null` / blank to remove it) or a `password`
+  given, else 400 (`{}`, `{current_password}` alone and `{password: null}` alone are still the
+  400 "Send an email or a new password"). `email`: absent = unchanged; `null` or blank after
+  trim = removed (stored NULL); a value is trimmed, at most 120 characters and must contain
+  `@`. Removing or changing the e-mail needs neither the password nor a re-authentication.
+  `password` is 8-128 characters. Only the fields sent change, all or nothing.
+- **Account with a password**: a new password needs `current_password` (missing or empty: the
+  400 `validation_error` with `details[{field: "", message: "Value error, current_password is
+  required to change the password", type: "value_error", code: "invalid_value"}]`, the same body
+  as before F9-b; wrong: 400 `current_password_incorrect`).
+- **Account without a password** (OAuth-only, F9-f): `current_password` is ignored; setting the
+  first password is a sensitive action and needs a recent re-authentication of the current
+  session (see "Profile and re-authentication (F9-b)"), else 403 `reauth_required` and nothing
+  of the request is applied.
+- 200 -> `{user: UserPayload}`, the fresh user (never a password). A password change stamps
+  `password_changed_at`, keeps this session and ends every other session of the user in the same
   transaction (F9-a S9); an email-only change ends nothing.
 - 400 `validation_error` with `details[{field, message, type, code}]` (`password` too short,
   `email` invalid, a missing `current_password`, an empty body).
 - 400 `current_password_incorrect` (`message` "The current password is incorrect"): nothing is
   written, the email included.
+- 403 `reauth_required` (account without a password only, see above).
 - 409 `email_taken` (`message` "That email address is already in use"): another account has
   the address, ignoring case; the caller's own address in another case is fine.
 - 429 `rate_limited` with `Retry-After`: 10 calls per hour per IP (`ACCOUNT_RATE_LIMIT`,
@@ -1008,10 +1021,117 @@ At most 4 SQL statements.
 GET /riftbound/api/v1/cards/OGN/79/prices?range=30d
 ```
 
+### Profile and re-authentication (F9-b)
+
+Migration `0030_user_profile`: a private profile per user (`rbuserprofile`, model
+`RbUserProfile`, logic `app/services/profile.py`), an optional e-mail (`rbusers.email` NULL =
+none, unique when present, compared ignoring case) and accounts without a password
+(`rbusers.password_hash` NULL, prepared for the OAuth sign-up of F9-f), plus
+`rbusers.password_changed_at` (stamped at registration, on a password change through
+`PATCH /me/account` and by `flask users set-password`; NULL = unknown for older accounts).
+
+- **Registration.** `POST /auth/register` accepts `email` absent, `null` or blank (stored NULL);
+  a present e-mail keeps its rules (format, at most 120, unique ignoring case -> 409
+  `email_taken`). Several accounts may have no e-mail.
+- **Login without a password.** A password login of an account without a password runs the same
+  dummy hash check as an unknown user and answers 401 `invalid_credentials`, exactly like a wrong
+  password; it counts no failure (never locks).
+- **User payload.** `UserPayload` (below) gains `display_name` and `avatar_url` on
+  `GET /auth/session`, `POST /auth/login`, `PATCH /me/account` and `GET /me`; `email` may be null.
+- **`GET /meta/config`** gains `countries`: the 249 officially assigned ISO 3166-1 alpha-2 codes,
+  sorted, upper case (`COUNTRY_CODES` in `app/schemas/profile_domain.py`). The SPA names them with
+  `Intl.DisplayNames(['en'], {type: 'region'})`.
+
+Endpoints (`app/api/v1/me.py`, all U):
+
+| Method | Path | Endpoint | Response |
+|---|---|---|---|
+| GET | `/me` | `api_v1.get_me` | `{user, profile, security}`; never creates a profile row; at most 5 SQL statements |
+| PATCH | `/me` | `api_v1.patch_me` | body `ProfilePatch`; 200 with the `GET /me` body |
+| POST | `/me/reauth` | `api_v1.me_reauth` | body `ReauthRequest`; 200 `{reauth_until}`; 20 per hour per IP |
+
+`GET /me`:
+
+```json
+{"user": {"id": 7, "username": "ada", "email": null, "is_admin": false,
+          "display_name": "Ada", "avatar_url": null},
+ "profile": {"display_name": "Ada", "bio": null, "country": "ES", "city": null,
+             "avatar_url": null, "updated_at": "2030-01-01T12:00:00Z"},
+ "security": {"has_password": true, "password_changed_at": null,
+              "member_since": "2030-01-01T12:00:00Z",
+              "mfa": {"available": false, "enabled": false, "pending": false,
+                      "recovery_codes_left": 0},
+              "sessions_active": 2, "api_key": null, "connections": [],
+              "reauth_until": "2030-01-01T12:10:00Z"}}
+```
+
+- `profile`: every key null when the user has no profile row; `avatar_url` is null until F9-c.
+- `security`: `member_since` = `rbusers.created_at`; `sessions_active` = the caller's active
+  sessions (F9-a rule); `reauth_until` = the current session's `reauth_at` + 10 minutes when that
+  is still in the future, else null. `mfa` (F9-d), `api_key` (F9-h) and `connections` (F9-f) keep
+  these values until those units. Times use the F9-a format (UTC, `%Y-%m-%dT%H:%M:%SZ`).
+
+`PATCH /me` (`ProfilePatch`): absent = unchanged; `null` or a blank string (after trim) = cleared.
+Every rule is a 400 `validation_error` with the detail code shown, and nothing is stored
+(all-or-nothing):
+
+- `display_name`: trimmed, at most 40 characters (`too_long` `{max: 40}`), no control characters
+  (`invalid_format`);
+- `bio`: trimmed, at most 240 characters (`too_long` `{max: 240}`), line breaks (`\n`, `\r`)
+  allowed, other control characters refused (`invalid_format`);
+- `country`: one of `COUNTRY_CODES`, case-insensitive, stored upper case (`invalid_value`);
+- `city`: trimmed, at most 80 characters (`too_long` `{max: 80}`), no control characters
+  (`invalid_format`).
+
+Unknown keys are ignored (`username`, `email`, `is_admin` in this body change nothing). The first
+successful PATCH creates the row; every PATCH sets `updated_at`. Example:
+`{"display_name": "  Ana  ", "country": "es"}` -> `display_name` "Ana", `country` "ES", `bio`
+and `city` unchanged.
+
+**Re-authentication rule** (`app/security.py`, decorator `reauth_required`): a sensitive request
+passes when the **current session**'s `reauth_at` is within the last 10 minutes
+(`REAUTH_WINDOW`); a sign-in sets it (F9-a), and so does `POST /me/reauth`. Otherwise:
+
+```json
+{"success": false, "error": "Forbidden", "message": "Confirm your identity to continue",
+ "code": "reauth_required", "params": {"methods": ["password"]}}
+```
+
+with status 403 and nothing of the request applied. `methods` lists what the caller can use, in
+this order: `password` (when the account has one), `totp` (F9-d, when 2FA is enabled), `discord`,
+`google` (F9-f, linked providers); today only `password` exists, so an account without a password
+gets `[]`. Sensitive actions (each unit applies the rule to its own route): setting a first
+password on an account without one (`PATCH /me/account`, F9-b); `POST /me/2fa/setup`, `/enable`,
+`/disable`, `/recovery-codes` (F9-d); `POST /me/api-key` (F9-h); `DELETE /me/connections/<provider>`
+and the OAuth `link` intent (F9-f). Not sensitive: profile, avatar, e-mail change or removal,
+password change with the current password, revoking sessions, revoking the API key, logout.
+
+`POST /me/reauth` (`ReauthRequest`: exactly one of `password` (1-1024 characters) or `code`):
+200 `{reauth_until}` and only the current session's `reauth_at` = now.
+
+- `password`, account with a password: wrong -> 400 `current_password_incorrect`, nothing
+  written; it never touches the login failure counter (`failed_login_count`) or the lock.
+- `password`, account without one -> 400 `validation_error` (`field` `password`, `invalid_value`,
+  "This account has no password").
+- `code`: until F9-d -> 400 `validation_error` (`field` `code`, `invalid_value`, "Two-factor
+  authentication is not enabled").
+- both or neither -> 400 `validation_error`.
+- 429 `rate_limited` with `Retry-After` after 20 calls per hour per IP (shared scope `reauth`).
+
+New error code `reauth_required` (403), `code.reauth_required` "Confirm your identity to
+continue." in `frontend/src/i18n/locales/en/errors.json`.
+
 ## Data shapes
 
 Additive changes only: new keys may be appended, existing keys are never renamed,
 retyped or removed without a new unit.
+
+`UserPayload` (F9-b S6) = the `user` of `GET /auth/session`, `POST /auth/login`,
+`PATCH /me/account` and `GET /me`: `{id, username, email|null, is_admin, display_name|null,
+avatar_url|null}`. `display_name` is the profile value; `avatar_url` is null until F9-c.
+
+`MetaConfig` = the `data` object of `GET /meta/config`: `{env, registration_open, captcha:
+{provider, required_for: [str]}, csrf: {header}, countries: [str]}` (`countries` since F9-b).
 
 `GameMeta` = the `data` object of `GET /meta/game`:
 `{modes: [str], domains: [str], types: [str], supertypes: [str], rarities: [str],

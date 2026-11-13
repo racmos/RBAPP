@@ -1,9 +1,59 @@
 /** Shapes of the JSON API v1 (`/riftbound/api/v1`). Mirrors the backend envelope (API-1). */
 
-export type UserPayload = { id: number; username: string; email: string; is_admin: boolean };
+/** The public fields of an account (F9-b S6): `email` is optional (`null` = none),
+    `display_name` comes from the private profile, `avatar_url` is `null` until F9-c. */
+export type UserPayload = {
+  id: number;
+  username: string;
+  email: string | null;
+  is_admin: boolean;
+  display_name: string | null;
+  avatar_url: string | null;
+};
 
-/** Body of `PATCH /me/account`: the email, or a new password with the current one. */
-export type AccountChanges = { email?: string; password?: string; current_password?: string };
+/** Body of `PATCH /me/account`: the email (`null` or blank removes it, F9-b S5), or a new
+    password with the current one. */
+export type AccountChanges = {
+  email?: string | null;
+  password?: string;
+  current_password?: string;
+};
+
+/** The `profile` of `GET /me` (F9-b S7); every key is `null` until the first `PATCH /me`. */
+export type ProfileData = {
+  display_name: string | null;
+  bio: string | null;
+  /** ISO 3166-1 alpha-2, upper case; the names come from `Intl.DisplayNames`. */
+  country: string | null;
+  city: string | null;
+  avatar_url: string | null;
+  updated_at: string | null;
+};
+
+/** The `security` summary of `GET /me` (F9-b S7). `mfa`, `api_key` and `connections` keep these
+    values until F9-d, F9-h and F9-f fill them. */
+export type SecuritySummary = {
+  has_password: boolean;
+  password_changed_at: string | null;
+  member_since: string | null;
+  mfa: { available: boolean; enabled: boolean; pending: boolean; recovery_codes_left: number };
+  sessions_active: number;
+  api_key: null;
+  connections: unknown[];
+  /** End of the current session's re-authentication window, `null` when it has passed. */
+  reauth_until: string | null;
+};
+
+/** `GET /me` and `PATCH /me` (F9-b S7, S8). */
+export type MeData = { user: UserPayload; profile: ProfileData; security: SecuritySummary };
+
+/** Body of `PATCH /me` (F9-b S8): absent = unchanged, `null` or blank = cleared. */
+export type ProfilePatch = Partial<
+  Record<'display_name' | 'bio' | 'country' | 'city', string | null>
+>;
+
+/** Body of `POST /me/reauth` (F9-b S11): exactly one of a password or a TOTP code (F9-d). */
+export type ReauthBody = { password: string; code?: never } | { code: string; password?: never };
 
 /** The stored interface preferences; `null` means Auto (PREF-2). `playset_size` (F3) is not an
     interface preference: `null` means 3 copies. The app is English-only (owner feedback
@@ -34,6 +84,8 @@ export type MetaConfig = {
   registration_open: boolean;
   captcha: { provider: string; required_for: string[] };
   csrf: { header: string };
+  /** The profile country codes (F9-b S12), sorted. */
+  countries: string[];
 };
 
 export type LoginBody = { username: string; password: string; remember: boolean };
