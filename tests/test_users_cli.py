@@ -114,3 +114,53 @@ class TestF9bProfileChanges:
         result = cli('users', 'list')
         assert (result.exit_code, result.stdout, result.stderr) == (
             0, 'ana  ana@test.com\nbo  -  admin\n', '')
+
+
+class TestReset2fa:
+    """F9-d S15: `flask users reset-2fa USERNAME` over `mfa.reset(user)`."""
+
+    @staticmethod
+    def _turn_on(user, frozen_clock):
+        import pyotp
+        from datetime import timezone
+        from app.services import mfa
+        secret = mfa.setup(user)['secret'].replace(' ', '')
+        totp = pyotp.TOTP(secret)
+        code = totp.generate_otp(totp.timecode(frozen_clock.now.replace(tzinfo=timezone.utc)))
+        status, _, _ = mfa.enable(user, code, keep_session_id=None)
+        assert status is mfa.MfaStatus.OK
+
+    @staticmethod
+    def _rows(user_id):
+        from app.models import RbRecoveryCode, RbUserMfa
+        db.session.expire_all()
+        return (db.session.get(RbUserMfa, user_id) is not None,
+                db.session.execute(sa.select(sa.func.count()).select_from(RbRecoveryCode).where(
+                    RbRecoveryCode.rbrco_user_id == user_id)).scalar_one())
+
+    def test_removes_2fa_and_ends_every_session(self, app, cli, make_user, frozen_clock):
+        ana, bo = make_user('ana'), make_user('bo')
+        self._turn_on(ana, frozen_clock)
+        self._turn_on(bo, frozen_clock)
+        clients = [login_as(app.test_client(), 'ana'), login_as(app.test_client(), 'ana')]
+        bo_client = login_as(app.test_client(), 'bo')
+        result = cli('users', 'reset-2fa', 'ana')
+        assert (result.exit_code, result.stdout, result.stderr) == (
+            0, "Two-factor authentication removed for 'ana'; 2 session(s) ended\n", '')
+        assert self._rows(ana.id) == (False, 0)
+        assert self._rows(bo.id) == (True, 10)
+        assert not any(authenticated(c) for c in clients)
+        assert authenticated(bo_client)
+
+    def test_a_user_without_2fa_changes_nothing(self, app, cli, make_user):
+        ana = make_user('ana')
+        client = login_as(app.test_client(), 'ana')
+        result = cli('users', 'reset-2fa', 'ana')
+        assert (result.exit_code, result.stdout, result.stderr) == (
+            0, "'ana' has no two-factor authentication\n", '')
+        assert authenticated(client)
+        assert active_count(ana.id) == 1
+
+    def test_an_unknown_user(self, cli):
+        result = cli('users', 'reset-2fa', 'ghost')
+        assert (result.exit_code, result.stderr) == (1, "Error: No such user: 'ghost'\n")

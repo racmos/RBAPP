@@ -35,3 +35,10 @@ def test_the_avatar_codes_have_their_text(code, text):
     """F9-c S11."""
     assert ErrorCode(code).value == code
     assert _codes()[code] == text
+
+
+def test_the_mfa_invalid_code_has_its_text():
+    """F9-d S17."""
+    assert ErrorCode('mfa_invalid').value == 'mfa_invalid'
+    assert _codes()['mfa_invalid'] == ('That code is not valid. Check your authenticator app '
+                                       'and try again.')

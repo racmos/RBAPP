@@ -11,14 +11,12 @@ from typing import Optional
 from app import db
 from app.models import RbUserProfile
 from app.security import reauth_until
-from app.services import sessions
+from app.services import mfa, sessions
 from app.services.avatars import profile_avatar_url
 from app.utils import clock
 
 _LOOKUP = object()
 PROFILE_FIELDS = ('display_name', 'bio', 'country', 'city')
-# What `security.mfa` says until F9-d (TOTP) fills it.
-NO_MFA = {'available': False, 'enabled': False, 'pending': False, 'recovery_codes_left': 0}
 
 
 def get_profile(user_id: int) -> Optional[RbUserProfile]:
@@ -50,13 +48,13 @@ def profile_payload(row: Optional[RbUserProfile]) -> dict:
 
 
 def security_summary(user) -> dict:
-    """The `security` object of `GET /me` (S7). `mfa`, `api_key` and `connections` keep these
-    values until F9-d, F9-h and F9-f fill them."""
+    """The `security` object of `GET /me` (S7). `mfa` comes from `app.services.mfa` (F9-d S14);
+    `api_key` and `connections` keep these values until F9-h and F9-f fill them."""
     return {
         'has_password': user.has_password,
         'password_changed_at': sessions._iso(user.password_changed_at),
         'member_since': sessions._iso(user.created_at),
-        'mfa': dict(NO_MFA),
+        'mfa': mfa.status(user.id),
         'sessions_active': sessions.count_active(user.id),
         'api_key': None,
         'connections': [],

@@ -40,3 +40,12 @@ def test_both_files_keep_crlf_endings():
     for path in (EXAMPLE, README):
         data = path.read_bytes()
         assert data.count(b'\n') == data.count(b'\r\n'), f'{path.name} is not CRLF throughout'
+
+
+def test_the_totp_encryption_key_is_in_both():
+    """F9-d S2: an empty value and a comment on how to generate one."""
+    assert 'TOTP_ENCRYPTION_KEY' in _example_variables()
+    assert 'TOTP_ENCRYPTION_KEY' in _readme_variables()
+    lines = EXAMPLE.read_text(encoding='utf-8').splitlines()
+    assert 'TOTP_ENCRYPTION_KEY=' in lines
+    assert 'Fernet.generate_key()' in EXAMPLE.read_text(encoding='utf-8')

@@ -56,7 +56,8 @@ There is no production yet (phase F12). Everything here is the development serve
 ## Service operations
 
 - Status and logs: `systemctl status <service>`, `journalctl -u <service> -n 200 --no-pager`.
-- Users: `venv/bin/flask users list|promote|demote|block|unblock|unlock|set-password <username>`.
+- Users: `venv/bin/flask users list|promote|demote|block|unblock|unlock|set-password|reset-2fa <username>`
+  (`reset-2fa`: see "Two-factor key (F9-d)").
 - Schema snapshot (structure only): `venv/bin/flask schema snapshot`.
 - Card bans per game mode (F2-a; the only way to change them until the F10 admin UI; a ban covers every
   printing of the name):
@@ -519,6 +520,48 @@ change, and do not add an alias for it.
   gets 401.
 - Rollback: revert the PR, redeploy (Pillow can stay installed). Uploaded files stay in `AVATAR_DIR`,
   harmless; the profile rows keep the stem and version (the reverted code ignores them).
+
+## Two-factor key (F9-d)
+
+TOTP secrets (`rbusermfa.rbmfa_secret_enc`) are stored only encrypted with the Fernet key
+`TOTP_ENCRYPTION_KEY`. The database alone cannot produce a code; the key alone holds no secret. Keep
+them apart.
+
+- Generate the key once, on the server, printed to the terminal only (never to a file in the checkout,
+  never pasted into chat, an issue or git):
+
+  ```bash
+  venv/bin/python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+  ```
+
+  It is 44 characters of URL-safe base64 (32 bytes).
+- Put it only in the service environment file (the file the systemd unit's `EnvironmentFile` names, or
+  the environment file of the deployed checkout on the dev server; `ops.local.md` says which), as
+  `TOTP_ENCRYPTION_KEY=<key>`, mode 600/640 owned by root or the service user, **before** the restart
+  that brings the F9-d code. Every process that runs the app needs the same value (gunicorn and the
+  `flask` CLI and timers use the same file).
+- Startup: in production a missing key stops the app with `ConfigError` "TOTP_ENCRYPTION_KEY is
+  missing", an invalid one with "TOTP_ENCRYPTION_KEY is not a valid key" (the value is never printed).
+  In development a missing key only logs a warning and two-factor authentication is unavailable
+  (`GET /riftbound/api/v1/me` → `security.mfa.available: false`; the `/me/2fa/*` routes answer 503); an
+  invalid one stops the app too.
+- Backup: copy the key to the owner's password manager (or another offline place) **apart from** the
+  database dumps; a dump and the key together are enough to read every user's TOTP secret. The nightly
+  backup does not copy it.
+- Lost or changed key: every stored secret becomes unreadable. Signed-in users with 2FA get 503
+  "Two-factor authentication is not available" on the 2FA routes and on `POST /me/reauth` with a code
+  (logged as `The TOTP secret of user <id> cannot be decrypted`, never the secret). Recovery: set a new
+  key, restart, then remove each affected user's 2FA with `venv/bin/flask users reset-2fa <username>`
+  (it also ends all their sessions); users set 2FA up again. A user can also turn it off with one of
+  their recovery codes, which does not need the key. There is no key rotation tool yet.
+- Admin reset (lost phone and codes): `venv/bin/flask users reset-2fa <username>` →
+  `Two-factor authentication removed for '<username>'; <n> session(s) ended` (`'<username>' has no
+  two-factor authentication` when it is off; nothing changes then). Until F10 this is the only way.
+- Live check (after the deploy): `GET /riftbound/api/v1/me` → `security.mfa.available: true`; with an
+  authenticator app: setup → enable with a code → 10 recovery codes; disable with a recovery code.
+- Rollback: revert the PR and `venv/bin/flask db downgrade -1` (drops `rbusermfa` and
+  `rbrecoverycodes`: every user's 2FA is lost; owner's go-ahead). The key can stay in the environment
+  (the reverted code ignores it). The packages can stay installed.
 
 ## Jinja retirement (PR 3/3)
 

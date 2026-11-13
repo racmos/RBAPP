@@ -182,3 +182,91 @@ class TestReauth:
     def test_anonymous_is_401(self, client):
         response = client.post(REAUTH, json={'password': DEFAULT_PASSWORD})
         assert (response.status_code, response.get_json()['code']) == (401, 'unauthenticated')
+
+
+# --- POST /me/reauth with a TOTP code (F9-d S13) ----------------------------------------------
+
+def _totp_code(frozen_clock, secret, offset=0):
+    import pyotp
+    from datetime import timezone
+    totp = pyotp.TOTP(secret)
+    return totp.generate_otp(totp.timecode(frozen_clock.now.replace(tzinfo=timezone.utc))
+                             + offset)
+
+
+@pytest.fixture
+def ana_2fa(ana, frozen_clock):
+    """`ana` with 2FA on; returns (secret, recovery codes). The clock then moves past the
+    window, so the session needs a re-authentication and the next code is new."""
+    secret = ana.post(f'{API}/me/2fa/setup').get_json()['data']['secret'].replace(' ', '')
+    response = ana.post(f'{API}/me/2fa/enable', json={'code': _totp_code(frozen_clock, secret)})
+    assert response.status_code == 200, response.get_json()
+    frozen_clock.advance(minutes=30)
+    return secret, response.get_json()['data']['recovery_codes']
+
+
+MFA_INVALID = {'success': False, 'error': 'Bad Request', 'message': 'The code is not valid',
+               'code': 'mfa_invalid'}
+
+
+class TestReauthWithTotp:
+    def test_a_current_code_re_authenticates(self, ana, ana_2fa, frozen_clock):
+        assert ana.post(PROBE).status_code == 403
+        response = ana.post(REAUTH, json={'code': _totp_code(frozen_clock, ana_2fa[0])})
+        assert response.get_json() == {'success': True,
+                                       'data': {'reauth_until': '2030-01-01T12:40:00Z'}}
+        assert ana.post(PROBE).status_code == 200
+
+    def test_an_adjacent_code_is_accepted_with_spaces(self, ana, ana_2fa, frozen_clock):
+        given = _totp_code(frozen_clock, ana_2fa[0], offset=-1)
+        response = ana.post(REAUTH, json={'code': f'{given[:3]} {given[3:]}'})
+        assert response.status_code == 200
+
+    def test_a_replayed_code_is_refused(self, ana, ana_2fa, frozen_clock):
+        given = _totp_code(frozen_clock, ana_2fa[0])
+        assert ana.post(REAUTH, json={'code': given}).status_code == 200
+        frozen_clock.advance(minutes=11)
+        response = ana.post(REAUTH, json={'code': given})
+        assert (response.status_code, response.get_json()) == (400, MFA_INVALID)
+        assert ana.post(PROBE).status_code == 403
+
+    def test_a_recovery_code_is_refused_and_not_spent(self, ana, ana_2fa):
+        response = ana.post(REAUTH, json={'code': ana_2fa[1][0]})
+        assert (response.status_code, response.get_json()) == (400, MFA_INVALID)
+        assert ana.post(PROBE).status_code == 403
+        assert ana.get(f'{API}/me').get_json()['data']['security']['mfa'][
+            'recovery_codes_left'] == 10
+
+    def test_a_wrong_code_counts_no_login_failure(self, ana, ana_2fa):
+        for _ in range(6):
+            assert ana.post(REAUTH, json={'code': '000000'}).get_json()['code'] in (
+                'mfa_invalid',)
+        user = stored()
+        assert (user.failed_login_count, user.locked_until) == (0, None)
+
+    def test_the_password_still_works(self, ana, ana_2fa):
+        assert ana.post(REAUTH, json={'password': DEFAULT_PASSWORD}).status_code == 200
+
+    def test_methods_list_totp_when_it_is_on(self, ana, ana_2fa):
+        assert ana.post(PROBE).get_json()['params'] == {'methods': ['password', 'totp']}
+        remove_password()
+        assert ana.post(PROBE).get_json()['params'] == {'methods': ['totp']}
+
+    def test_a_pending_setup_is_not_on(self, ana, frozen_clock):
+        secret = ana.post(f'{API}/me/2fa/setup').get_json()['data']['secret'].replace(' ', '')
+        frozen_clock.advance(minutes=30)
+        assert ana.post(PROBE).get_json()['params'] == {'methods': ['password']}
+        assert details(ana.post(REAUTH, json={'code': _totp_code(frozen_clock, secret)})) == [
+            {'field': 'code', 'code': 'invalid_value',
+             'message': 'Two-factor authentication is not enabled'}]
+
+    def test_an_undecryptable_secret_is_503_and_nothing_is_marked(self, app, ana, ana_2fa,
+                                                                 frozen_clock, caplog):
+        from cryptography.fernet import Fernet
+        app.config['TOTP_ENCRYPTION_KEY'] = Fernet.generate_key().decode()
+        response = ana.post(REAUTH, json={'code': _totp_code(frozen_clock, ana_2fa[0])})
+        assert (response.status_code, response.get_json()) == (503, {
+            'success': False, 'error': 'Service Unavailable',
+            'message': 'Two-factor authentication is not available'})
+        assert ana_2fa[0] not in caplog.text
+        assert ana.post(PROBE).status_code == 403

@@ -42,6 +42,7 @@ import type {
   LoginBody,
   MeData,
   MetaConfig,
+  MfaSetup,
   MyProductAddBody,
   MyProductPatchBody,
   MyProducts,
@@ -54,6 +55,7 @@ import type {
   ProductSummary,
   ProfilePatch,
   ReauthBody,
+  RecoveryCodes,
   RegisterBody,
   Session,
   StorageLocation,
@@ -642,6 +644,22 @@ export const patchMe = (changes: ProfilePatch) =>
 /** `POST /me/reauth` (F9-b S11): re-authenticate the current session for 10 minutes. */
 export const reauth = (body: ReauthBody) =>
   request<{ reauth_until: string }>('/me/reauth', { method: 'POST', body });
+
+/** `POST /me/2fa/setup` (F9-d S7, re-auth): a new pending secret, its URI and QR code. */
+export const setupMfa = () => request<MfaSetup>('/me/2fa/setup', { method: 'POST' });
+
+/** `POST /me/2fa/enable` (F9-d S8, re-auth): confirm the setup with a code; returns the
+    recovery codes. A wrong code is a 400 `mfa_invalid`. */
+export const enableMfa = (code: string) =>
+  request<RecoveryCodes>('/me/2fa/enable', { method: 'POST', body: { code } });
+
+/** `POST /me/2fa/disable` (F9-d S9, re-auth): turn 2FA off with a TOTP or a recovery code. */
+export const disableMfa = (code: string) =>
+  request<{ revoked_sessions: number }>('/me/2fa/disable', { method: 'POST', body: { code } });
+
+/** `POST /me/2fa/recovery-codes` (F9-d S10, re-auth): ten new codes replace the old ones. */
+export const regenerateRecoveryCodes = () =>
+  request<RecoveryCodes>('/me/2fa/recovery-codes', { method: 'POST' });
 
 /** `GET /meta/game` (F2-h S2). */
 export const getGameMeta = (signal?: AbortSignal) => request<GameMeta>('/meta/game', { signal });

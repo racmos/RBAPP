@@ -13,7 +13,8 @@ ME = f'{API}/me'
 NOW = '2030-01-01T12:00:00Z'
 EMPTY_PROFILE = {'display_name': None, 'bio': None, 'country': None, 'city': None,
                  'avatar_url': None, 'updated_at': None}
-NO_MFA = {'available': False, 'enabled': False, 'pending': False, 'recovery_codes_left': 0}
+# F9-d S14: the default test app has a TOTP key, so 2FA is available and off.
+MFA_OFF = {'available': True, 'enabled': False, 'pending': False, 'recovery_codes_left': 0}
 
 
 @pytest.fixture
@@ -55,7 +56,7 @@ class TestGetMe:
             'profile': EMPTY_PROFILE,
             'security': {
                 'has_password': True, 'password_changed_at': None, 'member_since': NOW,
-                'mfa': NO_MFA, 'sessions_active': 1, 'api_key': None, 'connections': [],
+                'mfa': MFA_OFF, 'sessions_active': 1, 'api_key': None, 'connections': [],
                 'reauth_until': '2030-01-01T12:10:00Z'},
         }
 

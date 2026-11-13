@@ -1059,7 +1059,7 @@ Endpoints (`app/api/v1/me.py`, all U):
              "avatar_url": null, "updated_at": "2030-01-01T12:00:00Z"},
  "security": {"has_password": true, "password_changed_at": null,
               "member_since": "2030-01-01T12:00:00Z",
-              "mfa": {"available": false, "enabled": false, "pending": false,
+              "mfa": {"available": true, "enabled": false, "pending": false,
                       "recovery_codes_left": 0},
               "sessions_active": 2, "api_key": null, "connections": [],
               "reauth_until": "2030-01-01T12:10:00Z"}}
@@ -1069,8 +1069,9 @@ Endpoints (`app/api/v1/me.py`, all U):
   avatar URL or null (F9-c, see "Avatar (F9-c)").
 - `security`: `member_since` = `rbusers.created_at`; `sessions_active` = the caller's active
   sessions (F9-a rule); `reauth_until` = the current session's `reauth_at` + 10 minutes when that
-  is still in the future, else null. `mfa` (F9-d), `api_key` (F9-h) and `connections` (F9-f) keep
-  these values until those units. Times use the F9-a format (UTC, `%Y-%m-%dT%H:%M:%SZ`).
+  is still in the future, else null. `mfa` = `{available, enabled, pending,
+  recovery_codes_left}` (F9-d S14, see "Two-factor authentication (F9-d)"); `api_key` (F9-h) and
+  `connections` (F9-f) keep these values until those units. Times use the F9-a format (UTC, `%Y-%m-%dT%H:%M:%SZ`).
 
 `PATCH /me` (`ProfilePatch`): absent = unchanged; `null` or a blank string (after trim) = cleared.
 Every rule is a 400 `validation_error` with the detail code shown, and nothing is stored
@@ -1100,8 +1101,8 @@ passes when the **current session**'s `reauth_at` is within the last 10 minutes
 
 with status 403 and nothing of the request applied. `methods` lists what the caller can use, in
 this order: `password` (when the account has one), `totp` (F9-d, when 2FA is enabled), `discord`,
-`google` (F9-f, linked providers); today only `password` exists, so an account without a password
-gets `[]`. Sensitive actions (each unit applies the rule to its own route): setting a first
+`google` (F9-f, linked providers); today `password` and `totp` exist, so an account without a
+password and without 2FA gets `[]`. Sensitive actions (each unit applies the rule to its own route): setting a first
 password on an account without one (`PATCH /me/account`, F9-b); `POST /me/2fa/setup`, `/enable`,
 `/disable`, `/recovery-codes` (F9-d); `POST /me/api-key` (F9-h); `DELETE /me/connections/<provider>`
 and the OAuth `link` intent (F9-f). Not sensitive: profile, avatar, e-mail change or removal,
@@ -1114,8 +1115,14 @@ password change with the current password, revoking sessions, revoking the API k
   written; it never touches the login failure counter (`failed_login_count`) or the lock.
 - `password`, account without one -> 400 `validation_error` (`field` `password`, `invalid_value`,
   "This account has no password").
-- `code`: until F9-d -> 400 `validation_error` (`field` `code`, `invalid_value`, "Two-factor
-  authentication is not enabled").
+- `code`, 2FA on (F9-d S13): checked like every TOTP code (one step either side, a step never
+  accepted twice; the accepted step is stored with `reauth_at`). Wrong or replayed -> 400
+  `{"error": "Bad Request", "message": "The code is not valid", "code": "mfa_invalid"}`;
+  recovery codes are **not** accepted here (same 400, the code is not spent). Never counted as a
+  login failure. 503 "Two-factor authentication is not available" when the stored secret cannot
+  be decrypted or the server has no key.
+- `code`, 2FA off (or only a pending setup) -> 400 `validation_error` (`field` `code`,
+  `invalid_value`, "Two-factor authentication is not enabled").
 - both or neither -> 400 `validation_error`.
 - 429 `rate_limited` with `Retry-After` after 20 calls per hour per IP (shared scope `reauth`).
 
@@ -1189,6 +1196,103 @@ the request has none), browsers the inline error page "413 Payload Too Large".
 New error codes: `image_invalid` (400) "That file is not a supported image. Use a JPEG, PNG, WebP
 or GIF of at least 64 by 64 pixels." and `file_too_large` (413) "The file is too large (maximum
 {{max_mb}} MB)." (`frontend/src/i18n/locales/en/errors.json`).
+
+### Two-factor authentication (F9-d)
+
+Migration `0031_mfa`: `rbusermfa` (model `RbUserMfa`: the Fernet ciphertext of the TOTP secret,
+`rbmfa_enabled_at` NULL = pending setup, `rbmfa_last_step` = last accepted step) and
+`rbrecoverycodes` (model `RbRecoveryCode`: sha256 of each recovery code, `rbrco_used_at`). Logic
+in `app/services/mfa.py`, the only module that knows `TOTP_ENCRYPTION_KEY`; routes in
+`app/api/v1/mfa.py`. Optional for every user, admins included. Sign-in does not ask for the code
+yet (F9-e); no screen yet (F9-j).
+
+| Method | Path | Auth | Endpoint | Body | Response |
+|---|---|---|---|---|---|
+| POST | `/me/2fa/setup` | U (re-auth) | `api_v1.mfa_setup` | none | `{secret, otpauth_uri, qr}`, `no-store` |
+| POST | `/me/2fa/enable` | U (re-auth) | `api_v1.mfa_enable` | `MfaCode` | `{recovery_codes, revoked_sessions}`, `no-store` |
+| POST | `/me/2fa/disable` | U (re-auth) | `api_v1.mfa_disable` | `MfaCode` | `{revoked_sessions}` |
+| POST | `/me/2fa/recovery-codes` | U (re-auth) | `api_v1.mfa_recovery_codes` | none | `{recovery_codes, revoked_sessions}`, `no-store` |
+
+`MfaCode` = `{"code": "<1-32 characters>"}` (absent, empty or longer -> 400 `validation_error`).
+
+Rules shared by the four routes, checked in this order:
+
+1. Signed in (401 `unauthenticated`).
+2. `20/hour` per IP, one counter for the four (scope `mfa_manage`); the 21st -> 429
+   `rate_limited` with `Retry-After`.
+3. 2FA available: without a usable `TOTP_ENCRYPTION_KEY` (a development server without one), and
+   when a stored secret cannot be decrypted (the key changed; logged with the user id, never the
+   secret), the answer is 503 and nothing is kept:
+
+   ```json
+   {"success": false, "error": "Service Unavailable",
+    "message": "Two-factor authentication is not available"}
+   ```
+4. The body (`MfaCode`) on enable and disable.
+5. A recent re-authentication of the current session (403 `reauth_required`, see above; nothing
+   applied).
+
+A wrong code is always **400** `mfa_invalid` here (a 401 would make the SPA treat the user as
+signed out) and never touches `failed_login_count`:
+
+```json
+{"success": false, "error": "Bad Request", "message": "The code is not valid",
+ "code": "mfa_invalid"}
+```
+
+**Codes.** TOTP with SHA-1, 6 digits, 30-second steps (authenticator-app defaults). Spaces are
+removed; anything but 6 ASCII digits is refused. A code is accepted when it equals (constant-time
+comparison) the code of step `s` in `current - 1 .. current + 1` (`current = unix time // 30`)
+**and** `s` is later than the last accepted step; `s` is then stored in the same transaction as
+the change. Example: a code accepted at step 100 is refused at steps 100 and 101; the code of step
+101 is accepted.
+
+**Recovery codes.** 10 per generation, each 10 characters of `abcdefghjkmnpqrstuvwxyz23456789`,
+shown once as `xxxxx-xxxxx`; stored only as sha256 of the normalised code (lower case, no spaces
+or hyphens), so `ABCDE FGHJK` and `abcde-fghjk` are the same code. Each works once; a new
+generation deletes every previous code.
+
+`POST /me/2fa/setup` (no body): 2FA already on -> 409 `already_exists` "Two-factor authentication
+is already on". Otherwise a new 160-bit secret replaces any earlier pending one (`last_step`
+cleared) and the answer is the only time it is shown:
+
+```json
+{"secret": "ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
+ "otpauth_uri": "otpauth://totp/Rift%20Manager:ada?secret=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567&issuer=Rift%20Manager",
+ "qr": "data:image/svg+xml;charset=utf-8,..."}
+```
+
+`secret` is grouped by 4 (the text alternative of the QR); `qr` is the QR code of `otpauth_uri`
+(segno, error level M) as an SVG data URI.
+
+`POST /me/2fa/enable {code}`: no pending setup -> 404 envelope "Two-factor authentication is not
+set up"; already on -> 409 `already_exists`; wrong or replayed code -> 400 `mfa_invalid`, nothing
+changes. Success, in one transaction: `enabled_at = now`, the step stored, 10 new recovery codes,
+the current session marked `mfa = true`, every **other** session of the user revoked ->
+`{"recovery_codes": ["abcde-fghjk", ...10], "revoked_sessions": 1}`.
+
+`POST /me/2fa/disable {code}` (a TOTP code or a recovery code): 2FA not on (none or only pending)
+-> 404 envelope "Two-factor authentication is not on"; wrong, replayed or used code -> 400
+`mfa_invalid`, nothing changes. Success: the `rbusermfa` row and every recovery code of the user
+are deleted and every other session is revoked -> `{"revoked_sessions": 1}`.
+
+`POST /me/2fa/recovery-codes` (no body): not on -> 404 envelope; otherwise 10 new codes replace
+the old ones and every other session is revoked -> `{"recovery_codes": [...], "revoked_sessions": n}`.
+
+`GET /me` `security.mfa` = `{available, enabled, pending, recovery_codes_left}`: `available` is
+false without a usable key; `pending` = a setup without `enabled_at`; `recovery_codes_left` =
+unused codes (0 when off). `POST /me/reauth` accepts a TOTP code when 2FA is on (see above), and
+`reauth_required.params.methods` then includes `totp`.
+
+`flask users reset-2fa USERNAME` (the owner's way out until the F10 admin reset, service
+`mfa.reset(user)`): deletes the user's 2FA row and recovery codes and ends all their sessions ->
+`Two-factor authentication removed for '<username>'; <n> session(s) ended`; without 2FA ->
+`'<username>' has no two-factor authentication` (exit 0, nothing changed); unknown user -> `No
+such user` (exit 1).
+
+New error code `mfa_invalid` (400) "That code is not valid. Check your authenticator app and try
+again." (`frontend/src/i18n/locales/en/errors.json`). Frontend (types and endpoints only):
+`MfaSetup`, `RecoveryCodes`, `setupMfa`, `enableMfa`, `disableMfa`, `regenerateRecoveryCodes`.
 
 ## Data shapes
 

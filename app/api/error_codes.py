@@ -52,6 +52,8 @@ class ErrorCode(StrEnum):
                                                   # damage, over 25 Mpx, under 64 px), 400
     FILE_TOO_LARGE = 'file_too_large'             # the upload or request body is too large;
                                                   # params.max_mb when the limit is known, 413
+    MFA_INVALID = 'mfa_invalid'                   # a wrong or replayed two-factor code on a
+                                                  # signed-in route (F9-d), 400
 
 
 class DetailCode(StrEnum):

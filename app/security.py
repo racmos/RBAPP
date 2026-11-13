@@ -24,7 +24,7 @@ from flask_login import current_user
 
 from app.api.error_codes import ErrorCode
 from app.api.responses import fail
-from app.services import sessions
+from app.services import mfa, sessions
 from app.utils import clock
 
 REAUTH_WINDOW = timedelta(minutes=10)
@@ -50,8 +50,12 @@ def reauth_until(row) -> Optional[object]:
 
 def reauth_methods(user) -> list[str]:
     """What `user` can re-authenticate with, in the S9 order: `password` (when the account has
-    one), then `totp` (F9-d) and `discord`, `google` (F9-f) once those units add them."""
-    return ['password'] if user.has_password else []
+    one), `totp` (when 2FA is on, F9-d S13), then `discord`, `google` (F9-f) once that unit
+    adds them."""
+    methods = ['password'] if user.has_password else []
+    if mfa.is_enabled(user.id):
+        methods.append('totp')
+    return methods
 
 
 def reauth_failure():

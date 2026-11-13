@@ -1,5 +1,5 @@
 """The signed-in user's own settings: GET/PATCH /me/prefs (PREF-3, PREF-4), PATCH /me/account,
-the private profile GET/PATCH /me and POST /me/reauth (F9-b).
+the private profile GET/PATCH /me and POST /me/reauth (F9-b; a TOTP code from F9-d).
 
 Preferences are account-level interface settings; `null` means Auto. The PATCH
 body is validated before anything is written, so it is all-or-nothing, and only
@@ -8,7 +8,7 @@ the fields that were sent are applied (`model_fields_set`).
 from flask import request
 from flask_login import current_user, login_required
 
-from app import limiter
+from app import db, limiter
 from app.api.error_codes import ErrorCode
 from app.api.responses import fail, ok
 from app.api.v1 import api_v1
@@ -18,6 +18,7 @@ from app.schemas.validators import (CURRENT_PASSWORD_REQUIRED, AccountUpdate, Pr
                                     ProfilePatch, ReauthRequest)
 from app.security import REAUTH_WINDOW, reauth_required
 from app.services import account as account_service
+from app.services import mfa as mfa_service
 from app.services import prefs as prefs_service
 from app.services import profile as profile_service
 from app.services import sessions as sessions_service
@@ -58,9 +59,17 @@ def patch_me():
 @limiter.shared_limit(REAUTH_RATE_LIMIT, scope='reauth')
 @validate_json(ReauthRequest)
 def me_reauth():
-    """Re-authenticate the current session (S11): `{reauth_until}` for the next 10 minutes."""
+    """Re-authenticate the current session (S11): `{reauth_until}` for the next 10 minutes.
+    With 2FA on, a TOTP `code` works too (F9-d S13); a wrong or replayed one is a 400
+    `mfa_invalid`."""
     data = request.validated_data
-    status, at = account_service.reauthenticate(current_user, data.password, data.code)
+    try:
+        status, at = account_service.reauthenticate(current_user, data.password, data.code)
+    except mfa_service.MfaUnavailable:
+        db.session.rollback()
+        return fail('Service Unavailable', mfa_service.NOT_AVAILABLE, 503)
+    if status is ReauthStatus.WRONG_CODE:
+        return fail('Bad Request', mfa_service.CODE_INVALID, 400, code=ErrorCode.MFA_INVALID)
     if status is ReauthStatus.NO_TWO_FACTOR:
         return validation_failure([_value_error('code', account_service.NO_TWO_FACTOR,
                                                 'invalid_value')])
