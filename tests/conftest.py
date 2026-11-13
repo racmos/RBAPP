@@ -31,6 +31,8 @@ CONFIG_ENV_NAMES = (
     'CARD_IMAGES_DIR',
     # F14-d
     'PRODUCT_IMAGES_DIR',
+    # F9-c
+    'AVATAR_DIR',
 )
 
 
@@ -388,4 +390,13 @@ def product_images_dir(app, tmp_path):
     """`app` whose PRODUCT_IMAGES_DIR is `tmp_path/product-images` (F14-d). Returns that path."""
     root = tmp_path / 'product-images'
     app.config['PRODUCT_IMAGES_DIR'] = str(root)
+    return root
+
+
+@pytest.fixture
+def avatar_dir(app, tmp_path):
+    """`app` whose AVATAR_DIR is `tmp_path/avatars` (F9-c S2), a folder that does not exist yet
+    (the first upload creates it). Tests never touch a real avatar path. Returns that path."""
+    root = tmp_path / 'avatars'
+    app.config['AVATAR_DIR'] = str(root)
     return root

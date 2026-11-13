@@ -57,6 +57,9 @@ MATRIX = {
     'api_v1.get_me': 'U',                    # F9 unit b: profile and re-authentication
     'api_v1.patch_me': 'U',
     'api_v1.me_reauth': 'U',
+    'api_v1.upload_my_avatar': 'U',          # F9 unit c: avatar upload, removal, serving
+    'api_v1.delete_my_avatar': 'U',
+    'api_v1.user_avatar': 'U',
     'api_v1.list_bans': 'U',                # F2 unit a (D-F2-3)
     'api_v1.list_cards': 'U',                # F2 unit c
     'api_v1.get_card': 'U',                  # F2 unit d

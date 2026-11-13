@@ -35,6 +35,9 @@ Deprecated==3.0.0
 wrapt==2.5.1
 altcha==2.3.0
 
+# Images (F9-c): avatar decoding, metadata strip and WebP output
+Pillow==13.0.0
+
 # Utilities
 requests==2.32.3
 python-dotenv==1.0.1

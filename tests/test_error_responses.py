@@ -270,3 +270,64 @@ class TestCsrfFailure:
         assert response.get_json() == {'success': False, 'error': 'CSRF Error',
                                        'message': 'The CSRF token is missing.',
                                        'code': 'csrf_invalid'}
+
+
+# --- 413 Payload Too Large (F9-c S10) ---------------------------------------------
+
+UPLOAD_LIMIT = 5 * 1024 * 1024 + 64 * 1024     # what POST /me/avatar allows (S3)
+
+
+@pytest.fixture
+def upload_probe_app(app):
+    """`app` with a test-only upload route that has the avatar's per-request limit. Request it
+    BEFORE any logged-in client: routes cannot be added after the first request."""
+    from flask import request
+
+    @app.route('/riftbound/test-upload', methods=['POST'])
+    def _upload():
+        request.max_content_length = UPLOAD_LIMIT
+        return f'read {len(request.files)}'
+    return app
+
+
+def _too_big(client, **headers):
+    return client.post('/riftbound/test-upload', data=b'x' * (UPLOAD_LIMIT + 1),
+                       content_type='multipart/form-data; boundary=b', headers=headers)
+
+
+class TestPayloadTooLarge:
+    def test_a_json_client_gets_the_file_too_large_envelope(self, upload_probe_app, client):
+        response = _too_big(client, Accept='application/json')
+        assert response.status_code == 413
+        assert response.get_json() == {
+            'success': False, 'error': 'Payload Too Large', 'message': 'The file is too large',
+            'code': 'file_too_large', 'params': {'max_mb': 5}}
+
+    def test_a_browser_gets_the_inline_page(self, upload_probe_app, client):
+        response = _too_big(client, Accept=BROWSER)
+        assert response.status_code == 413
+        page = _page(response)
+        assert '<title>413 Payload Too Large · Rift Manager</title>' in page
+        assert '<h1>413 Payload Too Large</h1>' in page
+        assert '<p>The file is too large</p>' in page
+        assert 'Set-Cookie' not in response.headers
+
+    def test_a_body_within_the_limit_is_read(self, upload_probe_app, client):
+        response = client.post('/riftbound/test-upload', data=b'x' * 10,
+                               content_type='multipart/form-data; boundary=b')
+        assert response.status_code == 200
+
+    def test_a_413_without_a_known_limit_has_no_params(self, probe_app, client):
+        response = client.get('/riftbound/test-abort/413', headers={'Accept': 'application/json'})
+        assert response.status_code == 413
+        assert response.get_json() == {
+            'success': False, 'error': 'Payload Too Large', 'message': 'The file is too large',
+            'code': 'file_too_large'}
+
+    def test_the_api_answers_json_even_to_a_browser(self, app, authenticated_client):
+        """A real API route (the blueprint's catch-all handler must not win over the 413 one)."""
+        response = authenticated_client.post(
+            '/riftbound/api/v1/me/avatar', data=b'x' * (UPLOAD_LIMIT + 1),
+            content_type='multipart/form-data; boundary=b', headers={'Accept': BROWSER})
+        assert response.status_code == 413
+        assert response.get_json()['code'] == 'file_too_large'

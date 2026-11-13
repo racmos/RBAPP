@@ -43,6 +43,8 @@ Settings come from environment variables only (see [.env.example](.env.example),
 | `RB_LEGACY_BACKUP_DIR` | Where migration 0002 saves the legacy tables (contains personal data, never commit) |
 | `FRONTEND_DIST` | Directory with the built new app, served at `/riftbound/app/` (default `<project>/frontend/dist`; see [New app hosting](#new-app-hosting)) |
 | `CARD_IMAGES_DIR` | Absolute path of the card images data directory (`ogn/`, `ogs/`, ...), served at `/riftbound/media/cards/` and written by the admin upload and the Riot scraper (default `<project>/data/card-images`, git-ignored; a relative path stops the app). The images are not in git; `flask images import-legacy` copies the old `app/static/images/cards/` tree in |
+| `PRODUCT_IMAGES_DIR` | Absolute path of the product images directory, served at `/riftbound/media/products/` and written by the admin upload (default `<project>/data/product-images`, git-ignored; a relative path stops the app) |
+| `AVATAR_DIR` | Absolute path of the avatars directory: two WebP files per user (256 and 64 px), written by `POST /riftbound/api/v1/me/avatar` and served to signed-in users only (default `<project>/data/avatars`, git-ignored; a relative path stops the app; created on the first upload) |
 
 ## Running
 

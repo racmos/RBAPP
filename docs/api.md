@@ -22,7 +22,7 @@ Failure:
 
 - `error` is the human name, `message` a clear sentence without internals.
 - `code` is an `ErrorCode` (`app/api/error_codes.py`); every value has `code.<value>`
-  in `frontend/src/i18n/locales/{es,en}/errors.json` (checked by `tests/test_error_catalogs.py`).
+  in `frontend/src/i18n/locales/en/errors.json` (checked by `tests/test_error_catalogs.py`).
 - Each item of `details` has `field`, `message`, `type` and `code` (a `DetailCode`,
   e.g. `required`, `invalid_value`, `out_of_range` with `params`), when it applies.
 - Unexpected failures log the traceback and return a clear message; only a signed-in
@@ -1065,7 +1065,8 @@ Endpoints (`app/api/v1/me.py`, all U):
               "reauth_until": "2030-01-01T12:10:00Z"}}
 ```
 
-- `profile`: every key null when the user has no profile row; `avatar_url` is null until F9-c.
+- `profile`: every key null when the user has no profile row; `avatar_url` is the versioned
+  avatar URL or null (F9-c, see "Avatar (F9-c)").
 - `security`: `member_since` = `rbusers.created_at`; `sessions_active` = the caller's active
   sessions (F9-a rule); `reauth_until` = the current session's `reauth_at` + 10 minutes when that
   is still in the future, else null. `mfa` (F9-d), `api_key` (F9-h) and `connections` (F9-f) keep
@@ -1121,6 +1122,74 @@ password change with the current password, revoking sessions, revoking the API k
 New error code `reauth_required` (403), `code.reauth_required` "Confirm your identity to
 continue." in `frontend/src/i18n/locales/en/errors.json`.
 
+### Avatar (F9-c)
+
+A profile photo per user (D-F9-12: signed-in users see each other's; anonymous visitors never
+do). No migration: the columns `rbupf_avatar_file` (the stem `<user id>-<version>`, NULL = no
+avatar) and `rbupf_avatar_version` (bumped on every change) come from `0030_user_profile`. Logic
+in `app/services/avatars.py`, the only module that knows `AVATAR_DIR`; routes in
+`app/api/v1/avatars.py`. No screen yet (F9-i).
+
+| Method | Path | Auth | Endpoint | Response |
+|---|---|---|---|---|
+| POST | `/me/avatar` | U | `api_v1.upload_my_avatar` | `{avatar_url}` / 400 `image_invalid` / 413 `file_too_large` |
+| DELETE | `/me/avatar` | U | `api_v1.delete_my_avatar` | `{avatar_url: null}` |
+| GET | `/users/<int:id>/avatar` | U | `api_v1.user_avatar` | WebP bytes |
+
+`POST /me/avatar`: `multipart/form-data`, field `file` (its file name and content type are never
+used).
+
+- A request body over 5 MB + 64 KB (5,308,416 bytes) is refused before it is read (per-request
+  `request.max_content_length`, set before the CSRF check reads the form), and a file over 5 MB
+  (5,242,880 bytes) is refused; both answer 413:
+
+  ```json
+  {"success": false, "error": "Payload Too Large", "message": "The file is too large",
+   "code": "file_too_large", "params": {"max_mb": 5}}
+  ```
+- No `file` part -> 400 `validation_error` (`field` `file`, `code` `required`).
+- 20 per hour per IP (shared scope `avatar`); the 21st -> 429 `rate_limited` with `Retry-After`.
+- The format is decided by Pillow only: JPEG, PNG, WebP or GIF (first frame). Any other format, a
+  truncated or damaged file, an image over 25 megapixels (checked on the header before decoding;
+  Pillow's decompression-bomb warning counts as a refusal too) or under 64 px on either side ->
+
+  ```json
+  {"success": false, "error": "Validation Error", "message": "The file is not a supported image",
+   "code": "image_invalid"}
+  ```
+
+  Nothing is written on any refusal.
+- Processing: EXIF orientation applied, RGB (RGBA when the source has alpha), centre square crop
+  to the shorter side, LANCZOS resize to 256x256 and 64x64, WebP quality 85 re-encoded from the
+  bare pixels: no EXIF (GPS included), XMP or ICC data of the upload survives.
+- Storage: version `n` = current + 1, files `<user id>-<n>-256.webp` and `<user id>-<n>-64.webp`
+  in `AVATAR_DIR` (written to a temporary name and moved into place with `os.replace`); then the
+  profile row (created if missing) gets the stem, the version and `updated_at`, committed; then
+  the previous version's files are deleted (a failure is logged, never an error). 200
+  `{"avatar_url": "/riftbound/api/v1/users/7/avatar?v=3"}`.
+
+`DELETE /me/avatar` -> 200 `{"avatar_url": null}`: clears the stem, bumps the version (cached
+URLs change), deletes the files. Without an avatar it answers the same and changes nothing.
+
+`avatar_url` (in `UserPayload` and `GET /me` `profile`) = `/riftbound/api/v1/users/<id>/avatar?v=<n>`
+when the user has an avatar, else null.
+
+`GET /users/<int:id>/avatar?size=256|64&v=<n>`: any signed-in user may read any user's avatar;
+anonymous -> 401 `unauthenticated` (never the image). `size` absent = 256; any other value -> 400
+`validation_error` (`field` `size`, `invalid_value`, message "Invalid query parameters"). Unknown
+user, no avatar or a missing file -> 404 envelope. 200: `image/webp`, `X-Content-Type-Options:
+nosniff`, `Cache-Control: private, max-age=31536000, immutable` when `v` equals the current
+version, otherwise `private, no-cache`; never `public`, no `Expires`. The file path is built only
+from the stored stem and the size.
+
+**413 everywhere** (`app/errors.py`): any `RequestEntityTooLarge` answers with the `wants_json()`
+rule: JSON gets the body above (`params.max_mb` = the request's limit in whole MB, left out when
+the request has none), browsers the inline error page "413 Payload Too Large".
+
+New error codes: `image_invalid` (400) "That file is not a supported image. Use a JPEG, PNG, WebP
+or GIF of at least 64 by 64 pixels." and `file_too_large` (413) "The file is too large (maximum
+{{max_mb}} MB)." (`frontend/src/i18n/locales/en/errors.json`).
+
 ## Data shapes
 
 Additive changes only: new keys may be appended, existing keys are never renamed,
@@ -1128,7 +1197,8 @@ retyped or removed without a new unit.
 
 `UserPayload` (F9-b S6) = the `user` of `GET /auth/session`, `POST /auth/login`,
 `PATCH /me/account` and `GET /me`: `{id, username, email|null, is_admin, display_name|null,
-avatar_url|null}`. `display_name` is the profile value; `avatar_url` is null until F9-c.
+avatar_url|null}`. `display_name` is the profile value; `avatar_url` is
+`/riftbound/api/v1/users/<id>/avatar?v=<n>` when the user has an avatar, else null (F9-c S8).
 
 `MetaConfig` = the `data` object of `GET /meta/config`: `{env, registration_open, captcha:
 {provider, required_for: [str]}, csrf: {header}, countries: [str]}` (`countries` since F9-b).

@@ -24,3 +24,14 @@ def test_english_is_the_only_catalog():
 def test_every_error_code_has_a_catalog_entry(code):
     entry = _codes().get(code)
     assert isinstance(entry, str) and entry.strip(), f'errors.json[en] lacks code.{code}'
+
+
+@pytest.mark.parametrize('code, text', [
+    ('image_invalid', 'That file is not a supported image. Use a JPEG, PNG, WebP or GIF of at '
+                      'least 64 by 64 pixels.'),
+    ('file_too_large', 'The file is too large (maximum {{max_mb}} MB).'),
+])
+def test_the_avatar_codes_have_their_text(code, text):
+    """F9-c S11."""
+    assert ErrorCode(code).value == code
+    assert _codes()[code] == text

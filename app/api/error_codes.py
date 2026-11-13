@@ -4,7 +4,7 @@ An error body may carry `code` (one of these, lowercase snake_case) and
 `params` (JSON scalars, for example `{"retry_after": 30}`) next to the F0 keys
 `success`, `error`, `message`, `details`. Clients translate by code and fall back
 to `message`. Adding a code means adding it here, to both frontend catalogs
-(`frontend/src/i18n/locales/{es,en}/errors.json`, key `code.<value>`) and to the
+(`frontend/src/i18n/locales/en/errors.json`, key `code.<value>`) and to the
 catalog test that checks them (`tests/test_error_catalogs.py`).
 
 Codes and params never carry secrets, stack traces or internals.
@@ -48,6 +48,10 @@ class ErrorCode(StrEnum):
     WISHLIST_DEFAULT = 'wishlist_default'         # the default wishlist cannot be deleted, 409
     REAUTH_REQUIRED = 'reauth_required'           # a sensitive action needs a recent
                                                   # re-authentication; params.methods, 403
+    IMAGE_INVALID = 'image_invalid'               # the upload is not a supported image (format,
+                                                  # damage, over 25 Mpx, under 64 px), 400
+    FILE_TOO_LARGE = 'file_too_large'             # the upload or request body is too large;
+                                                  # params.max_mb when the limit is known, 413
 
 
 class DetailCode(StrEnum):
