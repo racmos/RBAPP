@@ -61,7 +61,7 @@ describe('Wishlists at 390 px (F3-j): routes and tabs', () => {
     installWishlists();
     const { where } = await openPage();
     expect(await screen.findByRole('heading', { level: 1, name: 'Wishlists' }, LONG)).toBeVisible();
-    expect(document.title).toBe('Wishlists · Rift Manager');
+    await waitFor(() => expect(document.title).toBe('Wishlists · Rift Manager'), LONG);
     const tabs = screen.getByRole('navigation', { name: 'Collection sections' });
     expect(within(tabs).getByRole('link', { name: 'Collection' })).toHaveAttribute(
       'href',
