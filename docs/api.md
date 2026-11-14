@@ -1070,8 +1070,9 @@ Endpoints (`app/api/v1/me.py`, all U):
 - `security`: `member_since` = `rbusers.created_at`; `sessions_active` = the caller's active
   sessions (F9-a rule); `reauth_until` = the current session's `reauth_at` + 10 minutes when that
   is still in the future, else null. `mfa` = `{available, enabled, pending,
-  recovery_codes_left}` (F9-d S14, see "Two-factor authentication (F9-d)"); `api_key` (F9-h) and
-  `connections` (F9-f) keep these values until those units. Times use the F9-a format (UTC, `%Y-%m-%dT%H:%M:%SZ`).
+  recovery_codes_left}` (F9-d S14, see "Two-factor authentication (F9-d)"); `api_key` =
+  `{prefix, created_at, last_used_at}` or null (F9-h S6, see "Personal API key (F9-h)");
+  `connections` (F9-f) keeps this value until that unit. Times use the F9-a format (UTC, `%Y-%m-%dT%H:%M:%SZ`).
 
 `PATCH /me` (`ProfilePatch`): absent = unchanged; `null` or a blank string (after trim) = cleared.
 Every rule is a 400 `validation_error` with the detail code shown, and nothing is stored
@@ -1387,6 +1388,95 @@ copied cookie still needs the code and its wrong codes lock the same account.
 New error code `mfa_expired` (401) "The sign-in step expired. Sign in again." Frontend (types and
 endpoints only): `LoginResult`, `SessionData.mfa_pending`, `MfaSignInBody`, `MfaSignInResult`,
 `completeMfa`.
+
+### Personal API key (F9-h)
+
+Each user can have **one read-only API key** to read their own data from scripts or other tools
+with a plain HTTP client. It never changes anything, never reaches account or admin routes and
+never creates a browser session. Migration `0032_api_keys`: `rbapikeys` (model `RbApiKey`); logic
+in `app/services/api_keys.py`; routes in `app/api/v1/api_key.py`. No screen yet (F9-j).
+
+**Format.** `rb_live_` + 40 lower-case hex characters (160 random bits), for example
+`rb_live_<40 hex characters>`. Only `sha256(key)` and the first 14 characters (`rb_live_` + 6 hex,
+the `prefix` shown to the user) are stored; the key is shown once, in the `POST` answer, and is
+never stored or logged. A lost key cannot be recovered: create a new one.
+
+| Method | Path | Auth | Endpoint | Body | Response |
+|---|---|---|---|---|---|
+| GET | `/me/api-key` | U | `api_v1.get_my_api_key` | none | `{api_key: ApiKeyInfo \| null}` |
+| POST | `/me/api-key` | U (re-auth) | `api_v1.create_my_api_key` | none | 201 `{key, api_key}`, `no-store` |
+| DELETE | `/me/api-key` | U | `api_v1.delete_my_api_key` | none | `{api_key: null}` (idempotent) |
+
+`ApiKeyInfo` = `{prefix, created_at, last_used_at}` (F9-a time format; `last_used_at` null until
+the first use). `POST` needs a recent re-authentication of the current session (403
+`reauth_required`, see "Profile and re-authentication (F9-b)") and **replaces** an existing key in
+the same transaction: the old key stops working at once. `GET /me` `security.api_key` is the same
+`ApiKeyInfo` or null.
+
+```json
+{"key": "rb_live_<40 hex characters>",
+ "api_key": {"prefix": "rb_live_<6 hex>", "created_at": "2030-01-01T12:00:00Z",
+             "last_used_at": null}}
+```
+
+**Using the key.** Send it in the `Authorization` header with the `Bearer` scheme (any case), on
+`GET` (or `HEAD`) requests under `/riftbound/api/v1/`:
+
+```bash
+curl -H "Authorization: Bearer rb_live_<your key>" https://<your-host>/riftbound/api/v1/collection
+```
+
+A request under `/riftbound/api/v1/` with a `Bearer` header is authenticated **only** by the key:
+its cookies are removed before the app reads them (a WSGI guard in `app/services/api_keys.py`),
+so a session or remember cookie sent with it is ignored, and a bad key is never answered from a
+cookie session. Outside `/riftbound/api/v1/` the header is ignored and nothing changes. Another
+scheme (`Basic ...`) is not a key: the request is handled as usual.
+
+Checks, in this order, in the first `before_request` hook (before the CSRF check, so a refused key
+never reaches it):
+
+1. The value is not `rb_live_` + 40 lower-case hex, no key has that hash, or its user is blocked
+   -> **401**:
+   `{"success": false, "error": "Unauthorized", "message": "The API key is not valid", "code": "api_key_invalid"}`.
+   A malformed value costs no database statement; otherwise the key is found by its sha256 (one
+   `SELECT`, the key joined with its user), so nothing is compared character by character.
+2. **Rate limit**: 60 requests a minute per key (Flask-Limiter's storage, key = the key's row id,
+   scope `api_key`; refused requests with a valid key count too); the 61st -> 429 `rate_limited`
+   with `Retry-After`. Limits are per worker (memory storage, see the F9 risks). Cookie requests
+   keep their own limits.
+3. `last_used_at` is written when it is null or at least a minute old (one `UPDATE`).
+4. The method is not `GET` or `HEAD` -> **403**:
+   `{"success": false, "error": "Forbidden", "message": "API keys can only read data", "code": "api_key_read_only"}`.
+5. The path is on the **deny list** -> the same 403 `api_key_read_only`. Prefix match on the path
+   after `/riftbound/api/v1` (repeated `/` collapsed; the matched URL rule is checked too):
+   `/auth/`, `/admin/`, `/me/account`, `/me/reauth`, `/me/sessions`, `/me/2fa`, `/me/api-key`,
+   `/me/avatar`, `/me/connections`, and exactly `/me`.
+6. Otherwise the request runs as the key's user: `GET /collection`, `/decks`, `/wishlists`,
+   `/me/products`, `/me/prefs`, `/cards`, ... answer as for a signed-in user.
+
+Examples: `GET /riftbound/api/v1/collection` with a valid key -> 200 with the user's collection;
+`POST /riftbound/api/v1/collection` with a valid key -> 403 `api_key_read_only`;
+`GET /riftbound/api/v1/admin/overview` with an admin's key -> 403 `api_key_read_only`;
+`GET /riftbound/api/v1/health` with a bad key -> 401 `api_key_invalid`.
+
+Other rules:
+
+- **No session.** A key request never creates or changes a session: the answer carries no
+  `Set-Cookie` (session, remember or CSRF; the request's Flask session is the null session, which
+  is never saved), no `rbsessions` row is created and `rbses_last_seen_at` is untouched.
+- **No admin.** Admin rights never apply through a key: the deny list refuses `/admin/` and
+  `require_admin` refuses any key request.
+- **CSRF keeps no exemption.** A key only ever authenticates `GET`/`HEAD`; every unsafe request
+  with a key is refused before the CSRF check (`tests/test_authz_matrix.py::TestApiKeys` sends
+  POST/PUT/PATCH/DELETE with a valid key to every rule under the API).
+- **Independence.** Two-factor authentication does not apply to key requests (the key was created
+  after a re-authentication); password changes and ending sessions leave the key alone;
+  `flask users block` makes it invalid (401) and `flask users unblock` makes it work again. A
+  deleted user's key is deleted with them (`ON DELETE CASCADE`).
+
+New error codes `api_key_invalid` (401) "The API key is not valid." and `api_key_read_only` (403)
+"API keys can only read data." Frontend (types and endpoints only): `ApiKeyInfo`, `ApiKeyCreated`,
+`SecuritySummary.api_key`, `getApiKey`, `createApiKey`, `deleteApiKey`.
 
 ## Data shapes
 

@@ -8,6 +8,7 @@ from .captcha import RbCaptchaUsed
 from .prefs import RbUserPrefs
 from .profile import RbUserProfile
 from .mfa import RbUserMfa, RbRecoveryCode
+from .api_key import RbApiKey
 from .playset import RbKeepPlayset
 from .snapshot import RbValueSnapshot
 from .import_preview import RbImportPreview

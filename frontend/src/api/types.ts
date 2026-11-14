@@ -33,15 +33,15 @@ export type ProfileData = {
 
 /** The `security` summary of `GET /me` (F9-b S7). `mfa` is filled by F9-d S14 (`available` is
     false while the server has no TOTP key; `pending` = a setup not confirmed yet;
-    `recovery_codes_left` = unused codes, 0 when off); `api_key` and `connections` keep these
-    values until F9-h and F9-f fill them. */
+    `recovery_codes_left` = unused codes, 0 when off); `api_key` is the personal API key (F9-h
+    S6, `null` without one); `connections` keeps this value until F9-f fills it. */
 export type SecuritySummary = {
   has_password: boolean;
   password_changed_at: string | null;
   member_since: string | null;
   mfa: { available: boolean; enabled: boolean; pending: boolean; recovery_codes_left: number };
   sessions_active: number;
-  api_key: null;
+  api_key: ApiKeyInfo | null;
   connections: unknown[];
   /** End of the current session's re-authentication window, `null` when it has passed. */
   reauth_until: string | null;
@@ -65,6 +65,14 @@ export type RecoveryCodes = { recovery_codes: string[]; revoked_sessions: number
 
 /** Body of `POST /me/reauth` (F9-b S11): exactly one of a password or a TOTP code (F9-d). */
 export type ReauthBody = { password: string; code?: never } | { code: string; password?: never };
+
+/** The personal read-only API key (F9-h S3): its first 14 characters (`rb_live_` + 6 hex), never
+    the key itself. `last_used_at` is updated at most once a minute; `null` = never used. */
+export type ApiKeyInfo = { prefix: string; created_at: string; last_used_at: string | null };
+
+/** `POST /me/api-key` (F9-h S4): the new key (`rb_live_` + 40 hex), shown only in this answer,
+    and its info. It replaced any previous key. */
+export type ApiKeyCreated = { key: string; api_key: ApiKeyInfo };
 
 /** The stored interface preferences; `null` means Auto (PREF-2). `playset_size` (F3) is not an
     interface preference: `null` means 3 copies. The app is English-only (owner feedback

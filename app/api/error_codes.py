@@ -57,6 +57,10 @@ class ErrorCode(StrEnum):
                                                   # /auth/mfa (F9-e)
     MFA_EXPIRED = 'mfa_expired'                   # the two-factor sign-in step is missing,
                                                   # expired or used up (F9-e), 401
+    API_KEY_INVALID = 'api_key_invalid'           # a bearer API key that is malformed, unknown
+                                                  # or of a blocked user (F9-h), 401
+    API_KEY_READ_ONLY = 'api_key_read_only'       # an API key used with a method other than
+                                                  # GET/HEAD or on a deny-list path (F9-h), 403
 
 
 class DetailCode(StrEnum):

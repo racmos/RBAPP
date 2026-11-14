@@ -273,6 +273,27 @@ no refusal condition. **Data loss**: it drops both tables, so every user's two-f
 authentication is lost (secrets, pending setups, recovery codes); after a new upgrade those users set
 it up again.
 
+## API keys: upgrade to 0032, then restart at once (F9-h)
+
+`0032_api_keys` creates `riftbound.rbapikeys` (`rbapikeys_pkey` on `rbapk_id` BIGINT (INTEGER on
+SQLite); `rbapk_user_id` INTEGER NOT NULL with UNIQUE `rbapikeys_user_key` and
+`rbapikeys_user_fk` ON DELETE CASCADE; `rbapk_prefix` VARCHAR(16) NOT NULL; `rbapk_key_hash`
+CHAR(64) NOT NULL with UNIQUE `rbapikeys_key_hash_key`; `rbapk_created_at` TIMESTAMP NOT NULL;
+`rbapk_last_used_at` TIMESTAMP NULL). Same DDL on PostgreSQL and SQLite; no data is converted.
+The old code runs on the new schema; the new code reads the table on every `GET /me` and on every
+bearer request, so restart right after the upgrade. No new package, no new variable.
+
+```bash
+venv/bin/python scripts/db_backup.py   # pg_dump first; check the file (docs/knowledge/ops-runbook.md)
+flask db upgrade                       # 0032
+flask db check                         # "No new upgrade operations detected."
+sudo systemctl restart rbapp           # right after the upgrade
+```
+
+Rollback: `flask db downgrade 0031_mfa` and redeploy the previous code. The downgrade has no
+refusal condition. **Data loss**: it drops the table, so every API key stops working; after a new
+upgrade each user creates a new key.
+
 ## The legacy-table backup contains personal data
 
 `legacy_tables_<UTC>.sql` holds **e-mail addresses and password hashes** of the

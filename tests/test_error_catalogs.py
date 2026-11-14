@@ -48,3 +48,13 @@ def test_the_mfa_expired_code_has_its_text():
     """F9-e S9."""
     assert ErrorCode('mfa_expired').value == 'mfa_expired'
     assert _codes()['mfa_expired'] == 'The sign-in step expired. Sign in again.'
+
+
+@pytest.mark.parametrize('code, text', [
+    ('api_key_invalid', 'The API key is not valid.'),
+    ('api_key_read_only', 'API keys can only read data.'),
+])
+def test_the_api_key_codes_have_their_text(code, text):
+    """F9-h S13."""
+    assert ErrorCode(code).value == code
+    assert _codes()[code] == text
