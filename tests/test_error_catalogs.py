@@ -42,3 +42,9 @@ def test_the_mfa_invalid_code_has_its_text():
     assert ErrorCode('mfa_invalid').value == 'mfa_invalid'
     assert _codes()['mfa_invalid'] == ('That code is not valid. Check your authenticator app '
                                        'and try again.')
+
+
+def test_the_mfa_expired_code_has_its_text():
+    """F9-e S9."""
+    assert ErrorCode('mfa_expired').value == 'mfa_expired'
+    assert _codes()['mfa_expired'] == 'The sign-in step expired. Sign in again.'

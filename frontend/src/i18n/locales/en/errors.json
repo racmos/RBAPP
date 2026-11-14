@@ -31,7 +31,8 @@
     "reauth_required": "Confirm your identity to continue.",
     "image_invalid": "That file is not a supported image. Use a JPEG, PNG, WebP or GIF of at least 64 by 64 pixels.",
     "file_too_large": "The file is too large (maximum {{max_mb}} MB).",
-    "mfa_invalid": "That code is not valid. Check your authenticator app and try again."
+    "mfa_invalid": "That code is not valid. Check your authenticator app and try again.",
+    "mfa_expired": "The sign-in step expired. Sign in again."
   },
   "status": {
     "400": "The request is not valid.",

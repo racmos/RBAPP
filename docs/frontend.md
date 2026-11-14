@@ -130,8 +130,11 @@ the same safe `next`.
   refetches the session and goes to `next` or home. `next` is an absolute path such as
   `/riftbound/app/account/interface`; `safeNext` accepts only paths under `/riftbound/`
   (paths under `/riftbound/app/` stay in the router, others are a full page load) and sends
-  anything else home.
-- **Expired session.** A `401` from any call other than login or logout clears the query
+  anything else home. An account with two-factor authentication on answers
+  `{mfa_required: true, methods}` instead and no session exists until `POST /auth/mfa`
+  (`completeMfa`) gets a code (F9-e; the code screen is F9-j).
+- **Expired session.** A `401` from any call other than login, logout or `/auth/mfa`
+  (`AUTH_ANSWER_PATHS` in `api/client.ts`) clears the query
   cache, the "was signed in" hint and the CSRF token, and goes to
   `/login?next=<where you were>`.
 - **Rate limits.** A `429` shows a countdown taken from `Retry-After` (or

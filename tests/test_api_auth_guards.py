@@ -543,3 +543,561 @@ class TestRegisterWithoutEmail:
     def test_registration_stamps_password_changed_at(self, app, client, frozen_clock):
         assert client.post(REGISTER, json=NEW_USER).status_code == 201
         assert _stored('newbie').password_changed_at == frozen_clock.now
+
+
+# --- Two-factor step at sign-in (F9-e S2-S7, S9) ---------------------------------------------
+
+MFA = f'{API}/auth/mfa'
+ME = f'{API}/me'
+MFA_REQUIRED = {'success': True, 'data': {'mfa_required': True, 'methods': ['totp', 'recovery']}}
+MFA_EXPIRED = {'success': False, 'error': 'Unauthorized', 'message': 'The sign-in step expired',
+               'code': 'mfa_expired'}
+MFA_INVALID = {'success': False, 'error': 'Unauthorized', 'message': 'The code is not valid',
+               'code': 'mfa_invalid'}
+MFA_UNAVAILABLE = {'success': False, 'error': 'Service Unavailable',
+                   'message': 'Two-factor authentication is not available'}
+WRONG_CODE = '000000'
+
+
+def pending_of(client):
+    """The pending step the Flask session of `client` holds (None without one)."""
+    with client.session_transaction() as flask_session:
+        return flask_session.get('mfa_pending')
+
+
+def stored_user(username='u'):
+    from app import db
+    db.session.expire_all()
+    return User.query.filter_by(username=username).one()
+
+
+def wrong_code(secret, now):
+    """A six-digit code that is not valid around `now`."""
+    from tests.auth_helpers import totp_code
+    valid = {totp_code(secret, now, offset) for offset in (-1, 0, 1)}
+    return next(c for c in (WRONG_CODE, '111111', '222222', '333333') if c not in valid)
+
+
+@pytest.fixture
+def two_fa(app, make_user, frozen_clock):
+    """User `u` with 2FA on; returns `(user, secret, recovery codes)`."""
+    from tests.auth_helpers import turn_on_2fa
+    user = make_user('u')
+    secret, codes = turn_on_2fa(user, frozen_clock)
+    return user, secret, codes
+
+
+def code_now(two_fa, frozen_clock, offset=0):
+    from tests.auth_helpers import totp_code
+    return totp_code(two_fa[1], frozen_clock.now, offset)
+
+
+class TestTwoFactorSignIn:
+    # S2 -------------------------------------------------------------------------------------
+    def test_the_right_password_asks_for_the_code_and_creates_no_session(self, app, client,
+                                                                        two_fa, frozen_clock):
+        from app import db
+        user = two_fa[0]
+        user.failed_login_count = 2
+        db.session.commit()
+        response = login(client, remember=True)
+        assert (response.status_code, response.get_json()) == (200, MFA_REQUIRED)
+        assert set_cookies(response, 'remember_token') == []
+        assert session_rows() == []
+        assert not authenticated(client)
+        stored = stored_user()
+        assert (stored.failed_login_count, stored.locked_until, stored.last_login_at) == (
+            2, None, None)
+        assert pending_of(client) == {'uid': user.id, 'remember': True, 'method': 'password',
+                                      'started_at': frozen_clock.now.isoformat(), 'attempts': 0}
+        with client.session_transaction() as flask_session:
+            assert '_user_id' not in flask_session
+
+    def test_wrong_password_locked_and_blocked_answers_are_unchanged(self, app, client, two_fa,
+                                                                     frozen_clock):
+        from app import db
+        wrong = login(client, password='wrong-pass')
+        assert (wrong.status_code, wrong.get_json()) == (401, INVALID)
+        assert stored_user().failed_login_count == 1
+        assert pending_of(client) is None
+        two_fa[0].is_blocked = True
+        db.session.commit()
+        blocked = login(client)
+        assert (blocked.status_code, blocked.get_json()) == (401, INVALID)
+        assert pending_of(client) is None
+        two_fa[0].is_blocked = False
+        two_fa[0].locked_until = frozen_clock.now + __import__('datetime').timedelta(minutes=3)
+        db.session.commit()
+        locked = login(client)
+        assert (locked.status_code, locked.get_json()['code']) == (429, 'locked')
+        assert locked.headers['Retry-After'] == '180'
+        assert pending_of(client) is None
+        assert session_rows() == []
+
+    def test_a_new_login_replaces_the_pending_step(self, app, client, two_fa, frozen_clock,
+                                                   make_user):
+        login(client, remember=True)
+        client.post(MFA, json={'code': wrong_code(two_fa[1], frozen_clock.now)})
+        assert pending_of(client)['attempts'] == 1
+        frozen_clock.advance(minutes=1)
+        assert login(client).get_json() == MFA_REQUIRED
+        assert pending_of(client) == {'uid': two_fa[0].id, 'remember': False,
+                                      'method': 'password',
+                                      'started_at': frozen_clock.now.isoformat(), 'attempts': 0}
+        make_user('plain')
+        assert login(client, username='plain').status_code == 200
+        assert pending_of(client) is None
+        assert authenticated(client)
+
+    def test_a_failed_login_ends_the_pending_step_too(self, app, client, two_fa):
+        login(client)
+        assert login(client, password='wrong-pass').status_code == 401
+        assert pending_of(client) is None
+
+    def test_a_signed_in_client_that_starts_a_2fa_login_is_signed_out(self, app, client,
+                                                                      two_fa, make_user):
+        make_user('plain')
+        login(client, username='plain', remember=True)
+        assert authenticated(client)
+        response = login(client)
+        assert response.get_json() == MFA_REQUIRED
+        [expired] = set_cookies(response, 'remember_token')
+        assert 'Expires=Thu, 01 Jan 1970' in expired
+        assert not authenticated(client)
+        assert client.get(ME).status_code == 401
+        [row] = session_rows()
+        assert row.rbses_revoked_at is not None
+
+    def test_a_user_without_2fa_has_no_pending_step(self, app, client, make_user):
+        make_user('u')
+        response = login(client)
+        assert list(response.get_json()['data']) == ['user']
+        assert pending_of(client) is None
+
+    def test_a_failed_login_without_2fa_writes_no_cookie(self, app, client, make_user):
+        make_user('u')
+        response = login(client, password='wrong-pass')
+        assert response.headers.getlist('Set-Cookie') == []
+        assert 'Cookie' not in response.headers.get('Vary', '')
+
+    # S3 -------------------------------------------------------------------------------------
+    def test_the_step_lasts_five_minutes(self, app, two_fa, frozen_clock):
+        late, on_time = app.test_client(), app.test_client()
+        login(late)
+        login(on_time)
+        frozen_clock.advance(minutes=4, seconds=59)
+        assert on_time.post(MFA, json={'code': code_now(two_fa, frozen_clock)}).status_code == 200
+        frozen_clock.advance(seconds=2)
+        response = late.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert (response.status_code, response.get_json()) == (401, MFA_EXPIRED)
+        assert pending_of(late) is None
+        assert not authenticated(late)
+        assert stored_user().failed_login_count == 0
+
+    def test_five_wrong_codes_end_the_step(self, app, client, two_fa, frozen_clock):
+        app.config['LOGIN_MAX_FAILURES'] = 10
+        login(client)
+        bad = wrong_code(two_fa[1], frozen_clock.now)
+        for attempt in range(1, 5):
+            response = client.post(MFA, json={'code': bad})
+            assert (response.status_code, response.get_json()) == (401, MFA_INVALID)
+            assert pending_of(client)['attempts'] == attempt
+        fifth = client.post(MFA, json={'code': bad})
+        assert (fifth.status_code, fifth.get_json()) == (401, MFA_INVALID)
+        assert pending_of(client) is None
+        right = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert (right.status_code, right.get_json()) == (401, MFA_EXPIRED)
+        assert not authenticated(client)
+        assert stored_user().failed_login_count == 5
+
+    def test_logout_ends_the_pending_step(self, app, client, two_fa, frozen_clock):
+        login(client)
+        response = client.post(f'{API}/auth/logout')
+        assert (response.status_code, response.get_json()) == (200, {'success': True,
+                                                                     'data': {}})
+        assert pending_of(client) is None
+        after = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert after.get_json() == MFA_EXPIRED
+
+    def test_logout_without_a_session_or_step_is_still_401(self, app, client):
+        response = client.post(f'{API}/auth/logout')
+        assert (response.status_code, response.get_json()['code']) == (401, 'unauthenticated')
+
+    def test_the_session_endpoint_flags_a_live_step_only(self, app, client, two_fa,
+                                                         frozen_clock):
+        login(client)
+        data = client.get(SESSION).get_json()['data']
+        assert sorted(data) == ['authenticated', 'csrf_token', 'mfa_pending']
+        assert (data['authenticated'], data['mfa_pending']) == (False, True)
+        frozen_clock.advance(minutes=5, seconds=1)
+        assert sorted(client.get(SESSION).get_json()['data']) == ['authenticated', 'csrf_token']
+
+    @pytest.mark.parametrize('path', [ME, f'{API}/me/prefs', f'{API}/me/sessions',
+                                      f'{API}/collection', f'{API}/decks'])
+    def test_every_signed_in_route_is_401_during_the_step(self, app, client, two_fa, path):
+        login(client, remember=True)
+        response = client.get(path)
+        assert (response.status_code, response.get_json()['code']) == (401, 'unauthenticated')
+
+    # S4 -------------------------------------------------------------------------------------
+    @pytest.mark.parametrize('body', [{}, {'code': '123456', 'recovery_code': 'abcde-fghjk'},
+                                      {'code': None, 'recovery_code': None}, {'code': ''},
+                                      {'recovery_code': ''}, {'code': 'x' * 65}])
+    def test_the_body_needs_exactly_one_code(self, app, client, two_fa, body):
+        login(client)
+        response = client.post(MFA, json=body)
+        assert response.status_code == 400
+        assert response.get_json()['code'] == 'validation_error'
+        assert pending_of(client)['attempts'] == 0
+        assert stored_user().failed_login_count == 0
+
+    def test_without_a_pending_step_is_mfa_expired(self, app, client, two_fa, frozen_clock):
+        response = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert (response.status_code, response.get_json()) == (401, MFA_EXPIRED)
+        assert session_rows() == []
+
+    @pytest.mark.parametrize('change', ['blocked', 'deleted', '2fa_off'])
+    def test_a_user_that_changed_meanwhile_is_mfa_expired(self, app, client, two_fa,
+                                                          frozen_clock, change):
+        from app import db
+        from app.services import mfa
+        login(client)
+        user = two_fa[0]
+        if change == 'blocked':
+            user.is_blocked = True
+            db.session.commit()
+        elif change == 'deleted':
+            db.session.delete(user)
+            db.session.commit()
+        else:
+            assert mfa.reset(user) == 0
+        response = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert (response.status_code, response.get_json()) == (401, MFA_EXPIRED)
+        assert pending_of(client) is None
+        assert session_rows() == []
+        assert not authenticated(client)
+
+    def test_a_lock_that_started_meanwhile_is_429(self, app, client, two_fa, frozen_clock):
+        from datetime import timedelta
+        from app import db
+        login(client)
+        two_fa[0].locked_until = frozen_clock.now + timedelta(minutes=2)
+        db.session.commit()
+        response = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert response.status_code == 429
+        assert response.headers['Retry-After'] == '120'
+        assert response.get_json() == {
+            'success': False, 'error': 'Too Many Requests',
+            'message': 'Invalid credentials or account temporarily locked', 'code': 'locked',
+            'params': {'retry_after': 120}}
+        assert pending_of(client) is None
+        assert session_rows() == []
+
+    def test_a_wrong_code_counts_one_login_failure(self, app, client, two_fa, frozen_clock):
+        login(client)
+        response = client.post(MFA, json={'code': wrong_code(two_fa[1], frozen_clock.now)})
+        assert (response.status_code, response.get_json()) == (401, MFA_INVALID)
+        assert pending_of(client)['attempts'] == 1
+        assert stored_user().failed_login_count == 1
+        assert session_rows() == [] and not authenticated(client)
+
+    @pytest.mark.parametrize('bad', ['12345', 'abcdef', 'zzzzz-zzzzz'])
+    def test_a_malformed_code_counts_too(self, app, client, two_fa, bad):
+        login(client)
+        response = client.post(MFA, json={'code': bad})
+        assert (response.status_code, response.get_json()) == (401, MFA_INVALID)
+        assert stored_user().failed_login_count == 1
+
+    def test_the_right_code_signs_in(self, app, client, two_fa, frozen_clock):
+        from app.services.profile import user_payload
+        user = two_fa[0]
+        login(client)
+        frozen_clock.advance(seconds=10)
+        response = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert response.status_code == 200
+        assert response.get_json() == {'success': True, 'data': {
+            'user': user_payload(stored_user()), 'recovery_code_used': False,
+            'recovery_codes_left': 10}}
+        assert response.get_json()['data']['user']['username'] == 'u'
+        [row] = session_rows()
+        assert (row.rbses_user_id, row.rbses_mfa, row.rbses_auth_method, row.rbses_remember) == (
+            user.id, True, 'password', False)
+        stored = stored_user()
+        assert (stored.failed_login_count, stored.locked_until, stored.last_login_at) == (
+            0, None, frozen_clock.now)
+        assert pending_of(client) is None
+        assert authenticated(client)
+        assert client.get(ME).status_code == 200
+        assert 'mfa_pending' not in client.get(SESSION).get_json()['data']
+
+    def test_an_adjacent_code_with_spaces_works(self, app, client, two_fa, frozen_clock):
+        login(client)
+        given = code_now(two_fa, frozen_clock, offset=1)   # -1 is the enabling step: a replay
+        response = client.post(MFA, json={'code': f'{given[:3]} {given[3:]}'})
+        assert response.status_code == 200
+
+    def test_the_same_code_is_never_accepted_twice(self, app, two_fa, frozen_clock):
+        first, second = app.test_client(), app.test_client()
+        code = code_now(two_fa, frozen_clock)
+        login(first)
+        login(second)
+        assert first.post(MFA, json={'code': code}).status_code == 200
+        replay = second.post(MFA, json={'code': code})
+        assert (replay.status_code, replay.get_json()) == (401, MFA_INVALID)
+        assert not authenticated(second)
+        assert stored_user().failed_login_count == 1
+
+    def test_a_recovery_code_signs_in_once(self, app, two_fa, frozen_clock):
+        first, second = app.test_client(), app.test_client()
+        recovery = two_fa[2][3]
+        login(first)
+        response = first.post(MFA, json={'recovery_code': recovery.upper().replace('-', ' ')})
+        assert response.status_code == 200
+        data = response.get_json()['data']
+        assert (data['recovery_code_used'], data['recovery_codes_left']) == (True, 9)
+        [row] = session_rows()
+        assert row.rbses_mfa is True
+        login(second)
+        again = second.post(MFA, json={'recovery_code': recovery})
+        assert (again.status_code, again.get_json()) == (401, MFA_INVALID)
+        assert stored_user().failed_login_count == 1
+
+    def test_an_unknown_recovery_code_is_invalid(self, app, client, two_fa):
+        login(client)
+        response = client.post(MFA, json={'recovery_code': 'zzzzz-zzzzz'})
+        assert (response.status_code, response.get_json()) == (401, MFA_INVALID)
+        assert stored_user().failed_login_count == 1
+
+    def test_a_totp_code_sent_as_a_recovery_code_is_invalid(self, app, client, two_fa,
+                                                            frozen_clock):
+        login(client)
+        response = client.post(MFA, json={'recovery_code': code_now(two_fa, frozen_clock)})
+        assert response.get_json() == MFA_INVALID
+
+    def test_an_undecryptable_secret_is_503_but_a_recovery_code_works(self, app, client,
+                                                                      two_fa, frozen_clock,
+                                                                      caplog):
+        from cryptography.fernet import Fernet
+        login(client)
+        app.config['TOTP_ENCRYPTION_KEY'] = Fernet.generate_key().decode()
+        response = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert (response.status_code, response.get_json()) == (503, MFA_UNAVAILABLE)
+        assert two_fa[1] not in caplog.text
+        assert pending_of(client)['attempts'] == 0
+        assert stored_user().failed_login_count == 0
+        assert session_rows() == []
+        recovered = client.post(MFA, json={'recovery_code': two_fa[2][0]})
+        assert recovered.status_code == 200
+        assert recovered.get_json()['data']['recovery_codes_left'] == 9
+        assert authenticated(client)
+
+    def test_without_a_key_the_code_is_503_and_a_recovery_code_works(self, app, client,
+                                                                     two_fa, frozen_clock):
+        app.config['TOTP_ENCRYPTION_KEY'] = None
+        assert login(client).get_json() == MFA_REQUIRED
+        response = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert (response.status_code, response.get_json()) == (503, MFA_UNAVAILABLE)
+        assert client.post(MFA, json={'recovery_code': two_fa[2][0]}).status_code == 200
+        assert authenticated(client)
+
+    # S5 -------------------------------------------------------------------------------------
+    def test_the_eleventh_code_in_a_minute_is_429(self, limited_app, client):
+        for _ in range(10):
+            assert client.post(MFA, json={'code': WRONG_CODE}).get_json() == MFA_EXPIRED
+        response = client.post(MFA, json={'code': WRONG_CODE})
+        assert response.status_code == 429
+        assert int(response.headers['Retry-After']) > 0
+        assert response.get_json()['code'] == 'rate_limited'
+
+    def test_the_code_limit_is_not_the_login_limit(self, limited_app, client):
+        for i in range(10):
+            assert login(client, username=f'ghost{i}').status_code == 401
+        assert client.post(MFA, json={'code': WRONG_CODE}).status_code == 401
+
+    # S6 -------------------------------------------------------------------------------------
+    def test_the_lockout_example(self, app, client, two_fa, frozen_clock):
+        assert login(client).get_json() == MFA_REQUIRED
+        bad = wrong_code(two_fa[1], frozen_clock.now)
+        for count in range(1, 5):
+            response = client.post(MFA, json={'code': bad})
+            assert (response.status_code, response.get_json()) == (401, MFA_INVALID)
+            assert stored_user().failed_login_count == count
+        fifth = client.post(MFA, json={'code': bad})
+        assert fifth.status_code == 429
+        assert fifth.headers['Retry-After'] == '900'
+        assert (fifth.get_json()['code'], fifth.get_json()['params']) == (
+            'locked', {'retry_after': 900})
+        assert stored_user().locked_until == frozen_clock.now + __import__(
+            'datetime').timedelta(minutes=15)
+        assert pending_of(client) is None
+        frozen_clock.advance(minutes=1)
+        later = login(client)
+        assert (later.status_code, later.get_json()['code']) == (429, 'locked')
+        assert later.headers['Retry-After'] == '840'
+        assert not authenticated(client) and session_rows() == []
+
+    def test_a_right_code_after_three_wrong_ones_resets_the_count(self, app, client, two_fa,
+                                                                  frozen_clock):
+        login(client)
+        bad = wrong_code(two_fa[1], frozen_clock.now)
+        for _ in range(3):
+            client.post(MFA, json={'code': bad})
+        assert stored_user().failed_login_count == 3
+        assert client.post(MFA, json={'code': code_now(two_fa, frozen_clock)}).status_code == 200
+        assert (stored_user().failed_login_count, stored_user().locked_until) == (0, None)
+
+    def test_wrong_passwords_and_wrong_codes_share_the_count(self, app, client, two_fa,
+                                                             frozen_clock):
+        for _ in range(3):
+            login(client, password='wrong-pass')
+        assert login(client).get_json() == MFA_REQUIRED
+        assert stored_user().failed_login_count == 3
+        bad = wrong_code(two_fa[1], frozen_clock.now)
+        assert client.post(MFA, json={'code': bad}).status_code == 401
+        assert client.post(MFA, json={'code': bad}).status_code == 429
+
+    # S7 -------------------------------------------------------------------------------------
+    @pytest.mark.parametrize('remember', [False, True])
+    def test_remember_reaches_the_session(self, app, client, two_fa, frozen_clock, remember):
+        from datetime import timedelta
+        login(client, remember=remember)
+        response = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert response.status_code == 200
+        cookies = set_cookies(response, 'remember_token')
+        assert len(cookies) == (1 if remember else 0)
+        [row] = session_rows()
+        assert row.rbses_remember is remember
+        assert row.rbses_expires_at == (frozen_clock.now + timedelta(days=30) if remember
+                                        else None)
+        if remember:
+            client.delete_cookie('session')
+            assert authenticated(client)
+
+    # CSRF -----------------------------------------------------------------------------------
+    def test_the_code_needs_the_csrf_token(self, csrf_app, client, two_fa, frozen_clock):
+        token = api_csrf_token(client)
+        assert client.post(LOGIN, json={'username': 'u', 'password': DEFAULT_PASSWORD},
+                           headers={'X-CSRFToken': token}).get_json() == MFA_REQUIRED
+        refused = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)})
+        assert (refused.status_code, refused.get_json()['code']) == (400, 'csrf_invalid')
+        assert pending_of(client)['attempts'] == 0
+        accepted = client.post(MFA, json={'code': code_now(two_fa, frozen_clock)},
+                               headers={'X-CSRFToken': api_csrf_token(client)})
+        assert accepted.status_code == 200
+        assert authenticated(client)
+
+
+# --- No way around the second factor (F9-e S1, S8) --------------------------------------------
+
+class TestNoMfaBypass:
+    def test_only_the_session_service_calls_login_user(self):
+        import re
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent / 'app'
+        callers, identity = [], []
+        for path in sorted(root.rglob('*.py')):
+            text = path.read_text(encoding='utf-8')
+            relative = path.relative_to(root.parent).as_posix()
+            if re.search(r'\blogin_user\b', text):
+                callers.append(relative)
+            if re.search(r"""\[\s*['"]_user_id['"]\s*\]\s*=""", text):
+                identity.append(relative)
+        assert callers == ['app/services/sessions.py']
+        assert identity == []
+        sessions_text = (root / 'services' / 'sessions.py').read_text(encoding='utf-8')
+        assert len(re.findall(r'\blogin_user\(', sessions_text)) == 1
+
+    def test_the_password_alone_never_reaches_the_account(self, app, client, two_fa):
+        assert login(client, remember=True).get_json() == MFA_REQUIRED
+        assert client.get(ME).status_code == 401
+        client.delete_cookie('session')
+        assert client.get_cookie('remember_token') is None
+        assert client.get(ME).status_code == 401
+        assert session_rows() == []
+
+    def test_a_pending_step_is_not_a_session(self, app, client, two_fa):
+        login(client)
+        with client.session_transaction() as flask_session:
+            assert '_user_id' not in flask_session
+        assert client.get(SESSION).get_json()['data']['authenticated'] is False
+        assert client.post(f'{API}/me/reauth',
+                           json={'password': DEFAULT_PASSWORD}).status_code == 401
+
+    def test_sessions_from_before_2fa_was_turned_on_stay_anonymous(self, app, make_user,
+                                                                   frozen_clock):
+        from tests.auth_helpers import totp_code
+        from tests.conftest import login_as
+        make_user('u')
+        before = app.test_client()
+        login(before, remember=True)
+        old_session = cookie_value(before, 'session')
+        old_remember = cookie_value(before, 'remember_token')
+        owner = login_as(app.test_client(), 'u')
+        secret = owner.post(f'{API}/me/2fa/setup').get_json()['data']['secret'].replace(' ', '')
+        enabled = owner.post(f'{API}/me/2fa/enable',
+                             json={'code': totp_code(secret, frozen_clock.now)})
+        assert enabled.get_json()['data']['revoked_sessions'] == 1
+        assert not authenticated(before)
+        for name, value in (('session', old_session), ('remember_token', old_remember)):
+            fresh = app.test_client()
+            fresh.set_cookie(name, value)
+            assert not authenticated(fresh), name
+            assert fresh.get(ME).status_code == 401
+
+    def test_a_pending_step_completes_only_for_its_own_user(self, app, client, make_user,
+                                                            frozen_clock):
+        from tests.auth_helpers import totp_code, turn_on_2fa
+        ana, bo = make_user('ana'), make_user('bo')
+        turn_on_2fa(ana, frozen_clock)
+        bo_secret, _ = turn_on_2fa(bo, frozen_clock)
+        assert login(client, username='ana').get_json() == MFA_REQUIRED
+        response = client.post(MFA, json={'code': totp_code(bo_secret, frozen_clock.now)})
+        assert response.get_json() == MFA_INVALID
+        assert (stored_user('ana').failed_login_count, stored_user('bo').failed_login_count) == (
+            1, 0)
+        assert not authenticated(client)
+        assert session_rows() == []
+
+    def test_a_copied_step_still_needs_the_code_and_shares_the_count(self, app, two_fa,
+                                                                     frozen_clock):
+        first, copy = app.test_client(), app.test_client()
+        login(first)
+        copy.set_cookie('session', cookie_value(first, 'session'))
+        assert not authenticated(copy)
+        assert copy.get(ME).status_code == 401
+        bad = wrong_code(two_fa[1], frozen_clock.now)
+        for client in (first, first, copy, copy):
+            assert client.post(MFA, json={'code': bad}).get_json() == MFA_INVALID
+        locked = copy.post(MFA, json={'code': bad})
+        assert (locked.status_code, locked.get_json()['code']) == (429, 'locked')
+        assert stored_user().failed_login_count == 5
+        assert first.post(MFA, json={'code': code_now(two_fa, frozen_clock)}).status_code == 429
+        assert session_rows() == []
+
+    def test_the_session_service_refuses_a_missing_second_factor(self, app, two_fa):
+        from app.services import sessions
+        with app.test_request_context():
+            with pytest.raises(sessions.SecondFactorRequired):
+                sessions.sign_in(two_fa[0], remember=True, auth_method='password',
+                                 mfa_passed=False)
+            with pytest.raises(sessions.SecondFactorRequired):
+                sessions.sign_in(two_fa[0], remember=False)
+        assert session_rows() == []
+
+    def test_an_admin_with_2fa_needs_the_code_for_the_admin_api(self, app, client, make_user,
+                                                                 frozen_clock):
+        from tests.auth_helpers import totp_code, turn_on_2fa
+        admin = make_user('boss', is_admin=True)
+        secret, _ = turn_on_2fa(admin, frozen_clock)
+        assert login(client, username='boss').get_json() == MFA_REQUIRED
+        denied = client.get(f'{API}/admin/overview')
+        assert (denied.status_code, denied.get_json()['code']) == (401, 'unauthenticated')
+        assert client.post(MFA, json={'code': totp_code(secret, frozen_clock.now)}
+                           ).status_code == 200
+        assert client.get(f'{API}/admin/overview').status_code == 200
+
+    def test_registering_never_signs_in(self, app, client):
+        response = client.post(REGISTER, json=NEW_USER)
+        assert response.status_code == 201
+        assert not authenticated(client)
+        assert session_rows() == []

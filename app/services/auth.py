@@ -10,6 +10,7 @@ are gone (PR 3/3 of the Jinja retirement).
     no password (OAuth) ..... dummy hash check ........ INVALID  (F9-b S2: counts nothing)
     wrong password .......... count + 1; from the 5th failure on, lock ... INVALID
     blocked, right password . nothing changes .......... INVALID  (R4)
+    right password, 2FA on .. nothing changes .......... MFA_REQUIRED(user)  (F9-e S2)
     right password .......... reset count and lock ..... OK(user)
 
 Exactly ONE password-hash verification happens on every path, so the work
@@ -21,6 +22,10 @@ wait) and unknown names never get it.
 Lock length (R3) depends only on `failed_login_count` (it is never reset by a
 lock, only by a successful login): the n-th failure, n >= LOGIN_MAX_FAILURES,
 locks for min(BASE * 2**(n - MAX), CAP) minutes (15, 30, 60 ... 24 h).
+
+Two-factor sign-in (F9-e): with 2FA on, the right password only opens the second step;
+`second_factor` checks its code. A wrong code is one more failure of the same count (the
+lock above), and only a right code resets the count, the lock and `last_login_at`.
 
 Time comes from `app.utils.clock` so tests can move it (D17).
 """
@@ -40,6 +45,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
 from app.models import User
+from app.services import mfa
 from app.schemas.validators import RegisterRequest
 from app.utils import clock
 
@@ -47,6 +53,12 @@ from app.utils import clock
 # each (`scope`).
 LOGIN_RATE_LIMIT = '10/minute;50/hour'
 REGISTER_RATE_LIMIT = '5/hour'
+MFA_SIGNIN_RATE_LIMIT = '10/minute;50/hour'      # POST /auth/mfa, its own budget (F9-e S5)
+
+# The second sign-in step (F9-e S3): its lifetime and the codes it accepts.
+MFA_STEP_LIFETIME = timedelta(minutes=5)
+MFA_MAX_ATTEMPTS = 5
+MFA_METHODS = ('totp', 'recovery')
 
 USERNAME_TAKEN = 'Username already exists'
 EMAIL_TAKEN = 'Email already registered'
@@ -57,6 +69,8 @@ class AuthStatus(StrEnum):
     INVALID = 'invalid'
     LOCKED = 'locked'
     BLOCKED = 'blocked'      # reserved: R4 makes a blocked user come back as INVALID
+    MFA_REQUIRED = 'mfa_required'   # right password, 2FA on: the second step comes next
+    EXPIRED = 'expired'      # second step: the user is gone, blocked or has no 2FA any more
 
 
 @dataclass(frozen=True)
@@ -64,6 +78,7 @@ class AuthResult:
     status: AuthStatus
     user: Optional[User] = None
     retry_after: Optional[int] = None      # seconds, only for LOCKED
+    recovery_code_used: bool = False       # second step only: OK through a recovery code
 
 
 class DuplicateUserError(Exception):
@@ -119,11 +134,60 @@ def authenticate(username: str, password: str) -> AuthResult:
     if not user.is_active:
         return AuthResult(AuthStatus.INVALID)   # R4: same answer as a wrong password
 
+    if mfa.is_enabled(user.id):
+        # F9-e S2: the count, the lock and last_login_at wait for the second step.
+        return AuthResult(AuthStatus.MFA_REQUIRED, user=user)
+
+    _signed_in(user, now)
+    db.session.commit()
+    return AuthResult(AuthStatus.OK, user=user)
+
+
+def _signed_in(user: User, now) -> None:
+    """A complete sign-in: the failure count and the lock start again (the caller commits)."""
     user.failed_login_count = 0
     user.locked_until = None
     user.last_login_at = now
-    db.session.commit()
-    return AuthResult(AuthStatus.OK, user=user)
+
+
+def second_factor(user_id: int, *, code: Optional[str] = None,
+                  recovery_code: Optional[str] = None) -> AuthResult:
+    """Check the second step of a sign-in (F9-e S4) for the user of the pending step.
+
+    EXPIRED   the user is gone, blocked, or no longer has 2FA on (nothing counted);
+    LOCKED    the account is locked (nothing counted; retry_after);
+    INVALID   wrong, replayed or malformed TOTP code, unknown or used recovery code: one
+              failure counted like a wrong password (committed); LOCKED instead when that
+              failure starts a lock;
+    OK        right code: count, lock and last_login_at reset, the TOTP step or the recovery
+              code stored as used, all left UNCOMMITTED for `sessions.sign_in` to commit with
+              the session row (one transaction).
+
+    Raises `mfa.MfaUnavailable` for a TOTP code while the secret cannot be decrypted (no key,
+    or another key): nothing is counted then; a recovery code does not need the key.
+    """
+    now = clock.utcnow()
+    user = db.session.get(User, user_id)
+    if user is None or not user.is_active or not mfa.is_enabled(user.id):
+        return AuthResult(AuthStatus.EXPIRED)
+
+    if user.locked_until is not None and user.locked_until > now:
+        return AuthResult(AuthStatus.LOCKED, user=user,
+                          retry_after=_seconds_left(user.locked_until, now))
+
+    if code is not None:
+        passed = mfa.verify_totp(user, code)
+    else:
+        passed = mfa.use_recovery_code(user, recovery_code or '')
+    if not passed:
+        _register_failure(user, now)
+        if user.locked_until is not None and user.locked_until > now:
+            return AuthResult(AuthStatus.LOCKED, user=user,
+                              retry_after=_seconds_left(user.locked_until, now))
+        return AuthResult(AuthStatus.INVALID, user=user)
+
+    _signed_in(user, now)
+    return AuthResult(AuthStatus.OK, user=user, recovery_code_used=code is None)
 
 
 def _register_failure(user: User, now) -> None:

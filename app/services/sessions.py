@@ -10,8 +10,9 @@ A session is active while it is not revoked and
 - not remembered: within `IDLE_TIMEOUT` (12 h) of `last_seen_at`.
 `last_seen_at` is written at most once every `TOUCH_INTERVAL` (5 min) per session.
 
-`sign_in` is the one function that creates a row and calls `login_user` (F9-e adds the second
-factor to it). The revocation helpers below are used by logout, the device list, a password
+`sign_in` is the one function that creates a row and calls `login_user` (a test fails if
+`login_user` appears anywhere else in `app/`). It refuses a user with two-factor authentication
+on unless the caller passed the second factor (F9-e S1): every way in goes through it. The revocation helpers below are used by logout, the device list, a password
 change and `flask users block|set-password`. Time comes from `clock.utcnow()` (freezable).
 """
 from __future__ import annotations
@@ -27,7 +28,7 @@ from flask import current_app, has_request_context, request
 from flask_login import current_user, login_user
 
 from app import db
-from app.models import RbSession, User
+from app.models import RbSession, RbUserMfa, User
 from app.utils import clock
 
 TOKEN_PREFIX = 's:'
@@ -97,17 +98,37 @@ def _is_active(row: RbSession, now) -> bool:
     return row.rbses_last_seen_at > now - IDLE_TIMEOUT
 
 
+class SecondFactorRequired(RuntimeError):
+    """`sign_in` of a user with two-factor authentication on, without the second factor."""
+
+
+def _two_factor_on(user_id: int) -> bool:
+    """True when `user_id` has 2FA on (a pending setup is not on). Read here, not through
+    `app.services.mfa`, which imports this module."""
+    return db.session.execute(
+        sa.select(RbUserMfa.rbmfa_user_id).where(RbUserMfa.rbmfa_user_id == user_id,
+                                                 RbUserMfa.rbmfa_enabled_at.is_not(None))
+    ).first() is not None
+
+
 def _attach(user: User, token: str, row_id: int) -> None:
     """Give `user` its session for this request: `get_id()` returns `s:<token>`."""
     user.session_token = token
     user.session_id = row_id
 
 
-def sign_in(user: User, *, remember: bool, auth_method: str = 'password') -> RbSession:
+def sign_in(user: User, *, remember: bool, auth_method: str = 'password',
+            mfa_passed: bool = False) -> RbSession:
     """Create the session row of a successful sign-in, then `login_user` (S5).
 
-    Needs a request context (User-Agent, client address). Commits the row.
+    The only caller of `login_user` in the app (F9-e S1). A user with 2FA on needs
+    `mfa_passed=True`, otherwise `SecondFactorRequired` is raised and nothing is created;
+    `rbses_mfa` stores `mfa_passed`. Needs a request context (User-Agent, client address).
+    Commits the row together with whatever the caller left in the transaction (the second
+    step's `last_step`, a used recovery code, the reset failure count).
     """
+    if not mfa_passed and _two_factor_on(user.id):
+        raise SecondFactorRequired('two-factor authentication is on for this user')
     now = clock.utcnow()
     token = secrets.token_urlsafe(32)
     agent = request.headers.get('User-Agent') or None
@@ -120,7 +141,7 @@ def sign_in(user: User, *, remember: bool, auth_method: str = 'password') -> RbS
                           if remember else None),
         rbses_remember=bool(remember),
         rbses_auth_method=auth_method,
-        rbses_mfa=False,
+        rbses_mfa=bool(mfa_passed),
         rbses_reauth_at=now,
         rbses_user_agent=agent[:USER_AGENT_MAX] if agent else None,
         rbses_ip_prefix=ip_prefix(request.remote_addr),

@@ -823,6 +823,19 @@ class ReauthRequest(BaseModel):
         return self
 
 
+class MfaSignIn(BaseModel):
+    """POST /auth/mfa body (F9-e S4): exactly one of `code` (TOTP) or `recovery_code`. Their
+    shape is checked by `app.services.mfa` (a malformed code is a wrong code)."""
+    code: Optional[str] = Field(None, min_length=1, max_length=64)
+    recovery_code: Optional[str] = Field(None, min_length=1, max_length=64)
+
+    @model_validator(mode='after')
+    def exactly_one(self):
+        if (self.code is None) == (self.recovery_code is None):
+            raise ValueError('Send either a code or a recovery code')
+        return self
+
+
 class MfaCode(BaseModel):
     """POST /me/2fa/enable and /me/2fa/disable body (F9-d S8, S9): a TOTP code or, to turn 2FA
     off, a recovery code. Its shape is checked by `app.services.mfa`."""
