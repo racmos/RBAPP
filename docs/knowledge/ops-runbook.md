@@ -57,7 +57,7 @@ There is no production yet (phase F12). Everything here is the development serve
 
 - Status and logs: `systemctl status <service>`, `journalctl -u <service> -n 200 --no-pager`.
 - Users: `venv/bin/flask users list|promote|demote|block|unblock|unlock|set-password|reset-2fa <username>`
-  (`reset-2fa`: see "Two-factor key (F9-d)").
+  (`reset-2fa`: see "Two-factor key (F9-d)" and "Two-factor sign-in (F9-e)").
 - Schema snapshot (structure only): `venv/bin/flask schema snapshot`.
 - Card bans per game mode (F2-a; the only way to change them until the F10 admin UI; a ban covers every
   printing of the name):
@@ -562,6 +562,32 @@ them apart.
 - Rollback: revert the PR and `venv/bin/flask db downgrade -1` (drops `rbusermfa` and
   `rbrecoverycodes`: every user's 2FA is lost; owner's go-ahead). The key can stay in the environment
   (the reverted code ignores it). The packages can stay installed.
+
+## Two-factor sign-in (F9-e)
+
+Since F9-e a user with 2FA on signs in with the password and then a code (`POST /auth/mfa`, see
+`docs/api.md` → "Two-factor sign-in (F9-e)"). No migration, no new variable: deploy = restart plus the
+frontend rebuild. Until F9-j there is no code screen in the app, so only accounts that turned 2FA on
+through the API are affected.
+
+- Wrong codes count towards the same account lock as wrong passwords (the 5th consecutive failure locks
+  15 minutes, then 30, 60 ... 24 h; `Retry-After` says how long). `venv/bin/flask users unlock <username>`
+  clears the count and the lock, as for wrong passwords.
+- A 2FA user who lost the phone signs in with the password and one of their **recovery codes** (each
+  works once; the answer says how many are left). From there they can turn 2FA off or make new codes.
+- Lost phone **and** recovery codes: `venv/bin/flask users reset-2fa <username>` removes their 2FA and
+  ends all their sessions; they then sign in with the password alone and may set 2FA up again. Until
+  F10 this is the only way.
+- Lost or changed `TOTP_ENCRYPTION_KEY`: a TOTP code at sign-in answers 503 "Two-factor authentication
+  is not available" (nothing counted); recovery codes still work (they do not need the key). Otherwise
+  `reset-2fa` as above (see "Two-factor key (F9-d)").
+- Live check (after the deploy), with a test account that has 2FA on: `POST
+  /riftbound/api/v1/auth/login` → `{"mfa_required": true, "methods": ["totp", "recovery"]}`; `GET
+  /riftbound/api/v1/me` with the same cookies → 401; `POST /riftbound/api/v1/auth/mfa {"code": "..."}` →
+  `{user, recovery_code_used: false, recovery_codes_left: 10}`; a recovery code works once. An account
+  without 2FA signs in as before.
+- Rollback: revert the PR and deploy again (no data to restore; 2FA users then sign in with the password
+  only, and their 2FA settings stay stored).
 
 ## Jinja retirement (PR 3/3)
 

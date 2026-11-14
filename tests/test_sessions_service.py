@@ -233,3 +233,42 @@ def test_the_user_agent_is_cut_to_255_and_may_be_absent(app, make_user, frozen_c
     agents = [r.rbses_user_agent for r in db.session.execute(
         sa.select(RbSession).order_by(RbSession.rbses_id)).scalars()]
     assert agents == ['x' * 255, None]
+
+
+# --- F9-e S1: the second factor is part of the one sign-in function ---------------------------
+
+class TestSecondFactor:
+    def test_a_2fa_user_without_the_second_factor_gets_nothing(self, app, make_user,
+                                                               frozen_clock):
+        from tests.auth_helpers import turn_on_2fa
+        user = make_user('ana')
+        turn_on_2fa(user, frozen_clock)
+        with app.test_request_context():
+            with pytest.raises(sessions.SecondFactorRequired):
+                sessions.sign_in(user, remember=True, auth_method='password', mfa_passed=False)
+            from flask import session as flask_session
+            assert '_user_id' not in flask_session
+        assert user.get_id() is None
+        assert db.session.execute(sa.select(sa.func.count()).select_from(
+            RbSession)).scalar_one() == 0
+
+    def test_the_second_factor_is_stored_on_the_session(self, app, make_user, frozen_clock):
+        from tests.auth_helpers import turn_on_2fa
+        user = make_user('ana')
+        turn_on_2fa(user, frozen_clock)
+        with app.test_request_context():
+            row = sessions.sign_in(user, remember=False, auth_method='password',
+                                   mfa_passed=True)
+        assert row.rbses_mfa is True
+        assert only_row().rbses_mfa is True
+
+    def test_a_user_without_2fa_signs_in_without_it(self, app, make_user, frozen_clock):
+        sign_in(app, make_user('ana'))
+        assert only_row().rbses_mfa is False
+
+    def test_a_pending_setup_is_not_2fa(self, app, make_user, frozen_clock):
+        from app.services import mfa
+        user = make_user('ana')
+        mfa.setup(user)
+        sign_in(app, user)
+        assert only_row().rbses_mfa is False

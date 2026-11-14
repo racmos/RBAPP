@@ -1203,8 +1203,8 @@ Migration `0031_mfa`: `rbusermfa` (model `RbUserMfa`: the Fernet ciphertext of t
 `rbmfa_enabled_at` NULL = pending setup, `rbmfa_last_step` = last accepted step) and
 `rbrecoverycodes` (model `RbRecoveryCode`: sha256 of each recovery code, `rbrco_used_at`). Logic
 in `app/services/mfa.py`, the only module that knows `TOTP_ENCRYPTION_KEY`; routes in
-`app/api/v1/mfa.py`. Optional for every user, admins included. Sign-in does not ask for the code
-yet (F9-e); no screen yet (F9-j).
+`app/api/v1/mfa.py`. Optional for every user, admins included. Sign-in asks for the code since
+F9-e (see "Two-factor sign-in (F9-e)"); no screen yet (F9-j).
 
 | Method | Path | Auth | Endpoint | Body | Response |
 |---|---|---|---|---|---|
@@ -1294,13 +1294,107 @@ New error code `mfa_invalid` (400) "That code is not valid. Check your authentic
 again." (`frontend/src/i18n/locales/en/errors.json`). Frontend (types and endpoints only):
 `MfaSetup`, `RecoveryCodes`, `setupMfa`, `enableMfa`, `disableMfa`, `regenerateRecoveryCodes`.
 
+### Two-factor sign-in (F9-e)
+
+A user with 2FA on (`rbusermfa.rbmfa_enabled_at` set) signs in in two steps: the password, then
+a code. Routes in `app/api/v1/auth.py`, logic in `app/services/auth.py` (`authenticate`,
+`second_factor`) and `app/services/sessions.py` (`sign_in`). No migration; no screen yet (F9-j).
+
+| Method | Path | Auth | Endpoint | Body | Response |
+|---|---|---|---|---|---|
+| POST | `/auth/login` | P | `api_v1.auth_login` | `LoginRequest` | `{user}`, or `{mfa_required, methods}` with 2FA on |
+| POST | `/auth/mfa` | P (pending step) | `api_v1.auth_mfa` | `MfaSignIn` | `{user, recovery_code_used, recovery_codes_left}` |
+| GET | `/auth/session` | P | `api_v1.auth_session` | none | adds `mfa_pending: true` during the step |
+
+**One way in.** Every session is created by `sessions.sign_in(user, *, remember, auth_method,
+mfa_passed)`, the only caller of `flask_login.login_user` in the app (a test greps `app/`). For a
+user with 2FA on it raises `SecondFactorRequired` and creates nothing unless `mfa_passed` is true;
+the session row stores `rbses_mfa = mfa_passed`.
+
+**`POST /auth/login`.** Wrong password, locked and blocked answers are unchanged, and so is the
+answer for an account without 2FA (`{user}` and the session). With 2FA on and the right password
+(account not blocked or locked):
+
+```json
+{"success": true, "data": {"mfa_required": true, "methods": ["totp", "recovery"]}}
+```
+
+No session row, no `login_user`, no remember cookie; `failed_login_count`, `locked_until` and
+`last_login_at` are **not** touched (they change only when the code is right). The Flask session
+(the signed cookie) stores the pending step `mfa_pending = {uid, remember, method: "password",
+started_at, attempts: 0}`, replacing any earlier one. A client that was signed in (as anybody)
+is signed out first, as by a logout (its session revoked, the remember cookie expired), so the
+client has no identity during the step.
+
+**The pending step** lasts 5 minutes from `started_at` and allows 5 wrong codes. It is removed on
+success, on expiry, after the 5th wrong code, on `POST /auth/logout` and when any new
+`POST /auth/login` starts. It never authenticates anything: while it exists every signed-in route
+answers 401 `unauthenticated`, and `GET /auth/session` answers `{"authenticated": false,
+"csrf_token": "...", "mfa_pending": true}` (the key appears only while a live step exists).
+`POST /auth/logout` with only a pending step removes it and answers `{}`; with neither a session
+nor a step it is the usual 401.
+
+**`POST /auth/mfa`** (CSRF token required like every unsafe route; `10/minute;50/hour` per IP,
+its own counter, scope `mfa`: the 11th in a minute -> 429 `rate_limited`). Body `MfaSignIn`:
+exactly one of `code` (TOTP) or `recovery_code`, each 1-64 characters; both, neither, empty or
+longer -> 400 `validation_error` (nothing counted). Then, in this order:
+
+1. No live pending step (none, expired, 5 wrong codes used), or its user is deleted, blocked or no
+   longer has 2FA -> 401, step removed:
+
+   ```json
+   {"success": false, "error": "Unauthorized", "message": "The sign-in step expired",
+    "code": "mfa_expired"}
+   ```
+2. Account locked (`locked_until > now`) -> 429 `locked` with `Retry-After` and
+   `params.retry_after` (the login answer), step removed.
+3. A TOTP `code` while 2FA is unavailable (no usable `TOTP_ENCRYPTION_KEY`, or the secret cannot
+   be decrypted) -> 503 "Two-factor authentication is not available", nothing counted, the step
+   kept; a `recovery_code` still works.
+4. Wrong, replayed or malformed TOTP code, unknown or used recovery code -> `attempts + 1` and one
+   login failure counted exactly like a wrong password (`failed_login_count + 1`, the same lock
+   lengths). When that failure locks the account -> 429 `locked` (step removed); otherwise 401:
+
+   ```json
+   {"success": false, "error": "Unauthorized", "message": "The code is not valid",
+    "code": "mfa_invalid"}
+   ```
+
+   The 5th wrong code removes the step (the next call is `mfa_expired`).
+5. Right code -> `failed_login_count = 0`, `locked_until = NULL`, `last_login_at = now`, the TOTP
+   step (or the recovery code as used) and the new session (`rbses_mfa = true`, `auth_method` of
+   the step, a remember cookie only when the login sent `remember: true`) in one transaction; the
+   step removed:
+
+   ```json
+   {"success": true, "data": {"user": {"id": 7, "username": "ada", "email": null,
+     "is_admin": false, "display_name": null, "avatar_url": null},
+     "recovery_code_used": false, "recovery_codes_left": 10}}
+   ```
+
+**Lockout coupling** (default settings: the 5th consecutive failure locks 15 minutes, then 30,
+60 ... 24 h). A user with 0 failures gives the right password (`mfa_required`), then 4 wrong codes
+(401 `mfa_invalid` each, `failed_login_count` 4) and a 5th wrong code -> 429 `locked`,
+`Retry-After: 900`; the right password during the lock -> 429 `locked`. Wrong passwords and wrong
+codes add up (3 wrong passwords + right password + 2 wrong codes = locked). A right code after 3
+wrong ones resets the count to 0. The 401 answers of `/auth/mfa` never sign the SPA out
+(`AUTH_ANSWER_PATHS` in `frontend/src/api/client.ts`).
+
+The pending step lives in the signed cookie, so its `attempts` counter is per copy of the cookie;
+the account's `failed_login_count` (in the database) is shared and is what bounds guessing: a
+copied cookie still needs the code and its wrong codes lock the same account.
+
+New error code `mfa_expired` (401) "The sign-in step expired. Sign in again." Frontend (types and
+endpoints only): `LoginResult`, `SessionData.mfa_pending`, `MfaSignInBody`, `MfaSignInResult`,
+`completeMfa`.
+
 ## Data shapes
 
 Additive changes only: new keys may be appended, existing keys are never renamed,
 retyped or removed without a new unit.
 
 `UserPayload` (F9-b S6) = the `user` of `GET /auth/session`, `POST /auth/login`,
-`PATCH /me/account` and `GET /me`: `{id, username, email|null, is_admin, display_name|null,
+`POST /auth/mfa` (F9-e), `PATCH /me/account` and `GET /me`: `{id, username, email|null, is_admin, display_name|null,
 avatar_url|null}`. `display_name` is the profile value; `avatar_url` is
 `/riftbound/api/v1/users/<id>/avatar?v=<n>` when the user has an avatar, else null (F9-c S8).
 

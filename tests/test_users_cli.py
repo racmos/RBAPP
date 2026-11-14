@@ -129,6 +129,8 @@ class TestReset2fa:
         code = totp.generate_otp(totp.timecode(frozen_clock.now.replace(tzinfo=timezone.utc)))
         status, _, _ = mfa.enable(user, code, keep_session_id=None)
         assert status is mfa.MfaStatus.OK
+        frozen_clock.advance(seconds=30)
+        return secret
 
     @staticmethod
     def _rows(user_id):
@@ -139,11 +141,14 @@ class TestReset2fa:
                     RbRecoveryCode.rbrco_user_id == user_id)).scalar_one())
 
     def test_removes_2fa_and_ends_every_session(self, app, cli, make_user, frozen_clock):
+        from tests.auth_helpers import sign_in_2fa
         ana, bo = make_user('ana'), make_user('bo')
-        self._turn_on(ana, frozen_clock)
-        self._turn_on(bo, frozen_clock)
-        clients = [login_as(app.test_client(), 'ana'), login_as(app.test_client(), 'ana')]
-        bo_client = login_as(app.test_client(), 'bo')
+        ana_secret = self._turn_on(ana, frozen_clock)
+        bo_secret = self._turn_on(bo, frozen_clock)
+        # F9-e: a 2FA user signs in with the password and then the code.
+        clients = [sign_in_2fa(app.test_client(), 'ana', ana_secret, frozen_clock),
+                   sign_in_2fa(app.test_client(), 'ana', ana_secret, frozen_clock)]
+        bo_client = sign_in_2fa(app.test_client(), 'bo', bo_secret, frozen_clock)
         result = cli('users', 'reset-2fa', 'ana')
         assert (result.exit_code, result.stdout, result.stderr) == (
             0, "Two-factor authentication removed for 'ana'; 2 session(s) ended\n", '')

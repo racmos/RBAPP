@@ -66,6 +66,13 @@ A successful login MUST set `failed_login_count=0`, `locked_until=NULL`, `last_l
 - WHEN client 1 requests `GET /riftbound/`
 - THEN status 200
 
+#### Scenario: Two-factor users reset only with the code (F9-e)
+- GIVEN `u` has two-factor authentication on and `failed_login_count=3`
+- WHEN the correct password is submitted
+- THEN the answer is `{mfa_required: true}`, no session exists and count stays 3
+- AND a wrong code at `POST /auth/mfa` counts one more failure exactly like a wrong password (count 4; the 5th consecutive failure locks as above)
+- AND only a right code (TOTP or recovery code) sets count 0, `locked_until` NULL, `last_login_at` now and creates the session (`docs/api.md` → "Two-factor sign-in (F9-e)")
+
 ### Requirement: LOGIN-5 No account oracle [d]
 
 An unknown username MUST produce the same status and body shape as a wrong password and MUST do equivalent password-hash work (a dummy hash is verified). Only IP limits apply to unknown names. Blocked (`is_active=false`) users get the same response as wrong password, including the same hash work.

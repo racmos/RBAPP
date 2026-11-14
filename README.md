@@ -116,7 +116,7 @@ flask sessions purge [--dry-run]    # delete the ended sign-in sessions (also a 
 
 ## JSON API
 
-`/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`. Responses are `{"success": true, "data": ...}` or `{"success": false, "error": "...", "message": "..."}`; an error may add a machine-readable `code` and `params`. Unsafe requests need the `X-CSRFToken` header; read the token from `GET /auth/session`, which also returns the signed-in user's `prefs` (interface preferences, `null` = Auto). `POST /auth/login` accepts `remember: true` to keep the session for 30 days. Details are in `AGENTS.md`.
+`/riftbound/api/v1`: `GET /health`, `GET /meta/config`, `GET /auth/session`, `GET /auth/captcha`, `POST /auth/login`, `POST /auth/mfa`, `POST /auth/logout`, `POST /auth/register`, `GET /me/prefs`, `PATCH /me/prefs`. Responses are `{"success": true, "data": ...}` or `{"success": false, "error": "...", "message": "..."}`; an error may add a machine-readable `code` and `params`. Unsafe requests need the `X-CSRFToken` header; read the token from `GET /auth/session`, which also returns the signed-in user's `prefs` (interface preferences, `null` = Auto). `POST /auth/login` accepts `remember: true` to keep the session for 30 days; for an account with two-factor authentication on it answers `{"mfa_required": true, ...}` and `POST /auth/mfa` with a code finishes the sign-in. Details are in `AGENTS.md`.
 
 ## New app hosting
 

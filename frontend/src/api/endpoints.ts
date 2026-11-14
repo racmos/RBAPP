@@ -40,9 +40,12 @@ import type {
   LocationList,
   LocationPatchBody,
   LoginBody,
+  LoginResult,
   MeData,
   MetaConfig,
   MfaSetup,
+  MfaSignInBody,
+  MfaSignInResult,
   MyProductAddBody,
   MyProductPatchBody,
   MyProducts,
@@ -86,8 +89,14 @@ export async function fetchSession(): Promise<Session> {
   };
 }
 
+/** `POST /auth/login`: `{user}`, or `{mfa_required, methods}` for a 2FA account (F9-e S2). */
 export const login = (body: LoginBody) =>
-  request<{ user: UserPayload }>('/auth/login', { method: 'POST', body });
+  request<LoginResult>('/auth/login', { method: 'POST', body });
+
+/** `POST /auth/mfa` (F9-e S4): finish a two-factor sign-in. Its 401 answers (`mfa_invalid`,
+    `mfa_expired`) never sign the app out (`AUTH_ANSWER_PATHS` in `client.ts`). */
+export const completeMfa = (body: MfaSignInBody) =>
+  request<MfaSignInResult>('/auth/mfa', { method: 'POST', body });
 
 export const logout = () => request<Record<string, never>>('/auth/logout', { method: 'POST' });
 

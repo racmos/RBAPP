@@ -12,6 +12,7 @@ from cryptography.fernet import Fernet
 
 from app import db
 from app.models import RbRecoveryCode, RbSession, RbUserMfa, User
+from tests.auth_helpers import sign_in_2fa
 from tests.conftest import login_as
 
 API = '/riftbound/api/v1'
@@ -212,7 +213,7 @@ class TestEnable:
 
 class TestDisable:
     def test_with_a_totp_code(self, ana, enabled, frozen_clock, app):
-        other = login_as(app.test_client(), 'ana')
+        other = sign_in_2fa(app.test_client(), 'ana', enabled[0], frozen_clock)   # F9-e
         response = ana.post(DISABLE, json={'code': now_code(frozen_clock, enabled[0])})
         assert (response.status_code, response.get_json()['data']) == (
             200, {'revoked_sessions': 1})
@@ -234,8 +235,8 @@ class TestDisable:
         assert (response.status_code, response.get_json()) == (400, INVALID)
         assert mfa_row() is not None
 
-    def test_a_wrong_code_changes_nothing(self, ana, enabled, app):
-        other = login_as(app.test_client(), 'ana')
+    def test_a_wrong_code_changes_nothing(self, ana, enabled, app, frozen_clock):
+        other = sign_in_2fa(app.test_client(), 'ana', enabled[0], frozen_clock)   # F9-e
         response = ana.post(DISABLE, json={'code': 'zzzzz-zzzzz'})
         assert (response.status_code, response.get_json()) == (400, INVALID)
         assert mfa_row().rbmfa_enabled_at is not None
@@ -262,8 +263,8 @@ class TestDisable:
 # --- Recovery codes (S10) --------------------------------------------------------------------
 
 class TestRegenerate:
-    def test_new_codes_replace_the_old_ones(self, ana, enabled, app):
-        other = login_as(app.test_client(), 'ana')
+    def test_new_codes_replace_the_old_ones(self, ana, enabled, app, frozen_clock):
+        other = sign_in_2fa(app.test_client(), 'ana', enabled[0], frozen_clock)   # F9-e
         response = ana.post(CODES)
         assert response.status_code == 200
         assert response.headers['Cache-Control'] == 'no-store'
@@ -290,7 +291,7 @@ class TestGuards:
     @pytest.mark.parametrize('route', ROUTES)
     def test_a_stale_reauth_is_403_and_nothing_applies(self, ana, enabled, frozen_clock, route,
                                                       app):
-        other = login_as(app.test_client(), 'ana')
+        other = sign_in_2fa(app.test_client(), 'ana', enabled[0], frozen_clock)   # F9-e
         frozen_clock.advance(minutes=11)
         before = (mfa_row().rbmfa_secret_enc, sorted(r.rbrco_code_hash for r in code_rows()))
         body = {'code': now_code(frozen_clock, enabled[0])} if route in (ENABLE, DISABLE) else None
@@ -327,13 +328,13 @@ class TestGuards:
         assert response.get_json()['code'] == 'rate_limited'
         assert int(response.headers['Retry-After']) > 0
 
-    def test_wrong_codes_never_count_as_login_failures(self, app, ana, enabled):
+    def test_wrong_codes_never_count_as_login_failures(self, app, ana, enabled, frozen_clock):
         for _ in range(8):
             assert ana.post(DISABLE, json={'code': '000000'}).status_code == 400
         user = User.query.filter_by(username='ana').one()
         db.session.refresh(user)
         assert (user.failed_login_count, user.locked_until) == (0, None)
-        assert login_as(app.test_client(), 'ana')
+        assert signed_in(sign_in_2fa(app.test_client(), 'ana', enabled[0], frozen_clock))
 
     @pytest.mark.parametrize('route', ROUTES)
     def test_without_a_key_every_route_is_503(self, app, ana, route):

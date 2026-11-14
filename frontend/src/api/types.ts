@@ -77,12 +77,14 @@ export type Prefs = {
   playset_size: number | null;
 };
 
-/** `GET /auth/session`. `user` and `prefs` exist only when `authenticated`. */
+/** `GET /auth/session`. `user` and `prefs` exist only when `authenticated`; `mfa_pending` only
+    when an anonymous caller is in the middle of a two-factor sign-in (F9-e S3). */
 export type SessionData = {
   authenticated: boolean;
   csrf_token: string;
   user?: UserPayload;
   prefs?: Prefs;
+  mfa_pending?: boolean;
 };
 
 /** What the app keeps of the session; the CSRF token lives in `csrf.ts`, never in the cache. */
@@ -100,6 +102,21 @@ export type MetaConfig = {
 };
 
 export type LoginBody = { username: string; password: string; remember: boolean };
+
+/** `POST /auth/login`: the signed-in user, or (2FA on, F9-e S2) no session yet and the code
+    methods the second step (`POST /auth/mfa`) accepts. */
+export type LoginResult = { user: UserPayload } | { mfa_required: true; methods: string[] };
+
+/** Body of `POST /auth/mfa` (F9-e S4): exactly one of a TOTP code or a recovery code. */
+export type MfaSignInBody =
+  { code: string; recovery_code?: never } | { recovery_code: string; code?: never };
+
+/** `POST /auth/mfa` (F9-e S4): the user now signed in and the recovery codes left. */
+export type MfaSignInResult = {
+  user: UserPayload;
+  recovery_code_used: boolean;
+  recovery_codes_left: number;
+};
 export type RegisterBody = { username: string; email: string; password: string; altcha?: string };
 
 export type ErrorParams = Record<string, string | number | boolean>;

@@ -58,6 +58,24 @@ describe('request bodies (F13-f S1)', () => {
   });
 });
 
+describe('the auth answer paths (F9-e S10)', () => {
+  it.each([
+    ['mfa_invalid', 'The code is not valid'],
+    ['mfa_expired', 'The sign-in step expired'],
+  ])('a 401 %s from /auth/mfa does not sign the app out (F9-e S10)', async (code, message) => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    setCsrfToken('token-mfa');
+    mockFetchJson({ success: false, error: 'Unauthorized', message, code }, 401);
+    await expect(
+      request('/auth/mfa', { method: 'POST', body: { code: '123456' } }),
+    ).rejects.toMatchObject({ kind: 'http', status: 401, code });
+    expect(handler).not.toHaveBeenCalled();
+    setUnauthorizedHandler(null);
+    clearCsrfToken();
+  });
+});
+
 describe('requestWithMeta (F2-h S1)', () => {
   it('returns data and meta from a successful envelope', async () => {
     mockFetchJson({ success: true, data: { items: [] }, meta: { page: 1, pages: 1 } });

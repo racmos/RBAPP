@@ -8,7 +8,7 @@ export const REQUEST_TIMEOUT_MS = 15_000;
 
 const UNSAFE = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
 /** A 401 on these is an answer, not an expired session (FAUTH-7). */
-const AUTH_ANSWER_PATHS = new Set(['/auth/login', '/auth/logout']);
+const AUTH_ANSWER_PATHS = new Set(['/auth/login', '/auth/logout', '/auth/mfa']);
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 export type RequestOptions = { method?: Method; body?: unknown; signal?: AbortSignal };
