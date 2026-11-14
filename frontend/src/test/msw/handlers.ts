@@ -44,6 +44,29 @@ export const NO_PREFS = {
   playset_size: null,
 };
 
+/** `GET /me` of `USER` (F9-b S7): no profile yet, a member since March 2026. */
+export const ME = {
+  user: USER,
+  profile: {
+    display_name: null as string | null,
+    bio: null as string | null,
+    country: null as string | null,
+    city: null as string | null,
+    avatar_url: null as string | null,
+    updated_at: null as string | null,
+  },
+  security: {
+    has_password: true,
+    password_changed_at: null,
+    member_since: '2026-03-05T10:00:00Z',
+    mfa: { available: true, enabled: false, pending: false, recovery_codes_left: 0 },
+    sessions_active: 1,
+    api_key: null,
+    connections: [],
+    reauth_until: null,
+  },
+};
+
 export const ok = <T>(data: T, status = 200) =>
   HttpResponse.json({ success: true, data }, { status });
 
@@ -92,6 +115,7 @@ export const handlers = [
       countries: ['ES', 'FR', 'GB', 'US'],
     }),
   ),
+  http.get(`${API}/me`, () => ok(ME)),
   http.get(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.patch(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.get(`${API}/meta/game`, () =>

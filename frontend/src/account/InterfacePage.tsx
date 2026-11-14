@@ -1,9 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { DebouncedInput } from '@/catalog';
-import { Icon } from '@/components/ui/Icon';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl, type SegmentedOption } from '@/components/ui/SegmentedControl';
 import { SettingsCard, SettingsRow } from '@/components/ui/SettingsCard';
 import { Slider } from '@/components/ui/Slider';
@@ -11,6 +8,7 @@ import { useDocumentTitle } from '@/i18n';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { usePrefs, type Prefs } from '@/prefs';
+import { AccountHeader } from './AccountNav';
 import { BackgroundPreview } from './BackgroundPreview';
 import styles from './InterfacePage.module.css';
 
@@ -75,16 +73,7 @@ export function InterfacePage() {
 
   return (
     <>
-      <PageHeader
-        title={t('interface.title')}
-        subtitle={t('interface.subtitle')}
-        actions={
-          <Link to="/account/profile" className={styles.link}>
-            <Icon name="account" size={16} />
-            {t('interface.profileLink')}
-          </Link>
-        }
-      />
+      <AccountHeader title={t('interface.title')} subtitle={t('interface.subtitle')} />
       <div className={styles.layout}>
         <SettingsCard title={t('interface.appearance')} description={t('interface.appearanceHint')}>
           <Setting label={t('interface.density.label')} hint={t('interface.density.hint')}>

@@ -125,7 +125,13 @@ export type MfaSignInResult = {
   recovery_code_used: boolean;
   recovery_codes_left: number;
 };
-export type RegisterBody = { username: string; email: string; password: string; altcha?: string };
+/** Body of `POST /auth/register`; the e-mail is optional (D-F9-1) and left out when empty. */
+export type RegisterBody = {
+  username: string;
+  email?: string;
+  password: string;
+  altcha?: string;
+};
 
 export type ErrorParams = Record<string, string | number | boolean>;
 

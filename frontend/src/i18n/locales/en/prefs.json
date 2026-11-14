@@ -37,16 +37,11 @@
       "button": "Primary button",
       "row": "Sample row",
       "badge": "New"
-    },
-    "profileLink": "Email and password"
+    }
   },
   "profile": {
     "title": "Profile",
     "subtitle": "Your account details: username, email and password.",
-    "interfaceLink": "Interface settings",
-    "account": "Account",
-    "username": "Username",
-    "usernameHint": "Your username cannot be changed.",
     "email": {
       "title": "Email",
       "hint": "The address linked to your account.",

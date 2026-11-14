@@ -652,6 +652,16 @@ export const getMe = (signal?: AbortSignal) => request<MeData>('/me', { signal }
 export const patchMe = (changes: ProfilePatch) =>
   request<MeData>('/me', { method: 'PATCH', body: changes });
 
+/** `POST /me/avatar` (F9-c S3): multipart field `file`; returns the new versioned URL. */
+export const uploadAvatar = (file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  return request<{ avatar_url: string }>('/me/avatar', { method: 'POST', body: form });
+};
+
+/** `DELETE /me/avatar` (F9-c S4): removes the photo (idempotent). */
+export const deleteAvatar = () => request<{ avatar_url: null }>('/me/avatar', { method: 'DELETE' });
+
 /** `POST /me/reauth` (F9-b S11): re-authenticate the current session for 10 minutes. */
 export const reauth = (body: ReauthBody) =>
   request<{ reauth_until: string }>('/me/reauth', { method: 'POST', body });

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearCsrfToken, setCsrfToken } from './csrf';
 import {
   completeMfa,
+  deleteAvatar,
   disableMfa,
   enableMfa,
   getMe,
@@ -12,6 +13,7 @@ import {
   reauth,
   regenerateRecoveryCodes,
   setupMfa,
+  uploadAvatar,
 } from './endpoints';
 import type { LoginResult, MeData, MfaSetup, MfaSignInResult, RecoveryCodes } from './types';
 
@@ -192,5 +194,33 @@ describe('two-factor sign-in (F9-e S10)', () => {
     const result = await completeMfa({ recovery_code: 'abcde-fghjk' });
     expect(result.recovery_codes_left).toBe(9);
     expect(calls[0].init.body).toBe('{"recovery_code":"abcde-fghjk"}');
+  });
+});
+
+/** F9-i S5, S6: the avatar endpoints go through `request()` (multipart upload, CSRF). */
+describe('avatar endpoints', () => {
+  it('uploadAvatar posts the file as multipart to /me/avatar', async () => {
+    setCsrfToken('token-11');
+    const calls = mockFetchJson({ avatar_url: '/riftbound/api/v1/users/7/avatar?v=1' });
+    const file = new File(['x'], 'me.png', { type: 'image/png' });
+    expect(await uploadAvatar(file)).toEqual({
+      avatar_url: '/riftbound/api/v1/users/7/avatar?v=1',
+    });
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/avatar');
+    expect(calls[0].init.method).toBe('POST');
+    const body = calls[0].init.body as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('file')).toBe(file);
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers['Content-Type']).toBeUndefined();
+    expect(headers['X-CSRFToken']).toBe('token-11');
+  });
+
+  it('deleteAvatar sends DELETE /me/avatar', async () => {
+    setCsrfToken('token-12');
+    const calls = mockFetchJson({ avatar_url: null });
+    expect(await deleteAvatar()).toEqual({ avatar_url: null });
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/avatar');
+    expect(calls[0].init.method).toBe('DELETE');
   });
 });

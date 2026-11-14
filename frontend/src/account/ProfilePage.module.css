@@ -1,8 +1,17 @@
 @layer components {
-  .layout {
+  /* F9-i S3: one column of cards on phones (Identity, Details, Email, Password). */
+  .columns {
     display: grid;
     gap: var(--gap);
     align-items: start;
+  }
+
+  .stack,
+  .forms {
+    display: grid;
+    gap: var(--gap);
+    align-items: start;
+    min-width: 0;
   }
 
   .form {
@@ -16,36 +25,112 @@
     justify-content: flex-end;
   }
 
-  .text {
-    flex: 1 1 220px;
-    min-width: 0;
-  }
-
-  .label {
-    font-size: 14px;
-    font-weight: 700;
-  }
-
   .hint {
     margin: 2px 0 0;
     color: var(--muted);
     font-size: 13px;
   }
 
-  .value {
-    font-weight: 700;
+  .error {
+    margin: 0;
+    color: var(--red-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .identity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 0 12px;
+  }
+
+  .identityText {
+    min-width: 0;
+  }
+
+  .name,
+  .handle {
+    margin: 0;
     overflow-wrap: anywhere;
   }
 
-  .link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--accent-bright);
-    font-size: 14px;
+  .name {
+    font-size: 18px;
     font-weight: 700;
-    text-decoration: underline;
-    text-underline-offset: 3px;
+  }
+
+  .handle {
+    color: var(--muted);
+  }
+
+  .photo {
+    display: grid;
+    gap: 8px;
+  }
+
+  .photoActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* The same centred square the server keeps, shown in a circle (F9-i S5). */
+  .preview {
+    display: grid;
+    justify-items: center;
+    gap: 16px;
+  }
+
+  .previewImage {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-1);
+  }
+
+  .previewActions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* A multi-line field in the look of Input. */
+  .textarea {
+    width: 100%;
+    min-height: 96px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(5, 26, 34, 0.6);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    resize: vertical;
+  }
+
+  .textarea:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .textarea[aria-invalid='true'] {
+    border-color: var(--red);
+  }
+
+  .textarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .skeletonCard {
+    padding: var(--pad);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
   }
 
   .notice {
@@ -57,14 +142,21 @@
     font-size: 14px;
   }
 
-  /* From lg the email and password forms sit side by side under the account card. */
-  @media (min-width: 960px) {
-    .layout {
+  /* From md two card columns: Identity + Details | Email + Password. */
+  @media (min-width: 860px) {
+    .columns {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
 
-    .wide {
-      grid-column: 1 / -1;
+  /* From 2xl three columns: Identity | Details | Email + Password. */
+  @media (min-width: 1600px) {
+    .columns {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .stack {
+      display: contents;
     }
   }
 }

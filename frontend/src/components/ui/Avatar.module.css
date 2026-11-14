@@ -3,6 +3,7 @@
     display: inline-grid;
     flex: none;
     place-items: center;
+    overflow: hidden;
     border-radius: 50%;
     background: linear-gradient(150deg, var(--cyan-dim), var(--bg-1));
     color: var(--text);
@@ -10,5 +11,13 @@
     font-weight: 700;
     line-height: 1;
     user-select: none;
+  }
+
+  /* The server stores a centred square; the circle shows all of it. */
+  .image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 }

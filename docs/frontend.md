@@ -266,22 +266,72 @@ PR 3/3 such a page is one of the 302 redirects back into the app. Flask no longe
   Auto), the slider waits 400 ms (and flushes on pointerup, blur and pagehide), and a failure
   restores the previous value with an error toast and a "Retry" action.
 
+**Account area (F9-i).** `/account/*` is one lazy route, `src/account/AccountLayout.tsx`, inside
+the signed-in shell: `/account` redirects (loader) to `/account/profile`, the sections are its
+children and an unknown `/account/<x>` falls through to the shell's NotFound. The topbar account
+link (avatar and name) points to `/account`. The sections are one list, `src/account/sections.ts`
+(`profile`, `interface`; F9-j adds `security` and `api` between them). Below 1240 px each
+section's `AccountHeader` (`src/account/AccountNav.tsx`) renders its `h1` and, right under it, a
+horizontally scrollable row of tabs; from 1240 px the layout mounts a sticky 264 px sidebar
+(`AccountSidebar`: avatar 42 px, display name or username, `@username`, the section links). Both
+are `nav` landmarks named "Account sections" with `aria-current="page"`; only one exists at a
+time (mounted by viewport). Strings of the area live in the `account` namespace
+(`locales/en/account.json`); the older `prefs:profile.*` strings stay where they are. The nav
+registry keeps its `profile` and `interface` entries.
+
 `/account/interface` (`src/account/InterfacePage.tsx`) edits the four interface values and the
 playset size; at 1240 px and above a
-live preview sits beside the controls. Its header links to the profile page.
+live preview sits beside the controls.
 
-**Profile.** `/account/profile` (`src/account/ProfilePage.tsx`, PR 1/3 of the Jinja retirement;
-the nav entry `profile` is `spa`) shows the username read-only and two forms, each with its own button, inline
-errors and form alert, saved through `PATCH /me/account` (`patchAccount` in `api/endpoints.ts`):
-**Email** sends only `{email}` and stays disabled while the value is unchanged; **Password**
-sends only `{current_password, password}` after the client checks (current required, new 8-128
-characters as in `auth/registerChecks.ts`, confirmation equal). A success writes the returned
-user into the `['session']` cache (so the new email shows everywhere), toasts and clears the
-password fields; the session survives a password change. `current_password_incorrect` lands on
-the current password field and `email_taken` on the email field (focused), server `details` on
-their fields, a 429 starts the shared retry countdown of the login screen (both buttons
-disabled), anything else is a `FormAlert`. Offline (`useOffline`) every input and button is
-disabled. Strings live in `prefs:profile.*`; the header links back to `/account/interface`.
+**Profile.** `/account/profile` (`src/account/ProfilePage.tsx`; F9-i) shows four cards: below
+860 px one column (Identity, Details, Email, Password), from 860 px two columns (Identity +
+Details | Email + Password), from 1600 px three (Identity | Details | Email + Password; the first
+column's wrapper turns `display: contents`). The Identity and Details cards read `GET /me`
+(`meQuery`, key `['me']`, `src/account/queries.ts`): while it loads they are `Skeleton` cards, a
+failure is an `ErrorState` with Retry (the section navigation and the email/password cards
+stay). A saved change goes through `applyUserChange`, which writes the session user and the
+cached `GET /me`, so the topbar, the home hub and the sidebar follow at once.
+
+- **Identity**: avatar 80 px (photo or initials of the display name or username), name,
+  `@username`, "Member since" (`formatDate`), "Change photo" and, with a photo, "Remove photo"
+  (`src/account/AvatarUpload.tsx`). The file picker accepts JPEG, PNG, WebP and GIF; a file over
+  5 MB is refused in the browser with the `file_too_large` text and nothing is sent. Otherwise a
+  `Modal` "New profile photo" previews it from an object URL in a 160 px circle (`object-fit:
+  cover`, the server's centre crop); "Use this photo" posts it (`uploadAvatar`, multipart through
+  `request()`), toasts and closes; `image_invalid`, `file_too_large` and 429 show inside the modal,
+  which stays open. The object URL is revoked whenever the modal closes and focus returns to
+  "Change photo". "Remove photo" asks with a `ConfirmDialog`, then `deleteAvatar`.
+- **Details** (`src/account/DetailsForm.tsx`): display name, bio (textarea with a "{{count}} of
+  240 characters" hint tied by `aria-describedby`), country (`Select`, "Not set" plus the
+  `/meta/config` `countries` labelled by `Intl.DisplayNames(['en'], {type: 'region'})`, sorted by
+  label, the code when there is no name; query `metaConfigQuery`) and city. "Save details" is
+  enabled only when a trimmed value differs and sends only those fields to `PATCH /me` (`""`
+  clears one). Client checks mirror the server limits (40, 240, 80 characters, counted as code
+  points) with the `errors:validation.*` texts; server `details` land on their fields; focus goes
+  to the first invalid field.
+- **Email** (`PATCH /me/account`, `prefs:profile.email.*`): sends only `{email}` and stays
+  disabled while the value is unchanged; emptied with an e-mail on file, the button becomes
+  "Remove email", which asks with a `ConfirmDialog` and sends `{email: null}`; without an e-mail
+  on file the card says "No email on file." above the field (which is optional).
+- **Password**: unchanged; sends only `{current_password, password}` after the client checks
+  (current required, new 8-128 characters as in `auth/registerChecks.ts`, confirmation equal).
+
+A success writes the returned user into the `['session']` cache, toasts and (password) clears the
+fields; the session survives a password change. `current_password_incorrect` lands on the
+current password field and `email_taken` on the email field (focused), server `details` on their
+fields, a 429 starts the shared retry countdown of the login screen (every save button
+disabled), anything else is a `FormAlert`. Offline (`useOffline`) `GET /me` is not requested: the
+cards show the session identity and the cached details (empty when there is none), every input
+and button disabled.
+
+**Avatar primitive.** `components/ui/Avatar.tsx` takes an optional `src` (`avatar_url`) and asks
+for the 64 px file (`&size=64`) up to 64 px and the 256 px file above; the `<img>` has the `label`
+as `alt` (or `""`, wrapper hidden, when it is decoration) and the initials come back when the image
+fails to load. The topbar, the home hub, the account sidebar and the identity card pass
+`avatar_url`.
+
+**Register.** The e-mail is optional (D-F9-1): "Email (optional)" with a hint, an empty value
+passes the client check and is left out of the body; a non-empty one keeps the checks.
 
 **How to add a catalog namespace.** Create `locales/en/<ns>.json`, import it in
 `src/i18n/resources.ts`, add the name to `NAMESPACES` and to the `en` resources, and call

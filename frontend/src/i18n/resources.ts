@@ -1,3 +1,4 @@
+import enAccount from './locales/en/account.json';
 import enAdmin from './locales/en/admin.json';
 import enAuth from './locales/en/auth.json';
 import enCards from './locales/en/cards.json';
@@ -31,6 +32,7 @@ export const resources = {
     locations: enLocations,
     decks: enDecks,
     wishlists: enWishlists,
+    account: enAccount,
   },
 };
 
@@ -48,5 +50,6 @@ export const NAMESPACES = [
   'locations',
   'decks',
   'wishlists',
+  'account',
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];
