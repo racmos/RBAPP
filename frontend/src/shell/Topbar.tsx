@@ -101,12 +101,8 @@ export function Topbar({ desktop }: { desktop: boolean }) {
           {desktop && (
             <InstallItem className={styles.install} labelClassName={styles.installText} />
           )}
-          <Link
-            to="/account/interface"
-            className={styles.account}
-            aria-label={t('account', { username })}
-          >
-            <Avatar name={username} />
+          <Link to="/account" className={styles.account} aria-label={t('account', { username })}>
+            <Avatar name={username} src={session?.user?.avatar_url} />
             {desktop && <span className={styles.name}>{username}</span>}
           </Link>
           <button

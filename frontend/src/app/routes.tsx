@@ -71,18 +71,28 @@ export function createAppRoutes(
               errorElement: <ShellError />,
               children: [
                 { path: '/', Component: HomeHub },
-                { path: '/account', loader: () => redirect('/account/interface') },
                 {
-                  path: '/account/interface',
+                  // F9-i S1: the sections share a layout; `/account` opens the profile and an
+                  // unknown section falls through to the shell's NotFound.
+                  path: '/account',
                   lazy: async () => ({
-                    Component: (await import('@/account/InterfacePage')).InterfacePage,
+                    Component: (await import('@/account/AccountLayout')).AccountLayout,
                   }),
-                },
-                {
-                  path: '/account/profile',
-                  lazy: async () => ({
-                    Component: (await import('@/account/ProfilePage')).ProfilePage,
-                  }),
+                  children: [
+                    { index: true, loader: () => redirect('/account/profile') },
+                    {
+                      path: 'profile',
+                      lazy: async () => ({
+                        Component: (await import('@/account/ProfilePage')).ProfilePage,
+                      }),
+                    },
+                    {
+                      path: 'interface',
+                      lazy: async () => ({
+                        Component: (await import('@/account/InterfacePage')).InterfacePage,
+                      }),
+                    },
+                  ],
                 },
                 {
                   path: '/cards',

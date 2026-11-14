@@ -41,7 +41,7 @@ export function HomeHub() {
         <aside className={styles.side}>
           <Panel title={t('hub.account')}>
             <div className={styles.who}>
-              <Avatar name={username} size={44} />
+              <Avatar name={username} src={session?.user?.avatar_url} size={44} />
               <div>
                 <p className={styles.username}>{username}</p>
                 <p className={styles.email}>{session?.user?.email}</p>

@@ -1,12 +1,9 @@
-import { useQueryClient } from '@tanstack/react-query';
-import type { i18n as I18n } from 'i18next';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
-import { patchAccount } from '@/api/endpoints';
-import { ApiError } from '@/api/errors';
-import type { AccountChanges, ErrorDetail, Session, UserPayload } from '@/api/types';
-import { sessionQuery, useOffline, useSession } from '@/auth';
+import { patchAccount, patchMe } from '@/api/endpoints';
+import type { AccountChanges, ErrorDetail, ProfilePatch, UserPayload } from '@/api/types';
+import { useOffline, useSession } from '@/auth';
 import { FormAlert } from '@/auth/FormAlert';
 import { fieldErrorsFromDetails, useFormFocus, type FieldErrors } from '@/auth/formHelpers';
 import {
@@ -16,64 +13,33 @@ import {
   PASSWORD_MIN_LENGTH,
 } from '@/auth/registerChecks';
 import { useRetryCountdown } from '@/auth/useRetryCountdown';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Field } from '@/components/ui/Field';
-import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { announce } from '@/components/ui/LiveAnnouncer';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { PasswordInput } from '@/components/ui/PasswordInput';
-import { SettingsCard, SettingsRow } from '@/components/ui/SettingsCard';
+import { SettingsCard } from '@/components/ui/SettingsCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError, useDocumentTitle } from '@/i18n';
+import { formatDate } from '@/lib/format';
+import { AccountHeader } from './AccountNav';
+import { AvatarUpload } from './AvatarUpload';
+import { DetailsForm } from './DetailsForm';
+import { failureOf, problem } from './formFailure';
 import styles from './ProfilePage.module.css';
+import { applyUserChange, meQuery, metaConfigQuery } from './queries';
 
 const EMAIL_FIELDS = ['email'] as const;
 type EmailField = (typeof EMAIL_FIELDS)[number];
 const PASSWORD_FIELDS = ['current_password', 'password', 'confirm_password'] as const;
 type PasswordField = (typeof PASSWORD_FIELDS)[number];
 
-/** What a failed save shows: the 429 countdown, errors on the fields, or the form alert. */
-type Failure<Name extends string> =
-  | { kind: 'retry'; seconds: number }
-  | { kind: 'fields'; errors: FieldErrors<Name>; focus: Name | null }
-  | { kind: 'form'; message: string };
-
-function failureOf<Name extends string>(
-  error: unknown,
-  i18n: I18n,
-  fields: readonly Name[],
-  /** Error codes that belong to one field (`email_taken` -> `email`). */
-  codeFields: Partial<Record<string, Name>>,
-): Failure<Name> {
-  if (error instanceof ApiError && error.status === 429 && error.retryAfter) {
-    return { kind: 'retry', seconds: error.retryAfter };
-  }
-  if (error instanceof ApiError && error.kind === 'http') {
-    const field = error.code ? codeFields[error.code] : undefined;
-    if (field) {
-      return {
-        kind: 'fields',
-        errors: { [field]: translateError(error, i18n) } as FieldErrors<Name>,
-        focus: field,
-      };
-    }
-    const mapped = fieldErrorsFromDetails(error.details, i18n, fields);
-    if (Object.keys(mapped).length > 0) return { kind: 'fields', errors: mapped, focus: null };
-  }
-  return { kind: 'form', message: translateError(error, i18n) };
-}
-
-const problem = (field: string, code: string, params?: ErrorDetail['params']): ErrorDetail => ({
-  field,
-  code,
-  params,
-  message: code,
-  type: 'client_check',
-});
-
+/** A non-empty e-mail; an empty one is a removal, confirmed apart (F9-i S8). */
 function checkEmail(email: string): ErrorDetail[] {
-  if (!email) return [problem('email', 'required')];
   if (email.length > EMAIL_MAX_LENGTH)
     return [problem('email', 'too_long', { max: EMAIL_MAX_LENGTH })];
   if (!EMAIL_PATTERN.test(email)) return [problem('email', 'invalid_format')];
@@ -101,7 +67,10 @@ type FormProps = {
   onRateLimited: (seconds: number) => void;
 };
 
-/** The email form: sends only `email`, and only when it changed. */
+/**
+ * The email form: sends only `email`, and only when it changed. Emptied with an e-mail on file,
+ * it offers "Remove email" instead, after a confirmation (F9-i S8).
+ */
 function EmailForm({
   email,
   offline,
@@ -116,11 +85,40 @@ function EmailForm({
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldErrors<EmailField>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const { t: tAccount } = useTranslation('account');
   const next = value.trim();
+  const removing = next === '' && email !== '';
+
+  const fail = (error: unknown) => {
+    const failure = failureOf(error, i18n, EMAIL_FIELDS, { email_taken: 'email' });
+    if (failure.kind === 'retry') onRateLimited(failure.seconds);
+    else if (failure.kind === 'form') setFormError(failure.message);
+    else {
+      setErrors(failure.errors);
+      focus.request(failure.focus);
+    }
+  };
+
+  const remove = async () => {
+    setConfirmRemove(false);
+    setFormError(null);
+    setPending(true);
+    try {
+      await save({ email: null });
+      setValue('');
+      pushToast({ kind: 'success', message: tAccount('email.removed') });
+    } catch (error) {
+      fail(error);
+    } finally {
+      setPending(false);
+    }
+  };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (pending || blocked || offline || next === email) return;
+    if (removing) return setConfirmRemove(true);
     const local = fieldErrorsFromDetails(checkEmail(next), i18n, EMAIL_FIELDS);
     setErrors(local);
     setFormError(null);
@@ -132,13 +130,7 @@ function EmailForm({
       setValue(next);
       pushToast({ kind: 'success', message: t('profile.email.saved') });
     } catch (error) {
-      const failure = failureOf(error, i18n, EMAIL_FIELDS, { email_taken: 'email' });
-      if (failure.kind === 'retry') onRateLimited(failure.seconds);
-      else if (failure.kind === 'form') setFormError(failure.message);
-      else {
-        setErrors(failure.errors);
-        focus.request(failure.focus);
-      }
+      fail(error);
     } finally {
       setPending(false);
     }
@@ -154,7 +146,8 @@ function EmailForm({
         noValidate
       >
         {formError && <FormAlert message={formError} />}
-        <Field label={t('profile.email.label')} error={errors.email} required>
+        {!email && <p className={styles.hint}>{tAccount('email.none')}</p>}
+        <Field label={t('profile.email.label')} error={errors.email}>
           {(control) => (
             <Input
               {...control}
@@ -173,11 +166,27 @@ function EmailForm({
           )}
         </Field>
         <div className={styles.actions}>
-          <Button type="submit" pending={pending} disabled={offline || blocked || next === email}>
-            {pending ? t('profile.email.saving') : t('profile.email.save')}
-          </Button>
+          {removing ? (
+            <Button type="submit" variant="danger" pending={pending} disabled={offline || blocked}>
+              {tAccount('email.remove')}
+            </Button>
+          ) : (
+            <Button type="submit" pending={pending} disabled={offline || blocked || next === email}>
+              {pending ? t('profile.email.saving') : t('profile.email.save')}
+            </Button>
+          )}
         </div>
       </form>
+      <ConfirmDialog
+        open={confirmRemove}
+        title={tAccount('email.removeTitle')}
+        message={tAccount('email.removeBody')}
+        confirmLabel={tAccount('email.removeConfirm')}
+        cancelLabel={tAccount('photo.cancel')}
+        danger
+        onConfirm={() => void remove()}
+        onCancel={() => setConfirmRemove(false)}
+      />
     </SettingsCard>
   );
 }
@@ -275,26 +284,80 @@ function PasswordForm({ offline, blocked, save, onRateLimited }: FormProps) {
   );
 }
 
+/** The identity card (F9-i S4): photo, name, `@username`, member date and the photo actions. */
+function IdentityCard({
+  user,
+  memberSince,
+  offline,
+}: {
+  user: UserPayload | null | undefined;
+  memberSince: string | null;
+  offline: boolean;
+}) {
+  const { t } = useTranslation('account');
+  const username = user?.username ?? '';
+  const name = user?.display_name || username;
+  return (
+    <SettingsCard title={t('identity.title')}>
+      <div className={styles.identity}>
+        <Avatar
+          name={name}
+          src={user?.avatar_url}
+          size={80}
+          label={t('identity.photoAlt', { name })}
+        />
+        <div className={styles.identityText}>
+          <p className={styles.name}>{name}</p>
+          <p className={styles.handle}>@{username}</p>
+          {memberSince && (
+            <p className={styles.hint}>
+              {t('identity.memberSince', { date: formatDate(memberSince) })}
+            </p>
+          )}
+        </div>
+      </div>
+      <AvatarUpload hasPhoto={Boolean(user?.avatar_url)} name={name} offline={offline} />
+    </SettingsCard>
+  );
+}
+
+/** A card-sized loading placeholder (F9-i S12). */
+function CardSkeleton({ label }: { label: string }) {
+  return (
+    <div className={styles.skeletonCard}>
+      <Skeleton label={label} lines={4} />
+    </div>
+  );
+}
+
 /**
- * `/account/profile`: the username (read-only), the email and the password, each form saved on
- * its own through `PATCH /me/account`. A saved change updates the cached session, so the new
- * email shows everywhere; a password change keeps the session.
+ * `/account/profile` (F9-i): the identity card (photo), the details form (`PATCH /me`), and the
+ * email and password forms (`PATCH /me/account`), each saved on its own. A saved change updates
+ * the cached session and `GET /me`, so it shows everywhere. Offline, everything is read-only
+ * from the cache; the email and password cards never wait for `GET /me`.
  */
 export function ProfilePage() {
-  const { t } = useTranslation('prefs');
+  const { t, i18n } = useTranslation('prefs');
   const { t: tAuth } = useTranslation('auth');
+  const { t: tCommon } = useTranslation('common');
   useDocumentTitle(t('profile.title'));
   const queryClient = useQueryClient();
   const session = useSession();
   const offline = useOffline();
+  const me = useQuery({ ...meQuery, enabled: !offline });
+  const config = useQuery({ ...metaConfigQuery, enabled: !offline });
   const countdown = useRetryCountdown({ onEnd: () => announce(tAuth('retry.ready')) });
   const user = session?.user;
 
   const save = async (changes: AccountChanges) => {
     const fresh: UserPayload = await patchAccount(changes);
-    queryClient.setQueryData<Session>(sessionQuery.queryKey, (old) =>
-      old ? { ...old, user: fresh } : old,
-    );
+    applyUserChange(queryClient, fresh);
+  };
+  const saveDetails = async (changes: ProfilePatch) => {
+    const fresh = await patchMe(changes);
+    queryClient.setQueryData(meQuery.queryKey, fresh);
+    applyUserChange(queryClient, fresh.user);
+    return fresh;
   };
   const onRateLimited = (seconds: number) => {
     countdown.start(seconds);
@@ -302,36 +365,54 @@ export function ProfilePage() {
   };
   const forms = { offline, blocked: countdown.active, save, onRateLimited };
 
+  // Offline the cards show what the cache has (S12); online they wait for `GET /me`.
+  const ready = offline || me.data !== undefined;
+  let profileCards;
+  if (ready) {
+    profileCards = (
+      <>
+        <IdentityCard
+          user={user}
+          memberSince={me.data?.security.member_since ?? null}
+          offline={offline}
+        />
+        <DetailsForm
+          key={me.data ? 'loaded' : 'empty'}
+          profile={me.data?.profile ?? null}
+          countries={config.data?.countries ?? []}
+          offline={offline}
+          blocked={countdown.active}
+          save={saveDetails}
+          onRateLimited={onRateLimited}
+        />
+      </>
+    );
+  } else if (me.isError) {
+    profileCards = (
+      <ErrorState message={translateError(me.error, i18n)} onRetry={() => void me.refetch()} />
+    );
+  } else {
+    profileCards = (
+      <>
+        <CardSkeleton label={tCommon('loadingRegion')} />
+        <CardSkeleton label={tCommon('loadingRegion')} />
+      </>
+    );
+  }
+
   return (
     <>
-      <PageHeader
-        title={t('profile.title')}
-        subtitle={t('profile.subtitle')}
-        actions={
-          <Link to="/account/interface" className={styles.link}>
-            <Icon name="sliders" size={16} />
-            {t('profile.interfaceLink')}
-          </Link>
-        }
-      />
+      <AccountHeader title={t('profile.title')} subtitle={t('profile.subtitle')} />
       {countdown.active && (
         <p className={styles.notice}>{tAuth('retry.countdown', { count: countdown.remaining })}</p>
       )}
-      <div className={styles.layout}>
-        <div className={styles.wide}>
-          <SettingsCard title={t('profile.account')}>
-            <SettingsRow>
-              <div className={styles.text}>
-                <span className={styles.label}>{t('profile.username')}</span>
-                <p className={styles.hint}>{t('profile.usernameHint')}</p>
-              </div>
-              <span className={styles.value}>{user?.username}</span>
-            </SettingsRow>
-          </SettingsCard>
+      <div className={styles.columns}>
+        <div className={styles.stack}>{profileCards}</div>
+        <div className={styles.forms}>
+          {/* An account without an email (F9-b) shows an empty field. */}
+          {user && <EmailForm email={user.email ?? ''} {...forms} />}
+          <PasswordForm {...forms} />
         </div>
-        {/* An account without an email (F9-b) shows an empty field. */}
-        {user && <EmailForm email={user.email ?? ''} {...forms} />}
-        <PasswordForm {...forms} />
       </div>
     </>
   );
