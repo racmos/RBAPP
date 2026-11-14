@@ -145,9 +145,10 @@ export function RegisterPage() {
 
     setPending(true);
     try {
+      const email = values.email.trim();
       await register({
         username: values.username.trim(),
-        email: values.email.trim(),
+        ...(email ? { email } : {}),
         password: values.password,
         ...(widgetInUse && payload ? { altcha: payload } : {}),
       });
@@ -201,7 +202,11 @@ export function RegisterPage() {
               />
             )}
           </Field>
-          <Field label={t('register.email')} error={fieldErrors.email} required>
+          <Field
+            label={t('register.emailOptional')}
+            hint={t('register.emailHint')}
+            error={fieldErrors.email}
+          >
             {(control) => (
               <Input
                 {...control}

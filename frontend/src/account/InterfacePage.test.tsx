@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -89,11 +89,12 @@ describe('Interface page: playset size (F3-g S8)', () => {
 });
 
 describe('Interface page: links', () => {
-  it('links to the profile page', async () => {
+  it('links to the profile section from its section navigation (F9-i S2)', async () => {
     signedIn();
     await renderApp({ path: '/account/interface', width: 390 });
     await screen.findByRole('spinbutton', { name: 'Playset size' }, LONG);
-    expect(screen.getByRole('link', { name: 'Email and password' })).toHaveAttribute(
+    const nav = screen.getByRole('navigation', { name: 'Account sections' });
+    expect(within(nav).getByRole('link', { name: 'Profile' })).toHaveAttribute(
       'href',
       '/riftbound/app/account/profile',
     );

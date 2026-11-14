@@ -23,9 +23,11 @@ export function checkRegister({ username, email, password }: RegisterValues): Er
   else if (!USERNAME_PATTERN.test(username.trim()))
     problems.push(detail('username', 'invalid_format'));
 
+  // The e-mail is optional (D-F9-1): an empty one passes, a non-empty one is checked.
   const mail = email.trim();
-  if (!mail) problems.push(detail('email', 'required'));
-  else if (mail.length > EMAIL_MAX_LENGTH)
+  if (!mail) {
+    // nothing to check
+  } else if (mail.length > EMAIL_MAX_LENGTH)
     problems.push(detail('email', 'too_long', { max: EMAIL_MAX_LENGTH }));
   else if (!EMAIL_PATTERN.test(mail)) problems.push(detail('email', 'invalid_format'));
 

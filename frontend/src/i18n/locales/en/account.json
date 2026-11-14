@@ -1,0 +1,51 @@
+{
+  "layout": {
+    "title": "Account",
+    "navLabel": "Account sections"
+  },
+  "sections": {
+    "profile": "Profile",
+    "interface": "Interface"
+  },
+  "identity": {
+    "title": "Identity",
+    "memberSince": "Member since {{date}}",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "photoHint": "JPEG, PNG, WebP or GIF, up to 5 MB. It is cropped to a square.",
+    "photoAlt": "Profile photo of {{name}}"
+  },
+  "photo": {
+    "title": "New profile photo",
+    "use": "Use this photo",
+    "uploading": "Uploading…",
+    "cancel": "Cancel",
+    "updated": "Profile photo updated.",
+    "removeTitle": "Remove your profile photo?",
+    "removeBody": "Signed-in users will see your initials instead.",
+    "removeConfirm": "Remove",
+    "removed": "Profile photo removed."
+  },
+  "details": {
+    "title": "Details",
+    "hint": "Your display name and photo are shown to signed-in users. Your bio, country and city are only for you.",
+    "displayName": "Display name",
+    "displayNameHint": "Up to 40 characters. Empty shows your username.",
+    "bio": "Bio",
+    "bioCount": "{{count}} of 240 characters",
+    "country": "Country",
+    "countryNone": "Not set",
+    "city": "City",
+    "save": "Save details",
+    "saving": "Saving…",
+    "saved": "Details saved."
+  },
+  "email": {
+    "remove": "Remove email",
+    "removeTitle": "Remove your email?",
+    "removeBody": "Your account will have no email address. There is no password recovery by email either way.",
+    "removeConfirm": "Remove",
+    "removed": "Email removed.",
+    "none": "No email on file."
+  }
+}

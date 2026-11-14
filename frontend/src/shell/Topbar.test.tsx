@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 import { BREAKPOINTS, up } from '@/lib/breakpoints';
 import { SRC_DIR, declsFor, readCss, rules } from '@/test/css';
-import { API, signedInSession } from '@/test/msw/handlers';
+import { API, NO_PREFS, USER, USER_TOKEN, ok, signedInSession } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 
@@ -154,5 +154,38 @@ describe('Topbar fits from the desktop breakpoint up (owner feedback S18 f)', ()
 
   it('keeps the placeholder clear of the "/" hint', () => {
     expect(declsFor(css, '.search input')).toContainEqual({ prop: 'padding-right', value: '36px' });
+  });
+});
+
+describe('Avatar photo in the shell (F9-i S11)', () => {
+  const AVATAR = '/riftbound/api/v1/users/7/avatar?v=2';
+
+  it.each([390, 1280])('at %i px the topbar and the home hub show the photo', async (width) => {
+    server.use(
+      http.get(`${API}/auth/session`, () =>
+        ok({
+          authenticated: true,
+          csrf_token: USER_TOKEN,
+          user: { ...USER, avatar_url: AVATAR },
+          prefs: NO_PREFS,
+        }),
+      ),
+    );
+    await renderApp({ path: '/', width });
+    await screen.findByRole('heading', { level: 1, name: 'Hello, ada' }, LONG);
+    const account = screen.getByRole('link', { name: "ada's account" });
+    expect(account).toHaveAttribute('href', '/riftbound/app/account');
+    expect(account.querySelector('img')).toHaveAttribute('src', `${AVATAR}&size=64`);
+    expect(screen.getByRole('main').querySelector('img')).toHaveAttribute(
+      'src',
+      `${AVATAR}&size=64`,
+    );
+  });
+
+  it('without a photo the topbar shows the initials', async () => {
+    await renderSignedIn('/', 1280);
+    const account = screen.getByRole('link', { name: "ada's account" });
+    expect(account.querySelector('img')).toBeNull();
+    expect(account).toHaveTextContent('AD');
   });
 });
