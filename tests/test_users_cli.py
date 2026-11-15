@@ -169,3 +169,221 @@ class TestReset2fa:
     def test_an_unknown_user(self, cli):
         result = cli('users', 'reset-2fa', 'ghost')
         assert (result.exit_code, result.stderr) == (1, "Error: No such user: 'ghost'\n")
+
+
+class TestCreate:
+    """RESET-a: `flask users create USERNAME [--email EMAIL] [--admin]` over `register_user`."""
+
+    PASSWORD = 'reset-a-secret-pass'
+    EMAIL = 'owner.reset@example.invalid'
+
+    @pytest.fixture
+    def create(self, app):
+        """Invoke `flask users create`; `env_password` = RB_NEW_PASSWORD (None removes it)."""
+        runner = app.test_cli_runner(mix_stderr=False)
+
+        def _invoke(*args, input=None, env_password=None):
+            return runner.invoke(args=['users', 'create', *args], input=input,
+                                 env={'RB_NEW_PASSWORD': env_password})
+
+        return _invoke
+
+    @staticmethod
+    def _user(username):
+        db.session.expire_all()
+        return db.session.execute(sa.select(User).where(User.username == username)).scalar_one()
+
+    @staticmethod
+    def _count():
+        db.session.expire_all()
+        return db.session.execute(sa.select(sa.func.count()).select_from(User)).scalar_one()
+
+    def _secret_free(self, result, *secrets):
+        for text in (result.stdout, result.stderr):
+            for secret in (self.PASSWORD, self.EMAIL, *secrets):
+                assert secret not in text
+                assert secret.lower() not in text.lower()
+
+    # S1, S2, S4, S5 (AC1)
+
+    def test_with_the_environment_variable(self, app, create):
+        result = create('carol', '--email', self.EMAIL, env_password=self.PASSWORD)
+        assert (result.exit_code, result.stdout, result.stderr) == (0, "Created 'carol'.\n", '')
+        self._secret_free(result)
+        user = self._user('carol')
+        assert user.email == self.EMAIL
+        assert user.check_password(self.PASSWORD)
+        assert user.password_changed_at is not None
+        login_as(app.test_client(), 'carol', self.PASSWORD)
+
+    def test_with_the_hidden_prompt_twice(self, app, create):
+        result = create('carol', input=f'{self.PASSWORD}\n{self.PASSWORD}\n')
+        assert result.exit_code == 0, result.stderr
+        assert result.stdout == "New password: \nRepeat the password: \nCreated 'carol'.\n"
+        assert result.stderr == ''
+        self._secret_free(result)
+        login_as(app.test_client(), 'carol', self.PASSWORD)
+
+    def test_an_empty_variable_falls_back_to_the_prompt(self, create):
+        result = create('carol', input=f'{self.PASSWORD}\n{self.PASSWORD}\n', env_password='')
+        assert result.exit_code == 0, result.stderr
+        assert result.stdout.endswith("Created 'carol'.\n")
+        assert 'New password' in result.stdout
+        assert self._user('carol').check_password(self.PASSWORD)
+
+    def test_admin_sets_is_admin(self, create):
+        result = create('carol', '--admin', env_password=self.PASSWORD)
+        assert (result.exit_code, result.stdout, result.stderr) == (
+            0, "Created 'carol' (admin).\n", '')
+        assert self._user('carol').is_admin is True
+
+    def test_without_admin_the_account_is_plain(self, create):
+        assert create('carol', env_password=self.PASSWORD).exit_code == 0
+        assert self._user('carol').is_admin is False
+
+    def test_without_email_stores_null(self, create):
+        assert create('carol', env_password=self.PASSWORD).exit_code == 0
+        assert self._user('carol').email is None
+
+    def test_a_blank_email_stores_null(self, create):
+        assert create('carol', '--email', '  ', env_password=self.PASSWORD).exit_code == 0
+        assert self._user('carol').email is None
+
+    def test_the_new_account_is_active_unlocked_without_session_or_profile(self, create):
+        from app.models import RbUserProfile
+        assert create('carol', '--admin', env_password=self.PASSWORD).exit_code == 0
+        user = self._user('carol')
+        assert (user.is_blocked, user.failed_login_count, user.locked_until) == (False, 0, None)
+        assert active_count(user.id) == 0
+        assert db.session.get(RbUserProfile, user.id) is None
+
+    def test_the_variable_wins_over_the_prompt(self, create):
+        result = create('carol', input='ignored-input-1\nignored-input-2\n',
+                        env_password=self.PASSWORD)
+        assert (result.exit_code, result.stdout) == (0, "Created 'carol'.\n")
+        assert self._user('carol').check_password(self.PASSWORD)
+
+    def test_password_is_not_an_option(self, create):
+        result = create('carol', '--password', self.PASSWORD)
+        assert result.exit_code == 2
+        assert self._count() == 0
+
+    # S2, S3 (AC2, AC3): exact message, exit 1, nothing created
+
+    def _refused(self, result, message, before, *secrets):
+        assert result.exit_code == 1
+        assert result.stderr == f'Error: {message}\n'
+        assert self._count() == before
+        self._secret_free(result, *secrets)
+
+    def test_mismatched_passwords(self, create):
+        result = create('carol', '--email', self.EMAIL,
+                        input=f'{self.PASSWORD}\nsomething-else-entirely\n')
+        self._refused(result, 'The two passwords do not match; nothing was changed.', 0,
+                      'something-else-entirely')
+
+    @pytest.mark.parametrize('length', [7, 129])
+    def test_password_length_from_the_prompt(self, create, length):
+        secret = 'p' * length
+        result = create('carol', '--email', self.EMAIL, input=f'{secret}\n{secret}\n')
+        self._refused(result, 'The password must have 8 to 128 characters.', 0, secret)
+
+    @pytest.mark.parametrize('length', [7, 129])
+    def test_password_length_from_the_variable(self, create, length):
+        secret = 'v' * length
+        result = create('carol', '--email', self.EMAIL, env_password=secret)
+        self._refused(result, 'The password must have 8 to 128 characters.', 0, secret)
+
+    @pytest.mark.parametrize('length', [8, 128])
+    def test_password_length_bounds_are_accepted(self, create, length):
+        result = create('carol', env_password='b' * length)
+        assert (result.exit_code, result.stdout) == (0, "Created 'carol'.\n")
+
+    @pytest.mark.parametrize('username', ['ab', 'bad name', 'x' * 33, 'émile'])
+    def test_bad_username(self, create, username):
+        result = create(username, '--email', self.EMAIL, env_password=self.PASSWORD)
+        self._refused(result, 'Username must be 3-32 characters: letters, digits, ".", "_" or "-"',
+                      0)
+
+    def test_bad_username_is_refused_before_the_prompt(self, create):
+        result = create('ab', input=f'{self.PASSWORD}\n{self.PASSWORD}\n')
+        self._refused(result, 'Username must be 3-32 characters: letters, digits, ".", "_" or "-"',
+                      0)
+        assert 'New password' not in result.stdout
+
+    def test_bad_email(self, create):
+        result = create('carol', '--email', 'not-an-address', env_password=self.PASSWORD)
+        self._refused(result, 'Invalid email format', 0, 'not-an-address')
+
+    def test_too_long_email(self, create):
+        address = 'a' * 120 + '@example.invalid'
+        result = create('carol', '--email', address, env_password=self.PASSWORD)
+        self._refused(result, 'Email must have at most 120 characters', 0, address)
+
+    def test_duplicate_username(self, create, make_user):
+        ana = make_user('ana')
+        result = create('ana', '--email', self.EMAIL, '--admin', env_password=self.PASSWORD)
+        self._refused(result, "Username already taken: 'ana'", 1)
+        user = self._user('ana')
+        assert (user.email, user.is_admin) == ('ana@test.com', False)
+        assert user.check_password(DEFAULT_PASSWORD)
+        assert user.id == ana.id
+
+    def test_duplicate_email_in_another_case(self, create, make_user):
+        make_user('ana', email=self.EMAIL)
+        result = create('carol', '--email', self.EMAIL.upper(), '--admin',
+                        env_password=self.PASSWORD)
+        self._refused(result, 'E-mail already taken.', 1, self.EMAIL.upper())
+        assert db.session.execute(sa.select(User).where(User.username == 'carol')).first() is None
+
+    # S6
+
+    def test_users_help_lists_create(self, cli):
+        result = cli('users', '--help')
+        assert result.exit_code == 0
+        assert '  create ' in result.stdout
+
+    def test_create_help_names_the_variable(self, cli):
+        result = cli('users', 'create', '--help')
+        assert result.exit_code == 0
+        assert 'RB_NEW_PASSWORD' in result.stdout
+        assert '--email' in result.stdout and '--admin' in result.stdout
+
+
+class TestCreatePreserve:
+    """RESET-a AC4: the commands `create` shares code with behave as before."""
+
+    def test_promote_and_demote_keep_their_messages(self, cli, make_user):
+        make_user('ana')
+        assert (cli('users', 'promote', 'ana').stdout,
+                cli('users', 'promote', 'ana').stdout,
+                cli('users', 'demote', 'ana').stdout,
+                cli('users', 'demote', 'ana').stdout) == (
+            "'ana' is now an admin\n", "'ana' is already an admin\n",
+            "'ana' is no longer an admin\n", "'ana' is not an admin\n")
+        result = cli('users', 'promote', 'ghost')
+        assert (result.exit_code, result.stderr) == (1, "Error: No such user: 'ghost'\n")
+
+    def test_set_password_keeps_its_prompts_and_length_rule(self, cli, make_user):
+        make_user('ana')
+        result = cli('users', 'set-password', 'ana', input='short\nshort\n')
+        assert (result.exit_code, result.stdout, result.stderr) == (
+            1, 'New password: \nRepeat the password: \n',
+            'Error: The password must have 8 to 128 characters.\n')
+
+    def test_set_password_ignores_the_variable(self, app, make_user):
+        make_user('ana')
+        runner = app.test_cli_runner(mix_stderr=False)
+        result = runner.invoke(args=['users', 'set-password', 'ana'],
+                               input=f'{NEW_PASSWORD}\n{NEW_PASSWORD}\n',
+                               env={'RB_NEW_PASSWORD': 'from-the-environment'})
+        assert result.exit_code == 0, result.stderr
+        db.session.expire_all()
+        assert User.query.filter_by(username='ana').one().check_password(NEW_PASSWORD)
+
+    def test_api_register_never_makes_an_admin(self, client):
+        response = client.post('/riftbound/api/v1/auth/register', json={
+            'username': 'mallory', 'password': 'mallory-pass-1', 'is_admin': True})
+        assert response.status_code == 201, response.get_json()
+        db.session.expire_all()
+        assert User.query.filter_by(username='mallory').one().is_admin is False

@@ -287,6 +287,7 @@ they are handed over once F9-j is merged.
 | Risk | `Risk: item 2 (creates accounts, incl. admins, from the server shell)` |
 | TDD | ON (strict). Runner: `venv/bin/pytest` |
 | Save as | this file, section "RESET-a" |
+| Status | Built 2026-11-15 on `feat/reset-helper-cli` (implemented, not merged, not deployed) |
 
 **Objective.** The owner creates the accounts that survive the reset from the server shell, admins included,
 without the web app, the captcha or a password in the shell history.

@@ -219,8 +219,13 @@ def unlock_user(username: str) -> bool:
     return True
 
 
-def register_user(data: RegisterRequest) -> User:
-    """Create a plain (never admin) account. Raises DuplicateUserError.
+def register_user(data: RegisterRequest, *, is_admin: bool = False) -> User:
+    """Create an account. Raises DuplicateUserError.
+
+    The account is plain unless `is_admin` is True, which only the server shell
+    passes (`flask users create --admin`, RESET-a): the API never does, and request
+    input can never reach it (RegisterRequest has no such field). The role is set in
+    the same transaction as the account.
 
     The username is unique as typed (that is the database rule); the e-mail is
     optional (F9-b S4: None = no e-mail) and, when present, compared ignoring case,
@@ -233,7 +238,7 @@ def register_user(data: RegisterRequest) -> User:
             func.lower(User.email) == data.email.lower()).first():
         raise DuplicateUserError('email')
 
-    user = User(username=data.username, email=data.email)
+    user = User(username=data.username, email=data.email, is_admin=is_admin)
     user.set_password(data.password)
     db.session.add(user)
     try:
