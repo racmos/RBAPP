@@ -2,6 +2,7 @@ import { Outlet } from 'react-router';
 import { up } from '@/lib/breakpoints';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AccountSidebar } from './AccountNav';
+import { ReauthProvider } from './reauth/ReauthProvider';
 import styles from './AccountLayout.module.css';
 
 /**
@@ -15,7 +16,10 @@ export function AccountLayout() {
     <div className={styles.layout}>
       {wide && <AccountSidebar />}
       <div className={styles.content}>
-        <Outlet />
+        {/* F9-j S2: the sections share one re-authentication dialog. */}
+        <ReauthProvider>
+          <Outlet />
+        </ReauthProvider>
       </div>
     </div>
   );

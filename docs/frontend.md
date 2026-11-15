@@ -132,7 +132,20 @@ the same safe `next`.
   (paths under `/riftbound/app/` stay in the router, others are a full page load) and sends
   anything else home. An account with two-factor authentication on answers
   `{mfa_required: true, methods}` instead and no session exists until `POST /auth/mfa`
-  (`completeMfa`) gets a code (F9-e; the code screen is F9-j).
+  (`completeMfa`) gets a code (F9-e): the login page then goes (`replace`) to `/login/2fa`
+  with the same `next` and does not read the session.
+- **Two-step verification (F9-j).** `/login/2fa` (`src/auth/MfaPage.tsx`, lazy, inside
+  `AuthLayout` under `requireAnon`) reads `GET /auth/session` once on arrival (`fetchSession`
+  keeps `mfa_pending: true` only when the server sends it); without a pending step it goes back
+  to `/login` with the same `next`. The "Code" field is `inputmode="numeric"`,
+  `autocomplete="one-time-code"`, focused; "Use a recovery code" switches to "Recovery code"
+  (`autocomplete="off"`) and back. "Verify" posts `POST /auth/mfa` (`{code}` or
+  `{recovery_code}`): a success refetches the session and goes to `next` by the `safeNext` rule
+  (a used recovery code toasts how many are left, `auth:mfa.codesLeft_one/_other`);
+  `mfa_invalid` stays on the field (focused); `mfa_expired` goes back to `/login` with the
+  translated reason in the navigation state (the login page shows it as its `FormAlert`); 429
+  (`locked`, `rate_limited`) runs the login countdown with the button disabled; offline the
+  button is disabled with "You are offline. Connect to verify the code."
 - **Expired session.** A `401` from any call other than login, logout or `/auth/mfa`
   (`AUTH_ANSWER_PATHS` in `api/client.ts`) clears the query
   cache, the "was signed in" hint and the CSRF token, and goes to
@@ -270,7 +283,7 @@ PR 3/3 such a page is one of the 302 redirects back into the app. Flask no longe
 the signed-in shell: `/account` redirects (loader) to `/account/profile`, the sections are its
 children and an unknown `/account/<x>` falls through to the shell's NotFound. The topbar account
 link (avatar and name) points to `/account`. The sections are one list, `src/account/sections.ts`
-(`profile`, `interface`; F9-j adds `security` and `api` between them). Below 1240 px each
+(`profile`, `security`, `api`, `interface`; F9-j S1). Below 1240 px each
 section's `AccountHeader` (`src/account/AccountNav.tsx`) renders its `h1` and, right under it, a
 horizontally scrollable row of tabs; from 1240 px the layout mounts a sticky 264 px sidebar
 (`AccountSidebar`: avatar 42 px, display name or username, `@username`, the section links). Both
@@ -283,10 +296,10 @@ registry keeps its `profile` and `interface` entries.
 playset size; at 1240 px and above a
 live preview sits beside the controls.
 
-**Profile.** `/account/profile` (`src/account/ProfilePage.tsx`; F9-i) shows four cards: below
-860 px one column (Identity, Details, Email, Password), from 860 px two columns (Identity +
-Details | Email + Password), from 1600 px three (Identity | Details | Email + Password; the first
-column's wrapper turns `display: contents`). The Identity and Details cards read `GET /me`
+**Profile.** `/account/profile` (`src/account/ProfilePage.tsx`; F9-i) shows three cards (the
+Password card moved to Security in F9-j): below 860 px one column (Identity, Details, Email),
+from 860 px two columns (Identity + Details | Email), from 1600 px three (Identity | Details |
+Email; the first column's wrapper turns `display: contents`). The Identity and Details cards read `GET /me`
 (`meQuery`, key `['me']`, `src/account/queries.ts`): while it loads they are `Skeleton` cards, a
 failure is an `ErrorState` with Retry (the section navigation and the email/password cards
 stay). A saved change goes through `applyUserChange`, which writes the session user and the
@@ -313,16 +326,69 @@ cached `GET /me`, so the topbar, the home hub and the sidebar follow at once.
   disabled while the value is unchanged; emptied with an e-mail on file, the button becomes
   "Remove email", which asks with a `ConfirmDialog` and sends `{email: null}`; without an e-mail
   on file the card says "No email on file." above the field (which is optional).
-- **Password**: unchanged; sends only `{current_password, password}` after the client checks
-  (current required, new 8-128 characters as in `auth/registerChecks.ts`, confirmation equal).
-
-A success writes the returned user into the `['session']` cache, toasts and (password) clears the
-fields; the session survives a password change. `current_password_incorrect` lands on the
-current password field and `email_taken` on the email field (focused), server `details` on their
-fields, a 429 starts the shared retry countdown of the login screen (every save button
-disabled), anything else is a `FormAlert`. Offline (`useOffline`) `GET /me` is not requested: the
+A success writes the returned user into the `['session']` cache and toasts. `email_taken` lands
+on the email field (focused), server `details` on their fields, a 429 starts the shared retry
+countdown of the login screen (every save button disabled), anything else is a `FormAlert`. Offline (`useOffline`) `GET /me` is not requested: the
 cards show the session identity and the cached details (empty when there is none), every input
 and button disabled.
+
+**Re-authentication (F9-j S2, S3).** `AccountLayout` wraps the sections in
+`src/account/reauth/ReauthProvider.tsx`; `useReauth()` returns `withReauth(action)`
+(`reauth/withReauth.ts`): it runs the action and, when it answers 403 `reauth_required`, opens
+`ReauthDialog` ("Confirm it's you") with the `params.methods` it can offer (`password` first, then
+`totp`; a link switches between them; OAuth comes with F9-g). After `POST /me/reauth` succeeds the
+action runs **once more** and its result is returned; Cancel rejects with `ReauthCancelled`, which
+callers ignore (no toast); a second `reauth_required` is an error toast (no loop). In the dialog
+`current_password_incorrect` / `mfa_invalid` stay on the field and a 429 runs the countdown.
+Every 2FA, set-password and API key write goes through it.
+
+**Security.** `/account/security` (`src/account/SecurityPage.tsx`, `SecurityPage.module.css`):
+below 860 px one column (Password, Two-factor, Devices); from 860 px Password | Two-factor with
+Devices full width below; from 1240 px Password and Two-factor stacked | Devices; from 1600 px
+three columns (CSS grid areas). Password and Two-factor read `GET /me` (skeleton, `ErrorState`
+with Retry); Devices read `GET /me/sessions` (`sessionsQuery`, key `['me', 'sessions']`, so
+invalidating `['me']` refreshes both).
+
+- **Password** (`PasswordCard.tsx`, the F9-i form moved here with its `prefs:profile.password.*`
+  strings): with `has_password` current + new + confirm and the note "Changing your password
+  signs out your other devices."; without one "Set a password" (new + confirm) sends
+  `{password}` through `withReauth`, toasts "Password set.". Both refetch `GET /me` and the
+  devices.
+- **Two-factor** (`MfaCard.tsx`): "not available on this server" without a key; Off badge +
+  "Turn on"; On badge + "Recovery codes left: N" (gold at 3 or fewer) + "New recovery codes" +
+  "Turn off". "Turn on" calls `withReauth(setupMfa)` and opens `MfaWizard.tsx` (`Modal`, "Step N
+  of 3", focus on each step's heading): 1. the QR `<img>` (220 px, alt "QR code for your
+  authenticator app", `aria-describedby` the key grouped by 4, "Copy key"); 2. the code
+  (`CodeInput.tsx`: numeric, one-time-code, 6) → `withReauth(enableMfa)`, `mfa_invalid` on the
+  field, "Back"; 3. `RecoveryCodes.tsx`: the ten codes, "Copy codes", "Download"
+  (`rift-manager-recovery-codes.txt`, one per line, a Blob URL revoked right after) and "I saved
+  these codes somewhere safe", which alone enables "Done"; until it is checked the dialog cannot
+  be dismissed (`Modal dismissible={false}`: Escape, backdrop, cancel and the close button do
+  nothing). Done toasts, refetches `GET /me` and the devices and drops the codes. "Turn off" asks
+  for a code (TOTP or recovery) and sends `withReauth(disableMfa)`; "New recovery codes" asks
+  with a `ConfirmDialog`, then shows the codes in their own locked `Modal`.
+- **Devices** (`SessionsCard.tsx`): cards below 860 px, a `TableScroll` table from 860 px
+  (hidden caption "Signed-in devices"; Device, Method, Network, Last active, Signed in,
+  Actions). "This device" and "2FA" badges, "Network <prefix>", "Last active" relative under 7
+  days (`formatRelative` in `lib/format.ts`), "Stays signed in until" for remembered sessions.
+  "Sign out" on another device asks, then `DELETE /me/sessions/<id>` (a 404 refreshes silently);
+  on this device it is the logout flow (`useLogout`). "Sign out all other devices" (only with
+  others) asks, then `DELETE /me/sessions` and toasts the count (`_one` / `_other`).
+
+**API.** `/account/api` (`src/account/ApiPage.tsx`): the "API key" card (`apiKeyQuery`, key
+`['me', 'api-key']`) shows "You have no API key." + "Create key", or "Key <prefix>…", the dates
+and "Replace key" / "Revoke key" (both behind a `ConfirmDialog`). Create and replace go through
+`withReauth(createApiKey)`; the new key appears once in "Your new API key" (read-only monospace
+field, "Copy key", the warning) and leaves the component state when it closes. Revoke toasts "API
+key revoked.". The "Example" card shows `curl -H "Authorization: Bearer rb_live_<your key>"
+<window.location.origin>/riftbound/api/v1/collection` with "Copy" (a placeholder, never the
+key); it sits under the key card and beside it from 1600 px.
+
+Copy buttons go through `account/copy.ts` (`navigator.clipboard`, then "Copied." through
+`announce()`; a refusal is an error toast). Offline (S16) Security and API keep the cached data,
+show "You need a connection to make changes." and disable every server action (copying the
+example stays possible). Keys, secrets and recovery codes are never put in web storage or the
+query cache.
 
 **Avatar primitive.** `components/ui/Avatar.tsx` takes an optional `src` (`avatar_url`) and asks
 for the 64 px file (`&size=64`) up to 64 px and the 256 px file above; the `<img>` has the `label`

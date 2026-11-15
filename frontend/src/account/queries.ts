@@ -1,5 +1,5 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
-import { getMe, getMetaConfig } from '@/api/endpoints';
+import { getApiKey, getMe, getMetaConfig, listSessions } from '@/api/endpoints';
 import type { MeData, ProfileData, Session, UserPayload } from '@/api/types';
 import { sessionQuery } from '@/auth';
 
@@ -7,6 +7,18 @@ import { sessionQuery } from '@/auth';
 export const meQuery = queryOptions({
   queryKey: ['me'] as const,
   queryFn: ({ signal }) => getMe(signal),
+});
+
+/** `GET /me/sessions` (F9-j S9): under `['me']`, so refreshing `GET /me` refreshes it too. */
+export const sessionsQuery = queryOptions({
+  queryKey: ['me', 'sessions'] as const,
+  queryFn: ({ signal }) => listSessions(signal),
+});
+
+/** `GET /me/api-key` (F9-j S10): the key's info, never the key. */
+export const apiKeyQuery = queryOptions({
+  queryKey: ['me', 'api-key'] as const,
+  queryFn: ({ signal }) => getApiKey(signal),
 });
 
 /** `GET /meta/config`: the profile country codes (F9-b S12) do not change while the app runs. */

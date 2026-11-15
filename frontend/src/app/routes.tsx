@@ -58,6 +58,11 @@ export function createAppRoutes(
               lazy: async () => ({ Component: (await import('@/auth/LoginPage')).LoginPage }),
             },
             {
+              // F9-j S13: the second sign-in step of a 2FA account.
+              path: '/login/2fa',
+              lazy: async () => ({ Component: (await import('@/auth/MfaPage')).MfaPage }),
+            },
+            {
               path: '/register',
               lazy: async () => ({ Component: (await import('@/auth/RegisterPage')).RegisterPage }),
             },
@@ -84,6 +89,18 @@ export function createAppRoutes(
                       path: 'profile',
                       lazy: async () => ({
                         Component: (await import('@/account/ProfilePage')).ProfilePage,
+                      }),
+                    },
+                    {
+                      path: 'security',
+                      lazy: async () => ({
+                        Component: (await import('@/account/SecurityPage')).SecurityPage,
+                      }),
+                    },
+                    {
+                      path: 'api',
+                      lazy: async () => ({
+                        Component: (await import('@/account/ApiPage')).ApiPage,
                       }),
                     },
                     {

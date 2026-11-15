@@ -27,3 +27,25 @@ export const formatPct = (value: number): string =>
     maximumFractionDigits: 1,
     signDisplay: 'exceptZero',
   }).format(value / 100);
+
+const RELATIVE_STEPS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
+  ['second', 60],
+  ['minute', 60],
+  ['hour', 24],
+  ['day', 7],
+];
+
+/**
+ * "5 minutes ago", "yesterday" under 7 days, else the medium date (F9-j S9). A time in the
+ * future (a clock a little ahead) is "now".
+ */
+export function formatRelative(value: Date | string, now: Date = new Date()): string {
+  const then = new Date(value);
+  let amount = Math.max(0, Math.floor((now.getTime() - then.getTime()) / 1000));
+  const format = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
+  for (const [unit, size] of RELATIVE_STEPS) {
+    if (amount < size) return format.format(-amount, unit);
+    amount = Math.floor(amount / size);
+  }
+  return formatDate(then);
+}

@@ -6,12 +6,7 @@ import type { AccountChanges, ErrorDetail, ProfilePatch, UserPayload } from '@/a
 import { useOffline, useSession } from '@/auth';
 import { FormAlert } from '@/auth/FormAlert';
 import { fieldErrorsFromDetails, useFormFocus, type FieldErrors } from '@/auth/formHelpers';
-import {
-  EMAIL_MAX_LENGTH,
-  EMAIL_PATTERN,
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
-} from '@/auth/registerChecks';
+import { EMAIL_MAX_LENGTH, EMAIL_PATTERN } from '@/auth/registerChecks';
 import { useRetryCountdown } from '@/auth/useRetryCountdown';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -20,7 +15,6 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { announce } from '@/components/ui/LiveAnnouncer';
-import { PasswordInput } from '@/components/ui/PasswordInput';
 import { SettingsCard } from '@/components/ui/SettingsCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { pushToast } from '@/components/ui/toastStore';
@@ -35,8 +29,6 @@ import { applyUserChange, meQuery, metaConfigQuery } from './queries';
 
 const EMAIL_FIELDS = ['email'] as const;
 type EmailField = (typeof EMAIL_FIELDS)[number];
-const PASSWORD_FIELDS = ['current_password', 'password', 'confirm_password'] as const;
-type PasswordField = (typeof PASSWORD_FIELDS)[number];
 
 /** A non-empty e-mail; an empty one is a removal, confirmed apart (F9-i S8). */
 function checkEmail(email: string): ErrorDetail[] {
@@ -44,17 +36,6 @@ function checkEmail(email: string): ErrorDetail[] {
     return [problem('email', 'too_long', { max: EMAIL_MAX_LENGTH })];
   if (!EMAIL_PATTERN.test(email)) return [problem('email', 'invalid_format')];
   return [];
-}
-
-function checkPassword(current: string, password: string): ErrorDetail[] {
-  const problems: ErrorDetail[] = [];
-  if (!current) problems.push(problem('current_password', 'required'));
-  if (!password) problems.push(problem('password', 'required'));
-  else if (password.length < PASSWORD_MIN_LENGTH)
-    problems.push(problem('password', 'too_short', { min: PASSWORD_MIN_LENGTH }));
-  else if (password.length > PASSWORD_MAX_LENGTH)
-    problems.push(problem('password', 'too_long', { max: PASSWORD_MAX_LENGTH }));
-  return problems;
 }
 
 type FormProps = {
@@ -191,99 +172,6 @@ function EmailForm({
   );
 }
 
-/** The password form: sends `current_password` and `password`; clears itself once saved. */
-function PasswordForm({ offline, blocked, save, onRateLimited }: FormProps) {
-  const { t, i18n } = useTranslation('prefs');
-  const form = useRef<HTMLFormElement>(null);
-  const focus = useFormFocus(form);
-  const [values, setValues] = useState<Record<PasswordField, string>>({
-    current_password: '',
-    password: '',
-    confirm_password: '',
-  });
-  const [pending, setPending] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors<PasswordField>>({});
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (pending || blocked || offline) return;
-    const { current_password: current, password, confirm_password: confirm } = values;
-    const local = fieldErrorsFromDetails(checkPassword(current, password), i18n, PASSWORD_FIELDS);
-    if (!local.password && confirm !== password) {
-      local.confirm_password = t('profile.password.mismatch');
-    }
-    setErrors(local);
-    setFormError(null);
-    if (Object.keys(local).length > 0) return focus.request();
-
-    setPending(true);
-    try {
-      await save({ current_password: current, password });
-      setValues({ current_password: '', password: '', confirm_password: '' });
-      pushToast({ kind: 'success', message: t('profile.password.saved') });
-    } catch (error) {
-      const failure = failureOf(error, i18n, PASSWORD_FIELDS, {
-        current_password_incorrect: 'current_password',
-      });
-      if (failure.kind === 'retry') onRateLimited(failure.seconds);
-      else if (failure.kind === 'form') setFormError(failure.message);
-      else {
-        setErrors(failure.errors);
-        focus.request(failure.focus);
-      }
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const control = (name: PasswordField, autoComplete: string) => ({
-    name,
-    value: values[name],
-    onChange: (event: { target: { value: string } }) => {
-      setValues((previous) => ({ ...previous, [name]: event.target.value }));
-      setErrors((previous) => ({ ...previous, [name]: undefined }));
-    },
-    autoComplete,
-    disabled: offline,
-  });
-
-  return (
-    <SettingsCard title={t('profile.password.title')} description={t('profile.password.hint')}>
-      <form
-        ref={form}
-        className={styles.form}
-        aria-label={t('profile.password.title')}
-        onSubmit={onSubmit}
-        noValidate
-      >
-        {formError && <FormAlert message={formError} />}
-        <Field label={t('profile.password.current')} error={errors.current_password} required>
-          {(props) => (
-            <PasswordInput {...props} {...control('current_password', 'current-password')} />
-          )}
-        </Field>
-        <Field
-          label={t('profile.password.new')}
-          hint={t('profile.password.newHint')}
-          error={errors.password}
-          required
-        >
-          {(props) => <PasswordInput {...props} {...control('password', 'new-password')} />}
-        </Field>
-        <Field label={t('profile.password.confirm')} error={errors.confirm_password} required>
-          {(props) => <PasswordInput {...props} {...control('confirm_password', 'new-password')} />}
-        </Field>
-        <div className={styles.actions}>
-          <Button type="submit" pending={pending} disabled={offline || blocked}>
-            {pending ? t('profile.password.saving') : t('profile.password.save')}
-          </Button>
-        </div>
-      </form>
-    </SettingsCard>
-  );
-}
-
 /** The identity card (F9-i S4): photo, name, `@username`, member date and the photo actions. */
 function IdentityCard({
   user,
@@ -332,9 +220,10 @@ function CardSkeleton({ label }: { label: string }) {
 
 /**
  * `/account/profile` (F9-i): the identity card (photo), the details form (`PATCH /me`), and the
- * email and password forms (`PATCH /me/account`), each saved on its own. A saved change updates
+ * email form (`PATCH /me/account`), each saved on its own. The password card moved to Security
+ * (F9-j S1). A saved change updates
  * the cached session and `GET /me`, so it shows everywhere. Offline, everything is read-only
- * from the cache; the email and password cards never wait for `GET /me`.
+ * from the cache; the email card never waits for `GET /me`.
  */
 export function ProfilePage() {
   const { t, i18n } = useTranslation('prefs');
@@ -411,7 +300,6 @@ export function ProfilePage() {
         <div className={styles.forms}>
           {/* An account without an email (F9-b) shows an empty field. */}
           {user && <EmailForm email={user.email ?? ''} {...forms} />}
-          <PasswordForm {...forms} />
         </div>
       </div>
     </>

@@ -41,7 +41,7 @@
   },
   "profile": {
     "title": "Profile",
-    "subtitle": "Your account details: username, email and password.",
+    "subtitle": "Your photo, display name and email.",
     "email": {
       "title": "Email",
       "hint": "The address linked to your account.",

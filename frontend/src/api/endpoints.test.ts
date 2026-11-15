@@ -7,15 +7,26 @@ import {
   deleteAvatar,
   disableMfa,
   enableMfa,
+  fetchSession,
   getMe,
+  listSessions,
   login,
   patchMe,
   reauth,
   regenerateRecoveryCodes,
+  revokeOtherSessions,
+  revokeSession,
   setupMfa,
   uploadAvatar,
 } from './endpoints';
-import type { LoginResult, MeData, MfaSetup, MfaSignInResult, RecoveryCodes } from './types';
+import type {
+  DeviceSession,
+  LoginResult,
+  MeData,
+  MfaSetup,
+  MfaSignInResult,
+  RecoveryCodes,
+} from './types';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -222,5 +233,59 @@ describe('avatar endpoints', () => {
     expect(await deleteAvatar()).toEqual({ avatar_url: null });
     expect(calls[0].url).toBe('/riftbound/api/v1/me/avatar');
     expect(calls[0].init.method).toBe('DELETE');
+  });
+});
+
+/** F9-j S9, S13: the signed-in devices and the pending two-factor step of the session. */
+describe('signed-in devices (F9-a S10-S12)', () => {
+  const ITEM: DeviceSession = {
+    id: 3,
+    current: true,
+    device: 'Firefox on Linux',
+    user_agent: 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0',
+    ip_prefix: '192.0.2.0/24',
+    created_at: '2026-11-14T10:00:00Z',
+    last_seen_at: '2026-11-15T09:00:00Z',
+    expires_at: null,
+    remember: false,
+    auth_method: 'password',
+    mfa: false,
+  };
+
+  it('listSessions reads GET /me/sessions and returns the items', async () => {
+    const calls = mockFetchJson({ items: [ITEM] });
+    expect(await listSessions()).toEqual([ITEM]);
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/sessions');
+  });
+
+  it('revokeSession sends DELETE /me/sessions/<id>', async () => {
+    setCsrfToken('token-11');
+    const calls = mockFetchJson({ revoked: 1, current: false });
+    expect(await revokeSession(4)).toEqual({ revoked: 1, current: false });
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/sessions/4');
+    expect(calls[0].init.method).toBe('DELETE');
+  });
+
+  it('revokeOtherSessions sends DELETE /me/sessions and returns the count', async () => {
+    setCsrfToken('token-12');
+    const calls = mockFetchJson({ revoked: 2 });
+    expect(await revokeOtherSessions()).toBe(2);
+    expect(calls[0].url).toBe('/riftbound/api/v1/me/sessions');
+    expect(calls[0].init.method).toBe('DELETE');
+  });
+});
+
+describe('fetchSession keeps the pending two-factor step (F9-j S13)', () => {
+  it('passes mfa_pending through only when the server sends it', async () => {
+    mockFetchJson({ authenticated: false, csrf_token: 't', mfa_pending: true });
+    expect(await fetchSession()).toEqual({
+      authenticated: false,
+      user: null,
+      prefs: null,
+      mfa_pending: true,
+    });
+    vi.unstubAllGlobals();
+    mockFetchJson({ authenticated: false, csrf_token: 't' });
+    expect(await fetchSession()).toEqual({ authenticated: false, user: null, prefs: null });
   });
 });

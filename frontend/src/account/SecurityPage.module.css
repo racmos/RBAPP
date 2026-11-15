@@ -1,0 +1,285 @@
+@layer components {
+  /*
+   * F9-j UI table. Phones: Password, Two-factor, Devices in one column. From md: Password and
+   * Two-factor side by side, Devices full width below. From xl (beside the sidebar): Password
+   * and Two-factor stacked | Devices. From 2xl: Password | Two-factor | Devices.
+   */
+  .grid {
+    display: grid;
+    grid-template-areas:
+      'password'
+      'mfa'
+      'devices';
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .password {
+    grid-area: password;
+    min-width: 0;
+  }
+
+  .mfa {
+    grid-area: mfa;
+    min-width: 0;
+  }
+
+  .devices {
+    grid-area: devices;
+    min-width: 0;
+  }
+
+  /* F9-j S11: the key card with the example below it; side by side from 2xl. */
+  .apiGrid {
+    display: grid;
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .apiGrid > * {
+    min-width: 0;
+  }
+
+  .form {
+    display: grid;
+    gap: 16px;
+    padding-top: 6px;
+  }
+
+  .text,
+  .hint {
+    margin: 0;
+  }
+
+  .hint {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .notice {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--accent-ring);
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    font-size: 14px;
+  }
+
+  .warning {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(224, 185, 74, 0.5);
+    border-radius: var(--radius-sm);
+    background: rgba(224, 185, 74, 0.14);
+    color: var(--gold);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .low {
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  /* A text link that is a button (switch between the password and a code). */
+  .linkButton {
+    justify-self: start;
+    min-height: 24px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent-bright);
+    font: inherit;
+    font-size: 14px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .linkButton:focus-visible {
+    border-radius: 4px;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .code {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    letter-spacing: 0.12em;
+  }
+
+  .mono {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    overflow-wrap: anywhere;
+  }
+
+  .step {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .stepTitle {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .stepTitle:focus {
+    outline: none;
+  }
+
+  .qr {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+  }
+
+  .qrImage {
+    width: 220px;
+    height: 220px;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    background: #fff;
+  }
+
+  .secret {
+    margin: 0;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .codes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 16px;
+    margin: 0;
+    padding: 12px 16px 12px 36px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 15px;
+  }
+
+  .example {
+    margin: 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 13px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 6px 0 0;
+    list-style: none;
+  }
+
+  .item {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+  }
+
+  .device {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .meta {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+    vertical-align: top;
+  }
+
+  .table td {
+    overflow-wrap: anywhere;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .skeletonCard {
+    padding: var(--pad);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+  }
+
+  .offline {
+    margin: 0 0 var(--gap);
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  @media (min-width: 860px) {
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-areas:
+        'password mfa'
+        'devices devices';
+    }
+  }
+
+  @media (min-width: 1240px) {
+    .grid {
+      grid-template-areas:
+        'password devices'
+        'mfa devices';
+    }
+  }
+
+  @media (min-width: 1600px) {
+    .grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-areas: 'password mfa devices';
+    }
+
+    .apiGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}

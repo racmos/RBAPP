@@ -95,8 +95,31 @@ export type SessionData = {
   mfa_pending?: boolean;
 };
 
-/** What the app keeps of the session; the CSRF token lives in `csrf.ts`, never in the cache. */
-export type Session = { authenticated: boolean; user: UserPayload | null; prefs: Prefs | null };
+/** What the app keeps of the session; the CSRF token lives in `csrf.ts`, never in the cache.
+    `mfa_pending` is there only while a two-factor sign-in waits for its code (F9-j S13). */
+export type Session = {
+  authenticated: boolean;
+  user: UserPayload | null;
+  prefs: Prefs | null;
+  mfa_pending?: true;
+};
+
+/** One signed-in device of `GET /me/sessions` (F9-a S10): `device` is the server's label
+    (`"Firefox on Linux"`), `ip_prefix` an IPv4 /24 or IPv6 /48 (or `null`), `expires_at` set
+    only for a remembered session. Never the token. */
+export type DeviceSession = {
+  id: number;
+  current: boolean;
+  device: string;
+  user_agent: string | null;
+  ip_prefix: string | null;
+  created_at: string;
+  last_seen_at: string;
+  expires_at: string | null;
+  remember: boolean;
+  auth_method: 'password' | 'discord' | 'google' | string;
+  mfa: boolean;
+};
 
 export type CaptchaData = { provider: string; challenge: Record<string, unknown> | null };
 
