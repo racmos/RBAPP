@@ -165,17 +165,22 @@ def register_error_handlers(app):
     @app.errorhandler(429)
     def too_many_requests(error):
         """Rate limit hit (LOGIN-7): always carries an integer Retry-After."""
-        retry_after = _retry_after_seconds()
-        if wants_json():
-            response = json_error('Too Many Requests',
-                                  'Too many requests. Please wait before trying again.', 429,
-                                  code=ErrorCode.RATE_LIMITED, params={'retry_after': retry_after})
-        else:
-            response = html_error_page(
-                429, 'Too Many Requests',
-                f'Too many requests. Please wait {retry_after} seconds before trying again.')
-        response.headers['Retry-After'] = str(retry_after)
-        return response
+        return rate_limited_response(_retry_after_seconds())
+
+
+def rate_limited_response(retry_after):
+    """The 429 answer (LOGIN-7) with an integer `Retry-After`; also the API key limit's
+    (F9-h S11), which is counted outside Flask-Limiter's decorators."""
+    if wants_json():
+        response = json_error('Too Many Requests',
+                              'Too many requests. Please wait before trying again.', 429,
+                              code=ErrorCode.RATE_LIMITED, params={'retry_after': retry_after})
+    else:
+        response = html_error_page(
+            429, 'Too Many Requests',
+            f'Too many requests. Please wait {retry_after} seconds before trying again.')
+    response.headers['Retry-After'] = str(retry_after)
+    return response
 
 
 def _retry_after_seconds(default=60):

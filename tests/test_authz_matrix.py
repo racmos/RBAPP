@@ -65,6 +65,9 @@ MATRIX = {
     'api_v1.mfa_enable': 'U',
     'api_v1.mfa_disable': 'U',
     'api_v1.mfa_recovery_codes': 'U',
+    'api_v1.get_my_api_key': 'U',            # F9 unit h: personal read-only API key
+    'api_v1.create_my_api_key': 'U',         # (re-auth inside)
+    'api_v1.delete_my_api_key': 'U',
     'api_v1.list_bans': 'U',                # F2 unit a (D-F2-3)
     'api_v1.list_cards': 'U',                # F2 unit c
     'api_v1.get_card': 'U',                  # F2 unit d
@@ -405,4 +408,77 @@ class TestAnonymousJsonClients:
             if resp.status_code in (401, 403):
                 return f'denied with {resp.status_code}'
         failed = failures_for(rules, 'P', check)
+        assert not failed, '\n'.join(failed)
+
+
+# ---------------------------------------------------------------------------
+# Personal API keys (F9-h S8, AC4)
+# ---------------------------------------------------------------------------
+
+UNSAFE_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
+API_V1 = '/riftbound/api/v1'
+READ_ONLY = {'success': False, 'error': 'Forbidden', 'message': 'API keys can only read data',
+             'code': 'api_key_read_only'}
+
+
+@pytest.fixture
+def admin_key(app, make_user):
+    """The key of an admin: the strongest account a key can belong to."""
+    from app.services import api_keys
+    admin = make_user('keyadmin', is_admin=True)
+    key, _ = api_keys.create(admin.id)
+    return {'Authorization': f'Bearer {key}'}
+
+
+def under_the_api(rule):
+    return rule.rule.startswith(API_V1 + '/')
+
+
+class TestApiKeys:
+    def test_no_unsafe_rule_ever_accepts_a_key(self, app, admin_key, rules, outbound):
+        """Every POST/PUT/PATCH/DELETE of every rule under the API, admin or not, with a valid
+        key and a JSON body: 403 `api_key_read_only`, so no unsafe request ever runs with a key
+        (CSRF keeps no exemption)."""
+        checked, failed = 0, []
+        for rule in rules:
+            if not under_the_api(rule):
+                continue
+            for method in sorted(set(rule.methods) & set(UNSAFE_METHODS)):
+                checked += 1
+                resp = app.test_client().open(sample_url(rule), method=method, json={},
+                                              headers=admin_key)
+                if resp.status_code != 403 or resp.get_json(silent=True) != READ_ONLY:
+                    failed.append(f'{method} {rule.rule}: {resp.status_code}')
+        assert checked > 70
+        assert not failed, '\n'.join(failed)
+        assert outbound == []
+
+    def test_every_deny_list_read_rule_refuses_a_key(self, app, admin_key, rules, outbound):
+        from app.services import api_keys
+        denied = [r for r in rules if under_the_api(r) and 'GET' in r.methods
+                  and api_keys.is_denied(sample_url(r), r.rule)]
+        assert {r.endpoint for r in denied} >= {
+            'api_v1.auth_session', 'api_v1.auth_captcha', 'api_v1.get_me',
+            'api_v1.list_my_sessions', 'api_v1.get_my_api_key'}
+        assert sum(r.endpoint.startswith('api_admin.') for r in denied) > 15
+        failed = []
+        for rule in denied:
+            resp = app.test_client().get(sample_url(rule), headers=admin_key)
+            if resp.status_code != 403 or resp.get_json(silent=True) != READ_ONLY:
+                failed.append(f'GET {rule.rule}: {resp.status_code}')
+        assert not failed, '\n'.join(failed)
+        assert outbound == []
+
+    def test_every_other_read_rule_lets_a_key_in(self, app, admin_key, rules, outbound):
+        from app.services import api_keys
+        readable = [r for r in rules if under_the_api(r) and 'GET' in r.methods
+                    and not api_keys.is_denied(sample_url(r), r.rule)]
+        assert {classify(r) for r in readable} == {'P', 'U'}
+        failed = []
+        for rule in readable:
+            resp = app.test_client().get(sample_url(rule), headers=admin_key)
+            if resp.status_code in (401, 403):
+                failed.append(f'GET {rule.rule}: {resp.status_code}')
+            elif resp.headers.getlist('Set-Cookie'):
+                failed.append(f'GET {rule.rule}: sets a cookie')
         assert not failed, '\n'.join(failed)

@@ -24,7 +24,7 @@ from flask_login import current_user
 
 from app.api.error_codes import ErrorCode
 from app.api.responses import fail
-from app.services import mfa, sessions
+from app.services import api_keys, mfa, sessions
 from app.utils import clock
 
 REAUTH_WINDOW = timedelta(minutes=10)
@@ -35,7 +35,7 @@ def require_admin():
     """Return a response to stop the request, or None to let it through."""
     if not current_user.is_authenticated:
         return current_app.login_manager.unauthorized()
-    if not current_user.is_admin:
+    if not current_user.is_admin or api_keys.via_key():      # a key never grants admin (F9-h S9)
         abort(403)
     return None
 

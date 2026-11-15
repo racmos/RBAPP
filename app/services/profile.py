@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from typing import Optional
 
+import sqlalchemy as sa
+
 from app import db
-from app.models import RbUserProfile
+from app.models import RbApiKey, RbUserProfile, User
 from app.security import reauth_until
-from app.services import mfa, sessions
+from app.services import api_keys, mfa, sessions
 from app.services.avatars import profile_avatar_url
 from app.utils import clock
 
@@ -47,16 +49,29 @@ def profile_payload(row: Optional[RbUserProfile]) -> dict:
             'updated_at': sessions._iso(row.rbupf_updated_at)}
 
 
-def security_summary(user) -> dict:
-    """The `security` object of `GET /me` (S7). `mfa` comes from `app.services.mfa` (F9-d S14);
-    `api_key` and `connections` keep these values until F9-h and F9-f fill them."""
+def _profile_and_key(user_id: int):
+    """The profile row and the API key row of `user_id` (each None when missing) in ONE
+    statement, so `GET /me` keeps its budget of 5 (F9-b S7, F9-h S6)."""
+    found = db.session.execute(
+        sa.select(RbUserProfile, RbApiKey).select_from(User)
+        .outerjoin(RbUserProfile, RbUserProfile.rbupf_user_id == User.id)
+        .outerjoin(RbApiKey, RbApiKey.rbapk_user_id == User.id)
+        .where(User.id == user_id)).first()
+    return (found[0], found[1]) if found is not None else (None, None)
+
+
+def security_summary(user, key_row=_LOOKUP) -> dict:
+    """The `security` object of `GET /me` (S7). `mfa` comes from `app.services.mfa` (F9-d S14),
+    `api_key` from `app.services.api_keys` (F9-h S6: the key info or None; pass `key_row` when
+    it is already known); `connections` keeps this value until F9-f fills it."""
+    api_key = (api_keys.get_info(user.id) if key_row is _LOOKUP else api_keys.info(key_row))
     return {
         'has_password': user.has_password,
         'password_changed_at': sessions._iso(user.password_changed_at),
         'member_since': sessions._iso(user.created_at),
         'mfa': mfa.status(user.id),
         'sessions_active': sessions.count_active(user.id),
-        'api_key': None,
+        'api_key': api_key,
         'connections': [],
         'reauth_until': sessions._iso(reauth_until(sessions.current())),
     }
@@ -64,9 +79,9 @@ def security_summary(user) -> dict:
 
 def me_payload(user) -> dict:
     """The body of `GET /me` and `PATCH /me`: `{user, profile, security}`."""
-    row = get_profile(user.id)
+    row, key_row = _profile_and_key(user.id)
     return {'user': user_payload(user, row), 'profile': profile_payload(row),
-            'security': security_summary(user)}
+            'security': security_summary(user, key_row)}
 
 
 def update_profile(user_id: int, changes: dict) -> RbUserProfile:

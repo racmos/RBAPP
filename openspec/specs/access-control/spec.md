@@ -131,3 +131,17 @@ The suite MUST provide `admin_client` and `other_user_client` fixtures. Existing
 - GIVEN the migrated tests
 - WHEN `venv/bin/python -m pytest` runs
 - THEN the 93 baseline tests pass (plus new ones)
+
+### Requirement: ACL-9 Personal API keys are read only and never admin [F9-h]
+
+A request under `/riftbound/api/v1/` with `Authorization: Bearer <key>` MUST be authenticated only by that key (cookies ignored; a bad key, an unknown key or a blocked user's key is a 401 `api_key_invalid`, never a fallback to a cookie session). It MUST be refused with 403 `api_key_read_only` for any method other than GET/HEAD and for the deny list (`/auth/`, `/admin/`, `/me/account`, `/me/reauth`, `/me/sessions`, `/me/2fa`, `/me/api-key`, `/me/avatar`, `/me/connections`, exactly `/me`). It MUST never satisfy `require_admin`, create or touch a session, or set a cookie (`docs/api.md` → "Personal API key (F9-h)").
+
+#### Scenario: Admin key on the admin API
+- GIVEN an admin's valid key
+- WHEN `GET /riftbound/api/v1/admin/overview` is sent with it
+- THEN status 403 `api_key_read_only`
+
+#### Scenario: Every unsafe rule refuses a key
+- GIVEN a valid key
+- WHEN any POST/PUT/PATCH/DELETE rule under `/riftbound/api/v1/` is called with it
+- THEN status 403 `api_key_read_only` and nothing changes (`tests/test_authz_matrix.py::TestApiKeys`)

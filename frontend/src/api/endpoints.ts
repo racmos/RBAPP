@@ -2,6 +2,8 @@ import { getSession, request, requestFile, requestWithMeta } from './client';
 import type {
   AccountChanges,
   AdminCatalog,
+  ApiKeyCreated,
+  ApiKeyInfo,
   CaptchaData,
   CardDetail,
   CardListMeta,
@@ -679,6 +681,18 @@ export const disableMfa = (code: string) =>
 /** `POST /me/2fa/recovery-codes` (F9-d S10, re-auth): ten new codes replace the old ones. */
 export const regenerateRecoveryCodes = () =>
   request<RecoveryCodes>('/me/2fa/recovery-codes', { method: 'POST' });
+
+/** `GET /me/api-key` (F9-h S3): the personal API key's info, `null` without one. */
+export const getApiKey = async (signal?: AbortSignal): Promise<ApiKeyInfo | null> =>
+  (await request<{ api_key: ApiKeyInfo | null }>('/me/api-key', { signal })).api_key;
+
+/** `POST /me/api-key` (F9-h S4, re-auth): a new key that replaces the old one at once. The key
+    is in this answer only. */
+export const createApiKey = () => request<ApiKeyCreated>('/me/api-key', { method: 'POST' });
+
+/** `DELETE /me/api-key` (F9-h S5): revoke the key; idempotent. */
+export const deleteApiKey = async (): Promise<null> =>
+  (await request<{ api_key: null }>('/me/api-key', { method: 'DELETE' })).api_key;
 
 /** `GET /meta/game` (F2-h S2). */
 export const getGameMeta = (signal?: AbortSignal) => request<GameMeta>('/meta/game', { signal });

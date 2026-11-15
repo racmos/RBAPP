@@ -113,6 +113,10 @@ def create_app(**overrides):
     # Job kinds (`flask jobs ...`): importing the package registers them.
     from app import jobs  # noqa: F401
     login.init_app(app)
+    # Personal API keys (F9-h S8): the FIRST before_request hook, so a refused key is answered
+    # before the CSRF check (registered by csrf.init_app below) and before anything else.
+    from app.services import api_keys
+    app.before_request(api_keys.gate)
     csrf.init_app(app)
     _init_limiter(app)
     # Asegurar que Flask respete X-Forwarded-* y X-Forwarded-Prefix enviados por NGINX
@@ -124,6 +128,8 @@ def create_app(**overrides):
         x_host=app.config['PROXY_FIX_X_HOST'],
         x_prefix=0,
     )
+    # A bearer request under /riftbound/api/v1/ never sees its cookies (F9-h S7, S9).
+    app.wsgi_app = api_keys.BearerCookieGuard(app.wsgi_app)
 
     # Card images (/riftbound/media/cards/), served from CARD_IMAGES_DIR (M-d)
     from app.routes.media import media_bp
@@ -150,6 +156,12 @@ def create_app(**overrides):
     def load_user(raw_id):
         from app.services.sessions import load_identity
         return load_identity(raw_id)
+
+    # A bearer request (F9-h S7): its cookies were removed, so Flask-Login asks this loader,
+    # which answers the API key's user (one SELECT) or None.
+    @login.request_loader
+    def load_user_from_request(_request):
+        return api_keys.request_user()
 
     # Register error handlers
     from app.errors import register_error_handlers

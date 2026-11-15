@@ -12,6 +12,11 @@ Source: change f0-foundation (archived 2026-10-19)
 
 With CSRF enabled, every POST/PUT/PATCH/DELETE (HTML routes, legacy JSON routes, uploads, and the API blueprint; no exemptions) MUST be rejected with 400 unless it carries a valid token in header `X-CSRFToken` or form field `csrf_token`. Safe methods (GET/HEAD/OPTIONS) MUST NOT require a token. A token MUST stay valid for the life of the session (no time limit).
 
+#### Scenario: Unsafe request with a personal API key (F9-h)
+- GIVEN `csrf_app` and a valid personal API key (`Authorization: Bearer rb_live_...`)
+- WHEN `POST /riftbound/api/v1/collection` is sent with the key and without a token
+- THEN status 403 `api_key_read_only` (401 `api_key_invalid` for a bad key): the key check runs before the CSRF check and an API key never authenticates an unsafe method, so no unsafe request ever runs without a token; there is still no exemption (`docs/api.md` → "Personal API key (F9-h)")
+
 #### Scenario: JSON POST without token
 - GIVEN `csrf_app`, a logged-in user
 - WHEN `POST /riftbound/collection/add` is sent as JSON without a token
