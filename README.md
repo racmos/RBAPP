@@ -103,6 +103,7 @@ flask db downgrade -1               # undo the last revision
 The first admin can only be created from the server shell; no request can grant the role.
 
 ```bash
+flask users create <username> [--email <e>] [--admin]  # new account; password from RB_NEW_PASSWORD or a hidden prompt
 flask users promote <username>      # make admin (aliases: make-admin)
 flask users demote <username>       # remove admin (alias: revoke-admin)
 flask users block <username>        # refuse logins and end every session

@@ -58,6 +58,14 @@ There is no production yet (phase F12). Everything here is the development serve
 - Status and logs: `systemctl status <service>`, `journalctl -u <service> -n 200 --no-pager`.
 - Users: `venv/bin/flask users list|promote|demote|block|unblock|unlock|set-password|reset-2fa <username>`
   (`reset-2fa`: see "Two-factor key (F9-d)" and "Two-factor sign-in (F9-e)").
+- Create an account (RESET-a): `venv/bin/flask users create <username> [--email <e-mail>] [--admin]`.
+  The password is typed at the hidden prompts `New password` / `Repeat the password`; or set
+  `RB_NEW_PASSWORD` for that one command in a shell whose history is off (`set +o history`) and
+  `unset RB_NEW_PASSWORD` right after; never write it in a file, a unit or a chat. 8 to 128 characters. Prints only
+  `Created '<username>'.` (or `... (admin).`); a taken username or e-mail, an invalid username or
+  e-mail, or a bad password exits 1 and creates nothing. No session or profile is created; the user
+  signs in, then sets 2FA, profile and e-mail in the app. The e-mail is never echoed: check it with
+  `flask users list`.
 - Schema snapshot (structure only): `venv/bin/flask schema snapshot`.
 - Card bans per game mode (F2-a; the only way to change them until the F10 admin UI; a ban covers every
   printing of the name):
