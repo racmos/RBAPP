@@ -59,6 +59,11 @@ There is no production yet (phase F12). Everything here is the development serve
 - Users: `venv/bin/flask users list|promote|demote|block|unblock|unlock|set-password|reset-2fa <username>`
   (`reset-2fa`: see "Two-factor key (F9-d)" and "Two-factor sign-in (F9-e)").
 - Schema snapshot (structure only): `venv/bin/flask schema snapshot`.
+- Production data reset (RESET-b, **destructive**): `venv/bin/flask reset production-data` empties the
+  database for production. Never run it with `--execute` on real data except on the reset day, after the
+  rehearsal on a scratch database whose name contains `test`: procedure, worksheet and rollback in
+  `docs/requirements/F12/RESET-production-data-reset.md` sections 10 (runbook), 11 (rehearsal) and 12
+  (rollback). Without `--execute` it is a dry run that changes nothing (counts only).
 - Card bans per game mode (F2-a; the only way to change them until the F10 admin UI; a ban covers every
   printing of the name):
   - `venv/bin/flask bans list [--mode 1v1|2v2]`

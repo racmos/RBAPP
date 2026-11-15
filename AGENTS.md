@@ -82,6 +82,7 @@ riftbound/
 │   │   ├── bans.py          # flask bans list|add|remove (card bans per game mode)
 │   │   ├── images.py        # flask images import-legacy (copy the old card images into CARD_IMAGES_DIR)
 │   │   ├── jobs.py          # flask jobs enqueue|run-pending|list
+│   │   ├── reset.py         # flask reset production-data (RESET-b): empties the database for production; dry run by default, --execute needs --backup and --confirm "RESET <database>"; destructive, never on real data without the rehearsal and runbook of docs/requirements/F12/RESET-production-data-reset.md
 │   │   ├── riot.py          # flask riot recheck-pending [--dry-run] (marks stale pending card changes obsolete)
 │   │   ├── sessions.py      # flask sessions purge [--dry-run] (deletes ended server-side sessions, F9-a)
 │   │   ├── schema.py        # flask schema snapshot
@@ -138,6 +139,7 @@ riftbound/
 │   │   ├── auth.py          # authenticate (lockout; MFA_REQUIRED for a 2FA user, F9-e), second_factor (the code of the sign-in step, counted like a wrong password), register_user, unlock_user
 │   │   ├── audit.py         # record() adds an audit row in the caller's transaction
 │   │   ├── audit_log.py     # read-only audit log (CM-e): list_audit (filters, paging), facets; details passed through
+│   │   ├── data_reset.py    # production data reset (RESET-b): TABLE_POLICY (every metadata table keep / wipe / special), guards (unclassified tables, database, RB_ENV, test name, backup via read_backup_toc / PG_RESTORE, Alembic head, active jobs), build_plan (dry-run counts), execute (one transaction: DELETEs in reverse sorted_tables order, kept users / daily_prices jobs / expansion rows with the mapping cleared, ALTER SEQUENCE RESTART on PostgreSQL, one data.reset audit row, kept tables re-checked before the commit)
 │   │   ├── bans.py          # name_key, ban_map, card_bans, ban_info, list_bans, add_ban, remove_ban
 │   │   ├── captcha.py       # none / altcha providers, replay store
 │   │   ├── cardmarket_log.py # Cardmarket load log computed on read (CM-a): list_loads, load_day, health (status without prices_as_of; the admin overview, CM-e), status, derive_status, unmatched_clauses (the one definition of unmatched), unmatched_count, unmapped_expansions_count (the one definition of unmapped expansions)
@@ -421,7 +423,7 @@ TEST_POSTGRES_URL=postgresql+psycopg://user:password@localhost:5432/riftbound_te
 - Fixtures: `make_user`, `login_as`, `authenticated_client`, `admin_client`, `other_user_client`, `csrf_app`, `limited_app`, `altcha_app`, `frozen_clock`, `migration_app`, `pg_url`, `spa_dist`, `spa_app`, `card_images_dir`, `avatar_dir` (a temporary `AVATAR_DIR`, F9-c).
 - `login_as` and the logged-in client fixtures sign in through `POST /auth/login` with the token of `GET /auth/session`, so they work with `csrf_app` in any order.
 - The login protections (lockout, blocked user, rate limits, remember cookie, captcha replay, CSRF on every unsafe rule) are guarded through the JSON API by `tests/test_api_auth_guards.py`; the old URLs by `tests/test_legacy_redirects.py`.
-- PostgreSQL-marked tests (none today) need a database whose name contains `test`; a unit that adds them re-adds the `pytest -m postgres` CI step (PostgreSQL 18).
+- PostgreSQL-marked tests (`tests/test_reset_pg.py`, RESET-b: foreign keys enforced, sequences, rollback) need a database whose name contains `test` (`TEST_POSTGRES_URL`, else they skip); the `migrations-pg` CI job runs them with `pytest -m postgres` (PostgreSQL 18).
 - Nothing in the tests may reach the internet.
 
 ### Security
@@ -470,6 +472,7 @@ flask jobs run-pending                             # expire stale jobs, run the 
 flask jobs list [--limit N]                        # newest first, default 20
 flask sessions purge [--dry-run]                   # delete (or count) the ended server-side sessions (F9-a)
 flask users reset-2fa <username>                   # remove a user's two-factor authentication and end all their sessions (F9-d)
+flask reset production-data --keep-user U... --database D --env E [--backup F] [--allow-test-db] [--execute --confirm "RESET D"]  # RESET-b: dry run by default; DESTRUCTIVE with --execute (runbook first)
 ```
 
 ## Error Handling
@@ -489,7 +492,8 @@ HTTP errors are handled in `app/errors.py`: 400, 401, 403, 404, 405, 429, 500 an
 1. Create a file in `app/models/` with `__tablename__` and `{"schema": "riftbound"}`
 2. Import it in `app/models/__init__.py`
 3. `flask db migrate`, review, `flask db upgrade`, `flask db check`
-4. Add a route or service and its tests
+4. Classify it in `app/services/data_reset.py::TABLE_POLICY` (`keep`, `wipe` or `special`; `tests/test_data_reset_classification.py` names a forgotten table, and `tests/reset_helpers.py::seed_world` needs a row in it)
+5. Add a route or service and its tests
 
 ### Adding a New Route
 1. Add it to the domain file in `app/api/v1/` (or `app/api/admin/` when it is admin-only); logic goes in `app/services/`

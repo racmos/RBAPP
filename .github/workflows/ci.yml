@@ -80,6 +80,13 @@ jobs:
           flask db check
           flask db downgrade base
           flask db upgrade
+      # Tests marked `postgres` (RESET-b: sequences, rollback of ALTER SEQUENCE, FK order with
+      # enforcement) need a real server; they skip everywhere else.
+      - name: PostgreSQL tests (pytest -m postgres)
+        run: |
+          set -euo pipefail
+          export TEST_POSTGRES_URL='postgresql+psycopg://rb:rb@localhost:5432/riftbound_test'
+          pytest -m postgres -vv
 
   # The React app (F1). Every step runs: `frontend/package.json` exists (CI-5).
   # The dist is uploaded for the deploy step; it needs no write permission.

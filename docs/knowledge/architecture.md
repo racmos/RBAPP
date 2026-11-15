@@ -192,6 +192,11 @@ variable: `TESTING` (skips validation) and `LEGACY_BACKUP_DIR` (read by migratio
 - `flask schema snapshot` prints the live `riftbound` schema from `pg_catalog` (PostgreSQL only). Its
   output has the format of `tests/fixtures/dev_schema_snapshot.txt`.
 - `flask db migrate|upgrade|downgrade|check|stamp|current` (Flask-Migrate).
+- `flask reset production-data` (RESET-b, `app/cli/reset.py` over `app/services/data_reset.py`): empties the
+  database for production following `TABLE_POLICY` (every metadata table `keep`, `wipe` or `special`). Dry run
+  by default; `--execute` needs `--backup` (a recent `pg_dump -Fc` of this database, read with `pg_restore -l`)
+  and `--confirm "RESET <database>"`; one transaction. Destructive: only with the rehearsal and the runbook of
+  `docs/requirements/F12/RESET-production-data-reset.md`.
 - `python run.py` (loopback, debug off); `gunicorn --workers 3 run:app` in production
   (`wsgi.py` exposes `application` and `app`).
 

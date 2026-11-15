@@ -5,7 +5,7 @@
 | Phase | Prerequisite of F12 (Production); runs after F9 (units a-e, h, i, j) and F11-f, before F9-f/F9-g and F12 |
 | Decision | Owner, 2026-11-11: replaces "promote the dev database as is" (D-F12-6 option A keeps the server, not the data). Owner decisions on the details: 2026-11-12, section 13 |
 | Parts | 1-8 design (this file); 9 helper CLI requirement (units RESET-a, RESET-b, to build later); 10-12 owner runbook, rehearsal, rollback; 13 owner decisions |
-| Status | Design written 2026-11-12 (docs only, verified against `main` `80da5d2`, Alembic head `0028_legacy_schema_cleanup`); owner decisions applied 2026-11-12. No open questions: the helper units can be handed over once F9-j is merged |
+| Status | Design written 2026-11-12 (docs only, verified against `main` `80da5d2`, Alembic head `0028_legacy_schema_cleanup`); owner decisions applied 2026-11-12. No open questions: the helper units can be handed over once F9-j is merged. **RESET-b built 2026-11-15** on `feat/reset-production-data` (from `main` `c078908`, head `0032_api_keys`; its own branch, not stacked on RESET-a / PR #148), implemented, not merged, not deployed: see "RESET-b as built" |
 | Placeholders | `<backup-file>`, `<backup dir>`, `<database>`, `<host>`, `<user>`, `<superuser>`, `<app role>`, `<server>`, `<service>`, `<service user>`, `<card images dir>`, `<product images dir>`, `<avatar dir>`, `<scratch dir>`, `<app e-mail>`, `<personal e-mail>`, `<URL>`. Real values live in `ops.local.md` (git-ignored) or in the owner's head; never in git, never in a chat |
 
 ## 1. Goal
@@ -374,7 +374,8 @@ S4. Options: `--keep-user USERNAME` (repeatable, at least one, required), `--dat
     `--env VALUE` (required), `--backup PATH`, `--allow-test-db`, `--execute`, `--confirm PHRASE`. Without
     `--execute` it is a dry run. `--execute` without `--confirm`, or `--confirm` without `--execute` →
     usage error, exit 2: `Error: --execute needs --confirm "RESET <database>".` /
-    `Error: --confirm is only used with --execute.`
+    `Error: --confirm is only used with --execute.` (`<database>` is the `--database` value). `--execute`
+    without `--backup` → usage error, exit 2: `Error: --execute needs --backup PATH.` (as built).
 S5. `--database` must equal the database name of the engine URL, else
     `Error: Connected to database '<actual>', not '<given>'; nothing was changed.` exit 1.
 S6. `--env` must equal `RB_ENV` as the app reads it (unset = `production`), else
@@ -475,6 +476,38 @@ S21. Docs: AGENTS.md (structure: `app/cli/reset.py`, `app/services/data_reset.py
       it was (S15, S17).
 - [ ] AC9 Lanes: `venv/bin/pytest`; `cd frontend && npm run lint && npm run typecheck && npx vitest run && npm run build && npm run check:dist`.
 - [ ] AC10 `docs/knowledge/state.md` and the docs of S21 updated.
+
+**RESET-b as built (2026-11-15).** Where the code settles what the text left open:
+
+- Files: `app/services/data_reset.py` (`TABLE_POLICY`, guards, `read_backup_toc`, `build_plan`, `execute`),
+  `app/cli/reset.py` (group `reset`), tests `tests/test_data_reset_classification.py` (AC1),
+  `tests/test_reset_cli.py` (AC2-AC7 on SQLite; the seeding helper `seed_world` lives in
+  `tests/reset_helpers.py`, shared with the PostgreSQL tests) and `tests/test_reset_pg.py` (AC8, `-m postgres`).
+- Branch: `feat/reset-production-data`, separate from RESET-a (PR #148); the code does not use RESET-a (only
+  the `No kept user is an admin` line names `flask users create`).
+- Check order: usage (S4, exit 2) → unclassified tables (S3) → database (S5) → RB_ENV (S6) → test name (S7)
+  → confirmation phrase (S19) → revision (S9) → active jobs (S10) → backup (S8). The dry run refuses a
+  `--backup` that fails S8 the same way.
+- S9 without an `alembic_version` table prints `The database is at no revision, the code expects <head>; …`.
+- S8: the age limit is `>= 6 h` refused; the TOC entry count comes from the `;     TOC Entries: <n>` header
+  line (format checked against pg_restore 18.6); `PG_RESTORE` unset or empty = `pg_restore`; an executable that
+  cannot run gives `pg_restore cannot read the backup (cannot run <executable>).`
+- S18: table lines in `db.metadata.sorted_tables` order (parents first), `<table>  <rows>  <action>` with two
+  spaces; `<h>` with one decimal; `-` for an empty name list; `Users:` names in the order given (duplicates
+  dropped); `Reset done: <n> rows deleted in <t> tables` counts the deleted rows of every `wipe` table plus
+  `rbusers` and `rbjobs`, and `<t>` the tables with at least one row deleted; the `No kept user is an admin`
+  line comes last (dry run and execute).
+- S14/S15/S16 order inside the transaction: deletes (reverse `sorted_tables`; `rbjobs` before `rbusers`, so
+  `rbjob_requested_by` is cleared for deleted users before they go), sequences, then the audit row (so the
+  `data.reset` row gets id 1 on PostgreSQL), then the S17 re-check and the single commit. S16 `deleted` lists
+  every `wipe` table plus `rbusers` and `rbjobs` (zeros included).
+- S15: the sequences are found with `pg_get_serial_sequence` on every integer column of the `wipe` tables,
+  `rbusers` and `rbjobs`; a column whose sequence is not owned by it (`pg_get_serial_sequence` → NULL) is
+  skipped (its ids simply continue).
+- S17: an unexpected exception is logged with `current_app.logger.exception` (on a terminal the Flask logger
+  writes to stderr) and the `Error:` line names only the exception class.
+- AC8 needs the CI step `pytest -m postgres` in the `migrations-pg` job (`TEST_POSTGRES_URL` = the job's
+  `riftbound_test` database); without it the three PostgreSQL tests only skip.
 
 **Delivery.** Conventional Commits; PR title `feat(reset): production data reset helpers (RESET units a, b)`;
 PR body: specs → tests map, the rehearsal of section 11 as the manual check, rollback = revert (the
@@ -606,7 +639,7 @@ venv/bin/flask reset production-data --keep-user rbadmin --keep-user racmos --ke
 ```
 
 Check: `Reset done: … expansion mappings cleared; kept tables unchanged.`; run step 4 again: every WIPE table
-shows `0`, `rbusers` shows only the kept rows, KEEP tables show the same counts as before, `rbcm_expansions`
+shows `0` except `rbadminaudit` (`1  delete 1`: the `data.reset` row), `rbusers` shows only the kept rows, KEEP tables show the same counts as before, `rbcm_expansions`
 shows `mapping cleared 0`. SQL checks:
 
 ```sql
