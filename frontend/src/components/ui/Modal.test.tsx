@@ -115,3 +115,33 @@ describe('Modal surface (owner feedback S24 o)', () => {
     expect(last('.dialog::backdrop', 'background')).toBe('rgba(3, 14, 19, 0.72)');
   });
 });
+
+describe('Modal that cannot be dismissed (F9-j S6)', () => {
+  function Locked({ onClose }: { onClose: () => void }) {
+    return (
+      <Modal open title="Locked" onClose={onClose} dismissible={false}>
+        <button type="button">Inside</button>
+      </Modal>
+    );
+  }
+
+  it('ignores Escape, the backdrop and the cancel event, and has no close button', async () => {
+    const i18n = await createI18n();
+    const { I18nextProvider } = await import('react-i18next');
+    let closed = 0;
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Locked onClose={() => (closed += 1)} />
+      </I18nextProvider>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Locked' });
+    expect(within(dialog).queryByRole('button', { name: 'Close' })).toBeNull();
+    await userEvent.keyboard('{Escape}');
+    await userEvent.pointer({ keys: '[MouseLeft]', target: dialog });
+    const cancel = new Event('cancel', { cancelable: true });
+    dialog.dispatchEvent(cancel);
+    expect(cancel.defaultPrevented).toBe(true);
+    expect(dialog).toHaveAttribute('open');
+    expect(closed).toBe(0);
+  });
+});

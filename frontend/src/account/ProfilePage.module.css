@@ -1,5 +1,5 @@
 @layer components {
-  /* F9-i S3: one column of cards on phones (Identity, Details, Email, Password). */
+  /* F9-i S3: one column of cards on phones (Identity, Details, Email). */
   .columns {
     display: grid;
     gap: var(--gap);
@@ -142,14 +142,14 @@
     font-size: 14px;
   }
 
-  /* From md two card columns: Identity + Details | Email + Password. */
+  /* From md two card columns: Identity + Details | Email. */
   @media (min-width: 860px) {
     .columns {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
-  /* From 2xl three columns: Identity | Details | Email + Password. */
+  /* From 2xl three columns: Identity | Details | Email. */
   @media (min-width: 1600px) {
     .columns {
       grid-template-columns: repeat(3, minmax(0, 1fr));

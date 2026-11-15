@@ -5,6 +5,7 @@ import { delay, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import type { MeData, Session } from '@/api/types';
+import { clearToasts } from '@/components/ui/toastStore';
 import { up } from '@/lib/breakpoints';
 import { SRC_DIR, readCss, rules } from '@/test/css';
 import {
@@ -29,6 +30,8 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
+  // Toasts live in a module store: one test's toast must not show in the next.
+  clearToasts();
 });
 
 type Answer = (body: Record<string, unknown>) => Response;
@@ -54,20 +57,8 @@ async function openPage(width = PHONE) {
 }
 
 const emailForm = () => screen.getByRole('form', { name: 'Email' });
-const passwordForm = () => screen.getByRole('form', { name: 'Password' });
 const emailInput = () => within(emailForm()).getByLabelText('Email');
 const saveEmail = () => within(emailForm()).getByRole('button', { name: 'Save email' });
-const current = () => within(passwordForm()).getByLabelText('Current password');
-const fresh = () => within(passwordForm()).getByLabelText('New password');
-const confirm = () => within(passwordForm()).getByLabelText('Confirm new password');
-const changePassword = () =>
-  within(passwordForm()).getByRole('button', { name: 'Change password' });
-
-async function fillPassword(values: { current: string; fresh: string; confirm: string }) {
-  if (values.current) await userEvent.type(current(), values.current);
-  if (values.fresh) await userEvent.type(fresh(), values.fresh);
-  if (values.confirm) await userEvent.type(confirm(), values.confirm);
-}
 
 describe('Profile page (/account/profile)', () => {
   it('shows the username and the current email', async () => {
@@ -79,9 +70,6 @@ describe('Profile page (/account/profile)', () => {
     expect(emailInput()).toHaveAttribute('type', 'email');
     expect(emailInput()).toHaveAttribute('autocomplete', 'email');
     expect(saveEmail()).toBeDisabled();
-    expect(current()).toHaveAttribute('autocomplete', 'current-password');
-    expect(fresh()).toHaveAttribute('autocomplete', 'new-password');
-    expect(confirm()).toHaveAttribute('autocomplete', 'new-password');
   }, 20000);
 
   it('an account without an email shows an empty field and can add one (F9-b S14)', async () => {
@@ -164,72 +152,6 @@ describe('Profile page (/account/profile)', () => {
     await waitFor(() => expect(emailInput()).toHaveFocus());
   }, 20000);
 
-  it('blocks a confirmation that does not match, without a request', async () => {
-    signedIn();
-    await openPage();
-    await fillPassword({
-      current: 'old-password',
-      fresh: 'brand-new-pass',
-      confirm: 'brand-new-pazz',
-    });
-    await userEvent.click(changePassword());
-    expect(await within(passwordForm()).findByText('The passwords do not match.')).toBeVisible();
-    expect(confirm()).toHaveAttribute('aria-invalid', 'true');
-    expect(patches).toEqual([]);
-  }, 20000);
-
-  it('blocks a short new password and a missing current one, without a request', async () => {
-    signedIn();
-    await openPage();
-    await fillPassword({ current: '', fresh: 'short', confirm: 'short' });
-    await userEvent.click(changePassword());
-    expect(
-      await within(passwordForm()).findByText('The password must be at least 8 characters.'),
-    ).toBeVisible();
-    expect(within(passwordForm()).getByText('This field is required.')).toBeVisible();
-    expect(current()).toHaveAttribute('aria-invalid', 'true');
-    expect(fresh()).toHaveAttribute('aria-invalid', 'true');
-    expect(patches).toEqual([]);
-  }, 20000);
-
-  it('shows a wrong current password on its field and keeps what was typed', async () => {
-    signedIn(() =>
-      failure(400, {
-        error: 'Bad Request',
-        code: 'current_password_incorrect',
-        message: 'The current password is incorrect',
-      }),
-    );
-    await openPage();
-    await fillPassword({ current: 'not-it', fresh: 'brand-new-pass', confirm: 'brand-new-pass' });
-    await userEvent.click(changePassword());
-    expect(
-      await within(passwordForm()).findByText('The current password is incorrect.', {}, LONG),
-    ).toBeVisible();
-    expect(current()).toHaveAttribute('aria-invalid', 'true');
-    await waitFor(() => expect(current()).toHaveFocus());
-    expect(current()).toHaveValue('not-it');
-    expect(fresh()).toHaveValue('brand-new-pass');
-    expect(confirm()).toHaveValue('brand-new-pass');
-    expect(patches).toEqual([{ current_password: 'not-it', password: 'brand-new-pass' }]);
-  }, 20000);
-
-  it('changes the password: sends only the passwords, clears the fields and toasts', async () => {
-    signedIn();
-    await openPage();
-    await fillPassword({
-      current: 'old-password',
-      fresh: 'brand-new-pass',
-      confirm: 'brand-new-pass',
-    });
-    await userEvent.click(changePassword());
-    expect(await screen.findByText('Password changed.', {}, LONG)).toBeVisible();
-    expect(patches).toEqual([{ current_password: 'old-password', password: 'brand-new-pass' }]);
-    expect(current()).toHaveValue('');
-    expect(fresh()).toHaveValue('');
-    expect(confirm()).toHaveValue('');
-  }, 20000);
-
   it('shows the countdown after too many changes', async () => {
     signedIn(() =>
       failure(429, { error: 'Too Many Requests', code: 'rate_limited' }, { 'Retry-After': '30' }),
@@ -242,19 +164,6 @@ describe('Profile page (/account/profile)', () => {
       await screen.findByText('Too many attempts. You can try again in 30 seconds.', {}, LONG),
     ).toBeVisible();
     expect(saveEmail()).toBeDisabled();
-    expect(changePassword()).toBeDisabled();
-  }, 20000);
-
-  it('shows any other failure as a form alert', async () => {
-    signedIn(() => failure(500, { error: 'Internal Server Error', message: 'Boom' }));
-    await openPage();
-    await fillPassword({
-      current: 'old-password',
-      fresh: 'brand-new-pass',
-      confirm: 'brand-new-pass',
-    });
-    await userEvent.click(changePassword());
-    expect(await within(passwordForm()).findByRole('alert', {}, LONG)).toHaveTextContent('Boom');
   }, 20000);
 
   it('offline: every input and button is disabled', async () => {
@@ -263,10 +172,6 @@ describe('Profile page (/account/profile)', () => {
     await openPage();
     expect(emailInput()).toBeDisabled();
     expect(saveEmail()).toBeDisabled();
-    expect(current()).toBeDisabled();
-    expect(fresh()).toBeDisabled();
-    expect(confirm()).toBeDisabled();
-    expect(changePassword()).toBeDisabled();
     // F9-i S12: the new cards are read-only too, with the identity from the session
     const identity = screen.getByRole('region', { name: 'Identity' });
     expect(within(identity).getByText('@ada')).toBeVisible();
@@ -391,20 +296,19 @@ describe('Profile layout (F9-i S3)', () => {
     expect(value('.stack', 'display', up('2xl'))).toBe('contents');
   });
 
-  it('stacks Identity + Details and Email + Password, in that order', async () => {
+  it('stacks Identity + Details beside Email, in that order; no password card (F9-j S1)', async () => {
     withProfile();
     await openProfile(1280);
     const parent = (name: string) =>
       screen.getByRole('region', { name }).parentElement as HTMLElement;
     expect(parent('Identity')).toBe(parent('Details'));
-    expect(parent('Email')).toBe(parent('Password'));
     expect(parent('Identity')).not.toBe(parent('Email'));
     expect(parent('Identity').parentElement).toBe(parent('Email').parentElement);
     const order = screen
       .getAllByRole('region')
       .map((region) => region.getAttribute('aria-labelledby'))
       .map((id) => document.getElementById(id ?? '')?.textContent);
-    expect(order).toEqual(['Identity', 'Details', 'Email', 'Password']);
+    expect(order).toEqual(['Identity', 'Details', 'Email']);
   }, 20000);
 });
 
@@ -659,9 +563,8 @@ describe('Profile states (F9-i S12)', () => {
     expect(screen.getAllByText('Loading content').length).toBeGreaterThan(0);
     expect(screen.queryByRole('form', { name: 'Details' })).toBeNull();
     expect(screen.getByRole('navigation', { name: 'Account sections' })).toBeVisible();
-    // The email and password cards do not wait for the profile.
+    // The email card does not wait for the profile.
     expect(emailForm()).toBeVisible();
-    expect(passwordForm()).toBeVisible();
   }, 20000);
 
   it('shows an error with a retry that loads the profile', async () => {

@@ -30,6 +30,7 @@ import type {
   DeckVersionDetail,
   DeckVersionItem,
   DeckVsCollection,
+  DeviceSession,
   GameMeta,
   ImportMode,
   ImportPreview,
@@ -88,6 +89,7 @@ export async function fetchSession(): Promise<Session> {
     authenticated: data.authenticated,
     user: data.user ?? null,
     prefs: data.prefs ?? null,
+    ...(data.mfa_pending ? { mfa_pending: true as const } : {}),
   };
 }
 
@@ -681,6 +683,18 @@ export const disableMfa = (code: string) =>
 /** `POST /me/2fa/recovery-codes` (F9-d S10, re-auth): ten new codes replace the old ones. */
 export const regenerateRecoveryCodes = () =>
   request<RecoveryCodes>('/me/2fa/recovery-codes', { method: 'POST' });
+
+/** `GET /me/sessions` (F9-a S10): the active sessions, the current one first. */
+export const listSessions = async (signal?: AbortSignal): Promise<DeviceSession[]> =>
+  (await request<{ items: DeviceSession[] }>('/me/sessions', { signal })).items;
+
+/** `DELETE /me/sessions/<id>` (F9-a S11): end one session; a 404 when it is already gone. */
+export const revokeSession = (id: number) =>
+  request<{ revoked: number; current: boolean }>(`/me/sessions/${id}`, { method: 'DELETE' });
+
+/** `DELETE /me/sessions` (F9-a S12): end every other session; returns how many ended. */
+export const revokeOtherSessions = async (): Promise<number> =>
+  (await request<{ revoked: number }>('/me/sessions', { method: 'DELETE' })).revoked;
 
 /** `GET /me/api-key` (F9-h S3): the personal API key's info, `null` without one. */
 export const getApiKey = async (signal?: AbortSignal): Promise<ApiKeyInfo | null> =>

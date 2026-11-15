@@ -116,6 +116,8 @@ export const handlers = [
     }),
   ),
   http.get(`${API}/me`, () => ok(ME)),
+  http.get(`${API}/me/sessions`, () => ok({ items: [] })),
+  http.get(`${API}/me/api-key`, () => ok({ api_key: null })),
   http.get(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.patch(`${API}/me/prefs`, () => ok({ prefs: NO_PREFS })),
   http.get(`${API}/meta/game`, () =>

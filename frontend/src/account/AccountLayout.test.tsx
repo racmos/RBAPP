@@ -70,6 +70,8 @@ describe('Account sections (F9-i S2)', () => {
   it('lists the sections once, in order', () => {
     expect(ACCOUNT_SECTIONS.map((section) => [section.id, section.to])).toEqual([
       ['profile', '/account/profile'],
+      ['security', '/account/security'],
+      ['api', '/account/api'],
       ['interface', '/account/interface'],
     ]);
   });
@@ -81,7 +83,12 @@ describe('Account sections (F9-i S2)', () => {
       await open('/account/profile', width);
       const nav = sectionsNav();
       const links = within(nav).getAllByRole('link');
-      expect(links.map((link) => link.textContent)).toEqual(['Profile', 'Interface']);
+      expect(links.map((link) => link.textContent)).toEqual([
+        'Profile',
+        'Security',
+        'API',
+        'Interface',
+      ]);
       expect(within(nav).getByRole('link', { name: 'Profile' })).toHaveAttribute(
         'aria-current',
         'page',

@@ -29,6 +29,11 @@ export type ModalProps = {
   /** Leave out the corner close button (the content has its own buttons). */
   hideClose?: boolean;
   /**
+   * `false` while the user must finish something first (F9-j S6): Escape, the backdrop and the
+   * browser's cancel do nothing and there is no close button. The parent closes it with `open`.
+   */
+  dismissible?: boolean;
+  /**
    * Where focus goes on close. Defaults to what had focus on open; pass the opener when the
    * browser does not focus buttons on click (Safari), so `activeElement` is not the opener.
    */
@@ -61,6 +66,7 @@ export function Modal({
   size = 'md',
   hideTitle = false,
   hideClose = false,
+  dismissible = true,
   returnFocusRef,
 }: ModalProps) {
   const { t } = useTranslation('common');
@@ -99,7 +105,12 @@ export function Modal({
     if (event.key !== 'Escape') return;
     event.preventDefault(); // we close it ourselves, the same way in every browser
     event.stopPropagation(); // a modal under this one stays open
-    event.currentTarget.close();
+    if (dismissible) event.currentTarget.close();
+  };
+
+  // The browser's own cancel (Escape, a close request on mobile): never closes a locked dialog.
+  const handleCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
+    if (!dismissible && event.target === event.currentTarget) event.preventDefault();
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDialogElement>) => {
@@ -108,7 +119,7 @@ export function Modal({
   const handlePointerUp = (event: PointerEvent<HTMLDialogElement>) => {
     const complete = pressedOnBackdrop.current && event.target === event.currentTarget;
     pressedOnBackdrop.current = false;
-    if (complete && dismissOnBackdrop) event.currentTarget.close();
+    if (complete && dismissOnBackdrop && dismissible) event.currentTarget.close();
   };
 
   return (
@@ -117,6 +128,7 @@ export function Modal({
       className={[styles.dialog, styles[variant], styles[size]].join(' ')}
       aria-labelledby={headingId}
       onClose={handleClose}
+      onCancel={handleCancel}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
@@ -127,7 +139,7 @@ export function Modal({
             <h2 id={headingId} className={hideTitle ? 'sr-only' : styles.title}>
               {title}
             </h2>
-            {!hideClose && (
+            {!hideClose && dismissible && (
               <button
                 type="button"
                 className={styles.close}

@@ -30,7 +30,13 @@ const registeredUsername = (state: unknown): string =>
     : '';
 type Field = (typeof FIELDS)[number];
 
-/** Login (FAUTH-2, FAUTH-7, FAUTH-10). */
+/** Why the user is back here (an ended two-factor step, F9-j S13), from the navigation state. */
+const arrivalAlert = (state: unknown): string | null =>
+  typeof state === 'object' && state !== null && 'alert' in state && typeof state.alert === 'string'
+    ? state.alert
+    : null;
+
+/** Login (FAUTH-2, FAUTH-7, FAUTH-10); a 2FA account goes on to `/login/2fa` (F9-j S12). */
 export function LoginPage() {
   const { t, i18n } = useTranslation('auth');
   useDocumentTitle(t('login.title'));
@@ -47,7 +53,7 @@ export function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [pending, setPending] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<Field>>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(() => arrivalAlert(location.state));
 
   // Start in the first empty field (after registering the username is already filled in).
   useEffect(() => {
@@ -105,7 +111,15 @@ export function LoginPage() {
 
     setPending(true);
     try {
-      await login({ username: username.trim(), password, remember });
+      const result = await login({ username: username.trim(), password, remember });
+      // F9-j S12: a 2FA account has no session yet; the code step reads it itself.
+      if ('mfa_required' in result) {
+        const next = params.get('next');
+        void navigate(next ? `/login/2fa?next=${encodeURIComponent(next)}` : '/login/2fa', {
+          replace: true,
+        });
+        return;
+      }
       const session = await queryClient.fetchQuery({ ...sessionQuery, staleTime: 0 });
       if (!session.authenticated) throw new ApiError({ kind: 'parse' });
       goNext();

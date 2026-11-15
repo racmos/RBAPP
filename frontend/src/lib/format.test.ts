@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, formatMoney, formatNumber, formatPct } from './format';
+import {
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  formatNumber,
+  formatPct,
+  formatRelative,
+} from './format';
 
 /** English formats only (owner feedback S21): "1,061.52 €", "5 Oct 2026", "+10.0%". */
 describe('formatMoney', () => {
@@ -42,5 +49,23 @@ describe('formatPct', () => {
 
   it('returns the unsigned zero for 0', () => {
     expect(formatPct(0)).toBe('0.0%');
+  });
+});
+
+describe('formatRelative (F9-j S9)', () => {
+  const NOW = new Date('2026-11-15T12:00:00Z');
+
+  it('is relative under 7 days', () => {
+    expect(formatRelative('2026-11-15T12:00:00Z', NOW)).toBe('now');
+    expect(formatRelative('2026-11-15T11:59:20Z', NOW)).toBe('40 seconds ago');
+    expect(formatRelative('2026-11-15T11:55:00Z', NOW)).toBe('5 minutes ago');
+    expect(formatRelative('2026-11-15T09:00:00Z', NOW)).toBe('3 hours ago');
+    expect(formatRelative('2026-11-14T10:00:00Z', NOW)).toBe('yesterday');
+    expect(formatRelative('2026-11-09T11:00:00Z', NOW)).toBe('6 days ago');
+  });
+
+  it('is the date from 7 days, and "now" for a time in the future', () => {
+    expect(formatRelative('2026-11-08T12:00:00Z', NOW)).toBe('8 Nov 2026');
+    expect(formatRelative('2026-11-15T12:05:00Z', NOW)).toBe('now');
   });
 });
