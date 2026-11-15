@@ -189,6 +189,10 @@ variable: `TESTING` (skips validation) and `LEGACY_BACKUP_DIR` (read by migratio
 - `flask users promote|demote|block|unblock|set-password|list|unlock <username>` (aliases
   `make-admin`, `revoke-admin`). The only way to create an admin. Works while no admin exists.
   `set-password` uses a hidden prompt; `list` never shows hashes. Unknown user: exit 1, nothing changed.
+- `flask users create USERNAME [--email EMAIL] [--admin]` (RESET-a): one account through `register_user`
+  (registration rules, optional e-mail); `--admin` sets the role in the same transaction. Password from
+  `RB_NEW_PASSWORD` (set, not empty) or the hidden prompt of `set-password` (twice); never an argument,
+  never printed. Taken username or e-mail, invalid input or password: exit 1, nothing created.
 - `flask schema snapshot` prints the live `riftbound` schema from `pg_catalog` (PostgreSQL only). Its
   output has the format of `tests/fixtures/dev_schema_snapshot.txt`.
 - `flask db migrate|upgrade|downgrade|check|stamp|current` (Flask-Migrate).

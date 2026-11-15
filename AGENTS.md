@@ -86,7 +86,7 @@ riftbound/
 │   │   ├── riot.py          # flask riot recheck-pending [--dry-run] (marks stale pending card changes obsolete)
 │   │   ├── sessions.py      # flask sessions purge [--dry-run] (deletes ended server-side sessions, F9-a)
 │   │   ├── schema.py        # flask schema snapshot
-│   │   └── users.py         # flask users promote|demote|block|unblock|set-password|list|unlock|reset-2fa
+│   │   └── users.py         # flask users create|promote|demote|block|unblock|set-password|list|unlock|reset-2fa
 │   ├── api/
 │   │   └── admin/           # api_admin blueprint: /riftbound/api/v1/admin/*, admin-only
 │   │       ├── overview.py  # GET /admin/overview (catalog counters, riot, cardmarket health: CM-e)
@@ -300,7 +300,7 @@ Card images live in `CARD_IMAGES_DIR`, never in git (`/data/` is git-ignored; `a
 Every URL rule is **public (P)**, **authenticated (U)** or **admin (A)**. `tests/test_authz_matrix.py` lists them all and fails, naming the rule, when a new route is not classified: add it there.
 
 - Admin routes live in the `api_admin` blueprint, guarded as a whole by `before_request(require_admin)` (`app/security.py`). Anonymous callers get a JSON 401, plain users 403.
-- `is_admin` and `is_blocked` are changed only by the CLI (`flask users promote|demote|block|unblock <username>`), never by request input. A blocked user is rejected exactly like a wrong password, and `block` ends every session of the user.
+- `is_admin` and `is_blocked` are changed only by the CLI (`flask users promote|demote|block|unblock <username>`, and `flask users create <username> --admin`), never by request input. `flask users create USERNAME [--email EMAIL] [--admin]` (RESET-a) makes an account from the server shell through `register_user` (same username, e-mail and duplicate rules; e-mail optional); the password comes from `RB_NEW_PASSWORD` when set and not empty, else a hidden prompt asked twice, never from an argument, and is never printed (nor is the e-mail). A blocked user is rejected exactly like a wrong password, and `block` ends every session of the user.
 - Card bans (`rbcardbans`) are changed only by the CLI (`flask bans add|remove`) until the F10 admin UI; signed-in users read them with `GET /bans`.
 - Admin writes record one `rbadminaudit` row in the same transaction (`app/services/audit.py`); admins read the catalog counters with `GET /admin/overview`.
 - Personal API keys (F9-h, `app/services/api_keys.py`, `docs/api.md` → "Personal API key (F9-h)"): a request under `/riftbound/api/v1/` with `Authorization: Bearer <key>` is authenticated only by the key (its cookies are removed before the app reads them; a bad key is a 401 `api_key_invalid`, never a fallback to a cookie session) and is **read only**: any method but GET/HEAD and the deny list (`/auth/`, `/admin/`, `/me/account`, `/me/reauth`, `/me/sessions`, `/me/2fa`, `/me/api-key`, `/me/avatar`, `/me/connections`, exactly `/me`) are a 403 `api_key_read_only`. A key never grants admin rights (`require_admin` refuses any key request), never creates a session or sets a cookie, ignores 2FA, survives password changes and session revocation, and dies with `flask users block` (back with `unblock`). `tests/test_authz_matrix.py::TestApiKeys` proves every unsafe rule and every deny-list GET refuse a valid key.
@@ -472,6 +472,7 @@ flask jobs run-pending                             # expire stale jobs, run the 
 flask jobs list [--limit N]                        # newest first, default 20
 flask sessions purge [--dry-run]                   # delete (or count) the ended server-side sessions (F9-a)
 flask users reset-2fa <username>                   # remove a user's two-factor authentication and end all their sessions (F9-d)
+flask users create <username> [--email E] [--admin] # new account (RESET-a); password from RB_NEW_PASSWORD or a hidden prompt (twice)
 flask reset production-data --keep-user U... --database D --env E [--backup F] [--allow-test-db] [--execute --confirm "RESET D"]  # RESET-b: dry run by default; DESTRUCTIVE with --execute (runbook first)
 ```
 
