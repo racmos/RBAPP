@@ -996,3 +996,47 @@ overrules before the reset).
 Notes the owner should know: the Cardmarket links are regenerated (owner decision; manual links on the
 current dev data are moot); `rbqa` keeps its account but loses its data; `racmos` is demoted to a normal user
 in step 6.
+
+## 14. Rehearsal results (2026-11-15, scratch database `riftbound_reset_test`)
+
+Run by the agent on a copy of the dev data (a `pg_dump` of the dev database taken at head `0032_api_keys`,
+restored with `--no-owner`), never on the dev database. Dev counts were checked unchanged afterwards.
+
+| Step | Result | Time |
+|---|---|---|
+| Restore the dump into the empty scratch database | 35 tables in schema `riftbound`, head `0032_api_keys` | 3 s |
+| Dry run (kept users `rbqa`, `racmos`) | Backup accepted (`pg_restore -l`, 490 TOC entries); counts as in section 3 (KEEP: bans 25, ignored 2, products 122, prices 54,901, Cardmarket products 54,766, load history 141; WIPE: sets 14, cards 1,511, card changes 1,308, collection 322, decks 7+7, audit 108 ...; users keep 2 / delete 6; jobs keep 24 / delete 87; expansions keep 18, mapping cleared 9) | instant |
+| Execute (`--execute --confirm "RESET riftbound_reset_test"`) | `Reset done: 4928 rows deleted in 20 tables, 9 expansion mappings cleared; kept tables unchanged` | 4.5 s |
+| Dry run again | Users delete 0, jobs delete 0, `rbadminaudit 1` (the `data.reset` row), nothing else to delete | - |
+| Sequences | Restarted at max + 1 (`rbusers` next id 12 after max 11, `rbjobs` 107 after 106) | - |
+| Soft links | `rbproducts.rbpdt_id_set` codes all valid again once sets with the same codes exist (P1 empty) | - |
+| Step 8 (shortcut, sets + mapping restored from CSV) | 14 sets, 9 expansions mapped | - |
+| Step 9 Riot sync on the empty catalog | `riot_sync` success, **1,379 cards inserted directly, 0 rows in `rbcardchanges` (nothing to approve), no placeholder sets**, 1.3 GB of images downloaded (OGN, OGS, RAD, SFD, UNL, VEN) | 3 min 17 s |
+| Step 14: Auto-match before a load | 751 clear cases linked in 4 rounds of 200; 1,126 left (1,098 ambiguous, 28 no candidates) | 16 s |
+| Step 14: "Load now" (`daily_prices` + `value_snapshot`, `products_refresh`, `price_alerts`) | all four jobs success; the exact-name pass linked about 300 more | 16 s |
+| Step 14: Auto-match after the load | 0 clear cases left; **827 products still to link by hand** (799 ambiguous, 28 no candidates); 1,052 links total | 16 s |
+
+### What the re-download loses (decision needed before the real reset)
+
+The dev database has **1,511 cards; the sync recreates 1,379**. The 132 missing cards are not in the Riot
+gallery and do not come back by themselves:
+
+| Set | Cards lost | Examples |
+|---|---|---|
+| OGNX | 60 | Blazing Scorcher, Ravenbloom Student, Heimerdinger ... |
+| SFDX | 36 | Fae Dragon, Yone Blademaster ... |
+| OGSX | 17 | Annie Fiery, Flash ... |
+| SFD | 14 | the runes `R01`, `R01a`, `R02` ... |
+| PROK | 5 | `FND196` Teemo Scout, `FND249`, `FND251` ... |
+
+Three collection lines of the owner point at them. Options: (a) accept the loss and add them later through
+the admin card editor; (b) change RESET-b so that it keeps the cards of the sets the gallery does not list
+(a small, test-covered change: the policy would become per set); (c) export them before the reset and
+re-create them after. Section 13 Q10 said to read this diff first: this is that diff.
+
+### Manual work after the reset (measured)
+
+- Today (dev data) 415 Cardmarket products are unmatched; after the reset **827** (about 410 more links to
+  make by hand, because the current manual links are lost on purpose).
+- 9 Cardmarket expansions stay unmapped, as today.
+- No Riot change approvals are needed (the sync inserts on an empty catalog).
