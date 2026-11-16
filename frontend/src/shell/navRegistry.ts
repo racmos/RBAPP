@@ -98,7 +98,7 @@ export const NAV: readonly NavEntry[] = [
     icon: 'shield',
     status: 'spa',
     to: '/admin',
-    placements: ['more'],
+    placements: ['top', 'hub', 'more'],
     adminOnly: true,
   },
   { id: 'events', icon: 'calendar', status: 'planned', placements: ['top', 'hub'] },
