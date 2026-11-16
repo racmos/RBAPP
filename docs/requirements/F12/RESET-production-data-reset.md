@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Phase | Prerequisite of F12 (Production); runs after F9 (units a-e, h, i, j) and F11-f, before F9-f/F9-g and F12 |
-| Decision | Owner, 2026-11-11: replaces "promote the dev database as is" (D-F12-6 option A keeps the server, not the data). Owner decisions on the details: 2026-11-12, section 13 |
+| Decision | Owner, 2026-11-11: replaces "promote the dev database as is" (D-F12-6 option A keeps the server, not the data). Owner decisions on the details: 2026-11-12, section 13; **2026-11-15: keep only the Cardmarket load history** (Q4, Q5 now WIPE; Q2 `rbcardbans` kept by the agent, owner to confirm) |
 | Parts | 1-8 design (this file); 9 helper CLI requirement (units RESET-a, RESET-b, to build later); 10-12 owner runbook, rehearsal, rollback; 13 owner decisions |
-| Status | Design written 2026-11-12 (docs only, verified against `main` `80da5d2`, Alembic head `0028_legacy_schema_cleanup`); owner decisions applied 2026-11-12. No open questions: the helper units can be handed over once F9-j is merged. **RESET-b built 2026-11-15** on `feat/reset-production-data` (from `main` `c078908`, head `0032_api_keys`; its own branch, not stacked on RESET-a / PR #148), implemented, not merged, not deployed: see "RESET-b as built" |
+| Status | Design written 2026-11-12 (docs only, verified against `main` `80da5d2`, Alembic head `0028_legacy_schema_cleanup`); owner decisions applied 2026-11-12 (revised 2026-11-15; open again: Q2, section 13). No open questions then: the helper units can be handed over once F9-j is merged. **RESET-b built 2026-11-15** on `feat/reset-production-data` (from `main` `c078908`, head `0032_api_keys`; its own branch, not stacked on RESET-a / PR #148), implemented, not merged, not deployed: see "RESET-b as built". **Keep-list change 2026-11-15** on `feat/reset-keep-only-history` (from `main` `a0a432a`): `rbcm_ignored` and `rbproducts` become WIPE, implemented, not deployed |
 | Placeholders | `<backup-file>`, `<backup dir>`, `<database>`, `<host>`, `<user>`, `<superuser>`, `<app role>`, `<server>`, `<service>`, `<service user>`, `<card images dir>`, `<product images dir>`, `<avatar dir>`, `<scratch dir>`, `<app e-mail>`, `<personal e-mail>`, `<URL>`. Real values live in `ops.local.md` (git-ignored) or in the owner's head; never in git, never in a chat |
 
 ## 1. Goal
@@ -13,8 +13,9 @@
 Before production the dev database is cleaned so that production starts with a correct catalog, clean sets and
 no test data, while the Cardmarket daily loads (the price history) are kept for later analysis:
 
-- every application table is emptied **except** the Cardmarket load data and the small curated tables the
-  owner decided to keep (bans, ignored products, product catalog, `daily_prices` job rows; section 13);
+- every application table is emptied **except** the Cardmarket load history (owner 2026-11-15: everything
+  else was created while testing), the official ban list seeded by migration `0009` and the `daily_prices`
+  job rows (section 13);
 - the sets are created again from zero (same codes, values re-entered from the worksheet), **before** the
   catalog is downloaded again from the official Riot card gallery (`riot_sync` job);
 - the Cardmarket mapping (expansion → set, product → card) is regenerated on the kept loads;
@@ -51,13 +52,13 @@ rule given). "D-Q<n>" = owner decision of 2026-11-12 (section 13).
 | 4 | `rbcm_load_history` | one row per file and load (hash, rows, status) | — | KEEP | The load log (CM-a, `cardmarket_log`), "already loaded today" check |
 | 5 | `rbcm_categories` | Cardmarket category lookup | — | KEEP | Pure Cardmarket data, upserted by every load |
 | 6 | `rbcm_expansions` | Cardmarket expansion ids and names + `rbexp_rbset_id` mapping to our sets | soft → `rbset.rbset_id` | SPECIAL (D-Q1/Q3): rows kept, mapping cleared | The rows are Cardmarket data from the loads; the reset sets `rbexp_rbset_id` to NULL because the sets are wiped. Step 8 maps them again (CM-d), creating the sets at the same time |
-| 7 | `rbcm_ignored` | products an admin ignored in the mappings browser | soft: product id + name | KEEP (D-Q4) | Product-side decision ("not a card we track"); independent of our card keys; restorable in the Ignored tab |
-| 8 | `rbproducts` | sealed product catalog, kind/set locks, hidden, image name | soft `rbpdt_id_set` → set code (plain Text, **no FK**); `rbuserproducts` → here (RESTRICT) | KEEP (D-Q5) | Owner curation (kinds, locks, hidden, uploaded images) that a refresh cannot rebuild. `rbpdt_id_set` keeps the old set codes; they point to no set between the reset and step 8 and are valid again once the sets are re-created with the same codes (check P1, section 10.0) |
+| 7 | `rbcm_ignored` | products an admin ignored in the mappings browser | soft: product id + name | WIPE (D-Q4, 2026-11-15) | Test data of the matching workbench (wrong decisions included); the owner ignores products again in step 14 |
+| 8 | `rbproducts` | sealed product catalog, kind/set locks, hidden, image name | soft `rbpdt_id_set` → set code (plain Text, **no FK**); `rbuserproducts` → here (RESTRICT) | WIPE (D-Q5, 2026-11-15) | Curation made while testing. Rebuilt by `products_refresh` from the next load (section 6.4); kinds, locks, hidden flags and uploaded images are **not** preserved. Deleted after `rbuserproducts` (section 3.1) |
 | 9 | `rbcm_product_card_map` | product → card links (auto/manual, foil slot) | soft → `rbcards` (no FK) | WIPE | Owner decision: regenerate the mapping. No FK: deleting cards leaves these rows behind, so they are deleted explicitly |
 | 10 | `rbset` | sets: name, `rbset_ncard`, release date | parent of `rbcards` (CASCADE) | WIPE (D-Q1) | The owner wants clean sets, created from zero in step 8 **before** the first Riot sync (section 6.2), with the values recorded in the worksheet |
 | 11 | `rbcards` | card catalog | → `rbset` | WIPE | Rebuilt by `riot_sync` |
 | 12 | `rbcardchanges` | Riot proposals and decisions | → `rbcards` CASCADE, → `rbjobs` SET NULL, → `rbusers.id` SET NULL | WIPE | Proposals against the old catalog |
-| 13 | `rbcardbans` | bans by card name and mode (CLI only, seeded by `0009`) | none (keyed by `name_key`) | KEEP (D-Q2) | Keyed by name, not card id, so it covers the new printings; the seed in `0009` never runs again |
+| 13 | `rbcardbans` | bans by card name and mode (CLI only, seeded by `0009`) | none (keyed by `name_key`) | KEEP (D-Q2; agent 2026-11-15, owner to confirm) | Reference data, not test data: dev holds exactly the 25 rows the `0009` seed wrote (12 in 1v1, 13 in 2v2), identical to a fresh install; the seed never runs again, so wiping it would only force 25 `flask bans add`. Keyed by name, not card id, so it covers the new printings |
 | 14 | `rbcardmarket` | legacy per-card price snapshots | → `rbcards` CASCADE | WIPE (D-Q11) | No route or service reads it (`docs/knowledge/architecture.md`); it would cascade away with the cards anyway |
 | 15 | `rbusers` | accounts | parent of every user table | SPECIAL | Keep the `--keep-user` rows (reset `failed_login_count` = 0, `locked_until` = NULL; role, password, e-mail untouched); delete the others |
 | 16 | `rbuserprefs` | interface prefs, playset size | → `rbusers.id` CASCADE | WIPE | User data |
@@ -83,44 +84,49 @@ rule given). "D-Q<n>" = owner decision of 2026-11-12 (section 13).
 | F9-h | `rbapikeys` | personal API key | → `rbusers.id` CASCADE | WIPE | User data |
 | F9-f | `rboauthlinks` | Discord/Google links | → `rbusers.id` CASCADE | WIPE (added by F9-f) | Does not exist at reset time (section 2) |
 
-Totals at reset time: KEEP 8 (7 tables + `alembic_version`), WIPE 25 (20 at head `0028` + 5 F9), SPECIAL 3
-(`rbusers`, `rbjobs`, `rbcm_expansions`).
+Totals at reset time (`TABLE_POLICY`, 35 tables; 2026-11-15): KEEP 5 (`rbcm_price`, `rbcm_products`,
+`rbcm_load_history`, `rbcm_categories`, `rbcardbans`; plus `alembic_version`, which is outside the metadata),
+WIPE 27 (22 at head `0028` + 5 F9), SPECIAL 3 (`rbusers`, `rbjobs`, `rbcm_expansions`).
 
 ### 3.1 Delete order, soft references and sequences
 
 - **Order**: children before parents. The helper deletes in reverse `db.metadata.sorted_tables` order, which
   puts `rbcollection_locations` → `rbcollection` and `rblocations` (both reference `rbusers.username`,
   `rbcollection` with RESTRICT) and every `rbusers.id` child before `rbusers`, `rbcardchanges` and
-  `rbcardmarket` before `rbcards`, `rbcards` before `rbset`. It never relies on `ON DELETE` actions: every
-  WIPE table is deleted explicitly (SQLite in the tests does not enforce foreign keys).
+  `rbcardmarket` before `rbcards`, `rbcards` before `rbset`, and `rbuserproducts` before `rbproducts` (RESTRICT;
+  proven by `tests/test_reset_cli.py::TestDeleteOrder` with SQLite foreign keys on, and on PostgreSQL by
+  `tests/test_reset_pg.py`). It never relies on `ON DELETE` actions: every WIPE table is deleted explicitly
+  (SQLite in the tests does not enforce foreign keys unless asked).
 - **Soft references** (no FK) after the reset:
   - `rbcm_product_card_map` → `rbcards`: wiped too.
   - `rbcm_expansions.rbexp_rbset_id` → `rbset`: set to NULL by the reset (SPECIAL), mapped again in step 8.
-  - `rbproducts.rbpdt_id_set` → set code: **kept as is**. Between the reset and step 8 every non-NULL value
-    points to no set (expected: the product list does not fail, `product_list._facet` keeps unknown codes); once step 8
-    re-creates the sets with the same codes they are valid again. A code the owner does not re-create stays
-    dangling: check P1 (section 10.0) must be empty at the end (fix in Admin → Products, or create the set).
-    `products_refresh` recomputes the set of every **unlocked** product from the expansion mapping on each
-    run (section 6.4), so only set-**locked** products can keep a dangling code.
+  - `rbproducts.rbpdt_id_set` → set code: no longer a concern (2026-11-15): the table is wiped and
+    `products_refresh` rebuilds it after the next load with the set of each expansion's new mapping
+    (section 6.4). No product is set-locked after the reset, so P1 can only list a code if a set is deleted
+    later.
 - **Sequences** (PostgreSQL): every sequence owned by a column of a table the reset emptied restarts at 1;
   for the partly kept tables (`rbusers`, `rbjobs`) it restarts at `max(id) + 1`. Use `ALTER SEQUENCE …
   RESTART WITH n` inside the transaction (transactional on PostgreSQL 10 and later, so a rollback undoes it;
   RESET-b AC8 proves it on PostgreSQL 18, and if it does not hold the unit stops and reports), **never
   `setval`** (documented as not transactional: a rollback after `setval` would leave the sequence below kept
-  ids). Sequences of kept tables (incl. `rbcm_expansions`) are not touched. Find them with
+  ids). Sequences of kept tables (incl. `rbcm_expansions`) are not touched. `rbcardbans` (kept) owns the
+  `rbban_id` sequence, which is therefore not touched; `rbproducts` and `rbcm_ignored` own no sequence (their
+  keys are Cardmarket ids; checked in `tests/test_reset_pg.py`). Find them with
   `pg_get_serial_sequence('riftbound.<table>', '<column>')` (dev has legacy sequence names, for example on
   `rbusers.id`).
 
 ## 4. What stays, what is rebuilt, what is lost
 
 Stays: the price history (`rbcm_price`, `rbcm_products`, `rbcm_load_history`, `rbcm_categories`), the
-Cardmarket expansion rows (ids and names, without their mapping), the ignored list, the product catalog and
-its curation (with its set codes), the bans, the three accounts (with their current passwords until the owner
-sets new ones), the `daily_prices` job history.
+Cardmarket expansion rows (ids and names, without their mapping), the official ban list (the 25 rows of the
+`0009` seed), the three accounts (with their current passwords until the owner sets new ones), the
+`daily_prices` job history.
 
 Rebuilt: the sets (step 8, values from the worksheet), the expansion → set mapping (step 8), the card catalog
 and card images (`riot_sync`), the product → card links (Cardmarket load + auto-match + manual workbench),
-today's product refresh.
+the product catalog (`products_refresh` after the first load, step 14: only the non-singles of that load,
+kinds from `kind_for`, sets from the new mapping), the ignored list (the owner ignores products again in
+step 14).
 
 **Lost on purpose** (only the dump of step 3 keeps them):
 
@@ -135,6 +141,10 @@ today's product refresh.
   Because the rejected values are gone, the gallery value is stored again where the owner had kept a
   different one: the rehearsal diff (section 11) lists every such card (D-Q10);
 - every Cardmarket product → card link (auto and manual);
+- the ignored list (`rbcm_ignored`): test data with wrong decisions, so it is **not** recorded in the worksheet;
+- the product catalog curation (`rbproducts`): kinds set by hand, kind/set locks, hidden flags, uploaded
+  product images (the files are moved aside, section 5); products that are no longer in the latest load are
+  not rebuilt. Not recorded either: the owner redoes what is wanted in Admin → Products after step 14;
 - the audit trail and the job history except `daily_prices` (D-Q6, D-Q7); the legacy `rbcardmarket` rows
   (D-Q11).
 
@@ -143,8 +153,10 @@ today's product refresh.
 | Directory | Written by | Plan |
 |---|---|---|
 | `CARD_IMAGES_DIR` | `riot_sync` (`_fetch_image`), admin image upload, `flask images import-legacy` | **Move aside and re-download everything** (D-Q9): `riot_sync` downloads an image only when the file is **missing** (`os.path.exists`), so a kept directory means nothing is re-downloaded. Move it to `<card images dir>.pre-reset-<date>` (do not delete it), create an empty one, let the sync download everything. Fallback for gaps: a second sync (it retries every missing file), then `flask images import-legacy --source <card images dir>.pre-reset-<date>` (copies only missing files, never overwrites) |
-| `PRODUCT_IMAGES_DIR` | admin product image upload | Keep (follows `rbproducts`, D-Q5) |
+| `PRODUCT_IMAGES_DIR` | admin product image upload | **Move aside** (2026-11-15: follows `rbproducts`, now wiped, D-Q5): the rebuilt rows have no `rbpdt_image`, so the old files would only be orphans. Move it to `<product images dir>.pre-reset-<date>` and create an empty one; upload again in Admin → Products what is wanted |
 | `AVATAR_DIR` (F9-c) | avatar upload | Move aside (the `rbuserprofile` rows are wiped) |
+
+All three directories are moved aside in step 7 (never deleted) and archived in step 3.
 
 ## 6. How the catalog is rebuilt: findings in the code
 
@@ -212,18 +224,22 @@ first-seen date the tab shows.
 - The matcher prefers cards of the set its expansion is mapped to (`_get_expansion_to_set_map`, only mapped
   expansions): the expansion mapping restored in step 8 is what makes the clear cases clear, so step 8 comes
   before any load or auto-match.
+- The ignored list is empty after the reset (2026-11-15): products ignored on dev show again in To link and
+  are ignored again by hand in step 14.
 - No re-download of past days is possible or needed: the kept `rbcm_products` / `rbcm_price` rows are
   untouched and prices reach the new cards through the new links (the canonical product is
   `MIN(id_product)`), so every card's price history goes back to the first kept load.
 
 ### 6.4 Products and the rest
 
-- `products_refresh` (`app/services/products.py::refresh_products`) never deletes. For every product that is
-  not set-locked it sets `rbpdt_id_set` = the set of its expansion's mapping, or **NULL when the expansion is
-  not mapped**; set-locked products keep their stored code. So a load run before step 8 would empty the set
-  of every unlocked product (harmless: the next refresh after the mapping puts it back); with step 8 first,
-  the refresh queued by "Load now" gives every product its set at once. A mapping added later →
-  `venv/bin/flask jobs enqueue products_refresh` (or wait for the next daily load).
+- `products_refresh` (`app/services/products.py::refresh_products`) never deletes. On the empty `rbproducts`
+  of the reset (2026-11-15) it **inserts** every non-single product of the load date it is given (the
+  newest load), with `rbpdt_kind = kind_for(category)`, `rbpdt_id_set` = the set of its expansion's mapping
+  (**NULL when the expansion is not mapped**), no lock, not hidden, no image. Products seen only in older
+  loads are not inserted. So with step 8 first, the refresh queued by "Load now" gives every product its set
+  at once; a load run before step 8 would leave every set NULL (harmless: the next refresh after the mapping
+  fills it). A mapping added later → `venv/bin/flask jobs enqueue products_refresh` (or wait for the next
+  daily load).
 - `value_snapshot` writes no row (no collection); `price_alerts` creates none (no lines).
 - Bans are keyed by `name_key` (`app/services/bans.py`): kept rows cover the new printings when the names
   match; `GET /bans` shows the `printings` each name matches.
@@ -264,7 +280,8 @@ F9-j is merged so the F9 tables exist in the metadata. Requirements in section 9
   Step 8 creates every gallery set with its count first; step 9 checks `placeholder_sets: []`.
 - A set re-created with a code different from the gallery's: the sync makes a second, placeholder set. The
   codes come from the worksheet and the rehearsal's `gallery.set_codes`.
-- A product locked to a set that is not re-created keeps a dangling code: check P1.
+- Product curation lost (2026-11-15: `rbproducts` wiped): kinds, locks, hidden flags and images are redone by
+  hand in Admin → Products after step 14; nothing restores them except the dump.
 - A long sync or load killed midway: both are transactional (the sync per set inside one final commit, the
   load in one commit); re-running is safe.
 - Hand edits silently replaced by gallery values: found by the rehearsal diff, fixed by hand after the sync.
@@ -354,15 +371,17 @@ pattern).
 
 **Scope.** In: `app/services/data_reset.py` (classification + logic, no Flask request objects),
 `app/cli/reset.py` (group `reset`, registered in `app/cli/__init__.py`), tests, docs. Out: any migration;
-any route; deleting files on disk; touching a KEEP table; touching `rbproducts.rbpdt_id_set` (it stays as is).
+any route; deleting files on disk; touching a KEEP table. (Until 2026-11-15 also "touching
+`rbproducts.rbpdt_id_set`"; the table is now wiped.)
 
 **Specs.**
 
 S1. Classification: `app/services/data_reset.py` defines `TABLE_POLICY: dict[str, str]` mapping every table
     of `db.metadata` in schema `riftbound` to `keep`, `wipe` or `special`, with the values of section 3.
     `alembic_version` is not in the metadata and is never touched. The only `special` tables are `rbusers`
-    (S11), `rbjobs` (S12) and `rbcm_expansions` (S13); `rbset` is `wipe`; `rbproducts`, `rbcardbans`,
-    `rbcm_ignored` are `keep`.
+    (S11), `rbjobs` (S12) and `rbcm_expansions` (S13); `rbset` is `wipe`. Since 2026-11-15 the only `keep`
+    tables are `rbcm_price`, `rbcm_products`, `rbcm_load_history`, `rbcm_categories` and `rbcardbans`;
+    `rbproducts` and `rbcm_ignored` are `wipe` (until then they and `rbcardbans` were `keep`).
 S2. Guard test: the set of `TABLE_POLICY` keys equals the set of metadata tables (no missing, no stale key);
     the failure message names the tables. A later unit that adds a table must classify it (F9-f:
     `rboauthlinks` → `wipe`). AGENTS.md "Adding a New Model" gains the step "classify it in
@@ -455,11 +474,11 @@ S21. Docs: AGENTS.md (structure: `app/cli/reset.py`, `app/services/data_reset.py
       metadata table and asserts it did (so a new table also needs a seed): 3 users kept + 2 deleted, with
       collection/location rows on a deleted user (username FK), F9 rows, `daily_prices` and other jobs,
       audit rows, Riot changes, links, two sets, expansions mapped to them and one unmapped, products with
-      `rbpdt_id_set` = those set codes (one set-locked).
+      `rbpdt_id_set` = those set codes (one set-locked) owned by users (`rbuserproducts`, RESTRICT).
 - [ ] AC3 Dry run: exit 0, the S18 lines (incl. `keep <n>, mapping cleared <m>` for `rbcm_expansions`),
       every table's rows and every expansion mapping unchanged (S4, S18).
-- [ ] AC4 Execute: every `wipe` table empty (incl. `rbset`); every `keep` table identical row by row (full
-      tuples compared before/after; `rbproducts` keeps its `rbpdt_id_set` codes although `rbset` is empty);
+- [ ] AC4 Execute: every `wipe` table empty (incl. `rbset`, and since 2026-11-15 `rbproducts` and
+      `rbcm_ignored`); every `keep` table identical row by row (full tuples compared before/after, non-empty);
       `rbcm_expansions` identical row by row **except** `rbexp_rbset_id`, which is NULL on every row; users and
       jobs as S11/S12; one `data.reset` audit row with the S16 details and no e-mail or hash in the whole
       output (S11-S14, S16, S18).
@@ -509,6 +528,14 @@ S21. Docs: AGENTS.md (structure: `app/cli/reset.py`, `app/services/data_reset.py
   writes to stderr) and the `Error:` line names only the exception class.
 - AC8 needs the CI step `pytest -m postgres` in the `migrations-pg` job (`TEST_POSTGRES_URL` = the job's
   `riftbound_test` database); without it the three PostgreSQL tests only skip.
+- Keep-list change (2026-11-15, `feat/reset-keep-only-history`, owner decision "keep only the Cardmarket
+  history"): only `TABLE_POLICY` changed (`rbcm_ignored`, `rbproducts` → `wipe`; `rbcardbans` stays `keep`,
+  agent decision, owner to confirm, section 13 Q2). No other code path changed: the delete order (reverse
+  `sorted_tables`) already puts `rbuserproducts` before `rbproducts`; the S17 re-check reads the 5 `keep`
+  tables (row counts) plus the expansion ids; the S15 restart finds no sequence on the two new `wipe` tables.
+  On the AC2 world the execute now reports `53 rows deleted in 29 tables` (was 50 in 27). Tests: the
+  classification test pins KEEP 5 / SPECIAL 3 / WIPE 27; `TestDeleteOrder` also proves the RESTRICT of
+  `rbuserproducts` → `rbproducts` with foreign keys on; the PostgreSQL test checks both tables own no sequence.
 
 **Delivery.** Conventional Commits; PR title `feat(reset): production data reset helpers (RESET units a, b)`;
 PR body: specs → tests map, the rehearsal of section 11 as the manual check, rollback = revert (the
@@ -539,9 +566,9 @@ without secrets for `state.md`.
 | Product rows | `SELECT count(*) FROM riftbound.rbcm_products;` | | equal (+ today's files) |
 | Load history rows | `SELECT count(*) FROM riftbound.rbcm_load_history;` | | equal (+3) |
 | Expansions (mapped, total) | `SELECT count(*) FILTER (WHERE rbexp_rbset_id IS NOT NULL), count(*) FROM riftbound.rbcm_expansions;` | | after step 5: 0 and the same total; after step 8: as before (or the count left unmapped on purpose) |
-| Products by kind | `SELECT rbpdt_kind, count(*) FROM riftbound.rbproducts GROUP BY 1;` | (115 on 2026-10-29) | equal |
-| Products whose set does not exist (P1) | query P1 below | none | after step 5: every set code (expected); after step 8 and at the end: none |
-| Bans | `SELECT count(*) FROM riftbound.rbcardbans;` | (25 seeded) | equal |
+| Products by kind | `SELECT rbpdt_kind, count(*) FROM riftbound.rbproducts GROUP BY 1;` | (115 on 2026-10-29) | after step 5: none (wiped); after step 14: the non-singles of that load, kinds from `kind_for` (curation not kept) |
+| Products whose set does not exist (P1) | query P1 below | none | none at every step (`rbproducts` empty until step 14, then sets from the new mapping) |
+| Bans | `venv/bin/flask bans list` (and `SELECT rbban_mode, count(*) FROM riftbound.rbcardbans GROUP BY 1;`) | 25 rows: 12 in 1v1, 13 in 2v2 (the `0009` seed) | the same 25 rows after step 5 and at the end (KEEP) |
 | Riot sync time | from the job's start/finish | | |
 | Restore time | measured in 11.1 | | |
 
@@ -560,7 +587,7 @@ SELECT rbexp_id, rbexp_name, rbexp_rbset_id FROM riftbound.rbcm_expansions
 WHERE rbexp_rbset_id IS NOT NULL ORDER BY rbexp_rbset_id, rbexp_id;
 ```
 
-P1 (products whose set code has no `rbset` row; expected right after the reset, none at the end):
+P1 (products whose set code has no `rbset` row; none at every step since `rbproducts` is wiped, 2026-11-15):
 
 ```sql
 SELECT p.rbpdt_id_set, p.rbpdt_set_locked, count(*) FROM riftbound.rbproducts p
@@ -571,6 +598,11 @@ GROUP BY 1, 2 ORDER BY 1, 2;
 
 Run SQL with `psql -h <host> -U <user> -d <database>` (or `riftbound_reset_test` during the rehearsal). Keep
 the SQL A and SQL B results at hand for step 8 (they hold no personal data).
+
+Not recorded on purpose (owner 2026-11-15): the ignored products list (`rbcm_ignored`, erroneous test data:
+the owner ignores again in step 14 what is not a card) and the product curation (`rbproducts` kinds,
+kind/set locks, hidden flags, uploaded images): neither is restored; only the dump of step 3 keeps them. The
+bans need no list either: `rbcardbans` is kept (the 25 seeded rows; section 13 Q2).
 
 ### 10.1 Preconditions (all must be true)
 
@@ -625,8 +657,10 @@ venv/bin/flask reset production-data --keep-user rbadmin --keep-user racmos --ke
     --database <database> --env <RB_ENV of the server> --backup <backup-file>
 ```
 
-Check: `Users:` line (kept names; `missing` lists the accounts to create in step 6); every KEEP table says
-`keep`; `rbset` says `delete <n>` (n = rows of SQL A); `rbcm_expansions` says `keep <n>, mapping cleared <m>`
+Check: `Users:` line (kept names; `missing` lists the accounts to create in step 6); exactly the 5 KEEP tables
+(`rbcm_price`, `rbcm_products`, `rbcm_load_history`, `rbcm_categories`, `rbcardbans`) say `keep`;
+`rbproducts` and `rbcm_ignored` say `delete <n>`; `rbset` says `delete <n>` (n = rows of SQL A);
+`rbcm_expansions` says `keep <n>, mapping cleared <m>`
 (m = rows of SQL B); `rbjobs` keeps only `daily_prices` rows; the counts match the worksheet; ends with
 `Dry run: nothing was changed.` Any `Error:` → fix the cause (timers, revision, backup) and repeat; do not
 continue.
@@ -648,9 +682,11 @@ SELECT username, is_admin, is_blocked FROM riftbound.rbusers ORDER BY 1;
 SELECT rbaud_action, rbaud_actor_username FROM riftbound.rbadminaudit;   -- one row: data.reset, system
 SELECT count(*) FROM riftbound.rbset;                                   -- 0
 SELECT count(*) FILTER (WHERE rbexp_rbset_id IS NOT NULL), count(*) FROM riftbound.rbcm_expansions;  -- 0, same total
+SELECT count(*) FROM riftbound.rbproducts;                              -- 0 (rebuilt in step 14)
+SELECT count(*) FROM riftbound.rbcm_ignored;                            -- 0
 ```
 
-P1 now lists every set code the products still carry: expected until step 8.
+`venv/bin/flask bans list` → the 25 rows of the worksheet (12 in 1v1, 13 in 2v2). P1 returns no rows.
 
 **Step 6. Accounts.**
 
@@ -669,11 +705,14 @@ venv/bin/flask users list                                            # three row
 RB_NEW_PASSWORD` and `unset RB_NEW_PASSWORD` right after. A kept account with a wrong e-mail is fixed in the
 app (Account → Profile, signed in as that account) after step 7.
 
-**Step 7. Start the app and move the image directories aside.**
+**Step 7. Start the app and move the three image directories aside** (card images, product images, avatars;
+section 5).
 
 ```bash
 sudo mv <card images dir> <card images dir>.pre-reset-$(date +%Y%m%d)
 sudo install -d -o <service user> -g <service user> -m 755 <card images dir>
+sudo mv <product images dir> <product images dir>.pre-reset-$(date +%Y%m%d)   # only if it exists
+sudo install -d -o <service user> -g <service user> -m 755 <product images dir>
 sudo mv <avatar dir> <avatar dir>.pre-reset-$(date +%Y%m%d)          # only if it exists
 sudo install -d -o <service user> -g <service user> -m 755 <avatar dir>
 sudo systemctl start <service>
@@ -696,13 +735,13 @@ set or a set without a count makes the sync skip the Showcase rarity rule for it
 2. Admin → Sets → New set for every gallery code that has no Cardmarket expansion yet (same four values;
    for a set new since the worksheet, the owner enters them).
 3. Sets of SQL A that the owner does not want any more (old placeholders, promo sets with no gallery cards):
-   do not create them. Their expansions stay unmapped (or are mapped to another set); their products are
-   handled in step 13 (P1).
+   do not create them. Their expansions stay unmapped (or are mapped to another set); their products get no
+   set at the refresh of step 14.
 
 Check: SQL A on the database → one row per set created, every gallery code present, every row with a name,
 a release date and a card count (no NULL `rbset_ncard`); "Expansions (mapped, total)" back to the "Before"
 value (or less, by the expansions left unmapped on purpose; Expansions tab "Not mapped only" shows exactly
-those); P1 lists only the codes not re-created on purpose.
+those); P1 returns no rows (no product exists before step 14).
 
 **Step 9. Riot sync.**
 
@@ -733,7 +772,7 @@ result to the planner (a compare rule is not stable).
 after its code (a placeholder); a set with 0 cards is either a set Riot does not list yet (keep it) or a
 mistake (unmap its expansions in the Expansions tab, then delete it).
 
-**Step 13. Soft links, products and bans.** SQL checks:
+**Step 13. Soft links and bans.** SQL checks:
 
 ```sql
 SELECT e.rbexp_id, e.rbexp_rbset_id FROM riftbound.rbcm_expansions e
@@ -741,13 +780,11 @@ LEFT JOIN riftbound.rbset s ON s.rbset_id = e.rbexp_rbset_id
 WHERE e.rbexp_rbset_id IS NOT NULL AND s.rbset_id IS NULL;     -- expect no rows
 ```
 
-P1: only the codes not re-created on purpose. For each: set-locked products (`rbpdt_set_locked` true) → Admin
-→ Products → set them to an existing set or to none; unlocked products get their set from the expansion
-mapping at the next `products_refresh` (step 14 queues one), so P1 is empty after step 14.
+Products: nothing to check yet (`rbproducts` is rebuilt by the load of step 14).
 
-Bans: `venv/bin/flask bans list` (same rows as before); signed in, `GET /riftbound/api/v1/bans` → every item
-has a non-empty `printings` list (an empty one = the name no longer matches a card: fix with `flask bans
-remove` / `add`).
+Bans (kept, not re-added): `venv/bin/flask bans list` shows the same 25 rows as the worksheet (12 in 1v1,
+13 in 2v2); signed in, `GET /riftbound/api/v1/bans` → every item has a non-empty `printings` list (an empty
+one = the name no longer matches a card: fix with `flask bans remove` / `add`).
 
 **Step 14. Cardmarket mapping.**
 
@@ -755,13 +792,16 @@ remove` / `add`).
    `sudo systemctl start riftbound-jobs.service`; the follow-ups `value_snapshot`, `products_refresh`,
    `price_alerts` run in the same call). Check (ops-runbook "Daily Cardmarket load" one-liner): `success`,
    `validation.price_rows` > 0, `auto_match.linked`, `review_total`; `queued` lists the three follow-ups;
-   `products_refresh` `new` ≈ 0 (`rbproducts` kept), `value_snapshot` 0 rows, `price_alerts` 0 alerts; P1
-   returns no rows.
+   `products_refresh` `new` = `total` = the non-singles of today's file (the catalog is rebuilt from zero),
+   `value_snapshot` 0 rows, `price_alerts` 0 alerts; P1 returns no rows; "Products by kind" filled in the
+   worksheet "After".
 2. Matching → Auto-match (`?tab=auto`): Preview, then "Apply clear cases" until `remaining_clear` is 0.
 3. Matching → To link (`?tab=link`): link the rest by hand (suggestions, Link dialog), Ignore what is not a
-   card; Conflicts tab empty at the end.
+   card (the ignored list starts empty); Conflicts tab empty at the end.
 4. Check: SQL "Links by type" vs the worksheet; the Matching header counters; a card detail page shows a
    price chart that starts **before** the reset day (proof that the history is reachable).
+5. Optional: Admin → Products: redo the product curation that is wanted (kinds, kind/set locks, hidden,
+   images); the old one is not restored (section 4).
 
 **Step 15. Re-enable the timers.**
 
@@ -778,7 +818,9 @@ systemctl list-timers 'riftbound-*' --no-pager
       unmapped expansions = only those left unmapped on purpose in step 8, unmatched = what is left on purpose.
 - [ ] P1 returns no rows; the expansion soft-link query of step 13 returns no rows.
 - [ ] `/riftbound/app/cards`: images, filters and prices; a card detail: price history before the reset day.
-- [ ] `/riftbound/app/products`: prices and history; kinds as before; the set filter shows set names.
+- [ ] `/riftbound/app/products`: prices and history (back to the first kept load); kinds as `kind_for` gives
+      them (or as redone in step 14.5); the set filter shows set names; no product image until uploaded again.
+- [ ] `venv/bin/flask bans list`: the 25 rows of the worksheet.
 - [ ] As `racmos`: Collection, Decks, Locations, Wishlists are empty; adding a card, a deck and a wishlist line
       works; the line shows a price.
 - [ ] `/riftbound/app/admin/audit`: first row `data.reset`, then the set creations, the mappings, the sync and
@@ -832,7 +874,7 @@ run-pending` in this shell, never with `systemctl` (the units use the real envir
 2. Dump the scratch database (the backup check wants a dump of the database it resets):
    `pg_dump -h <host> -U <user> -d riftbound_reset_test -n riftbound -Fc -f <scratch dir>/rehearsal.dump`
 3. Step 4 and step 5 with `--database riftbound_reset_test --allow-test-db --backup <scratch dir>/rehearsal.dump`;
-   check `rbset` 0, mappings 0, P1 lists every code.
+   check `rbset` 0, `rbproducts` 0, `rbcm_ignored` 0, mappings 0, bans 25, P1 no rows.
 4. Step 6 (users).
 5. Step 8, either way:
    - **In the UI** (rehearses the real step, measures its time): in the rehearsal shell run
@@ -868,8 +910,9 @@ run-pending` in this shell, never with `systemctl` (the units use the real envir
 
 ### 11.4 What to compare (pass criteria)
 
-- KEEP counts identical before/after the reset; WIPE tables 0 (incl. `rbset`); `rbcm_expansions` same rows,
-  0 mappings; three users; P1 lists every code right after the reset and none after the load.
+- KEEP counts identical before/after the reset (the 5 tables, bans 25); WIPE tables 0 (incl. `rbset`,
+  `rbproducts`, `rbcm_ignored`); `rbcm_expansions` same rows, 0 mappings; three users; `rbproducts` rebuilt
+  by the load with sets from the new mapping (P1 no rows).
 - After step 8: SQL A and SQL B equal to the "Before" values for every set re-created.
 - Riot sync `success`, `placeholder_sets: []`, no proposals, second run all `unchanged`.
 - Cards per set close to the dev catalog; every difference explained by the diff of 11.3 step 7.
@@ -892,6 +935,8 @@ sudo systemctl stop <service> riftbound-jobs.timer riftbound-daily.timer riftbou
 pg_restore -h <host> -U <user> -d <database> --clean --if-exists --single-transaction <backup-file>
 sudo mv <card images dir> <card images dir>.reset-failed-$(date +%Y%m%d)
 sudo mv <card images dir>.pre-reset-<date> <card images dir>
+sudo mv <product images dir> <product images dir>.reset-failed-$(date +%Y%m%d)
+sudo mv <product images dir>.pre-reset-<date> <product images dir>
 sudo mv <avatar dir> <avatar dir>.reset-failed-$(date +%Y%m%d)
 sudo mv <avatar dir>.pre-reset-<date> <avatar dir>
 venv/bin/flask db current && venv/bin/flask db check
@@ -900,7 +945,8 @@ sudo systemctl enable --now riftbound-jobs.timer riftbound-daily.timer riftbound
     riftbound-riot-sync-am.timer riftbound-riot-sync-pm.timer riftbound-sessions-purge.timer
 ```
 
-The restore brings back the sets, the expansion mapping and every wiped row. It takes about the restore time
+The restore brings back the sets, the expansion mapping and every wiped row (product catalog and ignored list
+included). It takes about the restore time
 measured in 11.1 plus a minute. Check: the worksheet "Before" figures (SQL A and SQL B included).
 
 **A step fails midway**
@@ -921,25 +967,31 @@ Abandoning after step 5 but before production users: full rollback, or stay on t
 another day — but never let a timer run a Riot sync before step 8 is complete (keep
 `riftbound-riot-sync-am/pm.timer` stopped until then; the daily load may run once step 8 is done).
 
-## 13. Owner decisions (2026-11-12)
+## 13. Owner decisions (2026-11-12, revised 2026-11-15)
+
+Revision of 2026-11-15 (owner): **the reset wipes everything except the Cardmarket load history**
+(`rbcm_price`, `rbcm_products`, `rbcm_load_history`, `rbcm_categories`); everything else was created while
+testing (wrong mappings, test data, even real-looking data). The SPECIAL tables stay as they were (Q1/Q3, Q6,
+the `--keep-user` accounts). Q2, Q4, Q5 and Q10 below are rewritten; the other rows are unchanged.
 
 | # | Decision | Effect in this plan |
 |---|---|---|
 | Q1 | **Wipe `rbset`**: the sets are created from zero (clean sets) | `rbset` WIPE; sets re-created in step 8, **before** the first Riot sync, from SQL A (code, name, release date, card count) via CM-d "Create a new set…" (set + mapping in one transaction) or Admin → Sets; step 9 requires `placeholder_sets: []` (section 6.2) |
 | Q3 | Follows Q1: **`rbcm_expansions` rows kept, mapping cleared** | SPECIAL: the reset sets `rbexp_rbset_id` to NULL (RESET-b S13); step 8 maps them again from SQL B |
-| Q2 | **Keep `rbcardbans`** | KEEP; checked in step 13 |
-| Q4 | **Keep `rbcm_ignored`** | KEEP |
-| Q5 | **Keep `rbproducts`** | KEEP, `rbpdt_id_set` untouched: dangling until step 8, valid again with the same codes; P1 must be empty at the end (section 3.1) |
+| Q2 | **Keep `rbcardbans`** (2026-11-12). 2026-11-15: **kept — decided by the agent, owner to confirm.** The owner's 2026-11-15 rule would wipe it, but dev holds exactly the 25 rows migration `0009` seeded (12 in 1v1, 13 in 2v2): reference data identical to a fresh install, not test data; wiping it would only force 25 `flask bans add` by hand, since the seed never runs again | KEEP; `flask bans list` shows the 25 rows after step 5 and at the end (steps 5, 13, 16). If the owner overrules: one-line change in `TABLE_POLICY` (`rbcardbans` → WIPE), and the runbook records `flask bans list` before the reset and re-adds the wanted bans with `flask bans add` after step 9 |
+| Q4 | **WIPE `rbcm_ignored`** (owner 2026-11-15; was Keep on 2026-11-12) | WIPE; the list was erroneous test data, so it is not recorded in the worksheet; the owner ignores products again in step 14 |
+| Q5 | **WIPE `rbproducts`** (owner 2026-11-15; was Keep on 2026-11-12) | WIPE (after `rbuserproducts`, RESTRICT); `products_refresh` rebuilds the catalog from the first load (step 14); kinds, locks, hidden flags and uploaded images are not preserved (redo in Admin → Products); `PRODUCT_IMAGES_DIR` is moved aside in step 7 like the card images and avatars (section 5) |
 | Q6 | **Keep the finished `daily_prices` job rows** | SPECIAL `rbjobs` (RESET-b S12) |
 | Q7 | Wipe the audit trail (+ one `data.reset` row) | WIPE `rbadminaudit` (RESET-b S16) |
 | Q8 | Wipe the 2FA of the kept accounts | WIPE `rbusermfa`, `rbrecoverycodes`; re-enrol after step 7 |
-| Q9 | **Move the card images folder aside and re-download everything** | Section 5, step 7 |
-| Q10 | Full re-download of the catalog; read the rehearsal diff first | Section 4, 11.3 step 7 |
+| Q9 | **Move the card images folder aside and re-download everything** | Section 5, step 7. 2026-11-15: `PRODUCT_IMAGES_DIR` is moved aside too (follows Q5), like `AVATAR_DIR` |
+| Q10 | Full re-download of the catalog; read the rehearsal diff first. 2026-11-15: **the 132 cards Riot does not publish (OGNX, SFDX, OGSX, the SFD runes, PROK) are accepted as lost**; they can be recreated by hand later (Admin → Cards or the CM-c form) | Section 4, 11.3 step 7; no step of the runbook restores them |
 | Q11 | Wipe the legacy `rbcardmarket` rows | WIPE |
 | Q12 | **No export step**: the `pg_dump` is the only safety net | No collection or deck export before the reset |
 | Q13 | Timing: after F9-j, before F9-f/F9-g | Section 2 |
 
-Open questions: none.
+Open questions: Q2 as revised on 2026-11-15 (`rbcardbans` kept by the agent; the owner confirms or
+overrules before the reset).
 
 Notes the owner should know: the Cardmarket links are regenerated (owner decision; manual links on the
 current dev data are moot); `rbqa` keeps its account but loses its data; `racmos` is demoted to a normal user

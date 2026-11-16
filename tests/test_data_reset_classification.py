@@ -36,13 +36,18 @@ def test_the_special_tables_are_users_jobs_and_expansions():
         'rbusers', 'rbjobs', 'rbcm_expansions'}
 
 
-def test_the_owner_decisions_of_2026_11_12():
+def test_only_the_cardmarket_history_and_the_seeded_bans_are_kept():
+    """Owner decision 2026-11-15: keep only the Cardmarket load history; `rbcardbans` stays
+    (the official list seeded by migration 0009, decided by the agent, owner to confirm)."""
     keep = {t for t, c in TABLE_POLICY.items() if c == KEEP}
     assert keep == {'rbcm_price', 'rbcm_products', 'rbcm_load_history', 'rbcm_categories',
-                    'rbcm_ignored', 'rbproducts', 'rbcardbans'}
-    for table in ('rbset', 'rbcards', 'rbcm_product_card_map', 'rbadminaudit', 'rbusermfa',
-                  'rbrecoverycodes', 'rbcardmarket', 'rbsessions', 'rbapikeys'):
+                    'rbcardbans'}
+    for table in ('rbcm_ignored', 'rbproducts', 'rbset', 'rbcards', 'rbcm_product_card_map',
+                  'rbadminaudit', 'rbusermfa', 'rbrecoverycodes', 'rbcardmarket', 'rbsessions',
+                  'rbapikeys', 'rbuserproducts'):
         assert TABLE_POLICY[table] == WIPE, table
     assert 'alembic_version' not in TABLE_POLICY
     assert len(TABLE_POLICY) == 35
-    assert sum(c == WIPE for c in TABLE_POLICY.values()) == 25
+    assert sum(c == KEEP for c in TABLE_POLICY.values()) == 5
+    assert sum(c == SPECIAL for c in TABLE_POLICY.values()) == 3
+    assert sum(c == WIPE for c in TABLE_POLICY.values()) == 27

@@ -1,7 +1,8 @@
 """`flask reset ...`: the production data reset (RESET-b).
 
-`production-data` empties the database for production, keeping the Cardmarket loads, the curated
-tables and the `--keep-user` accounts (classification: `app/services/data_reset.py::TABLE_POLICY`).
+`production-data` empties the database for production, keeping the Cardmarket load history, the
+seeded ban list and the `--keep-user` accounts (classification:
+`app/services/data_reset.py::TABLE_POLICY`).
 A dry run by default; `--execute` needs `--backup` and `--confirm "RESET <database>"`. Never run it
 on real data without the rehearsal and the runbook of
 docs/requirements/F12/RESET-production-data-reset.md (sections 10 and 11).

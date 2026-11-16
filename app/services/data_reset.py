@@ -1,6 +1,7 @@
 """Production data reset (RESET-b): empties the database for production, keeping exactly the
 tables, rows and columns the owner chose (docs/requirements/F12/RESET-production-data-reset.md,
-sections 3 and 13).
+sections 3 and 13): the Cardmarket load history, the seeded ban list, the `--keep-user` accounts,
+the finished `daily_prices` jobs and the Cardmarket expansion rows (owner 2026-11-15).
 
 `TABLE_POLICY` classifies EVERY table of `db.metadata` (schema `riftbound`): `keep` (never
 written), `wipe` (every row deleted) or `special` (`rbusers`, `rbjobs`, `rbcm_expansions`: rows or
@@ -33,13 +34,13 @@ from app.services import audit
 KEEP, WIPE, SPECIAL = 'keep', 'wipe', 'special'
 
 TABLE_POLICY: dict[str, str] = {
-    # Cardmarket loads (the price history) and the owner's curated tables (D-Q2, Q4, Q5).
+    # The Cardmarket load history, the only data the owner keeps (owner 2026-11-15).
     'rbcm_price': KEEP,
     'rbcm_products': KEEP,
     'rbcm_load_history': KEEP,
     'rbcm_categories': KEEP,
-    'rbcm_ignored': KEEP,
-    'rbproducts': KEEP,
+    # The official ban list seeded by migration 0009, unchanged on dev (D-Q2; decided by the
+    # agent 2026-11-15, owner to confirm).
     'rbcardbans': KEEP,
     # Rows kept, mapping to the (wiped) sets cleared (D-Q1, Q3).
     'rbcm_expansions': SPECIAL,
@@ -52,6 +53,10 @@ TABLE_POLICY: dict[str, str] = {
     'rbcardchanges': WIPE,
     'rbcardmarket': WIPE,
     'rbcm_product_card_map': WIPE,
+    # Test data of the matching workbench and the product catalog with its curation; products
+    # are rebuilt by products_refresh after the next load (D-Q4, Q5 of 2026-11-15).
+    'rbcm_ignored': WIPE,
+    'rbproducts': WIPE,
     # User data.
     'rbuserprefs': WIPE,
     'rbkeepplayset': WIPE,

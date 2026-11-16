@@ -84,12 +84,12 @@ EXPECTED_TABLE_LINES = {
     'rbcardbans': '1  keep',
     'rbcm_categories': '1  keep',
     'rbcm_expansions': '3  keep 3, mapping cleared 2',
-    'rbcm_ignored': '1  keep',
+    'rbcm_ignored': '1  delete 1',
     'rbcm_load_history': '1  keep',
     'rbcm_price': '1  keep',
     'rbcm_product_card_map': '1  delete 1',
     'rbcm_products': '1  keep',
-    'rbproducts': '2  keep',
+    'rbproducts': '2  delete 2',
     'rbset': '2  delete 2',
     'rbusers': '5  delete 2, keep 3',
     'rbadminaudit': '2  delete 2',
@@ -159,7 +159,7 @@ class TestExecute:
         assert result.exit_code == 0, (result.stdout, result.stderr)
         assert result.stdout.splitlines() == report(
             head, f'Backup: {BACKUP_NAME}, 4096 bytes, 3 TOC entries, 0.0 h old') + [
-            'Reset done: 50 rows deleted in 27 tables, 2 expansion mappings cleared; '
+            'Reset done: 53 rows deleted in 29 tables, 2 expansion mappings cleared; '
             'kept tables unchanged.']
         after = snapshot()
 
@@ -168,9 +168,14 @@ class TestExecute:
                 assert after[table] == before[table], table      # full tuples, row by row
             elif policy == WIPE and table != 'rbadminaudit':
                 assert after[table] == [], table
-        # rbproducts keeps the old set codes although rbset is empty.
+        # Owner 2026-11-15: only the Cardmarket history (and the seeded bans) stay; the product
+        # catalog and the ignored list are wiped like the sets.
         assert count('rbset') == 0
-        assert sorted(r[0] for r in after['rbproducts']) == ['OGN', 'SFD']
+        assert after['rbproducts'] == [] and after['rbcm_ignored'] == []
+        assert after['rbuserproducts'] == []
+        assert after['rbcardbans'] == before['rbcardbans'] != []
+        for table in ('rbcm_price', 'rbcm_products', 'rbcm_load_history', 'rbcm_categories'):
+            assert after[table] == before[table] != [], table
         # rbcm_expansions: same rows, only the mapping cleared.
         cols = [c.name for c in db.metadata.tables['riftbound.rbcm_expansions'].columns]
         mapping = cols.index('rbexp_rbset_id')
@@ -214,7 +219,7 @@ class TestExecute:
             None, 'system', 'data.reset', 'database', DATABASE)
         deleted = {t: 2 for t, p in TABLE_POLICY.items() if p == WIPE}
         deleted.update(rbcaptcha_used=1, rbcm_product_card_map=1, rbcardchanges=1,
-                       rbcardmarket=1, rbusers=2, rbjobs=2)
+                       rbcardmarket=1, rbcm_ignored=1, rbusers=2, rbjobs=2)
         assert row.rbaud_details == {
             'deleted': deleted,
             'cleared_expansion_mappings': 2,
@@ -232,6 +237,10 @@ class TestExecute:
         assert result.exit_code == 0, result.stderr
         lines = result.stdout.splitlines()
         assert 'rbset  0  delete 0' in lines
+        assert 'rbproducts  0  delete 0' in lines
+        assert 'rbcm_ignored  0  delete 0' in lines
+        assert 'rbcardbans  1  keep' in lines
+        assert 'rbcm_price  1  keep' in lines
         assert 'rbcm_expansions  3  keep 3, mapping cleared 0' in lines
         assert 'rbadminaudit  1  delete 1' in lines
         assert 'rbusers  3  delete 0, keep 3' in lines
@@ -262,6 +271,8 @@ class TestDeleteOrder:
                 parent = fk.column.table.name
                 if parent != table.name:
                     assert position[table.name] < position[parent], (table.name, parent)
+        # rbproducts is wiped now: its RESTRICT child rbuserproducts must go first.
+        assert position['rbuserproducts'] < position['rbproducts']
 
     def test_runs_with_foreign_keys_enforced_and_deletes_each_table_explicitly(
             self, reset, world, backup):
@@ -273,6 +284,12 @@ class TestDeleteOrder:
                 with db.session.begin_nested():
                     db.session.execute(sa.text(
                         "DELETE FROM riftbound.rbusers WHERE username = 'olduser1'"))
+            db.session.rollback()
+            # Same for a product that users own (rbuserproducts -> rbproducts RESTRICT).
+            with pytest.raises(IntegrityError):
+                with db.session.begin_nested():
+                    db.session.execute(sa.text(
+                        'DELETE FROM riftbound.rbproducts WHERE rbpdt_id_product = 7001'))
             db.session.rollback()
             statements = []
 
