@@ -107,10 +107,10 @@ describe('navRegistry without the old web (Jinja retirement 2/3)', () => {
 
   it.each([
     ['top', false, ['home', 'cards', 'collection', 'products', 'locations', 'decks']],
-    ['top', true, ['home', 'cards', 'collection', 'products', 'locations', 'decks']],
+    ['top', true, ['home', 'cards', 'collection', 'products', 'locations', 'decks', 'admin']],
     ['bottom', false, ['home', 'cards', 'collection', 'decks']],
     ['hub', false, ['cards', 'collection', 'products', 'locations', 'decks', 'profile']],
-    ['hub', true, ['cards', 'collection', 'products', 'locations', 'decks', 'profile']],
+    ['hub', true, ['cards', 'collection', 'products', 'locations', 'decks', 'profile', 'admin']],
     [
       'more',
       false,
