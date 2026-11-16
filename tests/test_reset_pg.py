@@ -87,9 +87,11 @@ def test_execute_with_enforced_foreign_keys(pg_reset):
     after = snapshot()
     for table, policy in TABLE_POLICY.items():
         if policy == KEEP:
-            assert after[table] == before[table], table
+            assert after[table] == before[table] != [], table
         elif policy == WIPE and table != 'rbadminaudit':
             assert after[table] == [], table
+    # rbproducts (RESTRICT parent of rbuserproducts) and rbcm_ignored are wiped (owner 2026-11-15).
+    assert after['rbproducts'] == [] and after['rbcm_ignored'] == []
     assert count('rbadminaudit') == 1
     assert count('rbusers') == 3
     assert db.session.execute(sa.text(
@@ -103,6 +105,8 @@ def test_sequences_restart_and_kept_ones_do_not_move(pg_reset):
     kept = owned_sequences({KEEP}) | {
         s: t for s, t in owned_sequences({'special'}).items() if t[0] == 'rbcm_expansions'}
     assert wiped, 'the migrations create serial columns on the wiped tables'
+    # The two tables wiped since 2026-11-15 own no sequence (their keys are Cardmarket ids).
+    assert not {t for t, _ in wiped.values()} & {'rbproducts', 'rbcm_ignored'}
     kept_before = {s: v for s, v in sequence_states() if f'riftbound.{s}' in kept or s in kept}
 
     result = pg_reset()

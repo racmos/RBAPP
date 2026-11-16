@@ -125,7 +125,8 @@ def seed_world():
                         rbchg_status='pending', rbchg_job_id=jobs['riot'].rbjob_id,
                         rbchg_decided_by=kept.id))
 
-    # Cardmarket loads (kept), expansions (two mapped, one unmapped), links (wiped).
+    # Cardmarket load history (kept), expansions (two mapped, one unmapped), links and the
+    # ignored list (wiped).
     _add(m.RbcmCategory(rbcat_id=1, rbcat_name='Riftbound Single'))
     for exp_id, set_id in ((101, 'OGN'), (102, 'SFD'), (103, None)):
         _add(m.RbcmExpansion(rbexp_id=exp_id, rbexp_name=f'Expansion {exp_id}',
@@ -139,7 +140,8 @@ def seed_world():
     _add(m.RbcmIgnored(rbig_id_product=5002, rbig_name='Token'))
     _add(m.RbcmProductCardMap(rbpcm_id_product=5001, rbpcm_rbset_id='OGN', rbpcm_rbcar_id='001',
                               rbpcm_match_type='auto', rbpcm_confidence=1.0))
-    # Products (kept) carrying the set codes, one of them set-locked.
+    # Products (wiped, owner 2026-11-15) carrying the set codes, one of them set-locked; owned
+    # by users below (rbuserproducts -> rbproducts RESTRICT).
     _add(m.RbProducts(rbpdt_id_product=7001, rbpdt_name='Origins Booster', rbpdt_id_set='OGN',
                       rbpdt_kind='booster', rbpdt_set_locked=True))
     _add(m.RbProducts(rbpdt_id_product=7002, rbpdt_name='Spiritforged Box', rbpdt_id_set='SFD',
