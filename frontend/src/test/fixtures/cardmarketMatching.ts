@@ -1,6 +1,6 @@
 /** MSW data and handlers of the Cardmarket matching workbench (CM-b). */
 import { http, type JsonBodyType } from 'msw';
-import { API, adminSession, ok } from '@/test/msw/handlers';
+import { API, adminSession, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 
 export const STATUS = {
@@ -315,6 +315,108 @@ export const EXPANSIONS = [
   }),
 ];
 
+const NO_PRICES = null as null | Record<string, number | null>;
+
+/** A product of `GET /admin/cardmarket/expansions/<id>/products` (CM-f). */
+export const expansionProduct = (
+  id_product: number,
+  name: string,
+  extra: Record<string, unknown> = {},
+) => ({
+  id_product,
+  name,
+  type: 'single' as 'single' | 'sealed',
+  category: 'Riftbound Single' as string | null,
+  category_id: 1 as number | null,
+  date_added: null as string | null,
+  price: null as number | null,
+  price_source: null as 'low' | 'avg7' | 'trend' | null,
+  prices: NO_PRICES,
+  linked: null as { set_id: string; card_id: string; foil: 'N' | 'S' | null } | null,
+  catalog: null as { kind: string | null; set_id: string | null } | null,
+  ...extra,
+});
+
+export const prices = (values: Record<string, number>) => ({
+  low: null,
+  trend: null,
+  avg7: null,
+  avg30: null,
+  avg: null,
+  low_foil: null,
+  trend_foil: null,
+  ...values,
+});
+
+/** The products of an expansion on the latest load: a linked single, a catalog box, an unpriced one. */
+export const EXPANSION_PRODUCTS = [
+  expansionProduct(9101, 'Proving Grounds Booster Box', {
+    type: 'sealed',
+    category: 'Riftbound Booster Box',
+    category_id: 2,
+    date_added: '2025-07-14',
+    price: 95,
+    price_source: 'avg7',
+    prices: prices({ low: 90, trend: 97.5, avg7: 95, avg30: 96, avg: 94 }),
+    catalog: { kind: 'box', set_id: 'OGS' },
+  }),
+  expansionProduct(9001, 'Ahri, Nine-Tailed Fox', {
+    date_added: '2025-07-15',
+    price: 34,
+    price_source: 'low',
+    prices: prices({
+      low: 34,
+      trend: 36.1,
+      avg7: 35,
+      avg30: 33,
+      avg: 34.5,
+      low_foil: 60,
+      trend_foil: 64,
+    }),
+    linked: { set_id: 'OGS', card_id: '001', foil: 'N' },
+  }),
+  expansionProduct(9003, 'Jinx, Loose Cannon'),
+];
+
+/**
+ * The answer of the products endpoint for one request: `items` filtered by `type` and `q` (a
+ * name search ignoring case) and paged by `page` / `per_page`, with the figures of the whole
+ * expansion in `meta`.
+ */
+export function expansionProductsAnswer(
+  item: ReturnType<typeof expansion>,
+  products: ReturnType<typeof expansionProduct>[],
+  search: URLSearchParams,
+) {
+  const type = search.get('type') ?? 'all';
+  const q = (search.get('q') ?? '').toLowerCase();
+  const page = Number(search.get('page') ?? 1);
+  const perPage = Number(search.get('per_page') ?? 50);
+  const found = products.filter(
+    (one) => (type === 'all' || one.type === type) && one.name.toLowerCase().includes(q),
+  );
+  return {
+    expansion: {
+      id: item.id,
+      name: item.name,
+      mapped_set_id: item.mapped_set_id,
+      mapped_set_name: item.mapped_set_name,
+    },
+    items: found.slice((page - 1) * perPage, page * perPage),
+    meta: {
+      page,
+      per_page: perPage,
+      total: found.length,
+      pages: Math.max(1, Math.ceil(found.length / perPage)),
+      singles: item.singles_count,
+      sealed: item.sealed_count,
+      price_range: item.price_range,
+      first_seen: item.first_seen,
+      date: '2026-11-06',
+    },
+  };
+}
+
 /** The `AdminCard` the API answers a create with: the card id lower-cased, as the server does. */
 export const adminCard = (body: Record<string, unknown>) => {
   const setId = String(body.set_id);
@@ -357,6 +459,7 @@ export function matchingApi({
   ignored = IGNORED as unknown[],
   review = reviewList() as JsonBodyType,
   expansions = EXPANSIONS as ReturnType<typeof expansion>[],
+  products = EXPANSION_PRODUCTS as ReturnType<typeof expansionProduct>[],
 } = {}) {
   const calls: Call[] = [];
   const record = async (request: Request) => {
@@ -511,6 +614,17 @@ export function matchingApi({
             }
           : null,
       });
+    }),
+    http.get(`${BASE}/expansions/:id/products`, async ({ request, params }) => {
+      await record(request);
+      const current = expansions.find((one) => one.id === Number(params.id));
+      if (!current) {
+        return failure(404, {
+          error: 'Not Found',
+          message: `Cardmarket expansion ${String(params.id)} not found.`,
+        });
+      }
+      return ok(expansionProductsAnswer(current, products, new URL(request.url).searchParams));
     }),
     http.delete(`${BASE}/expansions/:id/mapping`, async ({ request, params }) => {
       await record(request);

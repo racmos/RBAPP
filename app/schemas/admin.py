@@ -422,6 +422,21 @@ class AdminExpansionMapBody(BaseModel):
     create_set: Optional[AdminExpansionNewSet] = None
 
 
+class AdminExpansionProductsQuery(BaseModel):
+    """GET /admin/cardmarket/expansions/<id>/products query (CM-f): a name search, the type,
+    the order (dearest first by default) and the page."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    q: Optional[str] = Field(default=None, max_length=100)
+    type: Literal['all', 'single', 'sealed'] = 'all'
+    sort: Literal['price', 'name', 'added'] = 'price'
+    page: int = Field(default=1, ge=1)
+    per_page: Literal[50, 100, 200] = 50
+
+    _ints = field_validator('page', 'per_page', mode='before')(_page_to_int)
+
+
 # `from` and `to` are the query names of GET /admin/audit; `from` is a Python keyword, so the
 # two dates live on a model built with `create_model` (read them with `getattr`).
 _AuditDates = create_model('_AuditDates', **{'from': (Optional[date], None),

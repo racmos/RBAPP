@@ -542,6 +542,28 @@ also shows the context of the item (CM-d samples): the first three sample produc
 the mapped one, a "Looks like <Name (ID)> — N of M linked products" button that opens the map
 dialog with that set already chosen (the user still presses Map). The map dialog lists every
 sample product with its low price ("no price", sealed ones marked "(sealed)").
+**Expansion products (CM-f).** Every row of the Expansions tab starts its actions with **View
+products** (`View the products of <name>`); the map dialog adds "View all N products" under its
+samples, which closes it and opens the products. `ExpansionProducts.tsx` is that dialog, an `xl`
+`Modal` full screen below 860 px (`fullScreenBelow="md"`, a `Modal` option added for it), over
+`GET /admin/cardmarket/expansions/<id>/products` (`docs/api.md`): on top the figures of the whole
+expansion (singles, sealed products, the price range of its singles, first seen, latest load), its
+set ("Now mapped to …" or "Not mapped yet.") and a read-only hint pointing to Create card in the
+To link tab (no link: the To link filters have no expansion); then a debounced search, the type
+(All / Singles / Sealed) and the sort (Price, dearest first / Name / Newest first), kept in the
+dialog state (not the URL), and "Showing N of M products". The list is a region that scrolls
+inside the dialog (`.productsScroll`: `overflow: auto`, at most 55 % of the viewport height,
+focusable for the keyboard, sticky table header): a table from 860 px (product with `#id ·
+category`, type, added, price with its source, low, trend, 7-day and 30-day averages, average,
+foil low and trend, linked card `SET-ID, slot N|S|None`, catalog `kind · set`; `—` when absent),
+cards below. "Show more" appends the next 50 (`useInfiniteQuery`, a failed page keeps the shown
+ones with a retry). States: skeleton while loading (an offline note when the first page cannot
+load), error with retry, "No products on the latest load", "No products match". At the bottom
+"Map to a set…" (or "Change the set…" when mapped) and "Create a new set…" open the row's own map
+form (`MapForm` of `ExpansionsPanel.tsx`, without the samples; "Create a new set…" starts on the
+`SetEditor` fields) under the list, so the list stays on screen; Cancel folds it back, a mapping
+closes the dialog with the usual Undo toast. Both buttons are disabled offline. No card or product
+is created here (CM-c's Create card lives in To link).
 
 **Overview Cardmarket band (CM-e).** `OverviewPage.tsx` adds a "Cardmarket" section under Riot
 from `GET /admin/overview` → `cardmarket`: last load (date and the day status badge, or "No load

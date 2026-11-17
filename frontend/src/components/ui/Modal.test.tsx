@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { SRC_DIR, declsFor, readCss } from '@/test/css';
+import { SRC_DIR, declsFor, readCss, rules } from '@/test/css';
 import { createI18n } from '@/i18n';
 import { Modal } from './Modal';
 import styles from './Modal.module.css';
@@ -39,6 +39,26 @@ describe('Modal (F2-f S10)', () => {
   it('adds the xl class when size is xl', async () => {
     await renderModal({ size: 'xl' });
     expect(document.querySelector('dialog')).toHaveClass(styles.xl);
+  });
+
+  it('is full screen below 680 px by default and below 860 px with fullScreenBelow md', async () => {
+    const { unmount } = await renderModal({ size: 'xl' });
+    expect(document.querySelector('dialog')).not.toHaveClass(styles.fullMd);
+    unmount();
+    await renderModal({ size: 'xl', fullScreenBelow: 'md' });
+    expect(document.querySelector('dialog')).toHaveClass(styles.xl, styles.fullMd);
+    const css = readCss(join(SRC_DIR, 'components/ui/Modal.module.css'));
+    const full = rules(css).filter((rule) => rule.selectors.includes('.fullMd'));
+    expect(full.map((rule) => rule.atRules)).toEqual([
+      ['layer components', 'media (max-width: 859.98px)'],
+    ]);
+    expect(full[0]!.decls).toEqual(
+      expect.arrayContaining([
+        { prop: 'width', value: '100%' },
+        { prop: 'height', value: '100%' },
+        { prop: 'margin', value: '0' },
+      ]),
+    );
   });
 
   it('still renders the title and content', async () => {

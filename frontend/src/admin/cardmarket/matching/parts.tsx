@@ -1,11 +1,31 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/errors';
-import type { CardmarketCandidateCard, CardmarketFoil } from '@/api/endpoints';
+import type {
+  CardmarketCandidateCard,
+  CardmarketExpansionItem,
+  CardmarketFoil,
+} from '@/api/endpoints';
 import { CardImage } from '@/components/card';
 import { translateError } from '@/i18n';
 import { cardRef } from './format';
 import styles from './MatchingPage.module.css';
+
+/** "Origins (OGN)", or "GONE (not a set)" when the mapped id is not one of our sets. */
+export function useSetText() {
+  const { t } = useTranslation('admin');
+  return (id: string, name: string | null) =>
+    name === null
+      ? t('matching.expansions.setMissing', { id })
+      : t('matching.expansions.setRef', { name, id });
+}
+
+/** The expansion name, or "Expansion #6567" when Cardmarket gives none (CM-d). */
+export function useExpansionName() {
+  const { t } = useTranslation('admin');
+  return (item: CardmarketExpansionItem) =>
+    item.name ?? t('matching.expansions.unnamed', { id: item.id });
+}
 
 type SlotTarget = { set_id: string; card_id: string; foil: CardmarketFoil };
 

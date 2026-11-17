@@ -132,7 +132,8 @@ MATRIX = {
     'api_v1.read_wishlist_alerts': 'U',
     # --- admin ------------------------------------------------------------
     'api_admin.*': 'A',                     # /riftbound/api/v1/admin/* (F13-a); includes
-                                            # /admin/cardmarket/* (CM-a)
+                                            # /admin/cardmarket/* (CM-a); the expansion products
+                                            # list is api_admin.expansion_products (CM-f)
 }
 
 LOGIN_PATH = '/riftbound/app/login'

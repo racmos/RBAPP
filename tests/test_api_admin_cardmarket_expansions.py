@@ -135,7 +135,9 @@ class TestAuthorization:
                  if method not in ('HEAD', 'OPTIONS')}
         assert found == {(EXPANSIONS, 'GET'),
                          (f'{EXPANSIONS}/<int:expansion_id>', 'PUT'),
-                         (f'{EXPANSIONS}/<int:expansion_id>/mapping', 'DELETE')}
+                         (f'{EXPANSIONS}/<int:expansion_id>/mapping', 'DELETE'),
+                         # CM-f: its products (test_api_admin_cardmarket_expansion_products.py)
+                         (f'{EXPANSIONS}/<int:expansion_id>/products', 'GET')}
 
 
 # ---------------------------------------------------------------------------
