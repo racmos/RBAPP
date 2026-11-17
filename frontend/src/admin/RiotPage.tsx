@@ -11,6 +11,7 @@ import {
   startRiotSync,
   type AdminJob,
 } from '@/api/endpoints';
+import { formatStamp } from './cardmarket/parts';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -124,7 +125,7 @@ function ActiveSets() {
             <li key={set.id} className={styles.row}>
               <strong>{set.id}</strong>
               <Badge>{t(`window.${set.window as WindowKey}` as 'window.monthly')}</Badge>
-              <span>{set.next_run_at}</span>
+              <span>{formatStamp(set.next_run_at)}</span>
             </li>
           ))}
         </ul>
@@ -250,7 +251,7 @@ function RecentRunRow({ job, onOpen }: { job: AdminJob; onOpen: () => void }) {
   return (
     <li>
       <button type="button" className={styles.row} onClick={onOpen}>
-        <span>{job.finished_at ?? job.requested_at}</span>
+        <span>{formatStamp(job.finished_at ?? job.requested_at)}</span>
         <Badge>{t(`job.status.${job.status as JobStatusKey}` as 'job.status.queued')}</Badge>
         <span>
           {trigger === 'schedule' ? t('riot.trigger.schedule') : t('riot.trigger.manual')}
