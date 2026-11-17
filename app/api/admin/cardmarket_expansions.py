@@ -1,5 +1,6 @@
 """Cardmarket expansions (CM-d): the list, map an expansion to a set of ours (creating the
-set, as `POST /admin/sets` does, in the same transaction) and unmap it. Logic in
+set, as `POST /admin/sets` does, in the same transaction) and unmap it; the products of one
+expansion on the latest load (CM-f, read-only). Logic in
 `app/services/cardmarket_expansions.py`; every write is audited in the same transaction."""
 from flask import request
 from pydantic import ValidationError
@@ -10,7 +11,8 @@ from app.api.admin.sets import add_set
 from app.api.error_codes import DetailCode, ErrorCode
 from app.api.responses import fail, ok
 from app.models.set import RbSet
-from app.schemas.admin import AdminExpansionMapBody, AdminExpansionsQuery, AdminSetCreate
+from app.schemas.admin import (AdminExpansionMapBody, AdminExpansionProductsQuery,
+                               AdminExpansionsQuery, AdminSetCreate)
 from app.schemas.validation import detail_code, validate_json, validate_query
 from app.services import audit as audit_service
 from app.services import catalog_admin
@@ -47,6 +49,16 @@ def _set_errors(error: ValidationError) -> list[dict]:
 def list_expansions():
     """Every Cardmarket expansion, unmapped first, and the sets they can be mapped to."""
     return ok(expansions.list_expansions(request.validated_query.unmapped))
+
+
+@api_admin.get('/cardmarket/expansions/<int:expansion_id>/products')
+@validate_query(AdminExpansionProductsQuery)
+def expansion_products(expansion_id):
+    """Every product of the expansion on the latest load, paged, with what we hold about it."""
+    try:
+        return ok(expansions.expansion_products(expansion_id, request.validated_query))
+    except expansions.NotFound:
+        return _not_found(expansion_id)
 
 
 @api_admin.put('/cardmarket/expansions/<int:expansion_id>')

@@ -576,6 +576,64 @@ export const unmapCardmarketExpansion = (id: number) =>
     { method: 'DELETE' },
   );
 
+/**
+ * A product of an expansion on the latest load (CM-f). `price` is what it is worth that day: a
+ * single its low price, a sealed product the first of avg7, trend, low that is not 0; `prices`
+ * is null when it has no price row that day.
+ */
+export type CardmarketExpansionProduct = {
+  id_product: number;
+  name: string;
+  type: 'single' | 'sealed';
+  category: string | null;
+  category_id: number | null;
+  /** `YYYY-MM-DD`: the day Cardmarket added it. */
+  date_added: string | null;
+  price: number | null;
+  price_source: 'low' | 'avg7' | 'trend' | null;
+  prices: {
+    low: number | null;
+    trend: number | null;
+    avg7: number | null;
+    avg30: number | null;
+    avg: number | null;
+    low_foil: number | null;
+    trend_foil: number | null;
+  } | null;
+  /** The card of ours it is linked to. */
+  linked: { set_id: string; card_id: string; foil: CardmarketFoil } | null;
+  /** Its row in our product catalog. */
+  catalog: { kind: string | null; set_id: string | null } | null;
+};
+export type CardmarketExpansionProducts = {
+  expansion: {
+    id: number;
+    name: string | null;
+    mapped_set_id: string | null;
+    mapped_set_name: string | null;
+  };
+  items: CardmarketExpansionProduct[];
+  /** `singles` to `first_seen` are of the whole expansion, whatever the filters. */
+  meta: {
+    page: number;
+    per_page: number;
+    total: number;
+    pages: number;
+    singles: number;
+    sealed: number;
+    price_range: { min: number; max: number } | null;
+    first_seen: string | null;
+    date: string | null;
+  };
+};
+
+/** `query`: `q`, `type` (single, sealed), `sort` (name, added) and `page`; the defaults left out. */
+export const listCardmarketExpansionProducts = (id: number, query: string, signal?: AbortSignal) =>
+  request<CardmarketExpansionProducts>(
+    withQuery(`/admin/cardmarket/expansions/${id}/products`, query),
+    { signal },
+  );
+
 /** `GET /admin/overview` (F13-a, extended in F13-e with the `riot` block). */
 export type AdminRiotActive = {
   id: string;

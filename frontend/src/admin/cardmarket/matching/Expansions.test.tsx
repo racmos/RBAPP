@@ -65,7 +65,8 @@ describe('Expansions tab (CM-d)', () => {
       '300',
       '10',
       'Not mapped',
-      'Map to a set',
+      // CM-f: View products comes first in the actions
+      'View productsMap to a set',
     ]);
     expect(screen.getByText('2 expansions')).toBeVisible();
   });

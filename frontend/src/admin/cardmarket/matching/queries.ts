@@ -1,4 +1,9 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   createCardmarketLink,
@@ -6,6 +11,7 @@ import {
   getCardmarketCandidates,
   ignoreCardmarketProduct,
   listCardmarketIgnored,
+  listCardmarketExpansionProducts,
   listCardmarketExpansions,
   listCardmarketLinks,
   listCardmarketReview,
@@ -34,6 +40,8 @@ export const matchingKeys = {
   review: (query: string) => [...cardmarketKeys.all, 'matching', 'review', query] as const,
   expansions: (unmappedOnly: boolean) =>
     [...cardmarketKeys.all, 'matching', 'expansions', unmappedOnly] as const,
+  expansionProducts: (id: number, query: string) =>
+    [...cardmarketKeys.all, 'matching', 'expansion-products', id, query] as const,
 };
 
 export const useUnmatched = (query: string) =>
@@ -76,6 +84,23 @@ export const useExpansions = (unmappedOnly: boolean) =>
   useQuery({
     queryKey: matchingKeys.expansions(unmappedOnly),
     queryFn: ({ signal }) => listCardmarketExpansions(unmappedOnly, signal),
+    placeholderData: keepPreviousData,
+  });
+
+/**
+ * The products of one expansion on the latest load (CM-f), 50 a page: "Show more" loads the
+ * next page under the ones shown. `query` holds the filters and the sort, never the page.
+ */
+export const useExpansionProducts = (id: number, query: string) =>
+  useInfiniteQuery({
+    queryKey: matchingKeys.expansionProducts(id, query),
+    queryFn: ({ pageParam, signal }) => {
+      const params = new URLSearchParams(query);
+      if (pageParam > 1) params.set('page', String(pageParam));
+      return listCardmarketExpansionProducts(id, params.toString(), signal);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.page < last.meta.pages ? last.meta.page + 1 : undefined),
     placeholderData: keepPreviousData,
   });
 

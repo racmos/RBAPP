@@ -8,16 +8,19 @@ commit, so a failed write leaves nothing behind.
 
 Cardmarket names few expansions, so each item carries what tells it apart: sample products,
 the price range of its singles, the first day Cardmarket added one of its products and the
-set of ours its linked cards suggest.
+set of ours its linked cards suggest. `expansion_products` (CM-f) lists every product of one
+expansion on the latest load with all we hold about it, read-only.
 """
 import re
 
 import sqlalchemy as sa
 
 from app import db
-from app.models.cardmarket import RbcmExpansion, RbcmPrice, RbcmProduct, RbcmProductCardMap
+from app.models.cardmarket import (RbcmExpansion, RbcmPrice, RbcmProduct, RbcmProductCardMap,
+                                   RbProducts)
 from app.models.set import RbSet
 from app.services import cardmarket_log
+from app.services.product_prices import product_price
 
 # The sample products of an expansion: its dearest singles, then its dearest sealed products
 SAMPLE_SINGLES, SAMPLE_SEALED = 3, 2
@@ -200,6 +203,105 @@ def list_expansions(unmapped_only: bool = False) -> dict:
                   'release_date': released.isoformat() if released else None}
                  for set_id, name, released in sets],
         'meta': {'unmapped': cardmarket_log.unmapped_expansions_count(), 'total': len(items),
+                 'date': cardmarket_log.iso(date) if date else None},
+    }
+
+
+# The prices of a product on the latest load, as the API names them (`rbprc_<name>`).
+PRICE_COLUMNS = ('low', 'trend', 'avg7', 'avg30', 'avg', 'low_foil', 'trend_foil')
+
+
+def _price_value(single):
+    """The SQL of what a product is worth on its row of the latest load: a single its low
+    price (as the price range and the samples), a sealed product the first of avg7, trend, low
+    that is not NULL nor 0 (`product_prices.product_price`, D-F14-4)."""
+    chain = sa.func.coalesce(*(sa.func.nullif(getattr(RbcmPrice, f'rbprc_{name}'), 0)
+                               for name in ('avg7', 'trend', 'low')))
+    return sa.case((single, RbcmPrice.rbprc_low), else_=chain)
+
+
+def _product_item(row) -> dict:
+    single = row.rbprd_type == 'single'
+    priced = row.rbprc_id_product is not None
+    if single:
+        price, source = _money(row.rbprc_low), ('low' if row.rbprc_low is not None else None)
+    else:
+        price, source = product_price(row)
+    return {
+        'id_product': row.rbprd_id_product, 'name': row.rbprd_name,
+        'type': 'single' if single else 'sealed',
+        'category': row.rbprd_category_name, 'category_id': row.rbprd_id_category,
+        'date_added': _first_seen(row.rbprd_date_added),
+        'price': price, 'price_source': source,
+        'prices': ({name: _money(getattr(row, f'rbprc_{name}')) for name in PRICE_COLUMNS}
+                   if priced else None),
+        'linked': ({'set_id': row.rbpcm_rbset_id, 'card_id': row.rbpcm_rbcar_id,
+                    'foil': row.rbpcm_foil} if row.rbpcm_id_product is not None else None),
+        'catalog': ({'kind': row.rbpdt_kind, 'set_id': row.rbpdt_id_set}
+                    if row.rbpdt_id_product is not None else None),
+    }
+
+
+def expansion_products(expansion_id: int, params) -> dict:
+    """`{expansion, items, meta}`: one page of the products of the expansion on the latest
+    load (`params`: `AdminExpansionProductsQuery`) with their prices of that day, card link and
+    catalog product; `meta` adds the figures of the whole expansion (as its list row) whatever
+    the filters. Four statements whatever the size: the expansion with its figures, the latest
+    date, the total and the page. Raises `NotFound`."""
+    rows = _rows(expansion_id)
+    if not rows:
+        raise NotFound(expansion_id)
+    expansion, set_name, products, singles, low_min, low_max, added = rows[0]
+    products, singles = products or 0, singles or 0
+
+    single = RbcmProduct.rbprd_type == 'single'
+    where = [RbcmProduct.rbprd_date == _latest(),
+             RbcmProduct.rbprd_id_expansion == expansion_id]
+    if params.q:
+        where.append(RbcmProduct.rbprd_name.ilike(f'%{params.q}%'))
+    if params.type == 'single':
+        where.append(single)
+    elif params.type == 'sealed':
+        where.append(sa.not_(single))
+    name = sa.func.lower(RbcmProduct.rbprd_name)
+    value = _price_value(single)
+    order = {
+        'price': (value.is_(None), value.desc()),
+        'name': (),
+        'added': (RbcmProduct.rbprd_date_added.is_(None), RbcmProduct.rbprd_date_added.desc()),
+    }[params.sort] + (name, RbcmProduct.rbprd_id_product)
+
+    date = _latest_date()
+    total = db.session.execute(
+        sa.select(sa.func.count()).select_from(RbcmProduct).where(*where)).scalar_one()
+    page = db.session.execute(
+        sa.select(RbcmProduct.rbprd_id_product, RbcmProduct.rbprd_name, RbcmProduct.rbprd_type,
+                  RbcmProduct.rbprd_category_name, RbcmProduct.rbprd_id_category,
+                  RbcmProduct.rbprd_date_added, RbcmPrice.rbprc_id_product,
+                  *(getattr(RbcmPrice, f'rbprc_{one}') for one in PRICE_COLUMNS),
+                  RbcmProductCardMap.rbpcm_id_product, RbcmProductCardMap.rbpcm_rbset_id,
+                  RbcmProductCardMap.rbpcm_rbcar_id, RbcmProductCardMap.rbpcm_foil,
+                  RbProducts.rbpdt_id_product, RbProducts.rbpdt_kind, RbProducts.rbpdt_id_set)
+        .select_from(RbcmProduct)
+        .outerjoin(RbcmPrice, sa.and_(
+            RbcmPrice.rbprc_date == RbcmProduct.rbprd_date,
+            RbcmPrice.rbprc_id_product == RbcmProduct.rbprd_id_product))
+        .outerjoin(RbcmProductCardMap,
+                   RbcmProductCardMap.rbpcm_id_product == RbcmProduct.rbprd_id_product)
+        .outerjoin(RbProducts, RbProducts.rbpdt_id_product == RbcmProduct.rbprd_id_product)
+        .where(*where)
+        .order_by(*order)
+        .offset((params.page - 1) * params.per_page).limit(params.per_page)).all()
+    return {
+        'expansion': {'id': expansion.rbexp_id, 'name': expansion.rbexp_name,
+                      'mapped_set_id': expansion.rbexp_rbset_id, 'mapped_set_name': set_name},
+        'items': [_product_item(row) for row in page],
+        'meta': {'page': params.page, 'per_page': params.per_page, 'total': total,
+                 'pages': max((total + params.per_page - 1) // params.per_page, 1),
+                 'singles': singles, 'sealed': products - singles,
+                 'price_range': (None if low_min is None
+                                 else {'min': _money(low_min), 'max': _money(low_max)}),
+                 'first_seen': _first_seen(added),
                  'date': cardmarket_log.iso(date) if date else None},
     }
 

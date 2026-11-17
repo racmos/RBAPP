@@ -1862,6 +1862,34 @@ audited in the same transaction (target type `cardmarket_expansion`, id the expa
   not mapped → 404 "Cardmarket expansion <id> is not mapped.". Audit
   `cardmarket.expansion.unmap` `{name, previous}`.
 
+- `GET /admin/cardmarket/expansions/<id>/products` (CM-f, read-only; `api_admin.expansion_products`)
+  with `q` (name contains, ignoring case; at most 100 characters, trimmed), `type`
+  (`all` | `single` | `sealed`, default `all`; sealed = every non-single), `sort` (`price`
+  default: dearest first, unpriced last; `name`: A to Z ignoring case; `added`: newest Cardmarket
+  `dateAdded` first, undated last; ties by name ignoring case, then product id), `page` (≥ 1) and
+  `per_page` (50 | 100 | 200, default 50); any other parameter or value → 400
+  `validation_error` "Invalid query parameters" (an empty value counts as absent) →
+  `{expansion: {id, name | null, mapped_set_id | null, mapped_set_name | null}, items:
+  [{id_product, name, type ("single" | "sealed"), category | null (the Cardmarket category name),
+  category_id | null, date_added ("YYYY-MM-DD" | null: the day of its Cardmarket `dateAdded`,
+  null when not a date), price | null, price_source ("low" | "avg7" | "trend" | null), prices:
+  {low, trend, avg7, avg30, avg, low_foil, trend_foil} (each a number or null) | null, linked:
+  {set_id, card_id, foil ("N" | "S" | null)} | null, catalog: {kind | null, set_id | null} |
+  null}], meta: {page, per_page, total, pages, singles, sealed, price_range: {min, max} | null,
+  first_seen | null, date | null}}`. Every product of the expansion on the **latest product
+  date** (`meta.date`; older snapshots are never read) with that day's `rbcm_price` row only
+  (`prices` is null without one; the other columns of the row are not returned). `price` is what
+  the product is worth that day and what `sort=price` orders by: a single its `low` (as
+  `price_range` and the samples), a sealed product the first of `avg7`, `trend`, `low` that is
+  neither null nor 0 (`app/services/product_prices.py::product_price`, D-F14-4); `price_source`
+  names the column. `linked` is its `rbcm_product_card_map` row (none after the production
+  reset), `catalog` its `rbproducts` row. `total` and `pages` (at least 1) follow the filters; a
+  page past the end is empty. `singles`, `sealed`, `price_range` and `first_seen` are of the whole
+  expansion whatever the filters, the same figures as its list item (`singles_count`,
+  `sealed_count`, ...). Unknown expansion → 404 "Cardmarket expansion <id> not found." (the
+  envelope of `PUT`). Writes nothing. Five SQL statements (session user included) whatever the
+  number of products, the filters and the page.
+
 Not ported: the legacy `rbexp_name` override and the download URLs of the legacy list.
 
 ### Audit log (CM-e)

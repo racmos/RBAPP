@@ -25,7 +25,9 @@ import { translateError } from '@/i18n';
 import { formatDate, formatMoney, formatNumber } from '@/lib/format';
 import { FormAlert } from '@/admin/FormAlert';
 import { SetEditor, type SetForm } from '@/admin/SetEditor';
+import { ExpansionProducts } from './ExpansionProducts';
 import type { PanelProps } from './MatchingPage';
+import { useExpansionName, useSetText } from './parts';
 import { useExpansionToasts, useExpansions } from './queries';
 import styles from './MatchingPage.module.css';
 
@@ -34,21 +36,6 @@ const NEW_SET = '__new__';
 
 /** How many sample product names a row shows; the rest are "+N" and in the tooltip. */
 const SHOWN_SAMPLES = 3;
-
-/** "Origins (OGN)", or "GONE (not a set)" when the mapped id is not one of our sets. */
-function useSetText() {
-  const { t } = useTranslation('admin');
-  return (id: string, name: string | null) =>
-    name === null
-      ? t('matching.expansions.setMissing', { id })
-      : t('matching.expansions.setRef', { name, id });
-}
-
-function useExpansionName() {
-  const { t } = useTranslation('admin');
-  return (item: CardmarketExpansionItem) =>
-    item.name ?? t('matching.expansions.unnamed', { id: item.id });
-}
 
 /** The set a row suggests mapping to: its linked cards' set, unless it is mapped there. */
 const hintOf = (item: CardmarketExpansionItem): string | null =>
@@ -120,8 +107,17 @@ function ExpansionCell({
   );
 }
 
-/** The sample products in the map dialog, with their low price. */
-function SampleList({ item }: { item: CardmarketExpansionItem }) {
+/**
+ * The sample products in the map dialog, with their low price; `onViewProducts` adds a button
+ * to every product of the expansion (CM-f).
+ */
+function SampleList({
+  item,
+  onViewProducts,
+}: {
+  item: CardmarketExpansionItem;
+  onViewProducts?: () => void;
+}) {
   const { t } = useTranslation('admin');
   const titleId = useId();
   if (item.sample_products.length === 0) {
@@ -148,6 +144,11 @@ function SampleList({ item }: { item: CardmarketExpansionItem }) {
           </li>
         ))}
       </ul>
+      {onViewProducts && item.products_count > 0 && (
+        <Button size="sm" variant="ghost" onClick={onViewProducts}>
+          {t('matching.expansions.viewAll', { count: item.products_count })}
+        </Button>
+      )}
     </div>
   );
 }
@@ -170,6 +171,8 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
     item: CardmarketExpansionItem;
     preset?: string;
   } | null>(null);
+  // the expansion whose products are open (CM-f)
+  const [viewing, setViewing] = useState<CardmarketExpansionItem | null>(null);
   const unmap = useMutation({
     mutationFn: (item: CardmarketExpansionItem) => unmapCardmarketExpansion(item.id),
     onSuccess: ({ previous }, item) => toasts.unmapped(item.id, nameOf(item), previous),
@@ -250,6 +253,14 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
                     </td>
                     <td>
                       <span className={styles.rowActions}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={t('matching.expansions.viewFor', { name })}
+                          onClick={() => setViewing(item)}
+                        >
+                          {t('matching.expansions.view')}
+                        </Button>
                         {item.mapped_set_id === null ? (
                           <Button
                             size="sm"
@@ -312,6 +323,36 @@ export function ExpansionsPanel({ params, setParam, offline }: PanelProps) {
             sets={query.data.sets}
             offline={offline}
             onDone={() => setMapping(null)}
+            onViewProducts={() => {
+              setMapping(null);
+              setViewing(mapping.item);
+            }}
+          />
+        )}
+      </Modal>
+      <Modal
+        open={viewing !== null}
+        title={viewing ? t('matching.expansions.products.title', { name: nameOf(viewing) }) : ''}
+        size="xl"
+        fullScreenBelow="md"
+        onClose={() => setViewing(null)}
+      >
+        {viewing && query.data && (
+          <ExpansionProducts
+            key={viewing.id}
+            item={viewing}
+            offline={offline}
+            renderMap={({ startNew, onCancel }) => (
+              <MapForm
+                item={viewing}
+                sets={query.data.sets}
+                offline={offline}
+                startNew={startNew}
+                withSamples={false}
+                onCancel={onCancel}
+                onDone={() => setViewing(null)}
+              />
+            )}
           />
         )}
       </Modal>
@@ -323,7 +364,9 @@ type SetFieldErrors = Partial<Record<'id' | 'name' | 'releaseDate' | 'declaredCo
 
 /**
  * Choose one of our sets, or create one with the fields of the sets admin, and map to it. The
- * select starts on `preset` (the hint) or the current set; nothing is written until Map.
+ * select starts on `preset` (the hint) or the current set, or on "Create a new set…" with
+ * `startNew`; nothing is written until Map. `onDone` runs after a mapping (and on Cancel unless
+ * `onCancel` is given). The products dialog (CM-f) shows it without the samples.
  */
 function MapForm({
   item,
@@ -331,12 +374,20 @@ function MapForm({
   sets,
   offline,
   onDone,
+  onCancel,
+  startNew = false,
+  withSamples = true,
+  onViewProducts,
 }: {
   item: CardmarketExpansionItem;
   preset?: string;
   sets: CardmarketExpansionSet[];
   offline: boolean;
   onDone: () => void;
+  onCancel?: () => void;
+  startNew?: boolean;
+  withSamples?: boolean;
+  onViewProducts?: () => void;
 }) {
   const { t, i18n } = useTranslation('admin');
   const { t: common } = useTranslation('common');
@@ -345,6 +396,7 @@ function MapForm({
   const name = useExpansionName()(item);
   const current = item.mapped_set_id;
   const [choice, setChoice] = useState(() => {
+    if (startNew) return NEW_SET;
     const start = preset ?? current;
     return sets.some((one) => one.id === start) ? (start ?? '') : '';
   });
@@ -409,7 +461,7 @@ function MapForm({
           {t('matching.expansions.current', { set: setText(current, item.mapped_set_name) })}
         </p>
       )}
-      <SampleList item={item} />
+      {withSamples && <SampleList item={item} onViewProducts={onViewProducts} />}
       <Field label={t('matching.expansions.set')}>
         {(control) => (
           <Select
@@ -462,7 +514,7 @@ function MapForm({
             >
               {t('matching.expansions.submit')}
             </Button>
-            <Button variant="ghost" onClick={onDone}>
+            <Button variant="ghost" onClick={onCancel ?? onDone}>
               {common('actions.cancel')}
             </Button>
           </div>

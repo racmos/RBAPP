@@ -24,6 +24,11 @@ export type ModalProps = {
   variant?: 'modal' | 'sheet' | 'side';
   /** Width preset; full screen below 680 px (S10). */
   size?: 'md' | 'lg' | 'xl';
+  /**
+   * Below which breakpoint a modal fills the screen: `sm` (680 px, the default) or `md`
+   * (860 px) for a dialog whose content needs the room, such as a list (CM-f).
+   */
+  fullScreenBelow?: 'sm' | 'md';
   /** Keep the heading for assistive technology only. */
   hideTitle?: boolean;
   /** Leave out the corner close button (the content has its own buttons). */
@@ -64,6 +69,7 @@ export function Modal({
   dismissOnBackdrop = true,
   variant = 'modal',
   size = 'md',
+  fullScreenBelow = 'sm',
   hideTitle = false,
   hideClose = false,
   dismissible = true,
@@ -125,7 +131,14 @@ export function Modal({
   return (
     <dialog
       ref={dialogRef}
-      className={[styles.dialog, styles[variant], styles[size]].join(' ')}
+      className={[
+        styles.dialog,
+        styles[variant],
+        styles[size],
+        fullScreenBelow === 'md' ? styles.fullMd : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       aria-labelledby={headingId}
       onClose={handleClose}
       onCancel={handleCancel}
