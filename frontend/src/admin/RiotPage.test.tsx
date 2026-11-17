@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { axe } from 'vitest-axe';
@@ -148,6 +148,29 @@ describe('RiotPage (F13-f S9)', () => {
     await userEvent.click((await screen.findAllByRole('button', { name: /Manual/ }))[0]);
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Finished')).toBeVisible();
+  });
+
+  it("shows run and release times in the reader's time, not as raw UTC text", async () => {
+    const recent = {
+      id: 4,
+      kind: 'riot_sync',
+      status: 'queued',
+      requested_by: 'root',
+      requested_at: '2030-01-01T12:00:00',
+      started_at: null,
+      finished_at: null,
+      message: null,
+    };
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/overview`, () => ok(OVERVIEW)),
+      http.get(`${API}/admin/sets`, () => ok(SETS)),
+      http.get(`${API}/admin/jobs`, () => ok({ items: [recent] })),
+    );
+    await renderApp({ path: '/admin/riot', width: 1280 });
+    await waitFor(() => expect(screen.getAllByText(/1 Jan 2030/)).toHaveLength(2));
+    expect(screen.queryByText('2030-01-01T12:00:00')).toBeNull();
+    expect(screen.queryByText('2030-01-01T08:00:00+01:00')).toBeNull();
   });
 
   it('no active sets shows the empty hint', async () => {
