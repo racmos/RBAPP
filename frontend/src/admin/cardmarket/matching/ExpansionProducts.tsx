@@ -270,7 +270,7 @@ export function ExpansionProducts({
   }
 
   return (
-    <div className={styles.products}>
+    <div className={wide ? styles.products : `${styles.products} ${styles.productsStacked}`}>
       <div className={styles.dialog}>
         <div className={styles.meta}>
           <span>{t('matching.expansions.products.singles', { count: singles })}</span>

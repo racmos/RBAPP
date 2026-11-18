@@ -198,8 +198,20 @@ describe('Expansion products (CM-f)', () => {
     expect(region).toHaveAttribute('data-slot', 'table-scroll');
     expect(region).toHaveClass(tableStyles.scroll!);
     const css = readCss(join(SRC_DIR, 'admin/cardmarket/matching/MatchingPage.module.css'));
+    // the list takes all the room the summary, the filters and the map buttons leave in a column
+    // as tall as the dialog (a fixed 55 % cap left room for about five rows on a laptop)
     const decls = declsFor(css, ".productsScroll[data-slot='table-scroll']");
-    expect(decls.findLast((decl) => decl.prop === 'max-height')?.value).toBe('min(55dvh, 640px)');
+    expect(decls.findLast((decl) => decl.prop === 'max-height')?.value).toBe('none');
+    expect(decls.find((decl) => decl.prop === 'flex')?.value).toBe('1 1 auto');
+    const column = declsFor(css, '.products');
+    expect(column.find((decl) => decl.prop === 'display')?.value).toBe('flex');
+    expect(column.findLast((decl) => decl.prop === 'height')?.value).toBe(
+      'min(calc(100dvh - 170px), 860px)',
+    );
+    // below 860 px the products are cards and the dialog scrolls as a whole
+    expect(declsFor(css, '.productsStacked').find((decl) => decl.prop === 'height')?.value).toBe(
+      'auto',
+    );
     // full screen below 860 px (the md breakpoint)
     const modalCss = readCss(join(SRC_DIR, 'components/ui/Modal.module.css'));
     expect(declsFor(modalCss, '.fullMd').find((decl) => decl.prop === 'height')?.value).toBe(
