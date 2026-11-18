@@ -135,7 +135,10 @@ class TestFetchGallery:
         monkeypatch.setattr(rs, '_get_session', lambda: FakePageSession(self._page()))
         gallery = rs.fetch_gallery()
         assert gallery['set_codes'] == ['OGN', 'OGS']
+        # The fixture's `nomatch` item has no set and no `<set>-` prefix: the only kind
+        # of item the sync may still skip (owner requirement 2026-11-18).
         assert gallery['unparsed'] == 1
+        assert gallery['unparsed_ids'] == ['nomatch']
         by_id = {(c['rbcar_rbset_id'], c['rbcar_id']): c for c in gallery['cards']}
         assert set(by_id) == {('OGN', '1'), ('OGN', '2'), ('OGS', '5')}
         assert by_id[('OGN', '1')]['rbcar_name'] == 'Alpha Unit'
@@ -177,7 +180,7 @@ class TestInserts:
         result = run(set_codes=['OGN'])
         assert result['trigger'] == 'manual'
         assert result['today'] == '2026-10-10'
-        assert result['gallery'] == {'cards': 3, 'unparsed': 0,
+        assert result['gallery'] == {'cards': 3, 'unparsed': 0, 'unparsed_ids': [],
                                      'set_codes': ['OGN', 'OGS']}
         assert result['placeholder_sets'] == []
         assert set(result) == {'trigger', 'today', 'gallery', 'placeholder_sets', 'sets'}

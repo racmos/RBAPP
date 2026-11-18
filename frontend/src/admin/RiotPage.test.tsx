@@ -150,6 +150,111 @@ describe('RiotPage (F13-f S9)', () => {
     expect(within(dialog).getByText('Finished')).toBeVisible();
   });
 
+  it('the job detail names the gallery cards the sync skipped', async () => {
+    const recent = {
+      id: 5,
+      kind: 'riot_sync',
+      status: 'success',
+      requested_by: 'root',
+      requested_at: null,
+      started_at: null,
+      finished_at: '2030-01-01T12:00:00',
+      message: null,
+    };
+    const sets = [{ set_id: 'RAD', inserted: 17, applied: 0, proposed: 0, unchanged: 1 }];
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/overview`, () => ok(OVERVIEW)),
+      http.get(`${API}/admin/sets`, () => ok(SETS)),
+      http.get(`${API}/admin/jobs`, () => ok({ items: [recent] })),
+      http.get(`${API}/admin/jobs/5`, () =>
+        ok({
+          ...recent,
+          params: { trigger: 'manual' },
+          result: {
+            trigger: 'manual',
+            gallery: { cards: 18, unparsed: 12, unparsed_ids: ['nomatch', 'x'], set_codes: [] },
+            sets,
+          },
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin/riot', width: 1280 });
+    await userEvent.click((await screen.findAllByRole('button', { name: /Manual/ }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('12 gallery cards were skipped: nomatch, x…')).toBeVisible();
+    expect(within(dialog).getByText(/RAD: 17 new/)).toBeVisible();
+  });
+
+  it('the job detail of a run that skipped one card without an id', async () => {
+    const recent = {
+      id: 6,
+      kind: 'riot_sync',
+      status: 'success',
+      requested_by: 'root',
+      requested_at: null,
+      started_at: null,
+      finished_at: '2030-01-01T12:00:00',
+      message: null,
+    };
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/overview`, () => ok(OVERVIEW)),
+      http.get(`${API}/admin/sets`, () => ok(SETS)),
+      http.get(`${API}/admin/jobs`, () => ok({ items: [recent] })),
+      http.get(`${API}/admin/jobs/6`, () =>
+        ok({
+          ...recent,
+          params: { trigger: 'manual' },
+          result: {
+            trigger: 'manual',
+            gallery: { cards: 1, unparsed: 1, unparsed_ids: [], set_codes: [] },
+            sets: [],
+          },
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin/riot', width: 1280 });
+    await userEvent.click((await screen.findAllByRole('button', { name: /Manual/ }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('1 gallery card was skipped')).toBeVisible();
+  });
+
+  it('the job detail says nothing about skipped cards when none was skipped', async () => {
+    const recent = {
+      id: 7,
+      kind: 'riot_sync',
+      status: 'success',
+      requested_by: 'root',
+      requested_at: null,
+      started_at: null,
+      finished_at: '2030-01-01T12:00:00',
+      message: null,
+    };
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/overview`, () => ok(OVERVIEW)),
+      http.get(`${API}/admin/sets`, () => ok(SETS)),
+      http.get(`${API}/admin/jobs`, () => ok({ items: [recent] })),
+      http.get(`${API}/admin/jobs/7`, () =>
+        ok({
+          ...recent,
+          params: { trigger: 'manual' },
+          result: {
+            trigger: 'manual',
+            gallery: { cards: 1, unparsed: 0, unparsed_ids: [], set_codes: [] },
+            sets: [],
+          },
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin/riot', width: 1280 });
+    await userEvent.click((await screen.findAllByRole('button', { name: /Manual/ }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Finished')).toBeVisible();
+    expect(within(dialog).queryByText(/skipped/)).toBeNull();
+  });
+
   it("shows run and release times in the reader's time, not as raw UTC text", async () => {
     const recent = {
       id: 4,

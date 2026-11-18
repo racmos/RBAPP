@@ -220,7 +220,11 @@ every gallery set); the F13-d timers queue the schedule. Unknown set codes fail 
 Run by hand (as the service user, from the deployed checkout): the command above, then a minute later
 `venv/bin/flask jobs list`. Read the result with the one-liner below (it prints the latest `riot_sync`
 job): `validation`-style summary per set (`window`, `inserted`, `applied`, `proposed`, `unchanged`,
-`missing_from_gallery`, `images`, `error`).
+`missing_from_gallery`, `images`, `error`). `gallery.unparsed` counts the gallery items the sync
+skipped and `gallery.unparsed_ids` names up to 10 of them (also shown in Admin → Riot, job detail).
+Since 2026-11-18 every gallery card is imported (runes `r01`, `r01a`, special prints `sp1`, any
+other `<set>-<rest>` id; the set comes from the gallery's set filter, `docs/api.md` → "Sync, jobs
+and change review"), so `unparsed` should be 0; anything else names a new id shape to look at.
 
 ```bash
 venv/bin/flask shell <<< "import json; from app.models import RbJob; j = RbJob.query.filter_by(rbjob_kind='riot_sync').order_by(RbJob.rbjob_id.desc()).first(); print(j.rbjob_id, j.rbjob_status, j.rbjob_message); print(json.dumps(j.rbjob_result, indent=2, ensure_ascii=False))"

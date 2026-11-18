@@ -45,23 +45,39 @@ class GalleryError(Exception):
     """The gallery page could not be fetched or parsed (message has no URL)."""
 
 
+UNPARSED_IDS_MAX = 10
+
+
 def fetch_gallery() -> dict:
-    """One GET of the `en-us` gallery; parsed cards, set codes, unparsed count (S1)."""
+    """One GET of the `en-us` gallery; parsed cards, set codes, skipped items (S1).
+
+    An item is skipped only when it has no recognisable set (`riot_scraper.card_key`)
+    or names a card an earlier item already gave; it is counted in `unparsed` and its
+    gallery id (when it has one) listed in `unparsed_ids`, at most `UNPARSED_IDS_MAX`.
+    """
     session = _get_session()
     try:
         items = _fetch_gallery_json(session)
     except Exception as error:
         raise GalleryError(f'gallery fetch failed: {error}') from None
-    cards, unparsed, codes = [], 0, []
+    cards, unparsed, unparsed_ids, codes, seen = [], 0, [], [], set()
     for raw in items:
         parsed = _parse_card(raw)
-        if parsed is None:
+        key = None if parsed is None else (parsed['rbcar_rbset_id'], parsed['rbcar_id'])
+        if key is None or key in seen:
+            if key is not None:
+                logger.warning('Duplicate gallery card %s-%s: %r', *key, raw.get('id'))
             unparsed += 1
+            raw_id = raw.get('id')
+            if raw_id and isinstance(raw_id, str) and len(unparsed_ids) < UNPARSED_IDS_MAX:
+                unparsed_ids.append(raw_id)
             continue
+        seen.add(key)
         cards.append(parsed)
         if parsed['rbcar_rbset_id'] not in codes:
             codes.append(parsed['rbcar_rbset_id'])
-    return {'cards': cards, 'set_codes': sorted(codes), 'unparsed': unparsed}
+    return {'cards': cards, 'set_codes': sorted(codes), 'unparsed': unparsed,
+            'unparsed_ids': unparsed_ids}
 
 
 def today_madrid(now: datetime) -> date:
@@ -138,7 +154,11 @@ def _same(stored, gallery):
 
 
 def card_number(card_id: str | None) -> int | None:
-    """The leading digits of a card id: '69a' -> 69, '189s' -> 189, 't04' -> None."""
+    """The leading digits of a card id: '69a' -> 69, '189s' -> 189, 't04' -> None.
+
+    Runes ('r01') and special prints ('sp1') have no number either, so the S15
+    Showcase rule of `gallery_value` never touches them: they keep the gallery rarity.
+    """
     match = re.match(r'(\d+)', card_id or '')
     return int(match.group(1)) if match else None
 
@@ -214,6 +234,7 @@ def sync(set_codes: list[str] | None = None, trigger: str = 'manual',
     result = {'trigger': trigger, 'today': today.isoformat(),
               'gallery': {'cards': len(gallery['cards']),
                           'unparsed': gallery['unparsed'],
+                          'unparsed_ids': gallery.get('unparsed_ids', []),
                           'set_codes': gallery['set_codes']},
               'placeholder_sets': [], 'sets': []}
     for set_id in wanted:

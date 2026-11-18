@@ -1647,6 +1647,20 @@ extension inside `PRODUCT_IMAGES_DIR`, cached a week, no `Set-Cookie`; anything 
   numbered above it is Showcase and at or below it a gallery "Showcase" keeps the stored
   rarity; image URLs are compared without query string and fragment. A rule that says "same"
   means no proposal and no write.
+  Card ids (owner requirement 2026-11-18, `riot_scraper.card_key`): the set is the gallery
+  filter's `set.value.id` (trimmed, upper case; the gallery id prefix only when it is missing
+  or not letters and digits); the card id is the rest of the gallery id: `ogn-079a-298` →
+  `79a`, `sfd-227-star-221` → `227s`, `sfd-t03` → `t03` (unchanged), runes `rad-r01` /
+  `rad-r01a` → `r01` / `r01a`, special prints `rad-sp1-005` → `sp1` (the `005` is the
+  printed total), any other shape → the rest lower case, segments joined by `-`, only letters
+  and digits, leading zeros stripped (`rad-promo-007` → `promo-7`). New ids are lower case
+  (like tokens, admin-created ids and the CSV import lookup); the image is
+  `<set lower>_<card id>.png` in the set's folder. Runes and special prints have no number,
+  so the Showcase rule never applies to them. The job `result.gallery` is
+  `{cards, unparsed, unparsed_ids, set_codes}`: `unparsed` counts the gallery items skipped
+  (no recognisable set, nothing left of the card id, or a second item for a card already
+  read) and `unparsed_ids` names at most 10 of them (items without an id are only counted);
+  Admin → Riot shows them in the job detail.
 - `GET /admin/jobs` with `kind`, `status`, `limit` (1-100, default 20), newest first →
   `items[]` of `{id, kind, status, requested_by (username|null), requested_at,
   started_at, finished_at, message}`. `GET /admin/jobs/<id>` adds `params` and `result`;
