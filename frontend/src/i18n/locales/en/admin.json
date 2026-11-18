@@ -189,6 +189,10 @@
     "reviewChanges": "Review changes",
     "recentTitle": "Recent runs",
     "recentSummary": "{{sets}} sets · {{inserted}} new · {{proposed}} proposed",
+    "skipped_one": "{{count}} gallery card was skipped",
+    "skipped_other": "{{count}} gallery cards were skipped",
+    "skippedIds_one": "{{count}} gallery card was skipped: {{ids}}",
+    "skippedIds_other": "{{count}} gallery cards were skipped: {{ids}}",
     "trigger": {
       "schedule": "Scheduled",
       "manual": "Manual"

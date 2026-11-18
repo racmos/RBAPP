@@ -12,6 +12,7 @@ from app.schemas.game_domain import CARD_TYPES, DOMAINS, RARITIES, SUPERTYPES
 from app.services.bans import card_bans, name_key
 
 _LEADING_DIGITS = re.compile(r'\d+')
+_DIGIT_RUNS = re.compile(r'(\d+)')
 _SPLIT_WORDS = re.compile(r'[\s,]+')
 _REMINDER = re.compile(r'\([^()]*\)')
 _BRACKET = re.compile(r'\[([^\[\]]*)\]')
@@ -156,9 +157,18 @@ def sets_newest_first(sets):
 
 
 def natural_key(set_rank, card_id):
-    """Sort key: set rank, then numeric card id (`2` before `10`, `t01` last)."""
+    """Sort key: set rank, then numeric card id (`2` before `10`, `7` before `7a`), then
+    the ids without a leading number (runes `r01`, special prints `sp1`, tokens `t01`) in
+    natural order (`sp2` before `sp10`).
+
+    `re.split` with a capturing group alternates text and digits starting with text, so
+    an `int` never meets a `str` in the natural part; the casefolded id breaks a tie.
+    """
     number = card_number(card_id)
-    return (set_rank, number is None, number or 0, (card_id or '').casefold())
+    text = (card_id or '').casefold()
+    parts = _DIGIT_RUNS.split(text)
+    natural = tuple(int(part) if index % 2 else part for index, part in enumerate(parts))
+    return (set_rank, number is None, number or 0, natural, text)
 
 
 def rarity_rank(rarity):

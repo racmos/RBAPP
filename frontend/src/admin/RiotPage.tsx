@@ -32,7 +32,20 @@ type RiotSet = {
   proposed: number;
   unchanged: number;
 };
+/** `result.gallery` of a riot_sync job; `unparsed_ids` names at most 10 of the skipped items. */
+type RiotGallery = { unparsed?: number; unparsed_ids?: string[] };
 type WindowKey = 'pre_release' | 'post_release' | 'monthly' | 'none';
+
+/** "N gallery cards were skipped: a, b…" (none when nothing was skipped). */
+function SkippedCards({ gallery }: { gallery: RiotGallery | undefined }) {
+  const { t } = useTranslation('admin');
+  const count = typeof gallery?.unparsed === 'number' ? gallery.unparsed : 0;
+  if (count <= 0) return null;
+  const ids = Array.isArray(gallery?.unparsed_ids) ? gallery.unparsed_ids : [];
+  if (ids.length === 0) return <p>{t('riot.skipped', { count })}</p>;
+  const more = count > ids.length ? '…' : '';
+  return <p>{t('riot.skippedIds', { count, ids: ids.join(', ') + more })}</p>;
+}
 type JobStatusKey = 'queued' | 'running' | 'success' | 'error';
 
 /** One riot_sync job with live refresh while it runs (F13-f S9). */
@@ -58,12 +71,14 @@ export function JobStatus({ jobId, onDone }: { jobId: number; onDone?: () => voi
   const sets: RiotSet[] = Array.isArray((job as { result?: { sets?: unknown } }).result?.sets)
     ? (job as unknown as { result: { sets: RiotSet[] } }).result.sets
     : [];
+  const gallery = (job as { result?: { gallery?: RiotGallery } | null }).result?.gallery;
   return (
     <div>
       <p>
         <Badge>{t(`job.status.${job.status as JobStatusKey}` as 'job.status.queued')}</Badge> #
         {job.id}
       </p>
+      <SkippedCards gallery={gallery} />
       <ul className={styles.list}>
         {sets.map((set) => (
           <li key={set.set_id}>

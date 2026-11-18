@@ -122,30 +122,83 @@ def full_name(name: str, subtitle: Optional[str], supertypes: list[str],
     return f'{name}, {subtitle}'
 
 
-def _parse_card(card_json: dict) -> Optional[dict]:
-    """Parse single card JSON into dict matching RbCard columns."""
-    card_id_raw = card_json.get('id', '')
+_SET_CODE = re.compile(r'[A-Za-z0-9]+')
+_PREFIXED_ID = re.compile(r'([A-Za-z0-9]+)-(.*)', re.DOTALL)
+_SHOWCASE_ID = re.compile(r'(\d+)-star-(\d+)')
+_NUMBERED_ID = re.compile(r'(\d+[a-zA-Z]*)-(\d+)')
+_TOKEN_ID = re.compile(r'([tT]\d+)')
+_RUNE_ID = re.compile(r'[rR]\d+[a-zA-Z]?')
+_SPECIAL_ID = re.compile(r'([sS][pP]\d+)-\d+')
+_NOT_ID_CHARS = re.compile(r'[^a-z0-9]')
 
-    # Pattern: sfd-227-star-221 -> set=SFD, id=227s (showcase)
-    m = re.match(r'([a-zA-Z]+)-(\d+)-star-(\d+)', card_id_raw)
+
+def card_key(card_json: dict) -> Optional[tuple[str, str]]:
+    """`(set id, card id)` of a gallery card, or None when it has no recognisable set.
+
+    The set is the gallery filter's `set.value.id` ("RAD"), trimmed and upper-cased;
+    only when it is missing or not letters and digits does the id prefix decide
+    (`rad-...` -> RAD). The card id is the rest of the gallery id after that prefix
+    (the whole id when it has none), read by the first rule that matches:
+
+    - `227-star-221` -> `227s` (showcase), `050a-221` -> `50a`, `t03` -> `t03`: the
+      historical patterns, unchanged (prefix match, the leading zeros stripped);
+    - `r01`, `r01a` -> `r01`, `r01a` (runes and their variants, lower case);
+    - `sp1-005` -> `sp1` (special prints; `005` is the printed total of the set);
+    - anything else: the rest lower-cased, one `-` between segments, each segment
+      reduced to letters and digits and its leading zeros stripped (`promo-007`
+      -> `promo-7`); nothing left means no card id.
+
+    The ids stay lower case like tokens, admin-created ids and the CSV import lookup.
+    """
+    raw_id = card_json.get('id')
+    raw_id = raw_id if isinstance(raw_id, str) else ''
+    prefixed = _PREFIXED_ID.fullmatch(raw_id)
+    rest = prefixed.group(2) if prefixed else raw_id
+    set_id = _gallery_set(card_json) or (prefixed.group(1).upper() if prefixed else None)
+    if not set_id:
+        return None
+    card_id = _card_part(rest)
+    return (set_id, card_id) if card_id else None
+
+
+def _gallery_set(card_json: dict) -> Optional[str]:
+    """The set code of the gallery filter (`set.value.id`), or None when unusable."""
+    set_field = card_json.get('set')
+    value = set_field.get('value') if isinstance(set_field, dict) else None
+    code = value.get('id') if isinstance(value, dict) else None
+    if not isinstance(code, str):
+        return None
+    code = code.strip().upper()
+    return code if _SET_CODE.fullmatch(code) else None
+
+
+def _card_part(rest: str) -> str:
+    """The stored card id of the part of a gallery id after its set prefix."""
+    m = _SHOWCASE_ID.match(rest)
     if m:
-        rbset_id = m.group(1).upper()
-        rbcar_id = _strip_leading_zeros(f"{m.group(2)}s")
-    else:
-        # Pattern: sfd-138-221 -> set=SFD, id=138
-        m = re.match(r'([a-zA-Z]+)-(\d+[a-zA-Z]*)-(\d+)', card_id_raw)
-        if m:
-            rbset_id = m.group(1).upper()
-            rbcar_id = _strip_leading_zeros(m.group(2))
-        else:
-            # Pattern: sfd-t03 -> set=SFD, id=t03
-            m = re.match(r'([a-zA-Z]+)-([tT]\d+)', card_id_raw)
-            if m:
-                rbset_id = m.group(1).upper()
-                rbcar_id = m.group(2)
-            else:
-                logger.warning(f"Cannot parse card ID: {card_id_raw}")
-                return None
+        return _strip_leading_zeros(f"{m.group(1)}s")
+    m = _NUMBERED_ID.match(rest)
+    if m:
+        return _strip_leading_zeros(m.group(1))
+    m = _TOKEN_ID.match(rest)
+    if m:
+        return m.group(1)
+    if _RUNE_ID.fullmatch(rest):
+        return rest.lower()
+    m = _SPECIAL_ID.fullmatch(rest)
+    if m:
+        return m.group(1).lower()
+    segments = (_NOT_ID_CHARS.sub('', segment) for segment in rest.lower().split('-'))
+    return '-'.join(_strip_leading_zeros(segment) for segment in segments if segment)
+
+
+def _parse_card(card_json: dict) -> Optional[dict]:
+    """Parse single card JSON into dict matching RbCard columns (`card_key` for the ids)."""
+    key = card_key(card_json)
+    if key is None:
+        logger.warning("Cannot parse card ID: %r", card_json.get('id'))
+        return None
+    rbset_id, rbcar_id = key
 
     # Domain
     domain_vals = card_json.get('domain', {}).get('values', [])
