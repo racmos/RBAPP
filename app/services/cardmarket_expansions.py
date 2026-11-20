@@ -9,7 +9,7 @@ commit, so a failed write leaves nothing behind.
 Cardmarket names few expansions, so each item carries what tells it apart: sample products,
 the price range of its singles, the first day Cardmarket added one of its products and the
 set of ours its linked cards suggest. `expansion_products` (CM-f) lists every product of one
-expansion on the latest load with all we hold about it, read-only.
+expansion on the latest load with all we hold about it, read-only, with its kind (CM-g).
 """
 import re
 
@@ -19,8 +19,10 @@ from app import db
 from app.models.cardmarket import (RbcmExpansion, RbcmPrice, RbcmProduct, RbcmProductCardMap,
                                    RbProducts)
 from app.models.set import RbSet
+from app.schemas.admin import EXPANSION_PRODUCT_KINDS
 from app.services import cardmarket_log
 from app.services.product_prices import product_price
+from app.services.products import kind_sql
 
 # The sample products of an expansion: its dearest singles, then its dearest sealed products
 SAMPLE_SINGLES, SAMPLE_SEALED = 3, 2
@@ -220,6 +222,37 @@ def _price_value(single):
     return sa.case((single, RbcmPrice.rbprc_low), else_=chain)
 
 
+def _kind(single):
+    """The SQL of the kind of a product of the latest load (CM-g): `card` for a single, else
+    its catalog kind (the admin's locks win), else the kind of its Cardmarket category and name
+    (`products.kind_sql`, the rules of `kind_for`). Needs `rbproducts` outer-joined."""
+    return sa.case((single, 'card'),
+                   else_=sa.func.coalesce(RbProducts.rbpdt_kind,
+                                          kind_sql(RbcmProduct.rbprd_category_name,
+                                                   RbcmProduct.rbprd_name)))
+
+
+def _kind_counts(expansion_id, hit) -> tuple[list[dict], int]:
+    """`([{kind, count}], total)`: the products of each kind of the whole expansion on the
+    latest load (card first, then the `PRODUCT_KINDS` order, zero kinds left out) and how many
+    of them `hit` (the filters) selects. One statement: grouped over a subquery, so the kind
+    expression is written once."""
+    single = RbcmProduct.rbprd_type == 'single'
+    each = (sa.select(_kind(single).label('kind'),
+                      sa.case((hit, 1), else_=0).label('hit'))
+            .select_from(RbcmProduct)
+            .outerjoin(RbProducts, RbProducts.rbpdt_id_product == RbcmProduct.rbprd_id_product)
+            .where(RbcmProduct.rbprd_date == _latest(),
+                   RbcmProduct.rbprd_id_expansion == expansion_id)
+            .subquery())
+    rows = dict((kind, (count, hits)) for kind, count, hits in db.session.execute(
+        sa.select(each.c.kind, sa.func.count(), sa.func.sum(each.c.hit))
+        .group_by(each.c.kind)).all())
+    kinds = [{'kind': kind, 'count': rows[kind][0]}
+             for kind in EXPANSION_PRODUCT_KINDS if kind in rows]
+    return kinds, sum(int(hits or 0) for _, hits in rows.values())
+
+
 def _product_item(row) -> dict:
     single = row.rbprd_type == 'single'
     priced = row.rbprc_id_product is not None
@@ -229,7 +262,7 @@ def _product_item(row) -> dict:
         price, source = product_price(row)
     return {
         'id_product': row.rbprd_id_product, 'name': row.rbprd_name,
-        'type': 'single' if single else 'sealed',
+        'type': 'single' if single else 'sealed', 'kind': row.kind,
         'category': row.rbprd_category_name, 'category_id': row.rbprd_id_category,
         'date_added': _first_seen(row.rbprd_date_added),
         'price': price, 'price_source': source,
@@ -244,10 +277,11 @@ def _product_item(row) -> dict:
 
 def expansion_products(expansion_id: int, params) -> dict:
     """`{expansion, items, meta}`: one page of the products of the expansion on the latest
-    load (`params`: `AdminExpansionProductsQuery`) with their prices of that day, card link and
-    catalog product; `meta` adds the figures of the whole expansion (as its list row) whatever
-    the filters. Four statements whatever the size: the expansion with its figures, the latest
-    date, the total and the page. Raises `NotFound`."""
+    load (`params`: `AdminExpansionProductsQuery`) with their kind, prices of that day, card
+    link and catalog product; `meta` adds the figures of the whole expansion (as its list row,
+    and `kinds`, CM-g) whatever the filters. Four statements whatever the size: the expansion
+    with its figures, the latest date, the kind counts with the total, and the page. Raises
+    `NotFound`."""
     rows = _rows(expansion_id)
     if not rows:
         raise NotFound(expansion_id)
@@ -255,14 +289,18 @@ def expansion_products(expansion_id: int, params) -> dict:
     products, singles = products or 0, singles or 0
 
     single = RbcmProduct.rbprd_type == 'single'
-    where = [RbcmProduct.rbprd_date == _latest(),
-             RbcmProduct.rbprd_id_expansion == expansion_id]
+    kind = _kind(single)
+    filters = []
     if params.q:
-        where.append(RbcmProduct.rbprd_name.ilike(f'%{params.q}%'))
+        filters.append(RbcmProduct.rbprd_name.ilike(f'%{params.q}%'))
     if params.type == 'single':
-        where.append(single)
+        filters.append(single)
     elif params.type == 'sealed':
-        where.append(sa.not_(single))
+        filters.append(sa.not_(single))
+    if params.kind != 'all':
+        filters.append(kind == params.kind)
+    where = [RbcmProduct.rbprd_date == _latest(),
+             RbcmProduct.rbprd_id_expansion == expansion_id, *filters]
     name = sa.func.lower(RbcmProduct.rbprd_name)
     value = _price_value(single)
     order = {
@@ -272,10 +310,10 @@ def expansion_products(expansion_id: int, params) -> dict:
     }[params.sort] + (name, RbcmProduct.rbprd_id_product)
 
     date = _latest_date()
-    total = db.session.execute(
-        sa.select(sa.func.count()).select_from(RbcmProduct).where(*where)).scalar_one()
+    kinds, total = _kind_counts(expansion_id, sa.and_(sa.true(), *filters))
     page = db.session.execute(
         sa.select(RbcmProduct.rbprd_id_product, RbcmProduct.rbprd_name, RbcmProduct.rbprd_type,
+                  kind.label('kind'),
                   RbcmProduct.rbprd_category_name, RbcmProduct.rbprd_id_category,
                   RbcmProduct.rbprd_date_added, RbcmPrice.rbprc_id_product,
                   *(getattr(RbcmPrice, f'rbprc_{one}') for one in PRICE_COLUMNS),
@@ -298,7 +336,7 @@ def expansion_products(expansion_id: int, params) -> dict:
         'items': [_product_item(row) for row in page],
         'meta': {'page': params.page, 'per_page': params.per_page, 'total': total,
                  'pages': max((total + params.per_page - 1) // params.per_page, 1),
-                 'singles': singles, 'sealed': products - singles,
+                 'singles': singles, 'sealed': products - singles, 'kinds': kinds,
                  'price_range': (None if low_min is None
                                  else {'min': _money(low_min), 'max': _money(low_max)}),
                  'first_seen': _first_seen(added),

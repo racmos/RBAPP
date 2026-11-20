@@ -280,6 +280,15 @@ class TestPatchKind:
         assert audits()[1].rbaud_details == {'kind': ['other', 'box'],
                                              'kind_locked': [True, False]}
 
+    def test_null_recomputes_with_the_name_cm_g(self, admin_client, catalog):
+        add_product(104, 'Jinx Trial Deck', kind='box', category='Riftbound Riftbound Box Sets',
+                    kind_locked=True)
+        add_product(105, 'Bulk Runes Box', kind='box', category='Riftbound Riftbound Box Sets',
+                    kind_locked=True)
+        db.session.commit()
+        assert payload(patch(admin_client, 104, {'kind': None}))['data']['kind'] == 'starter'
+        assert payload(patch(admin_client, 105, {'kind': None}))['data']['kind'] == 'bundle'
+
     def test_after_unlocking_the_refresh_follows_the_category_again(self, admin_client,
                                                                      catalog):
         patch(admin_client, 100, {'kind': 'case'})

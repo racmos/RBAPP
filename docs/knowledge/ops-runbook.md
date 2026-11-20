@@ -333,6 +333,37 @@ get name, category and `listed = true`, and kind / set unless `rbpdt_kind_locked
 queues it after `value_snapshot` (each on its own: one active or failing does not stop the other). A date
 without non-single products is an error and changes nothing; so is an unknown param or a bad date.
 
+Product kinds (`app/services/products.py::kind_for(category, name)`, case-insensitive, the first rule
+that matches wins; only the `box set` rule reads the product name; `deck box` does not count as `deck` in
+the category):
+
+| Rule (in order) | Kind |
+|---|---|
+| category has `case` | case |
+| category has `booster box` or `display` | box |
+| category has `booster` | booster |
+| category has `box set` **and** the name has `deck` (CM-g) | starter |
+| category has `bundle`, `gift` or `box set` | bundle (shown as "Bundle / set") |
+| category has `starter` or `deck` | starter |
+| category has `sleeve` | sleeves |
+| category has `deck box`, `playmat`, `binder`, `accessor`, `dice` or `token` | accessory |
+| anything else | other |
+
+The six Riftbound categories Cardmarket has: `Riftbound Single` (single, never a product; "Cards" in the
+admin's expansion products), `Riftbound Booster` → booster, `Riftbound Display` → box, `Riftbound Champion
+Decks` → starter, `Riftbound Riftbound Box Sets` (Cardmarket's boxed, promotional and collection
+products) by name: a name with `deck` (the trial decks 'Jinx Trial Deck', ...: champion decks for the
+owner) → starter, anything else (vaults, pre-rift event kits, bundles, collection and promotional boxes,
+'Bulk Runes Box') → bundle; `RB Set` (the rarity sets 'Origins: Common Set' ... 'Origins: Full Set', loose
+cards the owner does not sell) has no rule and stays other. Until CM-g (2026-11-20) `Box Sets` was `other`
+too. A rule change reaches the stored kinds only through a refresh, and only the **unlocked** ones (a kind
+the admin set by hand stays): after the CM-g deploy run `venv/bin/flask jobs enqueue products_refresh` then
+`venv/bin/flask jobs run-pending` (or wait for the next daily load) to move the unlocked `other` products of
+`Box Sets`: the trial decks to starter, the rest to bundle (`RB Set` stays other); its `updated` count says
+how many rows changed. Unlocking a kind by hand (`PATCH /admin/products/<id>` `kind: null`) recomputes it with
+the same rules and the product's name. The admin's expansion products list (CM-g) computes the kind of a
+product without a catalog kind on the fly, so it shows the new kind before the refresh.
+
 By hand: `venv/bin/flask jobs enqueue products_refresh [--param date=YYYYMMDD]`, then
 `venv/bin/flask jobs list`. Read the counts (`date`, `new`, `updated`, `not_listed`, `total`) of the latest job:
 

@@ -15,9 +15,11 @@ import {
   EXPANSIONS,
   UNNAMED,
   callsTo,
+  expansion,
   expansionProduct,
   matchingApi,
 } from '@/test/fixtures/cardmarketMatching';
+import segmentedStyles from '@/components/ui/SegmentedControl.module.css';
 import styles from './MatchingPage.module.css';
 
 const LONG = { timeout: 10000 };
@@ -45,6 +47,44 @@ async function openProducts(table: HTMLElement, name: string) {
 
 const listOf = (dialog: HTMLElement) => within(dialog).getByRole('region', { name: LIST });
 
+const kindGroup = (dialog: HTMLElement) => within(dialog).getByRole('radiogroup', { name: 'Kind' });
+
+/** Choose a kind by the start of its label ("All", "Booster box"...): the label ends in its count. */
+const chooseKind = (dialog: HTMLElement, label: string) =>
+  userEvent.click(
+    within(kindGroup(dialog)).getByRole('radio', { name: new RegExp(`^${label} \\(`) }),
+  );
+
+const lastSearch = (calls: ReturnType<typeof matchingApi>) =>
+  callsTo(calls, 'GET', '/expansions/6567/products').at(-1)!.search.toString();
+
+/** An expansion of sealed products only. */
+const SEALED_ONLY = expansion(6600, 'Sealed Only', null, {
+  products_count: 2,
+  sealed_count: 2,
+});
+const SEALED = [
+  expansionProduct(9201, 'Origins Booster', {
+    type: 'sealed',
+    kind: 'booster',
+    category: 'Riftbound Booster',
+  }),
+  expansionProduct(9202, 'Legacy Vault', {
+    type: 'sealed',
+    kind: 'bundle',
+    category: 'Riftbound Riftbound Box Sets',
+  }),
+];
+
+/** The counters of an expansion like Origins on the real database. */
+const ORIGINS_KINDS = [
+  { kind: 'card', count: 355 },
+  { kind: 'booster', count: 4 },
+  { kind: 'box', count: 2 },
+  { kind: 'bundle', count: 3 },
+  { kind: 'starter', count: 6 },
+];
+
 const many = (count: number) =>
   Array.from({ length: count }, (_, index) =>
     expansionProduct(20000 + index, `Card ${String(index).padStart(3, '0')}`, {
@@ -63,11 +103,14 @@ describe('Expansion products (CM-f)', () => {
     const calls = matchingApi({ expansions: [UNNAMED, ...EXPANSIONS] });
     const { table } = await openTab();
     const dialog = await openProducts(table, 'Expansion #6567');
-    expect(callsTo(calls, 'GET', '/expansions/6567/products')[0]!.search.toString()).toBe('');
+    // the expansion has cards: the list starts on them
+    expect(callsTo(calls, 'GET', '/expansions/6567/products')[0]!.search.toString()).toBe(
+      'kind=card',
+    );
     for (const text of [
-      '115 singles',
-      '5 sealed products',
-      'Singles 0.02 € - 34.00 €',
+      '120 products',
+      '115 cards',
+      'Cards 0.02 € - 34.00 €',
       'First seen 14 Jul 2025',
       'Not mapped yet.',
     ]) {
@@ -91,7 +134,10 @@ describe('Expansion products (CM-f)', () => {
     matchingApi({ expansions: [UNNAMED] });
     const { table } = await openTab();
     const dialog = await openProducts(table, 'Expansion #6567');
+    await within(dialog).findByRole('table', { name: LIST });
+    await chooseKind(dialog, 'All');
     const products = await within(dialog).findByRole('table', { name: LIST });
+    await vi.waitFor(() => expect(within(products).getAllByRole('row')).toHaveLength(4));
     expect(
       within(products)
         .getAllByRole('columnheader')
@@ -116,7 +162,7 @@ describe('Expansion products (CM-f)', () => {
         .getAllByRole('cell')
         .map((cell) => cell.textContent);
     expect(cells('Proving Grounds Booster Box')).toEqual([
-      'Proving Grounds Booster Box#9101 · Riftbound Booster Box',
+      'Proving Grounds Booster BoxBooster box#9101 · Riftbound Booster Box',
       'Sealed',
       '14 Jul 2025',
       '95.00 € (7-day avg)',
@@ -131,7 +177,7 @@ describe('Expansion products (CM-f)', () => {
       'box · OGS',
     ]);
     expect(cells('Ahri, Nine-Tailed Fox')).toEqual([
-      'Ahri, Nine-Tailed Fox#9001 · Riftbound Single',
+      'Ahri, Nine-Tailed FoxCard#9001 · Riftbound Single',
       'Single',
       '15 Jul 2025',
       '34.00 € (low)',
@@ -146,7 +192,7 @@ describe('Expansion products (CM-f)', () => {
       '—',
     ]);
     expect(cells('Jinx, Loose Cannon')).toEqual([
-      'Jinx, Loose Cannon#9003 · Riftbound Single',
+      'Jinx, Loose CannonCard#9003 · Riftbound Single',
       'Single',
       '—',
       'no price',
@@ -168,11 +214,16 @@ describe('Expansion products (CM-f)', () => {
     const { table } = await openTab('', 390);
     const dialog = await openProducts(table, 'Expansion #6567');
     expect(dialog).toHaveClass(modalStyles.fullMd);
-    const list = await within(dialog).findByRole('list', { name: LIST });
+    await within(dialog).findByRole('list', { name: LIST });
+    await chooseKind(dialog, 'All');
+    const list = within(dialog).getByRole('list', { name: LIST });
+    await vi.waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(3));
     expect(within(dialog).queryByRole('table', { name: LIST })).toBeNull();
     const items = within(list).getAllByRole('listitem');
-    expect(items).toHaveLength(3);
     const ahri = items[1]!;
+    // the kind badge sits next to the Cardmarket category
+    expect(within(ahri).getByText('Card')).toBeVisible();
+    expect(within(items[0]!).getByText('Booster box')).toBeVisible();
     for (const text of [
       'Ahri, Nine-Tailed Fox',
       'Single · Riftbound Single · #9001',
@@ -219,29 +270,24 @@ describe('Expansion products (CM-f)', () => {
     );
   });
 
-  it('search, type and sort ask the server again', async () => {
+  it('search, kind and sort ask the server again', async () => {
     const calls = matchingApi({ expansions: [UNNAMED] });
     const user = userEvent.setup();
     const { table } = await openTab();
     const dialog = await openProducts(table, 'Expansion #6567');
     await within(dialog).findByRole('table', { name: LIST });
+    // the Type control is gone: the kind says it
+    expect(within(dialog).queryByRole('radiogroup', { name: 'Type' })).toBeNull();
     await user.type(within(dialog).getByRole('textbox', { name: 'Search products' }), 'ahri');
-    await vi.waitFor(() =>
-      expect(callsTo(calls, 'GET', '/expansions/6567/products').at(-1)!.search.toString()).toBe(
-        'q=ahri',
-      ),
-    );
+    await vi.waitFor(() => expect(lastSearch(calls)).toBe('q=ahri&kind=card'));
     await vi.waitFor(() => expect(within(listOf(dialog)).getAllByRole('row')).toHaveLength(2));
-    const type = within(dialog).getByRole('radiogroup', { name: 'Type' });
-    await user.click(within(type).getByRole('radio', { name: 'Sealed' }));
-    await vi.waitFor(() =>
-      expect(callsTo(calls, 'GET', '/expansions/6567/products').at(-1)!.search.toString()).toBe(
-        'q=ahri&type=sealed',
-      ),
-    );
+    await chooseKind(dialog, 'Booster box');
+    await vi.waitFor(() => expect(lastSearch(calls)).toBe('q=ahri&kind=box'));
     expect(await within(dialog).findByText('No products match')).toBeVisible();
+    expect(within(dialog).getByText('Try another search or kind.')).toBeVisible();
     await user.clear(within(dialog).getByRole('textbox', { name: 'Search products' }));
-    await user.click(within(type).getByRole('radio', { name: 'Singles' }));
+    await chooseKind(dialog, 'All');
+    await vi.waitFor(() => expect(lastSearch(calls)).toBe(''));
     const sort = within(dialog).getByRole('combobox', { name: 'Sort' });
     expect(
       within(sort)
@@ -249,11 +295,80 @@ describe('Expansion products (CM-f)', () => {
         .map((option) => option.textContent),
     ).toEqual(['Price, dearest first', 'Name', 'Newest first']);
     await user.selectOptions(sort, 'Name');
+    await vi.waitFor(() => expect(lastSearch(calls)).toBe('sort=name'));
+  });
+
+  it('the Kind filter lists every kind of the expansion with its count; Cards is the default', async () => {
+    const calls = matchingApi({ expansions: [UNNAMED], kinds: ORIGINS_KINDS });
+    const { table } = await openTab();
+    const dialog = await openProducts(table, 'Expansion #6567');
+    await within(dialog).findByRole('table', { name: LIST });
+    const group = kindGroup(dialog);
     await vi.waitFor(() =>
-      expect(callsTo(calls, 'GET', '/expansions/6567/products').at(-1)!.search.toString()).toBe(
-        'type=single&sort=name',
-      ),
+      expect(
+        within(group)
+          .getAllByRole('radio')
+          .map((radio) => radio.closest('label')!.textContent),
+      ).toEqual([
+        'All (370)',
+        'Cards (355)',
+        'Booster (4)',
+        'Booster box (2)',
+        'Bundle / set (3)',
+        'Starter deck (6)',
+      ]),
     );
+    // only the kinds the expansion has: no Case, Sleeves, Accessory or Other
+    expect(within(group).queryByRole('radio', { name: /^Sleeves/ })).toBeNull();
+    expect(within(group).getByRole('radio', { name: 'Cards (355)' })).toBeChecked();
+    expect(callsTo(calls, 'GET', '/expansions/6567/products')).toHaveLength(1);
+    expect(lastSearch(calls)).toBe('kind=card');
+    // the counters are of the whole expansion: a search does not change them
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Search products' }), 'zzz');
+    await vi.waitFor(() => expect(lastSearch(calls)).toBe('q=zzz&kind=card'));
+    expect(within(group).getByRole('radio', { name: 'Booster box (2)' })).toBeVisible();
+  });
+
+  it('the Kind filter is a radio group the arrow keys move through', async () => {
+    const calls = matchingApi({ expansions: [UNNAMED], kinds: ORIGINS_KINDS });
+    const user = userEvent.setup();
+    const { table } = await openTab();
+    const dialog = await openProducts(table, 'Expansion #6567');
+    await within(dialog).findByRole('table', { name: LIST });
+    const cards = within(kindGroup(dialog)).getByRole('radio', { name: 'Cards (355)' });
+    cards.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(within(kindGroup(dialog)).getByRole('radio', { name: 'Booster (4)' })).toBeChecked();
+    await vi.waitFor(() => expect(lastSearch(calls)).toBe('kind=booster'));
+  });
+
+  it('an expansion without cards starts on All', async () => {
+    const calls = matchingApi({ expansions: [SEALED_ONLY], products: SEALED });
+    const { table } = await openTab();
+    const dialog = await openProducts(table, 'Sealed Only');
+    const products = await within(dialog).findByRole('table', { name: LIST });
+    expect(callsTo(calls, 'GET', '/expansions/6600/products')[0]!.search.toString()).toBe('');
+    expect(within(products).getAllByRole('row')).toHaveLength(3);
+    const group = kindGroup(dialog);
+    expect(within(group).getByRole('radio', { name: 'All (2)' })).toBeChecked();
+    expect(within(group).queryByRole('radio', { name: /^Cards/ })).toBeNull();
+    expect(within(group).getByRole('radio', { name: 'Bundle / set (1)' })).toBeVisible();
+    expect(within(rowOf(products, 'Legacy Vault')).getByText('Bundle / set')).toBeVisible();
+    expect(within(dialog).getByText('0 cards')).toBeVisible();
+  });
+
+  it('on narrow screens the kinds wrap onto more lines', async () => {
+    matchingApi({ expansions: [UNNAMED], kinds: ORIGINS_KINDS });
+    const { table } = await openTab('', 390);
+    const dialog = await openProducts(table, 'Expansion #6567');
+    await within(dialog).findByRole('list', { name: LIST });
+    const group = kindGroup(dialog);
+    expect(group).toHaveClass(segmentedStyles.group!);
+    const css = readCss(join(SRC_DIR, 'components/ui/SegmentedControl.module.css'));
+    const decls = declsFor(css, '.group');
+    expect(decls.find((decl) => decl.prop === 'flex-wrap')?.value).toBe('wrap');
+    expect(decls.find((decl) => decl.prop === 'max-width')?.value).toBe('100%');
+    expect(within(group).getAllByRole('radio')).toHaveLength(6);
   });
 
   it('Show more loads the next page under the first one', async () => {
@@ -266,9 +381,7 @@ describe('Expansion products (CM-f)', () => {
     expect(within(dialog).getByText('Showing 50 of 120 products')).toBeVisible();
     await user.click(within(dialog).getByRole('button', { name: 'Show more' }));
     await vi.waitFor(() => expect(within(products).getAllByRole('row')).toHaveLength(101));
-    expect(callsTo(calls, 'GET', '/expansions/6567/products').at(-1)!.search.toString()).toBe(
-      'page=2',
-    );
+    expect(lastSearch(calls)).toBe('kind=card&page=2');
     await user.click(within(dialog).getByRole('button', { name: 'Show more' }));
     await vi.waitFor(() => expect(within(products).getAllByRole('row')).toHaveLength(121));
     expect(within(dialog).getByText('Showing 120 of 120 products')).toBeVisible();

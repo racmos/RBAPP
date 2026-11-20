@@ -178,3 +178,36 @@ def test_a_day_without_non_singles_changes_nothing(day_one, frozen_clock):
         refresh_products(NEXT)
     assert str(caught.value) == f'no non-single products for {NEXT}'
     assert catalog() == before
+
+
+def test_cm_g_the_name_decides_in_box_sets_and_rb_set_stays_other(day_one, frozen_clock):
+    """CM-g: in 'Riftbound Riftbound Box Sets' the trial decks become starters and everything
+    else (vaults, event kits, bundles, boxes) bundles; 'RB Set' stays `other`; a locked kind is
+    never touched."""
+    box_sets = 'Riftbound Riftbound Box Sets'
+    rows = (
+        (200, 'Jinx Trial Deck', box_sets, False, 'starter'),
+        (201, 'Bulk Runes Box', box_sets, False, 'bundle'),
+        (202, 'Origins: Full Set', 'RB Set', False, 'other'),
+        (203, 'Viktor Trial Deck', box_sets, True, 'other'),       # locked
+        (204, 'Legacy Vault', box_sets, True, 'other'),            # locked
+        (205, 'Spiritforged: Pre-Rift Event Kit', box_sets, False, 'bundle'),
+        (206, 'K/DA Couture Collection Box', box_sets, False, 'bundle'),
+        (207, 'Worlds Bundle 2025', box_sets, False, 'bundle'),
+        (208, 'Origins: Rare Set', 'RB Set', False, 'other'),
+    )
+    for pid, name, category, _, _ in rows:
+        cm(DAY, pid, name, category, expansion=1)
+    # rows of before CM-g: all `other`; 203 and 204 locked by the admin
+    for pid, _, _, locked, _ in rows[:5]:
+        db.session.add(RbProducts(rbpdt_id_product=pid, rbpdt_name='x', rbpdt_type='nonsingle',
+                                  rbpdt_kind='other', rbpdt_kind_locked=locked))
+    # 209: new, no row before
+    cm(DAY, 209, 'Yasuo Trial Deck', box_sets, expansion=1)
+    db.session.commit()
+    result = refresh_products(DAY)
+    assert (result['new'], result['updated']) == (4 + 5, 5)
+    kinds = {row[0]: (row[4], row[7]) for row in catalog()}
+    assert {pid: kinds[pid] for pid in range(200, 210)} == {
+        **{pid: (kind, locked) for pid, _, _, locked, kind in rows},
+        209: ('starter', False)}

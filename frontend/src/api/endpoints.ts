@@ -576,15 +576,20 @@ export const unmapCardmarketExpansion = (id: number) =>
     { method: 'DELETE' },
   );
 
+/** The kind of a product of an expansion (CM-g): `card` for a single, else a product kind. */
+export type ExpansionProductKind = 'card' | ProductKind;
+
 /**
  * A product of an expansion on the latest load (CM-f). `price` is what it is worth that day: a
  * single its low price, a sealed product the first of avg7, trend, low that is not 0; `prices`
- * is null when it has no price row that day.
+ * is null when it has no price row that day. `kind` (CM-g): `card` for a single, else its
+ * catalog kind, else the kind of its Cardmarket category.
  */
 export type CardmarketExpansionProduct = {
   id_product: number;
   name: string;
   type: 'single' | 'sealed';
+  kind: ExpansionProductKind;
   category: string | null;
   category_id: number | null;
   /** `YYYY-MM-DD`: the day Cardmarket added it. */
@@ -613,7 +618,10 @@ export type CardmarketExpansionProducts = {
     mapped_set_name: string | null;
   };
   items: CardmarketExpansionProduct[];
-  /** `singles` to `first_seen` are of the whole expansion, whatever the filters. */
+  /**
+   * `singles` to `first_seen` are of the whole expansion, whatever the filters; `kinds` counts
+   * each kind present (card first, then the product kinds; zero kinds left out).
+   */
   meta: {
     page: number;
     per_page: number;
@@ -621,13 +629,17 @@ export type CardmarketExpansionProducts = {
     pages: number;
     singles: number;
     sealed: number;
+    kinds: { kind: ExpansionProductKind; count: number }[];
     price_range: { min: number; max: number } | null;
     first_seen: string | null;
     date: string | null;
   };
 };
 
-/** `query`: `q`, `type` (single, sealed), `sort` (name, added) and `page`; the defaults left out. */
+/**
+ * `query`: `q`, `type` (single, sealed), `kind` (`card` or a product kind), `sort` (name, added)
+ * and `page`; the defaults left out.
+ */
 export const listCardmarketExpansionProducts = (id: number, query: string, signal?: AbortSignal) =>
   request<CardmarketExpansionProducts>(
     withQuery(`/admin/cardmarket/expansions/${id}/products`, query),

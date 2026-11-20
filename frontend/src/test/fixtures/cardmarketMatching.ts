@@ -326,6 +326,7 @@ export const expansionProduct = (
   id_product,
   name,
   type: 'single' as 'single' | 'sealed',
+  kind: 'card' as string,
   category: 'Riftbound Single' as string | null,
   category_id: 1 as number | null,
   date_added: null as string | null,
@@ -352,6 +353,7 @@ export const prices = (values: Record<string, number>) => ({
 export const EXPANSION_PRODUCTS = [
   expansionProduct(9101, 'Proving Grounds Booster Box', {
     type: 'sealed',
+    kind: 'box',
     category: 'Riftbound Booster Box',
     category_id: 2,
     date_added: '2025-07-14',
@@ -378,22 +380,49 @@ export const EXPANSION_PRODUCTS = [
   expansionProduct(9003, 'Jinx, Loose Cannon'),
 ];
 
+/** The kinds of the counters (CM-g): card first, then the product kinds. */
+const KIND_ORDER = [
+  'card',
+  'booster',
+  'box',
+  'case',
+  'bundle',
+  'starter',
+  'sleeves',
+  'accessory',
+  'other',
+];
+
+export type KindCount = { kind: string; count: number };
+
+/** `meta.kinds` of `products`: the count of each kind present, in the counters' order. */
+export const kindCounts = (products: { kind: string }[]): KindCount[] =>
+  KIND_ORDER.map((kind) => ({
+    kind,
+    count: products.filter((one) => one.kind === kind).length,
+  })).filter((one) => one.count > 0);
+
 /**
- * The answer of the products endpoint for one request: `items` filtered by `type` and `q` (a
- * name search ignoring case) and paged by `page` / `per_page`, with the figures of the whole
- * expansion in `meta`.
+ * The answer of the products endpoint for one request: `items` filtered by `type`, `kind` and
+ * `q` (a name search ignoring case) and paged by `page` / `per_page`, with the figures of the
+ * whole expansion in `meta` (`kinds` from `products`, unless given).
  */
 export function expansionProductsAnswer(
   item: ReturnType<typeof expansion>,
   products: ReturnType<typeof expansionProduct>[],
   search: URLSearchParams,
+  kinds: KindCount[] = kindCounts(products),
 ) {
   const type = search.get('type') ?? 'all';
+  const kind = search.get('kind') ?? 'all';
   const q = (search.get('q') ?? '').toLowerCase();
   const page = Number(search.get('page') ?? 1);
   const perPage = Number(search.get('per_page') ?? 50);
   const found = products.filter(
-    (one) => (type === 'all' || one.type === type) && one.name.toLowerCase().includes(q),
+    (one) =>
+      (type === 'all' || one.type === type) &&
+      (kind === 'all' || one.kind === kind) &&
+      one.name.toLowerCase().includes(q),
   );
   return {
     expansion: {
@@ -410,6 +439,7 @@ export function expansionProductsAnswer(
       pages: Math.max(1, Math.ceil(found.length / perPage)),
       singles: item.singles_count,
       sealed: item.sealed_count,
+      kinds,
       price_range: item.price_range,
       first_seen: item.first_seen,
       date: '2026-11-06',
@@ -460,6 +490,7 @@ export function matchingApi({
   review = reviewList() as JsonBodyType,
   expansions = EXPANSIONS as ReturnType<typeof expansion>[],
   products = EXPANSION_PRODUCTS as ReturnType<typeof expansionProduct>[],
+  kinds = undefined as KindCount[] | undefined,
 } = {}) {
   const calls: Call[] = [];
   const record = async (request: Request) => {
@@ -624,7 +655,9 @@ export function matchingApi({
           message: `Cardmarket expansion ${String(params.id)} not found.`,
         });
       }
-      return ok(expansionProductsAnswer(current, products, new URL(request.url).searchParams));
+      return ok(
+        expansionProductsAnswer(current, products, new URL(request.url).searchParams, kinds),
+      );
     }),
     http.delete(`${BASE}/expansions/:id/mapping`, async ({ request, params }) => {
       await record(request);
