@@ -5,6 +5,13 @@ and so to every printing of that name. Names are matched with `name_key` only
 (F2-R3). Migration 0009 keeps a frozen copy of `name_key`; a test keeps the two
 equal.
 
+A ban is IN EFFECT from its `since` date: `since <= today()`, where `today()` is the
+UTC calendar date of `app.utils.clock.utcnow()` (Riot announces a ban list with a calendar
+date and no time zone, so a ban dated 23 Nov applies from 00:00 UTC that day). A ban dated
+later is UPCOMING: it is shown (`ban_info`, `list_bans`, GET /bans, `flask bans list`) but
+never applied: `ban_map()` (deck legality, the `banned_in` filter, card summaries) and
+`card_bans` only see bans in effect.
+
 Reads never touch the request: callers that need the bans of many cards load
 `ban_map()` once and pass it to `card_bans` / `ban_info`. Writes commit and
 raise on invalid input; they never print (the CLI does).
@@ -29,6 +36,9 @@ class BanEntry:
     reason: str | None
 
 
+BAN_STATUSES = ('all', 'active', 'upcoming')
+
+
 class UnknownCardName(Exception):
     """No catalog card has this name (by `name_key`); `args[0]` is the name."""
 
@@ -51,37 +61,64 @@ def _check_modes(modes) -> None:
 
 # --- reads ---------------------------------------------------------------------------
 
-def ban_map() -> dict[str, dict[str, BanEntry]]:
-    """Every ban, keyed by `name_key` and then by mode (one query)."""
+def today() -> date:
+    """The date bans are checked against: the UTC calendar date of `clock.utcnow()`."""
+    return clock.utcnow().date()
+
+
+def in_effect(entry: BanEntry, on: date | None = None) -> bool:
+    """Whether the ban applies on the date `on` (default `today()`): `since <= on`."""
+    return entry.since <= (today() if on is None else on)
+
+
+def ban_map(include_upcoming: bool = False) -> dict[str, dict[str, BanEntry]]:
+    """The bans in effect today (with `include_upcoming`, every ban), keyed by `name_key`
+    and then by mode (one query). Legality, filters and card summaries use the default."""
+    day = today()
     bans: dict[str, dict[str, BanEntry]] = {}
     for ban in db.session.execute(sa.select(RbCardBan)).scalars():
-        bans.setdefault(ban.rbban_name_key, {})[ban.rbban_mode] = _entry(ban)
+        entry = _entry(ban)
+        if include_upcoming or in_effect(entry, day):
+            bans.setdefault(ban.rbban_name_key, {})[ban.rbban_mode] = entry
     return bans
 
 
 def card_bans(name: str, bans=None) -> dict[str, bool]:
-    """Whether `name` is banned in each mode, always every mode in GAME_MODES order."""
+    """Whether `name` is banned TODAY in each mode, always every mode in GAME_MODES order.
+    Upcoming bans count as not banned, even in a map read with `include_upcoming`."""
     entries = (ban_map() if bans is None else bans).get(name_key(name), {})
-    return {mode: mode in entries for mode in GAME_MODES}
+    day = today() if entries else None
+    return {mode: mode in entries and in_effect(entries[mode], day) for mode in GAME_MODES}
 
 
 def ban_info(name: str, bans=None) -> list[dict]:
-    """The bans of `name` as `{mode, since (ISO), reason}`, in GAME_MODES order."""
-    entries = (ban_map() if bans is None else bans).get(name_key(name), {})
+    """The bans of `name` as `{mode, since (ISO), reason, active}`, in GAME_MODES order;
+    `active` is false while the ban is upcoming. Without `bans` every ban is read
+    (`ban_map(include_upcoming=True)`); a map passed in decides what is listed."""
+    entries = (ban_map(include_upcoming=True) if bans is None else bans).get(name_key(name), {})
+    day = today()
     return [{'mode': mode, 'since': entries[mode].since.isoformat(),
-             'reason': entries[mode].reason}
+             'reason': entries[mode].reason, 'active': in_effect(entries[mode], day)}
             for mode in GAME_MODES if mode in entries]
 
 
-def list_bans(mode: str | None = None) -> list[BanEntry]:
-    """Every ban (or those of one mode), ordered by mode (GAME_MODES order), then name_key."""
+def list_bans(mode: str | None = None, status: str = 'all',
+              on: date | None = None) -> list[BanEntry]:
+    """Every ban (or those of one mode), ordered by mode (GAME_MODES order), then name_key.
+    `status` (BAN_STATUSES): `all`, `active` (in effect on `on`, default `today()`) or `upcoming`."""
+    if status not in BAN_STATUSES:
+        raise ValueError(f'unknown ban status: {status}')
     query = sa.select(RbCardBan)
     if mode is not None:
         _check_modes([mode])
         query = query.where(RbCardBan.rbban_mode == mode)
     found = db.session.execute(query).scalars().all()
     found.sort(key=lambda ban: (GAME_MODES.index(ban.rbban_mode), ban.rbban_name_key))
-    return [_entry(ban) for ban in found]
+    entries = [_entry(ban) for ban in found]
+    if status == 'all':
+        return entries
+    day = today() if on is None else on
+    return [entry for entry in entries if in_effect(entry, day) == (status == 'active')]
 
 
 def printings_by_key() -> dict[str, list[tuple[str, str]]]:

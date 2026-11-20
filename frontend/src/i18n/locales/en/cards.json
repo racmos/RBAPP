@@ -169,6 +169,7 @@
     },
     "bans": {
       "line": "{{mode}}: banned since {{date}}",
+      "upcoming": "Banned in {{mode}} from {{date}}",
       "reason": "Reason: {{reason}}",
       "none": "Legal in 1v1 and 2v2"
     },

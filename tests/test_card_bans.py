@@ -113,7 +113,7 @@ def test_preloaded_ban_map_means_no_query(app, queries):
     assert bans.card_bans(JINX, preloaded) == {'1v1': True, '2v2': False}
     assert bans.card_bans('Other', bans=preloaded) == {'1v1': False, '2v2': False}
     assert bans.ban_info(JINX, bans=preloaded) == [
-        {'mode': '1v1', 'since': '2026-09-01', 'reason': None}]
+        {'mode': '1v1', 'since': '2026-09-01', 'reason': None, 'active': True}]
     assert queries == []
 
 
@@ -121,8 +121,8 @@ def test_ban_info_is_in_game_modes_order_with_iso_dates(app):
     bans.add_ban(JINX, ['2v2'], since=date(2026, 9, 18), reason='Wave 2', force=True)
     bans.add_ban(JINX, ['1v1'], since=SEP1, force=True)
     assert bans.ban_info(JINX.upper()) == [
-        {'mode': '1v1', 'since': '2026-09-01', 'reason': None},
-        {'mode': '2v2', 'since': '2026-09-18', 'reason': 'Wave 2'},
+        {'mode': '1v1', 'since': '2026-09-01', 'reason': None, 'active': True},
+        {'mode': '2v2', 'since': '2026-09-18', 'reason': 'Wave 2', 'active': True},
     ]
 
 
