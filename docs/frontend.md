@@ -547,14 +547,26 @@ products** (`View the products of <name>`); the map dialog adds "View all N prod
 samples, which closes it and opens the products. `ExpansionProducts.tsx` is that dialog, an `xl`
 `Modal` full screen below 860 px (`fullScreenBelow="md"`, a `Modal` option added for it), over
 `GET /admin/cardmarket/expansions/<id>/products` (`docs/api.md`): on top the figures of the whole
-expansion (singles, sealed products, the price range of its singles, first seen, latest load), its
+expansion (CM-g: "N products", "N cards", "Cards <min> - <max>" (the price range of its singles),
+first seen, latest load), its
 set ("Now mapped to …" or "Not mapped yet.") and a read-only hint pointing to Create card in the
-To link tab (no link: the To link filters have no expansion); then a debounced search, the type
-(All / Singles / Sealed) and the sort (Price, dearest first / Name / Newest first), kept in the
-dialog state (not the URL), and "Showing N of M products". The list is a region that scrolls
+To link tab (no link: the To link filters have no expansion); then a debounced search, the
+**Kind** filter (CM-g, it replaced the All / Singles / Sealed type control) and the sort (Price,
+dearest first / Name / Newest first), kept in the dialog state (not the URL), and "Showing N of
+M products". The Kind filter is a `SegmentedControl` (a radiogroup of native radios: arrow keys,
+one checked) whose options are "All (N)" and each kind the expansion has with its count, from
+`meta.kinds` (counts of the whole expansion, whatever the search): "Cards (N)" first, then the
+product kinds in the catalog order with the products labels (`products:kind.*`: Booster, Booster
+box, Case, Bundle / set, Starter deck, Sleeves, Accessory, Other); kinds with no product are not
+shown. It starts on Cards when the expansion has cards (its row's `singles_count`), else on All;
+before the first answer it shows All and Cards from the row. The group wraps onto more lines on
+narrow screens (`.group` has `flex-wrap: wrap`). Every row carries its kind as a `Badge` ("Card"
+for a single, else the kind label) before `#id · category` (table) or the facts line (cards). An
+empty list says "No products on the latest load" when `meta.kinds` is empty, else "No products
+match" ("Try another search or kind."). The list is a region that scrolls
 inside the dialog (`.productsScroll`: `overflow: auto`, at most 55 % of the viewport height,
-focusable for the keyboard, sticky table header): a table from 860 px (product with `#id ·
-category`, type, added, price with its source, low, trend, 7-day and 30-day averages, average,
+focusable for the keyboard, sticky table header): a table from 860 px (product with its kind badge
+and `#id · category`, type, added, price with its source, low, trend, 7-day and 30-day averages, average,
 foil low and trend, linked card `SET-ID, slot N|S|None`, catalog `kind · set`; `—` when absent),
 cards below. "Show more" appends the next 50 (`useInfiniteQuery`, a failed page keeps the shown
 ones with a retry). States: skeleton while loading (an offline note when the first page cannot

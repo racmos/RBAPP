@@ -91,10 +91,11 @@
   },
   "clearFilters": "Clear filters",
   "kind": {
+    "card": "Cards",
     "booster": "Booster",
     "box": "Booster box",
     "case": "Case",
-    "bundle": "Bundle",
+    "bundle": "Bundle / set",
     "starter": "Starter deck",
     "sleeves": "Sleeves",
     "accessory": "Accessory",

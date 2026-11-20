@@ -10,6 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, create_model, fie
 
 from app.models.cardmarket import PRODUCT_KINDS
 
+# The kinds of a product of a Cardmarket expansion (CM-g): `card` for a single, then the
+# product kinds, in the order the counters list them.
+EXPANSION_PRODUCT_KINDS = ('card',) + PRODUCT_KINDS
+
 STRIPPED = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
 
@@ -424,12 +428,14 @@ class AdminExpansionMapBody(BaseModel):
 
 class AdminExpansionProductsQuery(BaseModel):
     """GET /admin/cardmarket/expansions/<id>/products query (CM-f): a name search, the type,
-    the order (dearest first by default) and the page."""
+    the kind (CM-g: `card` or a product kind; combined with `type`), the order (dearest first
+    by default) and the page."""
 
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
     q: Optional[str] = Field(default=None, max_length=100)
     type: Literal['all', 'single', 'sealed'] = 'all'
+    kind: Literal[('all',) + EXPANSION_PRODUCT_KINDS] = 'all'
     sort: Literal['price', 'name', 'added'] = 'price'
     page: int = Field(default=1, ge=1)
     per_page: Literal[50, 100, 200] = 50

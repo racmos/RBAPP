@@ -176,6 +176,15 @@
     justify-items: start;
   }
 
+  /* A product's kind badge (CM-g) before its Cardmarket category. */
+  .kindLine {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin: 0;
+  }
+
   .nowrap {
     white-space: nowrap;
   }
