@@ -108,6 +108,43 @@ describe('CardDetailView (F2-f S7)', () => {
     expect(screen.getByText('Legal in 1v1 and 2v2')).toBeVisible();
   });
 
+  it('shows an upcoming ban as a notice with its date, apart from the active bans', async () => {
+    await renderView({
+      presentation: 'page',
+      card: {
+        ...cardDetail,
+        bans: { '1v1': false, '2v2': false },
+        ban_info: [{ mode: '1v1', since: '2026-11-23', reason: 'Radiance update', active: false }],
+      },
+    });
+    const notice = screen.getByRole('note');
+    expect(notice).toHaveTextContent('Banned in 1v1 from 23 Nov 2026');
+    expect(notice).toHaveTextContent('Reason: Radiance update');
+    // Legal today: no active ban line and no ban badge.
+    expect(screen.getByText('Legal in 1v1 and 2v2')).toBeVisible();
+    expect(screen.queryByText(/banned since/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Banned in 1v1')).not.toBeInTheDocument();
+  });
+
+  it('lists the active ban and the upcoming ban of another mode separately', async () => {
+    await renderView({
+      presentation: 'page',
+      card: {
+        ...cardDetail,
+        bans: { '1v1': true, '2v2': false },
+        ban_info: [
+          { mode: '1v1', since: '2026-09-18', reason: null, active: true },
+          { mode: '2v2', since: '2026-11-23', reason: null, active: false },
+        ],
+      },
+    });
+    expect(screen.getByText('Banned in 1v1')).toBeVisible();
+    expect(screen.getByText('1v1: banned since 18 Sept 2026')).toBeVisible();
+    expect(screen.getByRole('note')).toHaveTextContent('Banned in 2v2 from 23 Nov 2026');
+    expect(screen.queryByText(/2v2: banned since/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Legal in 1v1 and 2v2')).not.toBeInTheDocument();
+  });
+
   it('shows the none states for empty collections, related and decks', async () => {
     await renderView({
       presentation: 'page',

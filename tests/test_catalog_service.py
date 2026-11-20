@@ -1,7 +1,9 @@
 """F2-b S2-S4, S7 (AC1): parsing, ordering, base printings, card_summary."""
+from datetime import date
+
 from app.models.card import RbCard
 from app.services import catalog
-from app.services.bans import name_key
+from app.services.bans import BanEntry, name_key
 
 
 def _card(set_id='OGN', card_id='1', **fields):
@@ -124,7 +126,9 @@ def test_card_summary_shape_order_and_values(app):
     summary = catalog.card_summary(
         card, set_rank={'OGN': 0}, base_keys={('OGN', '79a')},
         price={'market': 1.21, 'market_source': 'avg7_foil'},
-        bans={name_key('Jinx, Loose Cannon'): {'2v2': object()}},
+        # A real entry dated in the past: `card_bans` reads `since` (bans effective date).
+        bans={name_key('Jinx, Loose Cannon'): {'2v2': BanEntry('Jinx, Loose Cannon', '2v2',
+                                                              date(2026, 9, 18), None)}},
         owned={'total': 2, 'foil': 1})
     assert list(summary) == ['set_id', 'card_id', 'key', 'number', 'name', 'domains',
                              'type', 'supertype', 'type_raw', 'tags', 'energy', 'power',

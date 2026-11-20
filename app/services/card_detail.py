@@ -109,7 +109,9 @@ def get_card_detail(set_id, card_id, username):
     if card is None:
         return None
     base_keys = catalog.base_printing_keys(all_cards, set_rank)
-    bans = bans_service.ban_map()
+    # Every ban, upcoming ones too: `ban_info` lists them (with `active`), while the
+    # `bans` flags of the summary (`card_bans`) only count the bans in effect today.
+    bans = bans_service.ban_map(include_upcoming=True)
 
     key = (set_id, card_id)
     wanted = catalog.name_key(card.rbcar_name)

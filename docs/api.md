@@ -159,10 +159,22 @@ the collection (`CONDITIONS` / `LANGUAGES` in `game_domain.py`, F3-b). No new er
 
 ### GET /bans
 
-`app/api/v1/bans.py` (U): `{items: [{name, mode, since, reason,
+`app/api/v1/bans.py` (U): `{items: [{name, mode, since, reason, active,
 printings: [{set_id, card_id}]}]}` ordered by mode, then name; optional `?mode=1v1|2v2`
 (any other value is a 400 `validation_error`). Query validation shares
 `validate_query` with `GET /cards` (`app/schemas/validation.py`).
+
+**Effective date (2026-11-19).** `since` is the date a ban applies from. A ban is **in
+effect** when `since <= today`, where today is the **UTC** calendar date of the server clock
+(`app.utils.clock.utcnow().date()`; Riot announces a ban list with a calendar date and no time
+zone, so a ban dated 2026-11-23 applies from 00:00 UTC that day, 01:00 in Madrid). A ban dated
+later is **upcoming**: `active: false` (additive key; `true` for bans in effect). Optional
+`?status=active|upcoming|all` (default `all`; empty = absent); any other value is a 400
+`validation_error` (`details[0]`: field `status`, message "status must be active, upcoming or
+all", code `invalid_value`). Upcoming bans are shown but never applied: deck legality (every
+deck route and the public deck), the `banned_in` filter of `GET /cards` and the `bans` flags of
+every `CardSummary` only count the bans in effect (`app/services/bans.py::ban_map()`); the card
+detail `ban_info` lists both (see below). Bans are added with `flask bans add --since`.
 
 ### GET /cards
 
@@ -211,7 +223,8 @@ shares a domain, `all` requires every listed domain, `subset` requires every car
 domain to be listed (a card without domains matches); ranges are inclusive and
 exclude null-valued cards once bounded; price bounds apply to `price.market` and
 exclude cards without a market price; `owned=owned|missing` filters on
-`owned.total`; `banned_in` filters by ban mode (`any` = banned in at least one);
+`owned.total`; `banned_in` filters by ban mode (`any` = banned in at least one; bans in
+effect today only, an upcoming ban does not match);
 `base_only=true` keeps base printings only. `meta.facets` holds `set`, `domain`,
 `type`, `supertype`, `rarity` counts computed over the cards matching every filter
 except that facet's own, plus the top-30 `tag` list (`{tag, count}`) over the
@@ -240,7 +253,10 @@ the latest rows of the canonical products, foil only when foilable and a
 different product), `printings: [CardMini]` (every printing of the name by
 `natural_key`, including itself), `related: [CardMini]` (up to 12 base
 printings of other names sharing ≥1 tag, most shared tags first, then name),
-`ban_info` (`ban_info(name)`, `[]` when legal), `my_lines` (the current user's
+`ban_info` (`ban_info(name)`: `[{mode, since, reason, active}]` in mode order, every ban of
+the name, upcoming ones too with `active: false`, so the UI can say "Banned in 1v1 from
+23 Nov 2026"; `[]` when the name has no ban at all; the summary `bans` flags stay
+active-only), `my_lines` (the current user's
 rows of this printing ordered by foil N first, condition, language, id; each
 `{id, foil (bool), qty, condition, language, selling, sell_price,
 updated_at (UTC `…Z`)}`; the legacy `playset` key, read from the dropped column
@@ -562,7 +578,8 @@ Shapes (keys in this order):
 - `Legality` = `{"1v1": Result, "2v2": Result}`, `Result = {legal, issues: [{code, params}],
   completeness: {legend, champion, main, runes, battlefields, sideboard: {have, need, missing}}}`
   (`deck_rules.validate`, issue codes in `F5-a-deck-rules-engine.md`). Always computed on read,
-  with the bans of that moment (`ban_map`, by `name_key`); never stored.
+  with the bans in effect at that moment (`ban_map`, by `name_key`; a ban dated after today,
+  UTC, is not applied yet); never stored.
 - `DeckHead` = `{id, name, mode, visibility, created_at, updated_at, share}` (ISO UTC, `Z`);
   `share` = `{slug, url} | null` (F5-g, additive: every shape built on `DeckHead` carries it).
 - `DeckListItem` = `DeckHead` + `{legend: DeckCard|null, champion: DeckCard|null, domains,
@@ -1503,7 +1520,8 @@ card (F2-c/F2-d return it): `{set_id, card_id, key ("<set>-<id>"), number (natur
 card number|null), name, domains: [str], type, supertype|null, type_raw, tags: [str],
 energy|power|might (int|null), rarity, image_src, image_thumb_src (null until F2-l),
 foilable, is_base, price: {market, market_source, market_foil, market_foil_source,
-trend_7d_pct, trend_30d_pct, as_of}|null, bans: {<mode>: bool},
+trend_7d_pct, trend_30d_pct, as_of}|null, bans: {<mode>: bool} (bans in effect today,
+UTC; an upcoming ban is `false`),
 owned: {total, foil}}` (`market_source` is the `rbprc_*` column the value came from).
 
 `ProductSummary` (F14-b) is a contract for the product screens: additive changes only.

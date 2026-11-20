@@ -11,6 +11,7 @@ import {
 } from '@/components/card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { Icon } from '@/components/ui/Icon';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle, useEnumLabel } from '@/i18n';
 import { formatDate, formatMoney } from '@/lib/format';
@@ -70,6 +71,9 @@ export function CardDetailView({
 
   const HeaderTag = presentation === 'page' ? 'h1' : 'h2';
   const totalCopies = card.my_lines.reduce((sum, line) => sum + line.qty, 0);
+  // Bans effective date: an upcoming ban (dated after today, UTC) is a notice, not a ban.
+  const activeBans = card.ban_info.filter((ban) => ban.active);
+  const upcomingBans = card.ban_info.filter((ban) => !ban.active);
 
   return (
     <div className={styles.page}>
@@ -121,11 +125,11 @@ export function CardDetailView({
             <h2 id="bans-title" className={styles.sectionTitle}>
               <BanBadge bans={card.bans} />
             </h2>
-            {card.ban_info.length === 0 ? (
+            {activeBans.length === 0 ? (
               <p className={styles.muted}>{t('detail.bans.none')}</p>
             ) : (
               <ul className={styles.banList}>
-                {card.ban_info.map((ban) => (
+                {activeBans.map((ban) => (
                   <li key={ban.mode}>
                     {t('detail.bans.line', {
                       mode: label('mode', ban.mode),
@@ -141,6 +145,23 @@ export function CardDetailView({
                 ))}
               </ul>
             )}
+            {upcomingBans.map((ban) => (
+              <p key={ban.mode} role="note" className={styles.banUpcoming}>
+                <Icon name="clock" size={14} />
+                <span>
+                  {t('detail.bans.upcoming', {
+                    mode: label('mode', ban.mode),
+                    date: formatDate(ban.since),
+                  })}
+                  {ban.reason && (
+                    <span className={styles.banReason}>
+                      {' '}
+                      {t('detail.bans.reason', { reason: ban.reason })}
+                    </span>
+                  )}
+                </span>
+              </p>
+            ))}
           </section>
 
           <section aria-labelledby="text-title" className={styles.panel}>
