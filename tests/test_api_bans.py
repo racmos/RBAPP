@@ -34,14 +34,15 @@ def seeded(app):
 
 def _jinx(mode):
     return {'name': JINX, 'mode': mode, 'since': '2026-09-01', 'reason': 'Too strong',
+            'active': True,  # bans effective date: additive key
             'printings': [{'set_id': 'OGN', 'card_id': '79'},
                           {'set_id': 'OGNX', 'card_id': '257'}]}
 
 
 FUTURE = {'name': 'Future Card', 'mode': '1v1', 'since': '2026-10-24', 'reason': None,
-          'printings': []}
+          'active': True, 'printings': []}
 CALLED_SHOT = {'name': 'Called Shot', 'mode': '2v2', 'since': '2026-09-18', 'reason': None,
-               'printings': [{'set_id': 'OGN', 'card_id': '1'}]}
+               'active': True, 'printings': [{'set_id': 'OGN', 'card_id': '1'}]}
 
 
 def test_lists_every_ban_in_order(authenticated_client, seeded):

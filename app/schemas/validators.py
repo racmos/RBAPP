@@ -37,6 +37,18 @@ class BanListQuery(BaseModel, extra='ignore'):
             raise PydanticCustomError('literal_error', 'mode must be 1v1 or 2v2')
         return v
 
+    status: Literal['all', 'active', 'upcoming'] = 'all'
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def _status_literal(cls, v):
+        """`all` (default), `active` (in effect today, UTC) or `upcoming` (bans effective date)."""
+        if v is None or v == '':
+            return 'all'
+        if v not in ('all', 'active', 'upcoming'):
+            raise PydanticCustomError('literal_error', 'status must be active, upcoming or all')
+        return v
+
 
 # ============== Card List Query ==============
 

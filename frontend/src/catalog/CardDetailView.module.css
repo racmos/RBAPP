@@ -108,6 +108,19 @@
     color: var(--muted-2);
   }
 
+  .banUpcoming {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 8px 0 0;
+    color: var(--gold);
+  }
+
+  .banUpcoming > svg {
+    flex: none;
+    margin-top: 3px;
+  }
+
   .priceGrid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

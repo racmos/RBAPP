@@ -965,7 +965,8 @@ Reusable card UI atoms live in `frontend/src/components/card/`:
 - `DomainPips` — one pip per domain with an SVG glyph and an accessible list label.
 - `RarityDot` — 9 px rarity colour dot; optionally with the translated rarity text.
 - `BanBadge` — per-mode ban indicator (`full` uses `Badge tone="danger"`; `compact` uses a warning
-  icon + modes).
+  icon + modes). It reads the `CardSummary.bans` flags, which only count the bans in effect today:
+  an upcoming ban never shows a badge.
 - `PriceTag` — market/foil amount plus a 7-day or 30-day trend chip with screen-reader text.
 
 These components may import from `@/lib`, `@/i18n`, `@/components/ui` and **type-only** from
@@ -1005,7 +1006,10 @@ Page-level catalog code lives in `frontend/src/catalog/` (one folder per screen,
   `modal` with `siblings` + `onClose`), handles loading/404/error states and the modal presentation
   (prev/next through siblings, Esc/backdrop/× close).
 - `CardDetailView` — the detail content in S7 section order (image, header, bans, prices, chart
-  slot, text, attributes, copies, printings, related, decks); one column below 860 px, two from
+  slot, text, attributes, copies, printings, related, decks); the bans section lists the active
+  bans of `ban_info` ("1v1: banned since …", or "Legal in 1v1 and 2v2" when none is active) and
+  each upcoming one (`active: false`) as a separate gold notice (`role="note"`, clock icon):
+  "Banned in 1v1 from 23 Nov 2026" plus its reason; one column below 860 px, two from
   860 px, three from 1240 px (widths only from `src/lib/breakpoints.ts`).
 - `CardCombobox` — reusable card picker (`import { CardCombobox } from '@/catalog'`). ARIA 1.2
   editable combobox with list autocomplete: it searches `GET /cards` as you type (2 or more

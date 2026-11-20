@@ -78,6 +78,16 @@ There is no production yet (phase F12). Everything here is the development serve
   - `venv/bin/flask bans add "<card name>" --mode 1v1|2v2|all [--since YYYY-MM-DD] [--reason "<text>"] [--force]`
     (the name must exist in the catalog unless `--force`; running it again changes nothing)
   - `venv/bin/flask bans remove "<card name>" --mode 1v1|2v2|all`
+  - Scheduled ban (a ban list announced for a later date, e.g. a Riot update that applies on
+    Monday): add it now with that date, `venv/bin/flask bans add "<card name>" --mode 1v1
+    --since 2026-11-23 --reason "<update name>"`. It prints `Banned '<name>' in 1v1 from
+    2026-11-23, not yet in effect.` and `flask bans list` marks the row `(from 2026-11-23, not
+    yet in effect)`. The ban starts to apply by itself at 00:00 **UTC** of that date (01:00 in
+    Madrid in winter): no restart, no job. Until then it is shown but not applied: `GET /bans`
+    returns it with `active: false` (`?status=upcoming` lists only those), the card detail shows
+    "Banned in 1v1 from 23 Nov 2026" under the bans section, while the catalog ban badge, the
+    "Banned in" filter and deck legality ignore it. A wrong date: run `add` again with the right
+    `--since` (it updates the row); a cancelled ban: `bans remove`.
 - Nginx (public reverse proxy, TLS) runs on another host and is changed only by the owner. The template is
   `docs/nginx_config`.
 

@@ -349,6 +349,8 @@ export type BanInfo = {
   mode: GameMode;
   since: string;
   reason: string | null;
+  /** False while the ban is upcoming (dated after today, UTC; bans effective date). */
+  active: boolean;
 };
 
 /** One collection line of the current user (F2-d). */

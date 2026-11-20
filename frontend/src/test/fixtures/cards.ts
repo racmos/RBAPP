@@ -255,7 +255,9 @@ export const cardDetail: CardDetail = {
       image_thumb_src: '/riftbound/media/cards/ogn_thumbs/ogn_81.png',
     }),
   ],
-  ban_info: [{ mode: '1v1', since: '2025-03-10', reason: 'Dominates the aggro metagame.' }],
+  ban_info: [
+    { mode: '1v1', since: '2025-03-10', reason: 'Dominates the aggro metagame.', active: true },
+  ],
   my_lines: [
     {
       id: 1,
