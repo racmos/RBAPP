@@ -117,13 +117,15 @@ describe('ProductsPage "My products" at 390 px (F14-e S2)', () => {
       screen.getByText('This total is not added to the value of your card collection.'),
     ).toBeVisible();
     const box = screen.getByRole('article', { name: 'Origins Booster Box' });
-    expect(within(box).getByText('Booster box')).toBeVisible();
+    expect(within(box).getByText('Booster boxes')).toBeVisible();
     expect(within(box).getByRole('spinbutton', { name: 'Quantity' })).toHaveValue(2);
     expect(within(box).getByText('99.50 €')).toBeVisible();
     expect(within(box).getByText('199.00 €')).toBeVisible();
     const sleeves = screen.getByRole('article', { name: 'Riftbound Sleeves' });
     // no image: the kind placeholder (S4); no price: the unpriced text (S5)
-    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent('Sleeves');
+    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent(
+      'Accessories',
+    );
     expect(within(sleeves).getAllByText('No price').length).toBeGreaterThan(0);
   }, 20000);
 
@@ -222,10 +224,12 @@ describe('ProductsPage "Catalog" at 390 px (F14-e S2)', () => {
     expect(within(box).getByText('+2.5%')).toBeInTheDocument();
     expect(within(box).getByText('×2')).toBeVisible();
     expect(within(box).getByText('You own 2')).toBeInTheDocument();
-    expect(within(box).getByText('Booster box')).toBeVisible();
+    expect(within(box).getByText('Booster boxes')).toBeVisible();
     const sleeves = screen.getByRole('link', { name: /Riftbound Sleeves/ });
     expect(within(sleeves).getByText('No price')).toBeVisible();
-    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent('Sleeves');
+    expect(sleeves.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent(
+      'Accessories',
+    );
     const booster = screen.getByRole('link', { name: /^Origins Booster Booster/ });
     expect(within(booster).queryByText(/×/)).toBeNull();
   }, 20000);
@@ -248,17 +252,17 @@ describe('ProductsPage "Catalog" at 390 px (F14-e S2)', () => {
     const { where } = await renderApp({ path: '/products?tab=catalog', width: WIDTH });
     await screen.findByRole('link', { name: /Origins Booster Box/ }, LONG);
     const kinds = screen.getByRole('group', { name: 'Kind' });
-    const chip = within(kinds).getByRole('button', { name: 'Booster box (1)' });
+    const chip = within(kinds).getByRole('button', { name: 'Booster boxes (1)' });
     expect(chip).toHaveAttribute('aria-pressed', 'false');
     await userEvent.click(chip);
-    await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box'), LONG);
+    await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=booster_box'), LONG);
     await waitFor(() =>
-      expect(within(kinds).getByRole('button', { name: 'Booster box (1)' })).toHaveAttribute(
+      expect(within(kinds).getByRole('button', { name: 'Booster boxes (1)' })).toHaveAttribute(
         'aria-pressed',
         'true',
       ),
     );
-    await userEvent.click(within(kinds).getByRole('button', { name: 'Booster box (1)' }));
+    await userEvent.click(within(kinds).getByRole('button', { name: 'Booster boxes (1)' }));
     await waitFor(() => expect(where()).toBe('/products?tab=catalog'), LONG);
   }, 20000);
 
@@ -292,7 +296,7 @@ describe('ProductsPage "Catalog" at 390 px (F14-e S2)', () => {
     signedIn();
     catalog({ pages: 0 }, []);
     const { where } = await renderApp({
-      path: '/products?tab=catalog&q=zzz&kind=box',
+      path: '/products?tab=catalog&q=zzz&kind=booster_box',
       width: WIDTH,
     });
     expect(await screen.findByText('No product matches the filters.', {}, LONG)).toBeVisible();

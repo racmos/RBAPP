@@ -38,11 +38,11 @@ def catalog(app):
                         RbcmExpansion(rbexp_id=4, rbexp_rbset_id='ARC')])
     add_product(100, 'Origins Booster', kind='booster', set_id='OGN',
                 category='Riftbound Booster', updated_at=datetime(2030, 1, 1, 10, 0))
-    add_product(101, 'Origins Display', kind='box', set_id='OGN', category='Riftbound Display',
-                hidden=True, updated_at=datetime(2030, 1, 3, 10, 0))
-    add_product(102, 'Mystery Bundle', kind='bundle', set_id=None,
+    add_product(101, 'Origins Display', kind='booster_box', set_id='OGN',
+                category='Riftbound Display', hidden=True, updated_at=datetime(2030, 1, 3, 10, 0))
+    add_product(102, 'Mystery Bundle', kind='sealed_box_set', set_id=None,
                 category='Riftbound Gift Bundle', listed=False)
-    add_product(103, 'Arcane Starter', kind='starter', set_id='ARC',
+    add_product(103, 'Arcane Starter', kind='champion_deck', set_id='ARC',
                 category='Riftbound Starter Deck', image='103.png',
                 updated_at=datetime(2030, 1, 2, 10, 0))
     add_product(900, 'Some Card', kind='other', set_id='OGN', type_='single')
@@ -124,8 +124,8 @@ class TestList:
         ('q=  ORIGINS  ', [100, 101]),
         ('q=102', [102]),
         ('q=nothing', []),
-        ('kind=box&kind=bundle', [102, 101]),
-        ('kind=starter', [103]),
+        ('kind=booster_box&kind=sealed_box_set', [102, 101]),
+        ('kind=champion_deck', [103]),
         ('hidden=yes', [101]),
         ('hidden=no', [103, 102, 100]),
         ('hidden=any', [103, 102, 100, 101]),
@@ -134,7 +134,7 @@ class TestList:
         ('no_set=true', [102]),
         ('no_set=false', [103, 102, 100, 101]),
         ('no_image=true', [102, 100, 101]),
-        ('kind=box&hidden=no', []),
+        ('kind=booster_box&hidden=no', []),
         ('q=origins&kind=booster', [100]),
     ])
     def test_filters(self, admin_client, catalog, query, expected):
@@ -182,6 +182,9 @@ class TestList:
         'sort=price', 'dir=sideways', 'page=0', 'per_page=7', 'per_page=48',
         'hidden=maybe', 'hidden=true', 'listed=true', 'listed=maybe', 'kind=nope',
         'no_set=maybe', 'no_image=1x', 'unknown_param=1',
+        # taxonomy 2026-11-20: the old kinds and the virtual ones are not kinds any more
+        'kind=box', 'kind=case', 'kind=bundle', 'kind=starter', 'kind=sleeves', 'kind=card',
+        'kind=unused',
     ])
     def test_bad_params_are_400(self, admin_client, catalog, query):
         resp = admin_client.get(f'{URL}?{query}')
@@ -257,16 +260,17 @@ class TestPatchHidden:
 class TestPatchKind:
     def test_a_kind_locks_it_and_the_refresh_respects_the_lock(self, admin_client, catalog,
                                                               frozen_clock):
-        item = payload(patch(admin_client, 100, {'kind': 'box'}))['data']
-        assert (item['kind'], item['kind_locked']) == ('box', True)
+        item = payload(patch(admin_client, 100, {'kind': 'booster_box'}))['data']
+        assert (item['kind'], item['kind_locked']) == ('booster_box', True)
         (audit,) = audits()
         assert audit.rbaud_action == 'product.update'
-        assert audit.rbaud_details == {'kind': ['booster', 'box'], 'kind_locked': [False, True]}
+        assert audit.rbaud_details == {'kind': ['booster', 'booster_box'],
+                                       'kind_locked': [False, True]}
         assert product(100).rbpdt_updated_at == NOON
 
         refresh_products(DAY)
         row = product(100)
-        assert (row.rbpdt_kind, row.rbpdt_kind_locked) == ('box', True)
+        assert (row.rbpdt_kind, row.rbpdt_kind_locked) == ('booster_box', True)
 
     def test_the_same_kind_still_locks_it(self, admin_client, catalog):
         item = payload(patch(admin_client, 100, {'kind': 'booster'}))['data']
@@ -276,31 +280,50 @@ class TestPatchKind:
     def test_null_unlocks_and_recomputes_from_the_category(self, admin_client, catalog):
         patch(admin_client, 101, {'kind': 'other'})
         item = payload(patch(admin_client, 101, {'kind': None}))['data']
-        assert (item['kind'], item['kind_locked']) == ('box', False)
-        assert audits()[1].rbaud_details == {'kind': ['other', 'box'],
+        assert (item['kind'], item['kind_locked']) == ('booster_box', False)
+        assert audits()[1].rbaud_details == {'kind': ['other', 'booster_box'],
                                              'kind_locked': [True, False]}
 
     def test_null_recomputes_with_the_name_cm_g(self, admin_client, catalog):
-        add_product(104, 'Jinx Trial Deck', kind='box', category='Riftbound Riftbound Box Sets',
+        add_product(104, 'Jinx Trial Deck', kind='booster_box',
+                    category='Riftbound Riftbound Box Sets', kind_locked=True)
+        add_product(105, 'Bulk Runes Box', kind='booster_box',
+                    category='Riftbound Riftbound Box Sets', kind_locked=True)
+        db.session.commit()
+        assert payload(patch(admin_client, 104, {'kind': None}))['data']['kind'] == (
+            'champion_deck')
+        assert payload(patch(admin_client, 105, {'kind': None}))['data']['kind'] == (
+            'sealed_box_set')
+
+    def test_null_on_a_not_used_category_recomputes_other(self, admin_client, catalog):
+        """Taxonomy 2026-11-20: Cardmarket Sets / Sealed Products are not used; a row stored
+        before the taxonomy that is unlocked gets `other` (the CHECK has no `unused`)."""
+        add_product(106, 'Origins: Full Set', kind='booster', category='RB Set',
                     kind_locked=True)
-        add_product(105, 'Bulk Runes Box', kind='box', category='Riftbound Riftbound Box Sets',
+        add_product(107, 'Sealed Lot', kind='booster', category='Riftbound Sealed Products',
                     kind_locked=True)
         db.session.commit()
-        assert payload(patch(admin_client, 104, {'kind': None}))['data']['kind'] == 'starter'
-        assert payload(patch(admin_client, 105, {'kind': None}))['data']['kind'] == 'bundle'
+        for product_id in (106, 107):
+            item = payload(patch(admin_client, product_id, {'kind': None}))['data']
+            assert (item['kind'], item['kind_locked']) == ('other', False)
+            assert (product(product_id).rbpdt_kind, product(product_id).rbpdt_kind_locked) == (
+                'other', False)
 
     def test_after_unlocking_the_refresh_follows_the_category_again(self, admin_client,
                                                                      catalog):
-        patch(admin_client, 100, {'kind': 'case'})
+        patch(admin_client, 100, {'kind': 'booster_box'})
         patch(admin_client, 100, {'kind': None})
         db.session.query(RbcmProduct).filter_by(rbprd_date=DAY, rbprd_id_product=100).update(
             {'rbprd_category_name': 'Riftbound Sleeves'})
         db.session.commit()
         refresh_products(DAY)
-        assert product(100).rbpdt_kind == 'sleeves'
+        assert product(100).rbpdt_kind == 'accessory'
 
-    def test_an_unknown_kind_is_400_and_changes_nothing(self, admin_client, catalog):
-        resp = patch(admin_client, 100, {'kind': 'pizza'})
+    @pytest.mark.parametrize('kind', ['pizza', 'box', 'case', 'bundle', 'starter', 'sleeves',
+                                      'card', 'unused'])
+    def test_an_unknown_kind_is_400_and_changes_nothing(self, admin_client, catalog, kind):
+        """Taxonomy 2026-11-20: the old kinds and the virtual ones are refused too."""
+        resp = patch(admin_client, 100, {'kind': kind})
         assert resp.status_code == 400
         body = payload(resp)
         assert body['code'] == 'validation_error'
@@ -373,10 +396,12 @@ class TestPatchSet:
 
 class TestPatchRules:
     def test_several_fields_make_one_audit_row(self, admin_client, catalog):
-        resp = patch(admin_client, 100, {'hidden': True, 'kind': 'box', 'set_id': 'SFD'})
+        resp = patch(admin_client, 100, {'hidden': True, 'kind': 'booster_box',
+                                         'set_id': 'SFD'})
         assert resp.status_code == 200
         (audit,) = audits()
-        assert audit.rbaud_details == {'hidden': [False, True], 'kind': ['booster', 'box'],
+        assert audit.rbaud_details == {'hidden': [False, True],
+                                       'kind': ['booster', 'booster_box'],
                                        'kind_locked': [False, True],
                                        'set_id': ['OGN', 'SFD'], 'set_locked': [False, True]}
 

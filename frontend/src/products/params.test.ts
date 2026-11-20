@@ -19,10 +19,10 @@ describe('products params (F14-e S2)', () => {
 
   it('reads search, kinds, sets, sort, direction and paging', () => {
     expect(
-      parse('q=+box+&kind=box&kind=booster&set=OGN&sort=price&dir=desc&page=3&per_page=96'),
+      parse('q=+box+&kind=booster_box&kind=booster&set=OGN&sort=price&dir=desc&page=3&per_page=96'),
     ).toEqual({
       q: 'box',
-      kind: ['box', 'booster'],
+      kind: ['booster_box', 'booster'],
       set: ['OGN'],
       sort: 'price',
       dir: 'desc',
@@ -32,20 +32,27 @@ describe('products params (F14-e S2)', () => {
   });
 
   it('drops invalid values', () => {
-    expect(parse('q=+&kind=deck&kind=box&set=&sort=rarity&dir=up&page=0&per_page=200')).toEqual({
-      kind: ['box'],
+    expect(
+      parse('q=+&kind=deck&kind=booster_box&set=&sort=rarity&dir=up&page=0&per_page=200'),
+    ).toEqual({
+      kind: ['booster_box'],
       sort: 'name',
       dir: 'asc',
       page: 1,
       per_page: 48,
     });
     expect(parse('per_page=10').per_page).toBe(48);
+    // the kinds of before the taxonomy of 2026-11-20 are dropped from an old link
+    expect(parse('kind=box&kind=case&kind=bundle&kind=starter&kind=sleeves&kind=card').kind).toBe(
+      undefined,
+    );
     expect(parse('page=2.5').page).toBe(1);
   });
 
   it('serialises without the defaults and round-trips', () => {
     expect(serializeProductParams(parse(''))).toBe('');
-    const search = 'q=box&kind=box&kind=booster&set=OGN&sort=change_7d&dir=desc&page=2&per_page=24';
+    const search =
+      'q=box&kind=booster_box&kind=booster&set=OGN&sort=change_7d&dir=desc&page=2&per_page=24';
     expect(serializeProductParams(parse(search))).toBe(search);
   });
 
@@ -57,7 +64,7 @@ describe('products params (F14-e S2)', () => {
 
   it('counts the active filters', () => {
     expect(activeFilterCount(parse('q=box'))).toBe(0);
-    expect(activeFilterCount(parse('kind=box&kind=booster&set=OGN'))).toBe(3);
+    expect(activeFilterCount(parse('kind=booster_box&kind=booster&set=OGN'))).toBe(3);
   });
 
   it('reads and writes owned=owned, the only owned value the screens use (F14-f S1)', () => {
@@ -78,7 +85,9 @@ describe('products params (F14-e S2)', () => {
     expect(parseTab(new URLSearchParams('tab=catalog'))).toBe('catalog');
     expect(parseTab(new URLSearchParams('tab=other'))).toBeNull();
     expect(parseTab(new URLSearchParams(''))).toBeNull();
-    expect(productsSearch('catalog', parse('kind=box&page=2'))).toBe('tab=catalog&kind=box&page=2');
+    expect(productsSearch('catalog', parse('kind=booster_box&page=2'))).toBe(
+      'tab=catalog&kind=booster_box&page=2',
+    );
     expect(productsSearch('mine', parse(''))).toBe('tab=mine');
   });
 });

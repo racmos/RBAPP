@@ -353,14 +353,14 @@ export const prices = (values: Record<string, number>) => ({
 export const EXPANSION_PRODUCTS = [
   expansionProduct(9101, 'Proving Grounds Booster Box', {
     type: 'sealed',
-    kind: 'box',
+    kind: 'booster_box',
     category: 'Riftbound Booster Box',
     category_id: 2,
     date_added: '2025-07-14',
     price: 95,
     price_source: 'avg7',
     prices: prices({ low: 90, trend: 97.5, avg7: 95, avg30: 96, avg: 94 }),
-    catalog: { kind: 'box', set_id: 'OGS' },
+    catalog: { kind: 'booster_box', set_id: 'OGS' },
   }),
   expansionProduct(9001, 'Ahri, Nine-Tailed Fox', {
     date_added: '2025-07-15',
@@ -380,17 +380,16 @@ export const EXPANSION_PRODUCTS = [
   expansionProduct(9003, 'Jinx, Loose Cannon'),
 ];
 
-/** The kinds of the counters (CM-g): card first, then the product kinds. */
+/** The kinds of the counters (CM-g, taxonomy 2026-11-20): card, the product kinds, unused. */
 const KIND_ORDER = [
   'card',
   'booster',
-  'box',
-  'case',
-  'bundle',
-  'starter',
-  'sleeves',
+  'booster_box',
+  'champion_deck',
+  'sealed_box_set',
   'accessory',
   'other',
+  'unused',
 ];
 
 export type KindCount = { kind: string; count: number };

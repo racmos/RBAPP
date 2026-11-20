@@ -2,8 +2,12 @@ from app import db
 from app.schemas.prefs_domain import sql_in
 from app.utils import clock
 
-# Product kinds of the catalog (F14-a S2, S3); `rbproducts_kind_chk` is built from it.
-PRODUCT_KINDS = ('booster', 'box', 'case', 'bundle', 'starter', 'sleeves', 'accessory', 'other')
+# Product kinds of the catalog (owner taxonomy 2026-11-20, migration 0033), in display order;
+# `rbproducts_kind_chk` is built from it. `card` (Cardmarket singles) and `unused` (Cardmarket
+# Sets and Sealed Products, never imported) are virtual: never stored (`app/services/products.py`).
+PRODUCT_KINDS = ('booster', 'booster_box', 'champion_deck', 'sealed_box_set', 'accessory', 'other')
+# The virtual kind of a Cardmarket category we do not use (Sets, Sealed Products).
+NOT_USED_KIND = 'unused'
 
 
 class RbcmProduct(db.Model):
@@ -161,7 +165,8 @@ class RbProducts(db.Model):
     rbpdt_image = db.Column(db.Text)
     rbpdt_category = db.Column(db.Text, nullable=True, comment='Cardmarket category name')
     rbpdt_kind = db.Column(db.String(16), nullable=True,
-                           comment='Product kind (booster, box, case, ...); NULL = not set')
+                           comment='Product kind (booster, booster_box, champion_deck, ...); '
+                                   'NULL = not set')
     rbpdt_kind_locked = db.Column(db.Boolean, nullable=False, default=False,
                                   server_default=db.false(),
                                   comment='The refresh never changes the kind')

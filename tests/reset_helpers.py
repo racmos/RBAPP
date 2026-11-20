@@ -145,7 +145,7 @@ def seed_world():
     _add(m.RbProducts(rbpdt_id_product=7001, rbpdt_name='Origins Booster', rbpdt_id_set='OGN',
                       rbpdt_kind='booster', rbpdt_set_locked=True))
     _add(m.RbProducts(rbpdt_id_product=7002, rbpdt_name='Spiritforged Box', rbpdt_id_set='SFD',
-                      rbpdt_kind='box'))
+                      rbpdt_kind='booster_box'))
 
     # User data, on a deleted user (incl. the username foreign keys) and on a kept one.
     for user in (old, kept):

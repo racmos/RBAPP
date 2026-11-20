@@ -70,25 +70,28 @@ describe('ProductsDesktop rail at 1280 px (F14-f S1)', () => {
     await catalogTable();
     expect(screen.getByRole('tab', { name: 'Catalog' })).toHaveAttribute('aria-selected', 'true');
     // the mobile chips and sort select are not there
-    expect(screen.queryByRole('button', { name: 'Booster box (1)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Booster boxes (1)' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Sort by' })).toBeNull();
 
-    const box = within(rail()).getByRole('checkbox', { name: 'Booster box (1)' });
+    const box = within(rail()).getByRole('checkbox', { name: 'Booster boxes (1)' });
     expect(box).not.toBeChecked();
     await userEvent.click(box);
-    await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box'), LONG);
+    await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=booster_box'), LONG);
     await waitFor(() =>
-      expect(within(rail()).getByRole('checkbox', { name: 'Booster box (1)' })).toBeChecked(),
+      expect(within(rail()).getByRole('checkbox', { name: 'Booster boxes (1)' })).toBeChecked(),
     );
 
     await userEvent.selectOptions(within(rail()).getByRole('combobox', { name: 'Set' }), 'OGN');
-    await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box&set=OGN'), LONG);
+    await waitFor(
+      () => expect(where()).toBe('/products?tab=catalog&kind=booster_box&set=OGN'),
+      LONG,
+    );
 
     const mine = within(rail()).getByRole('switch', { name: 'Only mine' });
     expect(mine).toHaveAttribute('aria-checked', 'false');
     await userEvent.click(mine);
     await waitFor(
-      () => expect(where()).toBe('/products?tab=catalog&kind=box&set=OGN&owned=owned'),
+      () => expect(where()).toBe('/products?tab=catalog&kind=booster_box&set=OGN&owned=owned'),
       LONG,
     );
     await waitFor(() =>
@@ -100,26 +103,33 @@ describe('ProductsDesktop rail at 1280 px (F14-f S1)', () => {
 
     await userEvent.type(within(rail()).getByRole('searchbox', { name: 'Search products' }), 'box');
     await waitFor(
-      () => expect(where()).toBe('/products?tab=catalog&q=box&kind=box&set=OGN&owned=owned'),
+      () =>
+        expect(where()).toBe('/products?tab=catalog&q=box&kind=booster_box&set=OGN&owned=owned'),
       LONG,
     );
 
     await userEvent.click(within(rail()).getByRole('switch', { name: 'Only mine' }));
-    await waitFor(() => expect(where()).toBe('/products?tab=catalog&q=box&kind=box&set=OGN'), LONG);
+    await waitFor(
+      () => expect(where()).toBe('/products?tab=catalog&q=box&kind=booster_box&set=OGN'),
+      LONG,
+    );
   }, 30000);
 
   it('keeps a filter change that the page has not rendered yet (L6)', async () => {
     signedIn();
     const { where } = await renderApp({ path: '/products?tab=catalog', width: DESKTOP });
     await catalogTable();
-    const box = within(rail()).getByRole('checkbox', { name: 'Booster box (1)' });
+    const box = within(rail()).getByRole('checkbox', { name: 'Booster boxes (1)' });
     const mine = within(rail()).getByRole('switch', { name: 'Only mine' });
     // the router applies a navigation in a transition: the second change comes before the render
     act(() => {
       fireEvent.click(box);
       fireEvent.click(mine);
     });
-    await waitFor(() => expect(where()).toBe('/products?tab=catalog&kind=box&owned=owned'), LONG);
+    await waitFor(
+      () => expect(where()).toBe('/products?tab=catalog&kind=booster_box&owned=owned'),
+      LONG,
+    );
   }, 20000);
 
   it('"only mine" asks the API for the owned products only', async () => {
@@ -160,7 +170,7 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
       'href',
       '/riftbound/app/products/501',
     );
-    expect(within(box).getByText('Booster box')).toBeVisible();
+    expect(within(box).getByText('Booster boxes')).toBeVisible();
     expect(within(box).getByText('OGN')).toBeVisible();
     expect(within(box).getByText('99.50 €')).toBeVisible();
     expect(within(box).getByText('+2.5%')).toBeVisible();
@@ -243,7 +253,7 @@ describe('ProductsDesktop catalog table at 1280 px (F14-f S2)', () => {
       ),
     );
     const { where } = await renderApp({
-      path: '/products?tab=catalog&q=zzz&kind=box&owned=owned',
+      path: '/products?tab=catalog&q=zzz&kind=booster_box&owned=owned',
       width: DESKTOP,
     });
     expect(await screen.findByText('No product matches the filters.', {}, LONG)).toBeVisible();
@@ -296,7 +306,7 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
     expect(within(box).getByRole('textbox', { name: 'Note: Origins Booster Box' })).toHaveValue(
       'Sealed',
     );
-    expect(within(box).getByText('Booster box')).toBeVisible();
+    expect(within(box).getByText('Booster boxes')).toBeVisible();
     expect(within(box).getByText('99.50 €')).toBeVisible();
     expect(within(box).getByText('199.00 €')).toBeVisible();
     expect(within(box).getByText('+19.00 €')).toBeVisible();
@@ -368,7 +378,7 @@ describe('ProductsDesktop mine table at 1280 px (F14-f S3)', () => {
     const box = within(table).getByRole('row', { name: /Origins Booster Box/ });
     await userEvent.click(within(box).getByRole('textbox', { name: 'Note: Origins Booster Box' }));
     expect(where()).toBe('/products?tab=mine');
-    await userEvent.click(within(box).getByText('Booster box'));
+    await userEvent.click(within(box).getByText('Booster boxes'));
     await waitFor(() => expect(where()).toBe('/products/501'), LONG);
   }, 20000);
 
@@ -461,7 +471,7 @@ describe('ProductsDesktop wide panel at 1700 px (F14-f S4)', () => {
     const mine = await mineTable();
     await userEvent.click(
       within(within(mine).getByRole('row', { name: /Riftbound Sleeves/ })).getByRole('cell', {
-        name: 'Sleeves',
+        name: 'Accessories',
       }),
     );
     expect(

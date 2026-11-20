@@ -343,39 +343,57 @@ get name, category and `listed = true`, and kind / set unless `rbpdt_kind_locked
 queues it after `value_snapshot` (each on its own: one active or failing does not stop the other). A date
 without non-single products is an error and changes nothing; so is an unknown param or a bad date.
 
-Product kinds (`app/services/products.py::kind_for(category, name)`, case-insensitive, the first rule
-that matches wins; only the `box set` rule reads the product name; `deck box` does not count as `deck` in
-the category):
+Product kinds: the owner's taxonomy of 2026-11-20 (migration `0033_product_kinds`), one kind per
+Cardmarket category:
+
+| Cardmarket category | Our kind (label) |
+|---|---|
+| Singles (`Riftbound Single`) | `card` ("Cards"): every card imported from Riot plus the promotional ones with their card code; virtual, never a catalog product |
+| Booster (`Riftbound Booster`) | `booster` ("Booster") |
+| Booster Boxes (`Riftbound Display`; a case such as 'Origins Case' too) | `booster_box` ("Booster boxes") |
+| Champion Decks (`Riftbound Champion Decks`) | `champion_deck` ("Champion decks") |
+| Box Sets (`Riftbound Riftbound Box Sets`) | `sealed_box_set` ("Sealed box sets"); **name rule:** a product whose name has `deck` (the Trial Decks) is a `champion_deck` |
+| Accessories, every subcategory (sleeves, playmats, binders, deck boxes, dice, tokens...) | `accessory` ("Accessories"); the Cardmarket category name stays in `rbpdt_category` as the subcategory |
+| Sets (`RB Set`: one card of each rarity of a set) | not used: never in the catalog ("Not used" in the admin's expansion products) |
+| Sealed Products | not used: never in the catalog ("Not used") |
+| any other category | `other` ("Other"), a technical fallback |
+
+**Name rule to confirm (owner, CM-g 2026-11-20):** inside Box Sets the Trial Decks are champion decks
+because the owner said a trial deck is a champion deck. To drop it, remove the `champion_deck` /
+`box set` / `deck` rule of `_RULES` in `app/services/products.py` (and its tests); the Trial Decks then
+become sealed box sets.
+
+The rules (`app/services/products.py::kind_for(category, name)`, case-insensitive, the first that matches
+wins; only the Box Sets rule reads the product name; `kind_sql` is the same rules as SQL):
 
 | Rule (in order) | Kind |
 |---|---|
-| category has `case` | case |
-| category has `booster box` or `display` | box |
+| category has `sealed product` | not used (`unused`) |
+| category has `accessor`, `sleeve`, `playmat`, `play mat`, `binder`, `album`, `portfolio`, `deck box`, `storage`, `dice`, `token`, `life counter` or `protector` | accessory |
+| category has `case`, `booster box` or `display` | booster_box |
 | category has `booster` | booster |
-| category has `box set` **and** the name has `deck` (CM-g) | starter |
-| category has `bundle`, `gift` or `box set` | bundle (shown as "Bundle / set") |
-| category has `starter` or `deck` | starter |
-| category has `sleeve` | sleeves |
-| category has `deck box`, `playmat`, `binder`, `accessor`, `dice` or `token` | accessory |
+| category has `box set` **and** the name has `deck` | champion_deck |
+| category has `box set`, `bundle` or `gift` | sealed_box_set |
+| category has `starter` or `deck` | champion_deck |
+| category is `set` / `sets` or ends with the word `set` / `sets` (Cardmarket Sets, `RB Set`) | not used (`unused`) |
 | anything else | other |
 
-The six Riftbound categories Cardmarket has: `Riftbound Single` (single, never a product; "Cards" in the
-admin's expansion products), `Riftbound Booster` → booster, `Riftbound Display` → box, `Riftbound Champion
-Decks` → starter, `Riftbound Riftbound Box Sets` (Cardmarket's boxed, promotional and collection
-products) by name: a name with `deck` (the trial decks 'Jinx Trial Deck', ...: champion decks for the
-owner) → starter, anything else (vaults, pre-rift event kits, bundles, collection and promotional boxes,
-'Bulk Runes Box') → bundle; `RB Set` (the rarity sets 'Origins: Common Set' ... 'Origins: Full Set', loose
-cards the owner does not sell) has no rule and stays other. Until CM-g (2026-11-20) `Box Sets` was `other`
-too. A rule change reaches the stored kinds only through a refresh, and only the **unlocked** ones (a kind
-the admin set by hand stays): after the CM-g deploy run `venv/bin/flask jobs enqueue products_refresh` then
-`venv/bin/flask jobs run-pending` (or wait for the next daily load) to move the unlocked `other` products of
-`Box Sets`: the trial decks to starter, the rest to bundle (`RB Set` stays other); its `updated` count says
-how many rows changed. Unlocking a kind by hand (`PATCH /admin/products/<id>` `kind: null`) recomputes it with
-the same rules and the product's name. The admin's expansion products list (CM-g) computes the kind of a
-product without a catalog kind on the fly, so it shows the new kind before the refresh.
+`refresh_products` skips the products of a not used category (counted in `skipped`): no `rbproducts`
+row is created; a row stored before the taxonomy is treated as missing from the file (`listed = false`,
+never deleted, kind untouched). The `rbcm_products` history rows are never touched. Unlocking a kind by
+hand (`PATCH /admin/products/<id>` `kind: null`) recomputes it with the same rules and the product's
+name (a not used category gives `other`, the CHECK has no `unused`). A rule change reaches the stored
+kinds only through a refresh, and only the **unlocked** ones (a kind the admin set by hand stays). The
+admin's expansion products list computes the kind on the fly, so it shows the new kinds at once.
+
+After the `0033_product_kinds` deploy (the migration renames the stored kinds: box and case →
+booster_box, starter → champion_deck, bundle → sealed_box_set, sleeves → accessory) run
+`venv/bin/flask jobs enqueue products_refresh` then `venv/bin/flask jobs run-pending` (or wait for the
+next daily load) so the unlocked kinds follow the rules and the not used products are unlisted; its
+`updated` and `skipped` counts say how many rows changed and how many products were not imported.
 
 By hand: `venv/bin/flask jobs enqueue products_refresh [--param date=YYYYMMDD]`, then
-`venv/bin/flask jobs list`. Read the counts (`date`, `new`, `updated`, `not_listed`, `total`) of the latest job:
+`venv/bin/flask jobs list`. Read the counts (`date`, `new`, `updated`, `not_listed`, `skipped`, `total`) of the latest job:
 
 ```bash
 venv/bin/flask shell <<< "from app.models import RbJob as J; j = J.query.filter_by(rbjob_kind='products_refresh').order_by(J.rbjob_id.desc()).first(); print(j.rbjob_id, j.rbjob_status, j.rbjob_result or j.rbjob_message)"

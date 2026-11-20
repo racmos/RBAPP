@@ -54,7 +54,7 @@ def test_the_default_date_is_the_latest_cardmarket_date(app, frozen_clock):
     cm('20300102', 2)
     db.session.commit()
     assert handler({}) == {'date': '20300102', 'new': 1, 'updated': 0, 'not_listed': 0,
-                           'total': 1}
+                           'skipped': 0, 'total': 1}
     assert catalog() == [(2, True)]
 
 
@@ -69,7 +69,7 @@ def test_the_latest_date_without_non_singles_fails_and_changes_nothing(two_days,
 def test_a_date_param_picks_that_day(two_days, frozen_clock):
     handler({'date': '20300101'})
     assert handler({'date': '20300102'}) == {'date': '20300102', 'new': 1, 'updated': 0,
-                                             'not_listed': 1, 'total': 3}
+                                             'not_listed': 1, 'skipped': 0, 'total': 3}
     assert catalog() == [(1, False), (2, True), (3, True)]
 
 
@@ -100,7 +100,8 @@ def test_run_through_the_runner(two_days, frozen_clock):
     db.session.expire_all()
     done = db.session.get(RbJob, job.rbjob_id)
     assert (done.rbjob_status, done.rbjob_result) == (
-        'success', {'date': '20300102', 'new': 2, 'updated': 0, 'not_listed': 0, 'total': 2})
+        'success', {'date': '20300102', 'new': 2, 'updated': 0, 'not_listed': 0, 'skipped': 0,
+                    'total': 2})
 
 
 def test_the_cli_queues_it_with_a_date(app):

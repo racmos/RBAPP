@@ -1,41 +1,43 @@
-"""F14-a S3 (AC2): `kind_for(category, name=None)`, the Cardmarket category -> product kind
-rules.
+"""Product kinds taxonomy (owner decision 2026-11-20): `kind_for(category, name=None)`, the
+Cardmarket category -> our product kind, and its SQL twin `kind_sql`.
 
-CM-g (owner, 2026-11-20, after looking at the real products): 'Riftbound Riftbound Box Sets' is
-Cardmarket's category of boxed, promotional and collection products, and the product NAME
-decides: a name with `deck` (the trial decks, champion decks for the owner) is a starter,
-anything else there (vaults, event kits, bundles, collection boxes, the runes box) is a bundle
-("Bundle / set"). 'RB Set' (loose cards by rarity, not sold) gets no rule: it stays `other`.
-The name is read only by the box set rule; every other mapping is unchanged. `kind_sql(category,
-name)` is the same rules as SQL (the expansion products filter and counters) and must agree with
-`kind_for` on every case below.
+Cardmarket category -> our kind:
+  Singles        -> `card` (virtual: singles are cards, never catalog products; not this function)
+  Booster        -> `booster`
+  Booster Boxes  -> `booster_box` (Cardmarket's `Display`; a case is a booster box too)
+  Sets           -> not used (`unused`: `RB Set`, a pack of one card of each rarity)
+  Sealed Products-> not used (`unused`)
+  Champion Decks -> `champion_deck`
+  Box Sets       -> `sealed_box_set`; NAME RULE (owner, 2026-11-20, removable): a product whose
+                    name has `deck` (the Trial Decks) is a `champion_deck`
+  Accessories    -> `accessory`, every subcategory (sleeves, playmats, binders, deck boxes, dice,
+                    tokens...; the category name is kept in `rbpdt_category`)
+  anything else  -> `other`
+`kind_sql(category, name)` is the same rules as SQL and must agree with `kind_for` on every case.
 """
 import pytest
 import sqlalchemy as sa
 
 from app import db
-from app.models.cardmarket import PRODUCT_KINDS
+from app.models.cardmarket import NOT_USED_KIND, PRODUCT_KINDS
 from app.services.products import kind_for, kind_sql
 
-
-# S1(a) on the dev database (2026-10-28): every non-single category and its kind, without a
-# name. CM-g (2026-11-20): 'Riftbound Riftbound Box Sets' was `other`; now `bundle` (a starter
-# only by its name). 'RB Set' stays `other`.
+# Every non-single category of the dev database (2026-10-28, 2026-11-20), without a name
 PREFLIGHT = [
     ('Riftbound Booster', 'booster'),
-    ('Riftbound Riftbound Box Sets', 'bundle'),
-    ('Riftbound Display', 'box'),
-    ('RB Set', 'other'),
-    ('Riftbound Champion Decks', 'starter'),
+    ('Riftbound Riftbound Box Sets', 'sealed_box_set'),
+    ('Riftbound Display', 'booster_box'),
+    ('RB Set', 'unused'),
+    ('Riftbound Champion Decks', 'champion_deck'),
 ]
 
 BOX_SETS = 'Riftbound Riftbound Box Sets'
 
-# CM-g: the real products of the dev database (2026-11-20): (category, name, kind)
+# The real products of the dev database (2026-11-20): (category, name, kind)
 REAL = [
-    *((BOX_SETS, f'{champion} Trial Deck', 'starter')
+    *((BOX_SETS, f'{champion} Trial Deck', 'champion_deck')
       for champion in ('Jinx', 'Viktor', 'Volibear', 'Yasuo')),
-    *((BOX_SETS, name, 'bundle') for name in (
+    *((BOX_SETS, name, 'sealed_box_set') for name in (
         'Bulk Runes Box', 'Proving Grounds', 'Proving Grounds (French)', 'Arcane Box Set',
         'Arcane Box Set (Chinese)', 'Worlds Bundle 2025', 'Worlds Bundle 2026',
         'Spiritforged: Pre-Rift Event Kit', 'Lunar Revel Bundle', 'Unleashed Vault',
@@ -44,40 +46,37 @@ REAL = [
         'Gift of the Rift Bundle', 'Radiance Vault', 'Radiance: Pre-Rift Event Kit',
         'Secret Garden Box Set', 'Riftbound x T1 2025 Worlds Champion Signature Edition',
         'Legacy Vault', 'K/DA Couture Collection Box')),
-    *(('RB Set', f'Origins: {rarity} Set', 'other')
+    *(('RB Set', f'Origins: {rarity} Set', 'unused')
       for rarity in ('Common', 'Uncommon', 'Rare', 'Epic', 'Full')),
-    ('Riftbound Champion Decks', 'Jinx Champion Deck', 'starter'),
+    ('Riftbound Champion Decks', 'Jinx Champion Deck', 'champion_deck'),
     ('Riftbound Booster', 'Origins Booster', 'booster'),
-    ('Riftbound Display', 'Origins Booster Display', 'box'),
+    ('Riftbound Display', 'Origins Booster Display', 'booster_box'),
+    ('Riftbound Display', 'Origins Case', 'booster_box'),
 ]
 
-# CM-g: the box set name rule (case-insensitive, singular or plural) and what it leaves alone
+# The Box Sets name rule (case-insensitive) and what it leaves alone
 NAMED = [
-    ('Box Set', 'Some Deck', 'starter'),
-    ('box sets', 'JINX TRIAL DECK', 'starter'),
-    ('RIFTBOUND RIFTBOUND BOX SETS', 'Arcane Deck', 'starter'),
-    ('Box Sets', 'Anything', 'bundle'),
-    (BOX_SETS, '', 'bundle'),
-    (BOX_SETS, None, 'bundle'),
+    ('Box Set', 'Some Deck', 'champion_deck'),
+    ('box sets', 'JINX TRIAL DECK', 'champion_deck'),
+    ('RIFTBOUND RIFTBOUND BOX SETS', 'Arcane Deck', 'champion_deck'),
+    ('Box Sets', 'Anything', 'sealed_box_set'),
+    (BOX_SETS, '', 'sealed_box_set'),
+    (BOX_SETS, None, 'sealed_box_set'),
     # the name counts only in a box set category
     ('Riftbound Booster', 'Jinx Trial Deck', 'booster'),
-    ('Riftbound Display', 'Trial Deck Display', 'box'),
-    ('RB Set', 'Jinx Trial Deck', 'other'),
-    ('RB Set', None, 'other'),
-    ('rb sets', 'Vault', 'other'),
-    ('Promo Set', 'Trial Deck', 'other'),
+    ('Riftbound Display', 'Trial Deck Display', 'booster_box'),
+    ('RB Set', 'Jinx Trial Deck', 'unused'),
+    ('Riftbound Sealed Products', 'Jinx Trial Deck', 'unused'),
+    ('Sleeves', 'Trial Deck Sleeves', 'accessory'),
     (None, 'Jinx Trial Deck', 'other'),
     # an earlier rule still wins
-    ('Booster Box Set', 'Trial Deck', 'box'),
+    ('Booster Box Set', 'Trial Deck', 'booster_box'),
     ('Booster Set', None, 'booster'),
-    # `set` alone is not the box set rule
-    ('Promo Set', None, 'other'),
-    ('Riftbound Set', None, 'other'),
 ]
 
 
 @pytest.mark.parametrize('category, name, kind', REAL + NAMED)
-def test_rb_set_and_box_set_names(category, name, kind):
+def test_real_products_and_the_box_sets_name_rule(category, name, kind):
     assert kind_for(category, name) == kind
 
 
@@ -92,34 +91,54 @@ def test_every_preflight_category(category, kind):
 
 
 RULES = [
-    # contains `case` -> case
-    ('Booster Box Case', 'case'),
-    ('Display Case', 'case'),
-    # `booster box` or `display` -> box
-    ('Booster Box', 'box'),
-    ('Riftbound Display', 'box'),
-    # `booster` -> booster
-    ('Booster', 'booster'),
-    ('Booster Pack', 'booster'),
-    # `bundle` or `gift` -> bundle
-    ('Bundle', 'bundle'),
-    ('Gift Set', 'bundle'),
-    # `starter` or `deck` (not `deck box`) -> starter
-    ('Starter Deck', 'starter'),
-    ('Champion Deck', 'starter'),
-    ('Proving Grounds Starter', 'starter'),
-    # `sleeve` -> sleeves
-    ('Sleeves', 'sleeves'),
-    ('Card Sleeve', 'sleeves'),
-    # `deck box`, `playmat`, `binder`, `accessor`, `dice`, `token` -> accessory
-    ('Deck Box', 'accessory'),
-    ('Playmat', 'accessory'),
-    ('Binder', 'accessory'),
+    # Cardmarket Sealed Products -> not used
+    ('Sealed Products', 'unused'),
+    ('Riftbound Sealed Products', 'unused'),
+    ('Sealed Product', 'unused'),
+    # Cardmarket Sets (a category ending in `set` / `sets`, not a box set) -> not used
+    ('RB Set', 'unused'),
+    ('Sets', 'unused'),
+    ('Riftbound Sets', 'unused'),
+    ('rb sets', 'unused'),
+    ('Promo Set', 'unused'),
+    # every accessory subcategory -> accessory
     ('Accessories', 'accessory'),
+    ('Riftbound Accessories', 'accessory'),
+    ('Sleeves', 'accessory'),
+    ('Card Sleeve', 'accessory'),
+    ('Playmats', 'accessory'),
+    ('Play Mats', 'accessory'),
+    ('Binders', 'accessory'),
+    ('Albums', 'accessory'),
+    ('Portfolios', 'accessory'),
+    ('Deck Boxes', 'accessory'),
+    ('Deck Box', 'accessory'),
+    ('Storage Boxes', 'accessory'),
     ('Dice', 'accessory'),
     ('Tokens', 'accessory'),
+    ('Life Counters', 'accessory'),
+    ('Card Protectors', 'accessory'),
+    # Booster Boxes / Display / a case -> booster box
+    ('Booster Boxes', 'booster_box'),
+    ('Booster Box', 'booster_box'),
+    ('Riftbound Display', 'booster_box'),
+    ('Booster Box Case', 'booster_box'),
+    ('Display Case', 'booster_box'),
+    # Booster -> booster
+    ('Booster', 'booster'),
+    ('Booster Pack', 'booster'),
+    # Box Sets (and the old bundle / gift words) -> sealed box set
+    ('Box Sets', 'sealed_box_set'),
+    ('Bundle', 'sealed_box_set'),
+    ('Gift Set', 'sealed_box_set'),
+    # Champion Decks (and the old starter / deck words) -> champion deck
+    ('Champion Decks', 'champion_deck'),
+    ('Starter Deck', 'champion_deck'),
+    ('Proving Grounds Starter', 'champion_deck'),
     # anything else -> other
-    ('Promo Set', 'other'),
+    ('Riftbound Single', 'other'),
+    ('Settings', 'other'),
+    ('Set Pieces', 'other'),
     ('', 'other'),
     (None, 'other'),
 ]
@@ -131,10 +150,12 @@ def test_each_rule(category, kind):
 
 
 CASES = [
-    ('BOOSTER BOX CASE', 'case'),
-    ('booster box', 'box'),
+    ('BOOSTER BOX CASE', 'booster_box'),
+    ('booster boxes', 'booster_box'),
     ('DeCk BoX', 'accessory'),
-    ('SLEEVES', 'sleeves'),
+    ('SLEEVES', 'accessory'),
+    ('SEALED PRODUCTS', 'unused'),
+    ('RB SET', 'unused'),
 ]
 
 
@@ -144,13 +165,14 @@ def test_matching_ignores_case(category, kind):
 
 
 ORDER = [
-    ('Booster Display Case', 'case'),     # case before box and booster
-    ('Booster Box', 'box'),               # booster box before booster
-    ('Booster Bundle', 'booster'),        # booster before bundle
-    ('Gift Deck', 'bundle'),              # gift before deck
-    ('Starter Deck Box', 'starter'),      # starter wins before the deck box rule
-    ('Deck Box Sleeves', 'sleeves'),      # deck box is not a deck; sleeve comes first
-    ('Deck Box', 'accessory'),
+    ('Sealed Products Booster', 'unused'),          # not used before anything else
+    ('Booster Box Sleeves', 'accessory'),           # an accessory before box and booster
+    ('Deck Box Case', 'accessory'),                 # deck box is an accessory, not a case
+    ('Starter Deck Box', 'accessory'),
+    ('Booster Display Case', 'booster_box'),
+    ('Booster Bundle', 'booster'),                  # booster before bundle
+    ('Gift Deck', 'sealed_box_set'),                # gift before deck
+    ('Champion Deck Set', 'champion_deck'),         # a deck before the sets rule
 ]
 
 
@@ -159,14 +181,16 @@ def test_the_first_rule_that_matches_wins(category, kind):
     assert kind_for(category) == kind
 
 
-def test_every_kind_is_allowed_by_the_check():
-    assert set(kind for _, kind in PREFLIGHT) <= set(PRODUCT_KINDS)
-    assert PRODUCT_KINDS == ('booster', 'box', 'case', 'bundle', 'starter', 'sleeves',
+def test_the_stored_kinds_and_the_virtual_ones():
+    assert PRODUCT_KINDS == ('booster', 'booster_box', 'champion_deck', 'sealed_box_set',
                              'accessory', 'other')
+    assert NOT_USED_KIND == 'unused'
+    assert NOT_USED_KIND not in PRODUCT_KINDS and 'card' not in PRODUCT_KINDS
+    every = {kind for _, kind in PREFLIGHT + RULES + CASES + ORDER}
+    assert every == set(PRODUCT_KINDS) | {NOT_USED_KIND}
 
 
-EVERY_CASE = ([(category, None, kind) for category, kind in
-               PREFLIGHT + RULES + CASES + ORDER + [('Riftbound Single', 'other')]]
+EVERY_CASE = ([(category, None, kind) for category, kind in PREFLIGHT + RULES + CASES + ORDER]
               + REAL + NAMED)
 
 
@@ -180,7 +204,7 @@ def test_kind_sql_agrees_with_kind_for(app, category, name, kind):
     assert got.scalar_one() == kind_for(category, name) == kind
 
 
-@pytest.mark.parametrize('category, kind', PREFLIGHT + RULES)
+@pytest.mark.parametrize('category, kind', PREFLIGHT + RULES + CASES + ORDER)
 def test_kind_sql_without_a_name(app, category, kind):
     got = db.session.execute(sa.select(kind_sql(text(category))))
     assert got.scalar_one() == kind

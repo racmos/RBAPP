@@ -95,7 +95,7 @@ def build():
         price(pid, low)
     db.session.add(RbProducts(rbpdt_id_product=300, rbpdt_id_set='OGN',
                               rbpdt_name='Origins Booster Box', rbpdt_type='nonsingle',
-                              rbpdt_kind='box'))
+                              rbpdt_kind='booster_box'))
     ignore(500, 'Ignored Thing')
     ignore(501, 'Old Name', at=datetime(2030, 10, 1, 8))
     db.session.commit()

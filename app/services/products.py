@@ -9,27 +9,33 @@ import sqlalchemy as sa
 
 from app import db
 from app.models import RbcmExpansion, RbcmProduct, RbProducts
+from app.models.cardmarket import NOT_USED_KIND
 from app.utils import clock
 
+# The owner's taxonomy (2026-11-20): Cardmarket category -> our kind.
+#   Singles -> `card` (virtual, never stored); Booster -> `booster`; Booster Boxes (`Display`; a
+#   case is a booster box too) -> `booster_box`; Champion Decks -> `champion_deck`; Box Sets ->
+#   `sealed_box_set`; Accessories, every subcategory -> `accessory` (the Cardmarket category name
+#   stays in `rbpdt_category` as the subcategory); Sets (`RB Set`) and Sealed Products -> not
+#   used (`NOT_USED_KIND`: `refresh_products` skips them); anything else -> `other`.
+# NAME RULE (owner, CM-g 2026-11-20; remove the `champion_deck` + `box set` rule to drop it): in
+#   Box Sets a product whose name has `deck` (the Trial Decks) is a champion deck.
 # (kind, category words, name words): the first rule with a word in the category (and, when the
-# rule has name words, one of them in the product name) wins (S3). `deck box` is removed from the
-# category before the `starter` rule looks for `deck`. CM-g (owner, 2026-11-20): in a `box set`
-# category ('Riftbound Riftbound Box Sets': boxed, promotional and collection products) the name
-# decides: a `deck` (the trial decks, champion decks for the owner) is a starter, anything else
-# (vaults, event kits, bundles, collection boxes, the runes box) a bundle. 'RB Set' (loose cards
-# by rarity, not sold) has no rule: it stays `other`.
+# rule has name words, one of them in the product name) wins; then the Sets rule (a category
+# ending in `set` / `sets`); else `other`. Case-insensitive.
+_ACCESSORY_WORDS = ('accessor', 'sleeve', 'playmat', 'play mat', 'binder', 'album', 'portfolio',
+                    'deck box', 'storage', 'dice', 'token', 'life counter', 'protector')
 _RULES = (
-    ('case', ('case',), None),
-    ('box', ('booster box', 'display'), None),
+    (NOT_USED_KIND, ('sealed product',), None),
+    ('accessory', _ACCESSORY_WORDS, None),
+    ('booster_box', ('case', 'booster box', 'display'), None),
     ('booster', ('booster',), None),
-    ('starter', ('box set',), ('deck',)),
-    ('bundle', ('bundle', 'gift', 'box set'), None),
-    ('starter', ('starter', 'deck'), None),
-    ('sleeves', ('sleeve',), None),
-    ('accessory', ('deck box', 'playmat', 'binder', 'accessor', 'dice', 'token'), None),
+    ('champion_deck', ('box set',), ('deck',)),
+    ('sealed_box_set', ('box set', 'bundle', 'gift'), None),
+    ('champion_deck', ('starter', 'deck'), None),
 )
-# The `starter` rule that reads `deck` in the category, after removing `deck box`
-_DECK_RULE = 5
+# Cardmarket's Sets category (`RB Set`): the category is `set` / `sets` or ends with that word
+_SETS = ('set', 'sets')
 
 
 class NothingToRefresh(Exception):
@@ -37,16 +43,25 @@ class NothingToRefresh(Exception):
 
 
 def kind_for(category: str | None, name: str | None = None) -> str:
-    """The product kind of a Cardmarket category name and product name, case-insensitive;
-    `other` when no rule matches. The name counts only for the `box set` rule (CM-g)."""
+    """Our kind of a Cardmarket category name and product name, case-insensitive: one of
+    `PRODUCT_KINDS`, or `NOT_USED_KIND` for a category we do not use (never stored); `other`
+    when no rule matches. The name counts only for the Box Sets rule."""
     text = (category or '').lower()
     title = (name or '').lower()
-    for index, (kind, words, name_words) in enumerate(_RULES):
-        haystack = text.replace('deck box', '') if index == _DECK_RULE else text
-        if any(word in haystack for word in words) and (
+    for kind, words, name_words in _RULES:
+        if any(word in text for word in words) and (
                 name_words is None or any(word in title for word in name_words)):
             return kind
+    if any(text == word or text.endswith(f' {word}') for word in _SETS):
+        return NOT_USED_KIND
     return 'other'
+
+
+def stored_kind(category: str | None, name: str | None = None) -> str:
+    """`kind_for` as a value `rbproducts` accepts: a not used category gives `other` (only a row
+    stored before the taxonomy can have one; the refresh never adds them)."""
+    kind = kind_for(category, name)
+    return 'other' if kind == NOT_USED_KIND else kind
 
 
 def kind_sql(category, name=None):
@@ -56,15 +71,16 @@ def kind_sql(category, name=None):
     text = sa.func.lower(sa.func.coalesce(category, ''))
     title = sa.func.lower(sa.func.coalesce(name, '')) if name is not None else None
     whens = []
-    for index, (kind, words, name_words) in enumerate(_RULES):
-        haystack = sa.func.replace(text, 'deck box', '') if index == _DECK_RULE else text
-        condition = sa.or_(*(haystack.like(f'%{word}%') for word in words))
+    for kind, words, name_words in _RULES:
+        condition = sa.or_(*(text.like(f'%{word}%') for word in words))
         if name_words is not None:
             if title is None:
                 continue        # no name: the rule never matches, as in `kind_for`
             condition = sa.and_(condition,
                                 sa.or_(*(title.like(f'%{word}%') for word in name_words)))
         whens.append((condition, kind))
+    whens.append((sa.or_(*(sa.or_(text == word, text.like(f'% {word}')) for word in _SETS)),
+                  NOT_USED_KIND))
     return sa.case(*whens, else_='other')
 
 
@@ -87,12 +103,15 @@ def refresh_products(date: str) -> dict:
 
     New ids are inserted; existing ones get the name, category and `listed = true`, and
     the kind and set unless locked; `nonsingle` products missing from `date` get
-    `listed = false`. `rbpdt_updated_at` moves only on a change.
+    `listed = false`. Products of a category we do not use (Cardmarket Sets and Sealed
+    Products, `NOT_USED_KIND`) are skipped: never inserted, and a row stored before the
+    taxonomy counts as missing (unlisted, never deleted). `rbpdt_updated_at` moves only on a
+    change.
 
     Returns `new` (inserted), `updated` (existing rows of `date` that changed),
-    `not_listed` (`nonsingle` products missing from `date`) and `total` (`nonsingle`
-    products after the refresh). Raises NothingToRefresh, changing nothing, when `date`
-    has no non-single products.
+    `not_listed` (`nonsingle` products missing from `date`), `skipped` (products of `date`
+    in a category we do not use) and `total` (`nonsingle` products after the refresh).
+    Raises NothingToRefresh, changing nothing, when `date` has no non-single products.
     """
     source = db.session.execute(sa.select(RbcmProduct).where(
         RbcmProduct.rbprd_date == date, RbcmProduct.rbprd_type == 'nonsingle')).scalars().all()
@@ -104,16 +123,20 @@ def refresh_products(date: str) -> dict:
     existing = {p.rbpdt_id_product: p for p in db.session.execute(
         sa.select(RbProducts)).scalars()}
     now = clock.utcnow()
-    counts = {'new': 0, 'updated': 0, 'not_listed': 0}
+    counts = {'new': 0, 'updated': 0, 'not_listed': 0, 'skipped': 0}
 
     for item in source:
+        kind = kind_for(item.rbprd_category_name, item.rbprd_name)
+        if kind == NOT_USED_KIND:
+            counts['skipped'] += 1
+            continue
         values = {'rbpdt_name': item.rbprd_name,
                   'rbpdt_category': item.rbprd_category_name,
                   'rbpdt_type': 'nonsingle',
                   'rbpdt_listed': True}
         product = existing.pop(item.rbprd_id_product, None)
         if product is None or not product.rbpdt_kind_locked:
-            values['rbpdt_kind'] = kind_for(item.rbprd_category_name, item.rbprd_name)
+            values['rbpdt_kind'] = kind
         if product is None or not product.rbpdt_set_locked:
             values['rbpdt_id_set'] = sets.get(item.rbprd_id_expansion)
         if product is None:
@@ -139,8 +162,8 @@ def apply_admin_patch(product: RbProducts, fields: dict) -> dict:
     """Apply the admin edit `fields` (any of `hidden`, `kind`, `set_id`; `set_id` is an
     existing set id, None or `"auto"`) and return `{field: [old, new]}` of what changed.
 
-    A kind locks it; `kind: None` unlocks it and recomputes it from the category (and the
-    name, CM-g). A set id
+    A kind locks it; `kind: None` unlocks it and recomputes it from the category and the
+    name (`stored_kind`: a not used category gives `other`). A set id
     or None locks the set; `"auto"` unlocks it and recomputes it from the expansion.
     `rbpdt_updated_at` moves only on a change. Does not commit.
     """
@@ -157,7 +180,7 @@ def apply_admin_patch(product: RbProducts, fields: dict) -> dict:
     if 'kind' in fields:
         kind = fields['kind']
         put('kind', 'rbpdt_kind', kind if kind is not None
-            else kind_for(product.rbpdt_category, product.rbpdt_name))
+            else stored_kind(product.rbpdt_category, product.rbpdt_name))
         put('kind_locked', 'rbpdt_kind_locked', kind is not None)
     if 'set_id' in fields:
         set_id = fields['set_id']

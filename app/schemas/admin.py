@@ -8,11 +8,12 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, create_model, field_validator
 
-from app.models.cardmarket import PRODUCT_KINDS
+from app.models.cardmarket import NOT_USED_KIND, PRODUCT_KINDS
 
-# The kinds of a product of a Cardmarket expansion (CM-g): `card` for a single, then the
-# product kinds, in the order the counters list them.
-EXPANSION_PRODUCT_KINDS = ('card',) + PRODUCT_KINDS
+# The kinds of a product of a Cardmarket expansion (CM-g, taxonomy 2026-11-20): `card` for a
+# single, then the product kinds, then `unused` (a Cardmarket category we do not use: Sets,
+# Sealed Products), in the order the counters list them.
+EXPANSION_PRODUCT_KINDS = ('card',) + PRODUCT_KINDS + (NOT_USED_KIND,)
 
 STRIPPED = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
@@ -428,8 +429,8 @@ class AdminExpansionMapBody(BaseModel):
 
 class AdminExpansionProductsQuery(BaseModel):
     """GET /admin/cardmarket/expansions/<id>/products query (CM-f): a name search, the type,
-    the kind (CM-g: `card` or a product kind; combined with `type`), the order (dearest first
-    by default) and the page."""
+    the kind (CM-g: `card`, a product kind or `unused`; combined with `type`), the order
+    (dearest first by default) and the page."""
 
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 

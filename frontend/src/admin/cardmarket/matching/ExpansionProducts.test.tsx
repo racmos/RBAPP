@@ -19,6 +19,7 @@ import {
   expansionProduct,
   matchingApi,
 } from '@/test/fixtures/cardmarketMatching';
+import badgeStyles from '@/components/ui/Badge.module.css';
 import segmentedStyles from '@/components/ui/SegmentedControl.module.css';
 import styles from './MatchingPage.module.css';
 
@@ -49,7 +50,7 @@ const listOf = (dialog: HTMLElement) => within(dialog).getByRole('region', { nam
 
 const kindGroup = (dialog: HTMLElement) => within(dialog).getByRole('radiogroup', { name: 'Kind' });
 
-/** Choose a kind by the start of its label ("All", "Booster box"...): the label ends in its count. */
+/** Choose a kind by the start of its label ("All", "Booster boxes"...): the label ends in its count. */
 const chooseKind = (dialog: HTMLElement, label: string) =>
   userEvent.click(
     within(kindGroup(dialog)).getByRole('radio', { name: new RegExp(`^${label} \\(`) }),
@@ -71,7 +72,7 @@ const SEALED = [
   }),
   expansionProduct(9202, 'Legacy Vault', {
     type: 'sealed',
-    kind: 'bundle',
+    kind: 'sealed_box_set',
     category: 'Riftbound Riftbound Box Sets',
   }),
 ];
@@ -80,9 +81,28 @@ const SEALED = [
 const ORIGINS_KINDS = [
   { kind: 'card', count: 355 },
   { kind: 'booster', count: 4 },
-  { kind: 'box', count: 2 },
-  { kind: 'bundle', count: 3 },
-  { kind: 'starter', count: 6 },
+  { kind: 'booster_box', count: 2 },
+  { kind: 'champion_deck', count: 6 },
+  { kind: 'sealed_box_set', count: 3 },
+  { kind: 'unused', count: 5 },
+];
+
+/** An expansion with a product of a Cardmarket category we do not use (taxonomy 2026-11-20). */
+const WITH_UNUSED = expansion(6610, 'With Unused', null, {
+  products_count: 2,
+  sealed_count: 2,
+});
+const UNUSED_PRODUCTS = [
+  expansionProduct(9301, 'Origins Booster', {
+    type: 'sealed',
+    kind: 'booster',
+    category: 'Riftbound Booster',
+  }),
+  expansionProduct(9302, 'Origins: Full Set', {
+    type: 'sealed',
+    kind: 'unused',
+    category: 'RB Set',
+  }),
 ];
 
 const many = (count: number) =>
@@ -162,7 +182,7 @@ describe('Expansion products (CM-f)', () => {
         .getAllByRole('cell')
         .map((cell) => cell.textContent);
     expect(cells('Proving Grounds Booster Box')).toEqual([
-      'Proving Grounds Booster BoxBooster box#9101 · Riftbound Booster Box',
+      'Proving Grounds Booster BoxBooster boxes#9101 · Riftbound Booster Box',
       'Sealed',
       '14 Jul 2025',
       '95.00 € (7-day avg)',
@@ -174,7 +194,7 @@ describe('Expansion products (CM-f)', () => {
       '—',
       '—',
       '—',
-      'box · OGS',
+      'Booster boxes · OGS',
     ]);
     expect(cells('Ahri, Nine-Tailed Fox')).toEqual([
       'Ahri, Nine-Tailed FoxCard#9001 · Riftbound Single',
@@ -223,7 +243,7 @@ describe('Expansion products (CM-f)', () => {
     const ahri = items[1]!;
     // the kind badge sits next to the Cardmarket category
     expect(within(ahri).getByText('Card')).toBeVisible();
-    expect(within(items[0]!).getByText('Booster box')).toBeVisible();
+    expect(within(items[0]!).getByText('Booster boxes')).toBeVisible();
     for (const text of [
       'Ahri, Nine-Tailed Fox',
       'Single · Riftbound Single · #9001',
@@ -234,7 +254,8 @@ describe('Expansion products (CM-f)', () => {
       expect(within(ahri).getByText(text)).toBeVisible();
     }
     expect(within(ahri).getByText('Foil trend').nextSibling).toHaveTextContent('64.00 €');
-    expect(within(items[0]!).getByText('Catalog: box · OGS')).toBeVisible();
+    // the catalog kind is its label, not its id
+    expect(within(items[0]!).getByText('Catalog: Booster boxes · OGS')).toBeVisible();
     expect(within(items[2]!).getByText('Price no price')).toBeVisible();
   });
 
@@ -281,8 +302,8 @@ describe('Expansion products (CM-f)', () => {
     await user.type(within(dialog).getByRole('textbox', { name: 'Search products' }), 'ahri');
     await vi.waitFor(() => expect(lastSearch(calls)).toBe('q=ahri&kind=card'));
     await vi.waitFor(() => expect(within(listOf(dialog)).getAllByRole('row')).toHaveLength(2));
-    await chooseKind(dialog, 'Booster box');
-    await vi.waitFor(() => expect(lastSearch(calls)).toBe('q=ahri&kind=box'));
+    await chooseKind(dialog, 'Booster boxes');
+    await vi.waitFor(() => expect(lastSearch(calls)).toBe('q=ahri&kind=booster_box'));
     expect(await within(dialog).findByText('No products match')).toBeVisible();
     expect(within(dialog).getByText('Try another search or kind.')).toBeVisible();
     await user.clear(within(dialog).getByRole('textbox', { name: 'Search products' }));
@@ -310,23 +331,25 @@ describe('Expansion products (CM-f)', () => {
           .getAllByRole('radio')
           .map((radio) => radio.closest('label')!.textContent),
       ).toEqual([
-        'All (370)',
+        'All (375)',
         'Cards (355)',
         'Booster (4)',
-        'Booster box (2)',
-        'Bundle / set (3)',
-        'Starter deck (6)',
+        'Booster boxes (2)',
+        'Champion decks (6)',
+        'Sealed box sets (3)',
+        'Not used (5)',
       ]),
     );
-    // only the kinds the expansion has: no Case, Sleeves, Accessory or Other
-    expect(within(group).queryByRole('radio', { name: /^Sleeves/ })).toBeNull();
+    // only the kinds the expansion has: no Accessories or Other
+    expect(within(group).queryByRole('radio', { name: /^Accessories/ })).toBeNull();
+    expect(within(group).queryByRole('radio', { name: /^Other/ })).toBeNull();
     expect(within(group).getByRole('radio', { name: 'Cards (355)' })).toBeChecked();
     expect(callsTo(calls, 'GET', '/expansions/6567/products')).toHaveLength(1);
     expect(lastSearch(calls)).toBe('kind=card');
     // the counters are of the whole expansion: a search does not change them
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Search products' }), 'zzz');
     await vi.waitFor(() => expect(lastSearch(calls)).toBe('q=zzz&kind=card'));
-    expect(within(group).getByRole('radio', { name: 'Booster box (2)' })).toBeVisible();
+    expect(within(group).getByRole('radio', { name: 'Booster boxes (2)' })).toBeVisible();
   });
 
   it('the Kind filter is a radio group the arrow keys move through', async () => {
@@ -352,9 +375,41 @@ describe('Expansion products (CM-f)', () => {
     const group = kindGroup(dialog);
     expect(within(group).getByRole('radio', { name: 'All (2)' })).toBeChecked();
     expect(within(group).queryByRole('radio', { name: /^Cards/ })).toBeNull();
-    expect(within(group).getByRole('radio', { name: 'Bundle / set (1)' })).toBeVisible();
-    expect(within(rowOf(products, 'Legacy Vault')).getByText('Bundle / set')).toBeVisible();
+    expect(within(group).getByRole('radio', { name: 'Sealed box sets (1)' })).toBeVisible();
+    expect(within(rowOf(products, 'Legacy Vault')).getByText('Sealed box sets')).toBeVisible();
     expect(within(dialog).getByText('0 cards')).toBeVisible();
+  });
+
+  it('a product of a category we do not use is a muted "Not used", counted last and explained', async () => {
+    const calls = matchingApi({ expansions: [WITH_UNUSED], products: UNUSED_PRODUCTS });
+    const { table } = await openTab();
+    const dialog = await openProducts(table, 'With Unused');
+    const products = await within(dialog).findByRole('table', { name: LIST });
+    const group = kindGroup(dialog);
+    expect(
+      within(group)
+        .getAllByRole('radio')
+        .map((radio) => radio.closest('label')!.textContent),
+    ).toEqual(['All (2)', 'Booster (1)', 'Not used (1)']);
+    // the option and the badge are muted; a real kind is not
+    const option = within(group).getByRole('radio', { name: 'Not used (1)' }).closest('label')!;
+    expect(option.querySelector(`.${styles.notUsed}`)).not.toBeNull();
+    const badge = within(rowOf(products, 'Origins: Full Set')).getByText('Not used');
+    expect(badge).toHaveClass(badgeStyles.muted!);
+    expect(within(rowOf(products, 'Origins Booster')).getByText('Booster')).not.toHaveClass(
+      badgeStyles.muted!,
+    );
+    const hint = 'Not used: Cardmarket Sets and Sealed Products never enter the product catalog.';
+    expect(within(dialog).queryByText(hint)).toBeNull();
+    await chooseKind(dialog, 'Not used');
+    await vi.waitFor(() =>
+      expect(callsTo(calls, 'GET', '/expansions/6610/products').at(-1)!.search.toString()).toBe(
+        'kind=unused',
+      ),
+    );
+    expect(within(dialog).getByText(hint)).toBeVisible();
+    await vi.waitFor(() => expect(within(listOf(dialog)).getAllByRole('row')).toHaveLength(2));
+    expect(await axe(dialog)).toHaveNoViolations();
   });
 
   it('on narrow screens the kinds wrap onto more lines', async () => {
@@ -368,7 +423,7 @@ describe('Expansion products (CM-f)', () => {
     const decls = declsFor(css, '.group');
     expect(decls.find((decl) => decl.prop === 'flex-wrap')?.value).toBe('wrap');
     expect(decls.find((decl) => decl.prop === 'max-width')?.value).toBe('100%');
-    expect(within(group).getAllByRole('radio')).toHaveLength(6);
+    expect(within(group).getAllByRole('radio')).toHaveLength(7);
   });
 
   it('Show more loads the next page under the first one', async () => {

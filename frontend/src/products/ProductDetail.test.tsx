@@ -49,7 +49,7 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
       '/riftbound/media/products/501.png',
     );
     const facts = screen.getByText('Kind', { selector: 'dt' }).closest('dl')!;
-    expect(within(facts).getByText('Booster box')).toBeVisible();
+    expect(within(facts).getByText('Booster boxes')).toBeVisible();
     expect(within(facts).getByText('OGN')).toBeVisible();
     expect(within(facts).getByText('99.50 €')).toBeVisible();
     expect(within(facts).getByText('7 days')).toBeVisible();
@@ -68,7 +68,7 @@ describe('ProductDetail at 390 px (F14-e S3-S5)', () => {
     const { container } = await renderApp({ path: '/products/502', width: WIDTH });
     await screen.findByRole('heading', { level: 1, name: 'Riftbound Sleeves' }, LONG);
     expect(container.querySelector('[data-slot="product-placeholder"]')).toHaveTextContent(
-      'Sleeves',
+      'Accessories',
     );
     expect(screen.queryByRole('img', { name: 'Riftbound Sleeves' })).toBeNull();
     expect(screen.getByText('No price')).toBeVisible();

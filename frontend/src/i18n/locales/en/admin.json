@@ -671,6 +671,7 @@
         "emptyBody": "The daily Cardmarket load adds the products of this expansion.",
         "noMatchTitle": "No products match",
         "noMatchBody": "Try another search or kind.",
+        "notUsedHint": "Not used: Cardmarket Sets and Sealed Products never enter the product catalog.",
         "offline": "You are offline: the products load when you are back online.",
         "mapTitle": "Map this expansion",
         "map": "Map to a set…",

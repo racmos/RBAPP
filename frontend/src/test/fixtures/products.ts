@@ -13,7 +13,7 @@ import type {
 export const boosterBox: AdminProduct = {
   id: 501,
   name: 'Origins Booster Box',
-  kind: 'box',
+  kind: 'booster_box',
   category: 'Riftbound Booster Boxes',
   set_id: 'OGN',
   image_src: '/riftbound/media/products/501.png',
@@ -37,7 +37,7 @@ export const boosterBox: AdminProduct = {
 export const sleeves: AdminProduct = {
   id: 502,
   name: 'Riftbound Sleeves',
-  kind: 'sleeves',
+  kind: 'accessory',
   category: 'Riftbound Accessories',
   set_id: null,
   image_src: null,
@@ -62,7 +62,7 @@ export const adminProductList: AdminProductList = {
 export const boxSummary: ProductSummary = {
   id: 501,
   name: 'Origins Booster Box',
-  kind: 'box',
+  kind: 'booster_box',
   category: 'Riftbound Booster Boxes',
   set_id: 'OGN',
   image_src: '/riftbound/media/products/501.png',
@@ -99,7 +99,7 @@ export const boosterSummary: ProductSummary = {
 export const sleevesSummary: ProductSummary = {
   id: 502,
   name: 'Riftbound Sleeves',
-  kind: 'sleeves',
+  kind: 'accessory',
   category: 'Riftbound Accessories',
   set_id: null,
   image_src: null,
@@ -114,7 +114,7 @@ export const productSummaries: ProductSummary[] = [boosterSummary, boxSummary, s
 export const unlistedSummary: ProductSummary = {
   id: 504,
   name: 'Origins Promo Pack',
-  kind: 'bundle',
+  kind: 'sealed_box_set',
   category: 'Riftbound Bundles',
   set_id: 'OGN',
   image_src: null,
@@ -134,7 +134,7 @@ export const productListMeta: ProductListMeta = {
   per_page: 48,
   total: 3,
   pages: 1,
-  facets: { kind: { booster: 1, box: 1, sleeves: 1 }, set: { OGN: 2 } },
+  facets: { kind: { booster: 1, booster_box: 1, accessory: 1 }, set: { OGN: 2 } },
   price_as_of: '2026-10-28',
 };
 

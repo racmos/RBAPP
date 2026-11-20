@@ -250,8 +250,8 @@ class TestCandidates:
         got = ok(admin_client.get(f'{UNMATCHED}/300/candidates'))
         assert [p['id'] for p in got['products']] == [300]
         assert ok(admin_client.get(f'{UNMATCHED}/301/candidates?q=booster'))['products'][0] \
-            == {'id': 300, 'name': 'Origins Booster Box', 'set_id': 'OGN', 'kind': 'box',
-                'category': None}
+            == {'id': 300, 'name': 'Origins Booster Box', 'set_id': 'OGN',
+                'kind': 'booster_box', 'category': None}
 
     def test_unknown_product_is_404(self, admin_client, data):
         err(admin_client.get(f'{UNMATCHED}/999999/candidates'), 404)

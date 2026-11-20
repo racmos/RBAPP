@@ -294,6 +294,39 @@ Rollback: `flask db downgrade 0031_mfa` and redeploy the previous code. The down
 refusal condition. **Data loss**: it drops the table, so every API key stops working; after a new
 upgrade each user creates a new key.
 
+## Product kinds: upgrade to 0033, then restart at once (owner taxonomy 2026-11-20)
+
+`0033_product_kinds` follows the owner's product taxonomy over the Cardmarket categories. It drops
+the CHECK `rbproducts_kind_chk`, renames the stored kinds of `rbproducts.rbpdt_kind` (`box` and
+`case` → `booster_box`, `starter` → `champion_deck`, `bundle` → `sealed_box_set`, `sleeves` →
+`accessory`; `booster`, `accessory`, `other` and NULL unchanged; a locked kind is renamed the same
+way and stays locked), creates the CHECK again with only `booster`, `booster_box`,
+`champion_deck`, `sealed_box_set`, `accessory`, `other`, and updates the column comment. One
+UPDATE between two batches: on SQLite each batch recreates the table, on PostgreSQL they are plain
+`ALTER TABLE` statements. `card` (singles) and `unused` (Cardmarket Sets and Sealed Products) are
+virtual kinds and are never stored. The dev table is empty since the production reset, so nothing
+is renamed there.
+
+The old code inserts the old kinds, which the new CHECK refuses, so restart right after the
+upgrade; then refresh the catalog so the unlocked kinds follow the new rules (runbook →
+"Product catalog refresh (F14-a)"). No new package, no new variable.
+
+```bash
+venv/bin/python scripts/db_backup.py   # pg_dump first; check the file (docs/knowledge/ops-runbook.md)
+git pull                               # the code of this revision
+flask db upgrade                       # 0033
+flask db check                         # "No new upgrade operations detected."
+sudo systemctl restart rbapp           # right after the upgrade
+# frontend build as usual, then:
+flask jobs enqueue products_refresh && flask jobs run-pending
+```
+
+Rollback: `flask db downgrade 0032_api_keys` and redeploy the previous code (restart right after:
+the new code inserts the new kinds, which the old CHECK refuses). The downgrade has no refusal
+condition: it maps `booster_box` → `box`, `champion_deck` → `starter`, `sealed_box_set` →
+`bundle` and restores the old CHECK. **Not restorable**: a former `case` comes back as `box` and
+former `sleeves` stay `accessory` (the upgrade merged them); restore the dump for the exact rows.
+
 ## The legacy-table backup contains personal data
 
 `legacy_tables_<UTC>.sql` holds **e-mail addresses and password hashes** of the

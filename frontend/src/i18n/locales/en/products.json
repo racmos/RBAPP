@@ -93,12 +93,11 @@
   "kind": {
     "card": "Cards",
     "booster": "Booster",
-    "box": "Booster box",
-    "case": "Case",
-    "bundle": "Bundle / set",
-    "starter": "Starter deck",
-    "sleeves": "Sleeves",
-    "accessory": "Accessory",
-    "other": "Other"
+    "booster_box": "Booster boxes",
+    "champion_deck": "Champion decks",
+    "sealed_box_set": "Sealed box sets",
+    "accessory": "Accessories",
+    "other": "Other",
+    "unused": "Not used"
   }
 }
