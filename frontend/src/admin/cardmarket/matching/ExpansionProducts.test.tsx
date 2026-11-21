@@ -164,7 +164,6 @@ describe('Expansion products (CM-f)', () => {
         .map((cell) => cell.textContent),
     ).toEqual([
       'Product',
-      'Type',
       'Added',
       'Price',
       'Low',
@@ -183,7 +182,6 @@ describe('Expansion products (CM-f)', () => {
         .map((cell) => cell.textContent);
     expect(cells('Proving Grounds Booster Box')).toEqual([
       'Proving Grounds Booster BoxBooster boxes#9101 · Riftbound Booster Box',
-      'Sealed',
       '14 Jul 2025',
       '95.00 € (7-day avg)',
       '90.00 €',
@@ -198,7 +196,6 @@ describe('Expansion products (CM-f)', () => {
     ]);
     expect(cells('Ahri, Nine-Tailed Fox')).toEqual([
       'Ahri, Nine-Tailed FoxCard#9001 · Riftbound Single',
-      'Single',
       '15 Jul 2025',
       '34.00 € (low)',
       '34.00 €',
@@ -213,7 +210,6 @@ describe('Expansion products (CM-f)', () => {
     ]);
     expect(cells('Jinx, Loose Cannon')).toEqual([
       'Jinx, Loose CannonCard#9003 · Riftbound Single',
-      'Single',
       '—',
       'no price',
       '—',
@@ -288,6 +284,24 @@ describe('Expansion products (CM-f)', () => {
     const modalCss = readCss(join(SRC_DIR, 'components/ui/Modal.module.css'));
     expect(declsFor(modalCss, '.fullMd').find((decl) => decl.prop === 'height')?.value).toBe(
       '100%',
+    );
+  });
+
+  it('the kind badge only shows when the list mixes kinds', async () => {
+    matchingApi({ expansions: [UNNAMED] });
+    const { table } = await openTab();
+    const dialog = await openProducts(table, 'Expansion #6567');
+    const products = await within(dialog).findByRole('table', { name: LIST });
+    // the default is Cards: every row is a card, a badge would only cost a line
+    const row = rowOf(products, 'Ahri, Nine-Tailed Fox');
+    expect(within(row).queryByText('Card')).toBeNull();
+    await chooseKind(dialog, 'All');
+    await vi.waitFor(() =>
+      expect(
+        within(
+          rowOf(within(dialog).getByRole('table', { name: LIST }), 'Ahri, Nine-Tailed Fox'),
+        ).getByText('Card'),
+      ).toBeVisible(),
     );
   });
 
