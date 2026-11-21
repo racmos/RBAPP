@@ -28,7 +28,7 @@ type ProductSort = 'price' | 'name' | 'added';
 
 /** The price columns of a product, in the order the table shows them. */
 const PRICE_KEYS = ['low', 'trend', 'avg7', 'avg30', 'avg', 'low_foil', 'trend_foil'] as const;
-const COLUMNS = ['product', 'type', 'added', 'price', ...PRICE_KEYS, 'linked', 'catalog'] as const;
+const COLUMNS = ['product', 'added', 'price', ...PRICE_KEYS, 'linked', 'catalog'] as const;
 
 /** The query of the filters, the defaults left out (`kind=all`, `sort=price`). */
 function productsQuery(q: string, kind: KindFilter, sort: ProductSort): string {
@@ -123,9 +123,12 @@ function useProductText() {
 function ProductsTable({
   items,
   caption,
+  showKind,
 }: {
   items: CardmarketExpansionProduct[];
   caption: string;
+  /** The kind badge says nothing when the list is already one kind. */
+  showKind: boolean;
 }) {
   const { t } = useTranslation('admin');
   const text = useProductText();
@@ -148,7 +151,7 @@ function ProductsTable({
               <div className={styles.cellStack}>
                 <span>{product.name}</span>
                 <span className={styles.kindLine}>
-                  <Badge tone={text.tone(product)}>{text.kind(product)}</Badge>
+                  {showKind && <Badge tone={text.tone(product)}>{text.kind(product)}</Badge>}
                   <span className={styles.muted}>
                     {product.category === null
                       ? t('matching.expansions.products.identityNoCategory', {
@@ -162,7 +165,6 @@ function ProductsTable({
                 </span>
               </div>
             </td>
-            <td>{text.type(product)}</td>
             <td className={styles.nowrap}>
               {product.date_added === null ? text.none : formatDate(product.date_added)}
             </td>
@@ -311,7 +313,7 @@ export function ExpansionProducts({
     list = (
       <>
         {wide ? (
-          <ProductsTable items={items} caption={listLabel} />
+          <ProductsTable items={items} caption={listLabel} showKind={kind === 'all'} />
         ) : (
           <ProductCards items={items} label={listLabel} />
         )}
