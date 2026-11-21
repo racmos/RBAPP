@@ -125,7 +125,8 @@ def classify_unmapped(date: str) -> dict:
     singles of `date`: `{links: [(product id, (set, card, foil))], review: [every
     review item], proposed: pairs auto_match proposes}` (CM-b preview and review).
 
-    Clear case: the only unmapped product of its metacard group, with exactly
+    Clear case: the only unmapped product of its metacard group in its set (the set of
+    its expansion; products of other sets do not compete), with exactly
     one candidate card that still has a free slot, and a slot proposed by
     `auto_match` for no other product. Every other unmapped single gets a
     review reason: `ignored_pair`, `no_candidates`, `conflict` (slot taken or
@@ -162,11 +163,16 @@ def classify_unmapped(date: str) -> dict:
         cards = candidates.of(p, group)
         free = [c for c in cards if matcher._expand_slots(c, taken=taken)]
         slot = pairs.get(p.rbprd_id_product)
+        # The matcher pairs products with cards inside one set (the one of the product's
+        # expansion), so the products that compete for the same cards are those of the group
+        # that share this product's set, not the whole metacard: a lone Origins product is clear
+        # even when the metacard also has Spiritforged products.
+        rivals = [q for q in group if candidates.set_of(q) == candidates.set_of(p)]
         if not cards:
             reason = 'no_candidates'
         elif not free:
             reason = 'conflict'
-        elif len(group) > 1 or len(free) > 1 or slot is None:
+        elif len(rivals) > 1 or len(free) > 1 or slot is None:
             reason = 'ambiguous'
         elif slot_uses[slot] > 1:
             reason = 'conflict'

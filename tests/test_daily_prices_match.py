@@ -158,6 +158,38 @@ def test_the_expansion_set_narrows_the_candidates(catalog):
     assert mappings() == [(12, 'SFD', '020', None, 'auto', 0.7)]
 
 
+def test_a_lone_product_of_its_set_is_clear_although_the_metacard_has_other_sets(catalog):
+    """Owner report (Vayne, Hunter): one product in Origins and two in Spiritforged share a
+    metacard. The Origins product is the only one of its set with one card of that set, so it
+    is a clear case; the two Spiritforged products stay ambiguous among two cards."""
+    catalog('035', 'Vayne, Hunter', rarity='rare', set_id='OGN')
+    catalog('223', 'Vayne, Hunter', rarity='showcase', set_id='SFD')
+    catalog('223s', 'Vayne, Hunter', rarity='showcase', set_id='SFD')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.add(RbcmExpansion(rbexp_id=7000, rbexp_rbset_id='SFD'))
+    db.session.commit()
+    product(40, 'Vayne, Hunter', metacard=30, expansion=6286, price=0.02)
+    product(41, 'Vayne, Hunter', metacard=30, expansion=7000, price=70.0)
+    product(42, 'Vayne, Hunter', metacard=30, expansion=7000, price=500.0)
+    result = daily_prices.match_clear_cases(DATE)
+    assert result['auto_match']['linked'] == 1
+    assert mappings() == [(40, 'OGN', '035', None, 'auto', 0.7)]
+    assert sorted(reasons(result)) == [(41, 'ambiguous'), (42, 'ambiguous')]
+
+
+def test_two_products_of_the_same_set_stay_ambiguous_even_with_other_sets_around(catalog):
+    catalog('036', 'Twin Spirit', rarity='common', set_id='OGN')
+    catalog('036', 'Twin Spirit', rarity='common', set_id='SFD')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.add(RbcmExpansion(rbexp_id=7000, rbexp_rbset_id='SFD'))
+    db.session.commit()
+    product(50, 'Twin Spirit', metacard=31, expansion=6286, price=0.1)
+    product(51, 'Twin Spirit (Foil)', metacard=31, expansion=6286, price=0.5)
+    product(52, 'Twin Spirit', metacard=31, expansion=7000, price=0.2)
+    result = daily_prices.match_clear_cases(DATE)
+    assert (50, 'ambiguous') in reasons(result) and (51, 'ambiguous') in reasons(result)
+
+
 def test_only_unmapped_singles_of_the_date_are_considered(catalog):
     catalog('021', 'Old Friend')
     product(13, 'Booster Box', metacard=None, kind='nonsingle')
