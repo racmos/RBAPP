@@ -628,14 +628,16 @@ export type ImportMode = 'add' | 'replace';
 
 export type ImportResult = { created: number; merged: number; replaced: number; skipped: number };
 
-/** Product kinds of `rbproducts` (F14-a), in display order. */
+/**
+ * Product kinds of `rbproducts`, in display order: the owner's taxonomy of 2026-11-20 over the
+ * Cardmarket categories (Booster, Booster Boxes, Champion Decks, Box Sets, Accessories; `other`
+ * for an unknown category). Cards and the categories we do not use are never products.
+ */
 export const PRODUCT_KINDS = [
   'booster',
-  'box',
-  'case',
-  'bundle',
-  'starter',
-  'sleeves',
+  'booster_box',
+  'champion_deck',
+  'sealed_box_set',
   'accessory',
   'other',
 ] as const;

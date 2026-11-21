@@ -17,6 +17,13 @@
     color: var(--muted);
   }
 
+  .muted {
+    border-style: dashed;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
   .accent {
     border-color: var(--accent-ring);
     background: var(--accent-soft);

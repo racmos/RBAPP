@@ -27,11 +27,19 @@ CM-g (2026-11-20), the products by kind (expansion 30, `kinds_data`):
   S14 every item has `kind`: `card` for a single, else the catalog kind (admin locks win),
       else the kind of its category ...................... TestKind
   S15 meta.kinds: counts of the whole expansion, card first then the PRODUCT_KINDS
-      order, zero kinds left out, whatever the filters .. TestKindCounts
+      order (then `unused`), zero kinds left out, whatever the filters .. TestKindCounts
   S16 `kind` all | card | a product kind filters the list, total and pages; it combines
       with `type` and `q` (AND) ......................... TestKindFilter
   S17 a bad kind is a 400 validation_error ............... TestValidation
   S18 statements stay 5 with the kind filter ............. TestStatements
+
+Product kinds taxonomy (owner, 2026-11-20): the kinds are `card`, then `PRODUCT_KINDS`
+(booster, booster_box, champion_deck, sealed_box_set, accessory, other), then the virtual
+`unused`:
+  S19 a product of a category we do not use (Cardmarket Sets `RB Set`, Sealed Products) is
+      `unused`, even with an old catalog row; counted last, filterable .. TestKind,
+      TestKindCounts, TestKindFilter
+  S20 the old kinds (box, case, bundle, starter, sleeves) are a 400 ...... TestValidation
 """
 import pytest
 import sqlalchemy as sa
@@ -191,7 +199,7 @@ class TestItems:
         box = next(item for item in ok(get(admin_client, url(10)))['items']
                    if item['id_product'] == 300)
         assert box['type'] == 'sealed'
-        assert box['catalog'] == {'kind': 'box', 'set_id': 'OGN'}
+        assert box['catalog'] == {'kind': 'booster_box', 'set_id': 'OGN'}
         assert box['linked'] is None
 
 
@@ -368,8 +376,11 @@ class TestMeta:
 class TestValidation:
     @pytest.mark.parametrize('query', [
         'type=nonsingle', 'type=single,sealed', 'sort=low', 'kind=single', 'kind=sealed',
-        'kind=cards', 'kind=Card', 'kind=card,box', 'kind=nonsingle', 'per_page=25', 'per_page=500', 'page=0',
-        'page=x', 'dir=asc', 'q=' + 'x' * 101])
+        'kind=cards', 'kind=Card', 'kind=card,box', 'kind=nonsingle', 'per_page=25',
+        'per_page=500', 'page=0', 'page=x', 'dir=asc', 'q=' + 'x' * 101,
+        # S20: the kinds of before the taxonomy (2026-11-20)
+        'kind=box', 'kind=case', 'kind=bundle', 'kind=starter', 'kind=sleeves',
+        'kind=not_used'])
     def test_a_bad_query_is_400(self, admin_client, data, query):
         body = err(get(admin_client, url(10, query)), 400, 'validation_error')
         assert body['message'] == 'Invalid query parameters'
@@ -406,12 +417,12 @@ class TestStatements:
         for pid in range(10000, 10400, 3):
             cm.link(pid, 'OGN', str(pid))
         db.session.add_all(RbProducts(rbpdt_id_product=pid, rbpdt_name=f'P {pid}',
-                                      rbpdt_type='nonsingle', rbpdt_kind='box')
+                                      rbpdt_type='nonsingle', rbpdt_kind='booster_box')
                            for pid in range(10001, 10400, 5))
         db.session.commit()
         for query in ('per_page=200', 'per_page=200&page=2', 'q=card&sort=name',
-                      'type=sealed&sort=added', 'kind=card', 'kind=box&per_page=100',
-                      'kind=other&type=sealed&q=p'):
+                      'type=sealed&sort=added', 'kind=card', 'kind=booster_box&per_page=100',
+                      'kind=other&type=sealed&q=p', 'kind=unused'):
             assert len(statements(admin_client, url(20, query))) == small, query
         # the signed-in user, the expansion with its figures, the latest date, the kind counts
         # with the total and the page
@@ -427,28 +438,33 @@ class TestStatements:
 KINDS = [
     (3001, 'Riftbound Single', None, 'card'),
     (3002, 'Riftbound Single', None, 'card'),
-    (3003, 'Riftbound Single', 'box', 'card'),           # a single is a card, whatever
+    (3003, 'Riftbound Single', 'booster_box', 'card'),   # a single is a card, whatever
     (3010, 'Riftbound Booster', None, 'booster'),
     (3011, 'Riftbound Booster', 'booster', 'booster'),
-    (3012, 'Riftbound Booster', 'case', 'case'),         # the admin's lock wins
-    (3020, 'Riftbound Display', None, 'box'),
-    (3030, 'Riftbound Champion Decks', None, 'starter'),
-    # in box sets the name decides (NAMES): a deck is a starter, anything else a bundle
-    (3040, 'Riftbound Riftbound Box Sets', None, 'starter'),
-    (3043, 'Riftbound Riftbound Box Sets', None, 'bundle'),
-    (3041, 'Riftbound Riftbound Box Sets', '', 'bundle'),  # catalog row without a kind
+    (3012, 'Riftbound Booster', 'booster_box', 'booster_box'),  # the admin's lock wins
+    (3020, 'Riftbound Display', None, 'booster_box'),
+    (3030, 'Riftbound Champion Decks', None, 'champion_deck'),
+    # in box sets the name decides (NAMES): a deck is a champion deck, else a sealed box set
+    (3040, 'Riftbound Riftbound Box Sets', None, 'champion_deck'),
+    (3043, 'Riftbound Riftbound Box Sets', None, 'sealed_box_set'),
+    (3041, 'Riftbound Riftbound Box Sets', '', 'sealed_box_set'),  # catalog row without a kind
     (3042, 'Riftbound Riftbound Box Sets', 'other', 'other'),  # an old unlocked `other` row
-    (3044, 'RB Set', None, 'other'),                      # RB Set has no rule
+    # S19: Cardmarket Sets and Sealed Products are not used, even with an old catalog row
+    (3044, 'RB Set', None, 'unused'),
+    (3045, 'RB Set', 'other', 'unused'),
+    (3046, 'Riftbound Sealed Products', None, 'unused'),
     (3050, 'Riftbound Playmats', None, 'accessory'),
+    (3051, 'Riftbound Sleeves', None, 'accessory'),
     (3060, 'Riftbound Mystery', None, 'other'),
 ]
 # The real names of the box sets and rb set products (CM-g); the rest are 'Product <id>'
 NAMES = {3040: 'Jinx Trial Deck', 3041: 'Legacy Vault', 3042: 'Unleashed Vault',
-         3043: 'Bulk Runes Box', 3044: 'Origins: Full Set'}
+         3043: 'Bulk Runes Box', 3044: 'Origins: Full Set', 3045: 'Origins: Rare Set'}
+LOCKED = {3012}
 EXPECTED_KINDS = [{'kind': 'card', 'count': 3}, {'kind': 'booster', 'count': 2},
-                  {'kind': 'box', 'count': 1}, {'kind': 'case', 'count': 1},
-                  {'kind': 'bundle', 'count': 2}, {'kind': 'starter', 'count': 2},
-                  {'kind': 'accessory', 'count': 1}, {'kind': 'other', 'count': 3}]
+                  {'kind': 'booster_box', 'count': 2}, {'kind': 'champion_deck', 'count': 2},
+                  {'kind': 'sealed_box_set', 'count': 2}, {'kind': 'accessory', 'count': 2},
+                  {'kind': 'other', 'count': 2}, {'kind': 'unused', 'count': 3}]
 
 
 @pytest.fixture
@@ -461,7 +477,7 @@ def kinds_data(data):
         if catalog is not None:
             db.session.add(RbProducts(rbpdt_id_product=pid, rbpdt_name=f'Product {pid}',
                                       rbpdt_type='nonsingle', rbpdt_kind=catalog or None,
-                                      rbpdt_kind_locked=catalog == 'case'))
+                                      rbpdt_kind_locked=pid in LOCKED))
     # an older snapshot of another kind never counts
     cm.product(3070, 'Old Display', expansion=30, type_='nonsingle', date=cm.D1,
                category='Riftbound Display')
@@ -480,20 +496,22 @@ class TestKind:
 
     def test_the_catalog_kind_is_still_in_catalog(self, admin_client, kinds_data):
         items = {item['id_product']: item for item in ok(get(admin_client, url(30)))['items']}
-        assert items[3012]['catalog'] == {'kind': 'case', 'set_id': None}
+        assert items[3012]['catalog'] == {'kind': 'booster_box', 'set_id': None}
+        assert items[3045]['catalog'] == {'kind': 'other', 'set_id': None}
         assert items[3041]['catalog'] == {'kind': None, 'set_id': None}
         assert items[3010]['catalog'] is None
 
     def test_the_cm_f_data(self, admin_client, data):
         got = ok(get(admin_client, url(10)))
-        assert set(kinds_of(got).values()) == {'card', 'box'}
-        assert kinds_of(got)[300] == 'box'
+        assert set(kinds_of(got).values()) == {'card', 'booster_box'}
+        assert kinds_of(got)[300] == 'booster_box'
 
 
 class TestKindCounts:
     def test_counts_of_the_whole_expansion_in_a_stable_order(self, admin_client, kinds_data):
-        for query in ('', 'kind=card', 'kind=box', 'type=sealed', 'q=nothing',
-                      'kind=sleeves', 'page=5', 'sort=name&kind=bundle&type=single'):
+        for query in ('', 'kind=card', 'kind=booster_box', 'type=sealed', 'q=nothing',
+                      'kind=accessory', 'kind=unused', 'page=5',
+                      'sort=name&kind=sealed_box_set&type=single'):
             assert ok(get(admin_client, url(30, query)))['meta']['kinds'] == EXPECTED_KINDS, \
                 query
 
@@ -505,14 +523,14 @@ class TestKindCounts:
 
     def test_the_cm_f_data(self, admin_client, data):
         assert ok(get(admin_client, url(10)))['meta']['kinds'] == [
-            {'kind': 'card', 'count': 7}, {'kind': 'box', 'count': 1}]
+            {'kind': 'card', 'count': 7}, {'kind': 'booster_box', 'count': 1}]
         assert ok(get(admin_client, url(12)))['meta']['kinds'] == [
             {'kind': 'accessory', 'count': 1}]
 
 
 class TestKindFilter:
-    @pytest.mark.parametrize('kind', ['card', 'booster', 'box', 'case', 'bundle', 'starter',
-                                      'sleeves', 'accessory', 'other'])
+    @pytest.mark.parametrize('kind', ['card', 'booster', 'booster_box', 'champion_deck',
+                                      'sealed_box_set', 'accessory', 'other', 'unused'])
     def test_one_kind(self, admin_client, kinds_data, kind):
         got = ok(get(admin_client, url(30, f'kind={kind}')))
         expected = sorted(pid for pid, _, _, one in KINDS if one == kind)
@@ -526,10 +544,11 @@ class TestKindFilter:
         assert ok(get(admin_client, url(30, 'kind=all')))['meta']['total'] == len(KINDS)
 
     def test_dearest_first_within_a_kind(self, admin_client, kinds_data):
-        # 3012 is a booster category the admin made a case
+        # 3012 is a booster category the admin made a booster box
         assert ids(ok(get(admin_client, url(30, 'kind=booster')))) == [3011, 3010]
-        assert ids(ok(get(admin_client, url(30, 'kind=bundle')))) == [3043, 3041]
-        assert ids(ok(get(admin_client, url(30, 'kind=starter')))) == [3040, 3030]
+        assert ids(ok(get(admin_client, url(30, 'kind=sealed_box_set')))) == [3043, 3041]
+        assert ids(ok(get(admin_client, url(30, 'kind=champion_deck')))) == [3040, 3030]
+        assert ids(ok(get(admin_client, url(30, 'kind=unused')))) == [3046, 3045, 3044]
 
     @pytest.mark.parametrize('query,expected', [
         ('kind=card&type=single', [3003, 3002, 3001]),

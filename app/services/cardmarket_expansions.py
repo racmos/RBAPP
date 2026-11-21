@@ -16,8 +16,8 @@ import re
 import sqlalchemy as sa
 
 from app import db
-from app.models.cardmarket import (RbcmExpansion, RbcmPrice, RbcmProduct, RbcmProductCardMap,
-                                   RbProducts)
+from app.models.cardmarket import (NOT_USED_KIND, RbcmExpansion, RbcmPrice, RbcmProduct,
+                                   RbcmProductCardMap, RbProducts)
 from app.models.set import RbSet
 from app.schemas.admin import EXPANSION_PRODUCT_KINDS
 from app.services import cardmarket_log
@@ -224,19 +224,20 @@ def _price_value(single):
 
 def _kind(single):
     """The SQL of the kind of a product of the latest load (CM-g): `card` for a single, else
-    its catalog kind (the admin's locks win), else the kind of its Cardmarket category and name
-    (`products.kind_sql`, the rules of `kind_for`). Needs `rbproducts` outer-joined."""
-    return sa.case((single, 'card'),
-                   else_=sa.func.coalesce(RbProducts.rbpdt_kind,
-                                          kind_sql(RbcmProduct.rbprd_category_name,
-                                                   RbcmProduct.rbprd_name)))
+    `unused` for a Cardmarket category we do not use (Sets, Sealed Products; even when an old
+    catalog row exists), else its catalog kind (the admin's locks win), else the kind of its
+    Cardmarket category and name (`products.kind_sql`, the rules of `kind_for`). Needs
+    `rbproducts` outer-joined."""
+    category = kind_sql(RbcmProduct.rbprd_category_name, RbcmProduct.rbprd_name)
+    return sa.case((single, 'card'), (category == NOT_USED_KIND, NOT_USED_KIND),
+                   else_=sa.func.coalesce(RbProducts.rbpdt_kind, category))
 
 
 def _kind_counts(expansion_id, hit) -> tuple[list[dict], int]:
     """`([{kind, count}], total)`: the products of each kind of the whole expansion on the
-    latest load (card first, then the `PRODUCT_KINDS` order, zero kinds left out) and how many
-    of them `hit` (the filters) selects. One statement: grouped over a subquery, so the kind
-    expression is written once."""
+    latest load (card first, then the `PRODUCT_KINDS` order, then `unused`, zero kinds left
+    out) and how many of them `hit` (the filters) selects. One statement: grouped over a
+    subquery, so the kind expression is written once."""
     single = RbcmProduct.rbprd_type == 'single'
     each = (sa.select(_kind(single).label('kind'),
                       sa.case((hit, 1), else_=0).label('hit'))

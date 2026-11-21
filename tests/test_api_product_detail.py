@@ -12,11 +12,11 @@ NOT_FOUND = {'success': False, 'error': 'Not Found',
 
 def _seed(app):
     add_sets()
-    add_product(2, 'Origins Booster Box', kind='box', set_id='OGN',
+    add_product(2, 'Origins Booster Box', kind='booster_box', set_id='OGN',
                 category='Riftbound Booster Boxes', description='24 boosters.')
-    add_product(4, 'Origins Sleeves', kind='sleeves', set_id=None, category='Sleeves')
-    add_product(5, 'Old Bundle', kind='bundle', listed=False)
-    add_product(6, 'Secret Case', kind='case', hidden=True)
+    add_product(4, 'Origins Sleeves', kind='accessory', set_id=None, category='Sleeves')
+    add_product(5, 'Old Bundle', kind='sealed_box_set', listed=False)
+    add_product(6, 'Secret Case', kind='booster_box', hidden=True)
     add_product(7, 'A single card', kind='other', type_='single')
     # Rows 415, 142, 81, 30 (the 30d boundary), 20 and 0 days before the latest one.
     add_price(2, '20250901', avg7=60, trend=61, low=55, avg30=58)
@@ -40,7 +40,7 @@ class TestDetail:
                               'listed', 'price', 'owned_qty', 'description', 'columns',
                               'lines']
         assert data == {
-            'id': 2, 'name': 'Origins Booster Box', 'kind': 'box',
+            'id': 2, 'name': 'Origins Booster Box', 'kind': 'booster_box',
             'category': 'Riftbound Booster Boxes', 'set_id': 'OGN', 'image_src': None,
             'listed': True,
             'price': {'value': 100.0, 'source': 'avg7', 'change_7d_pct': -9.1,

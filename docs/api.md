@@ -426,13 +426,15 @@ copy in `rbuserproducts`, `missing` = none; it also narrows the facets and `tota
 name), `dir=asc|desc`, `page`, `per_page` 24-96 (default 48). Any other value -> 400
 `validation_error`. `data.items` are `ProductSummary`s; `meta` is `{page, per_page, total,
 pages, facets: {kind, set}, price_as_of}`. The facets are disjunctive counts (each ignores its
-own filter): `kind` in the `PRODUCT_KINDS` order, `set` by set release order then unknown set
+own filter): `kind` in the `PRODUCT_KINDS` order (`booster`, `booster_box`, `champion_deck`,
+`sealed_box_set`, `accessory`, `other`: the owner's taxonomy of 2026-11-20, migration
+`0033_product_kinds`; a `kind` that is not one of them matches nothing), `set` by set release order then unknown set
 ids by name; products with a NULL kind or set are not counted. `price_as_of` is the newest
 `rbcm_price` date (as in `GET /cards`). At most 10 SQL statements whatever the size of the
 catalog (6 today: the caller's owned quantities are one more).
 
 ```http
-GET /riftbound/api/v1/products?kind=box&sort=price&dir=desc
+GET /riftbound/api/v1/products?kind=booster_box&sort=price&dir=desc
 ```
 
 ### GET /products/<id>
@@ -1625,9 +1627,12 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   `{items: [AdminProduct], meta: {page, per_page, total, pages}}`. Three SQL statements (plus
   the session user) whatever the size of the catalog.
 - `PATCH /admin/products/<id>` any of `{hidden (bool), kind, set_id}` (a key that is absent
-  is not touched; other keys → 400). `kind` in `PRODUCT_KINDS` sets it and
+  is not touched; other keys → 400). `kind` in `PRODUCT_KINDS` (`booster`, `booster_box`,
+  `champion_deck`, `sealed_box_set`, `accessory`, `other`; the old `box`, `case`, `bundle`,
+  `starter`, `sleeves` and the virtual `card` / `unused` are a 400) sets it and
   `kind_locked = true`; `kind: null` unlocks it and recomputes it from the category
-  (`kind_for`, with the product name since CM-g). `set_id` = an existing set id or `null` sets it and `set_locked = true`;
+  (`kind_for`, with the product name since CM-g; a not used category, Cardmarket Sets or
+  Sealed Products, gives `other`). `set_id` = an existing set id or `null` sets it and `set_locked = true`;
   `"auto"` unlocks it and recomputes it from the expansion of the product's latest
   non-single `rbcm_products` row (null when unmapped or absent). The daily
   `products_refresh` never changes a locked kind or set. An unknown set → 400 (`set_id`,
@@ -1897,8 +1902,9 @@ audited in the same transaction (target type `cardmarket_expansion`, id the expa
 - `GET /admin/cardmarket/expansions/<id>/products` (CM-f, read-only; `api_admin.expansion_products`)
   with `q` (name contains, ignoring case; at most 100 characters, trimmed), `type`
   (`all` | `single` | `sealed`, default `all`; sealed = every non-single), `kind` (CM-g: `all`
-  default | `card` | one of the `PRODUCT_KINDS` `booster`, `box`, `case`, `bundle`, `starter`,
-  `sleeves`, `accessory`, `other`; combined with `type` and `q`, all must hold), `sort` (`price`
+  default | `card` | one of the `PRODUCT_KINDS` `booster`, `booster_box`, `champion_deck`,
+  `sealed_box_set`, `accessory`, `other` | `unused`; the kinds of before 2026-11-20 are a 400;
+  combined with `type` and `q`, all must hold), `sort` (`price`
   default: dearest first, unpriced last; `name`: A to Z ignoring case; `added`: newest Cardmarket
   `dateAdded` first, undated last; ties by name ignoring case, then product id), `page` (≥ 1) and
   `per_page` (50 | 100 | 200, default 50); any other parameter or value → 400
@@ -1920,13 +1926,15 @@ audited in the same transaction (target type `cardmarket_expansion`, id the expa
   reset), `catalog` its `rbproducts` row. `total` and `pages` (at least 1) follow the filters; a
   page past the end is empty. `singles`, `sealed`, `price_range` and `first_seen` are of the whole
   expansion whatever the filters, the same figures as its list item (`singles_count`,
-  `sealed_count`, ...). `kind` (CM-g) is `card` for a single; for any other product its
+  `sealed_count`, ...). `kind` (CM-g) is `card` for a single; `unused` (taxonomy 2026-11-20) for a
+  product of a Cardmarket category we do not use (Sets, i.e. `RB Set`, and Sealed Products: never
+  imported into the catalog), even when an old catalog row exists; for any other product its
   `rbproducts` kind when it has a catalog row with one (an admin's locked kind wins), else the
   kind of its Cardmarket category and name by the catalog rules
   (`app/services/products.py::kind_for(category, name)`, the same rules as SQL in `kind_sql`;
   `docs/knowledge/ops-runbook.md` → "Product catalog refresh (F14-a)" lists them). `meta.kinds` counts the products of each kind of the
   whole expansion whatever the filters: a list (JSON objects lose their key order), `card` first
-  then the `PRODUCT_KINDS` order, kinds with no product left out (`[]` without products); the
+  then the `PRODUCT_KINDS` order then `unused`, kinds with no product left out (`[]` without products); the
   counts add up to `singles + sealed`, and the `card` count is `singles`. Unknown expansion →
   404 "Cardmarket expansion <id> not found." (the envelope of `PUT`). Writes nothing. Five SQL
   statements (session user included) whatever the number of products, the filters and the page:

@@ -18,9 +18,9 @@ PRODUCTS = '/riftbound/api/v1/me/products'
 
 def _seed_products():
     # Ids far from the card products of `seed_catalog` (1, 2, 11, 79).
-    add_product(501, 'Origins Booster Box', kind='box')
+    add_product(501, 'Origins Booster Box', kind='booster_box')
     add_product(502, 'Origins Booster', kind='booster')
-    add_product(503, 'Origins Sleeves', kind='sleeves', set_id=None)
+    add_product(503, 'Origins Sleeves', kind='accessory', set_id=None)
     add_price(501, '20261020', avg7=100.005)
     add_price(502, '20261020', trend=4.335)
     db.session.commit()

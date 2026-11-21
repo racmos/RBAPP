@@ -39,11 +39,14 @@ function productsQuery(q: string, kind: KindFilter, sort: ProductSort): string {
   return params.toString();
 }
 
+/** The virtual kind of a Cardmarket category we do not use (taxonomy 2026-11-20). */
+const NOT_USED: ExpansionProductKind = 'unused';
+
 /**
  * The options of the Kind filter (CM-g): All, then each kind the expansion has with its count
- * (the counts of the whole expansion, whatever the filters). Before the first answer the list
- * row tells the cards apart. The chosen kind is always there, so the group keeps a checked
- * radio.
+ * (the counts of the whole expansion, whatever the filters; "Not used" last and muted). Before
+ * the first answer the list row tells the cards apart. The chosen kind is always there, so the
+ * group keeps a checked radio.
  */
 function useKindOptions(
   kinds: KindCount[] | undefined,
@@ -63,10 +66,13 @@ function useKindOptions(
     t('matching.expansions.products.kindOption', { label, amount: formatNumber(count) });
   return [
     { value: 'all' as KindFilter, label: option(t('matching.expansions.products.kindAll'), all) },
-    ...shown.map((one) => ({
-      value: one.kind as KindFilter,
-      label: option(tp(`kind.${one.kind}`), one.count),
-    })),
+    ...shown.map((one) => {
+      const label = option(tp(`kind.${one.kind}`), one.count);
+      return {
+        value: one.kind as KindFilter,
+        label: one.kind === NOT_USED ? <span className={styles.notUsed}>{label}</span> : label,
+      };
+    }),
   ];
 }
 
@@ -88,6 +94,9 @@ function useProductText() {
       product.kind === 'card'
         ? t('matching.expansions.products.cardBadge')
         : tp(`kind.${product.kind}`),
+    /** The badge of a kind: muted for a category we do not use. */
+    tone: (product: CardmarketExpansionProduct) =>
+      product.kind === NOT_USED ? ('muted' as const) : ('neutral' as const),
     price: (product: CardmarketExpansionProduct) =>
       product.price === null || product.price_source === null
         ? t('matching.expansions.noPrice')
@@ -101,7 +110,10 @@ function useProductText() {
       product.catalog === null
         ? null
         : t('matching.expansions.products.catalogRef', {
-            kind: product.catalog.kind ?? t('matching.expansions.products.noKind'),
+            kind:
+              product.catalog.kind === null
+                ? t('matching.expansions.products.noKind')
+                : tp(`kind.${product.catalog.kind}`),
             set: product.catalog.set_id ?? t('matching.expansions.products.noSet'),
           }),
   };
@@ -136,7 +148,7 @@ function ProductsTable({
               <div className={styles.cellStack}>
                 <span>{product.name}</span>
                 <span className={styles.kindLine}>
-                  <Badge>{text.kind(product)}</Badge>
+                  <Badge tone={text.tone(product)}>{text.kind(product)}</Badge>
                   <span className={styles.muted}>
                     {product.category === null
                       ? t('matching.expansions.products.identityNoCategory', {
@@ -188,7 +200,7 @@ function ProductCards({ items, label }: { items: CardmarketExpansionProduct[]; l
           <li key={product.id_product} className={styles.row}>
             <p className={styles.rowTitle}>{product.name}</p>
             <p className={styles.kindLine}>
-              <Badge>{text.kind(product)}</Badge>
+              <Badge tone={text.tone(product)}>{text.kind(product)}</Badge>
               <span className={styles.muted}>
                 {product.category === null
                   ? t('matching.expansions.products.factsNoCategory', facts)
@@ -236,7 +248,7 @@ export type MapFormSlot = (options: { startNew: boolean; onCancel: () => void })
  * "View products" (CM-f): every product of an expansion on the latest load, read-only, so an
  * expansion Cardmarket gives no name can be told apart. The figures of the whole expansion on
  * top, then the search, the Kind filter (CM-g: All and each kind the expansion has, with its
- * count; Cards first when it has cards) and the sort, the list (it scrolls inside the dialog: a
+ * count; Cards first when it has cards; "Not used" last, muted and explained) and the sort, the list (it scrolls inside the dialog: a
  * table from 860 px, cards below; each row with its kind badge) with "Show more", and at the
  * bottom the map form of the row (`renderMap`), opened under the list so the owner decides
  * while looking at it.
@@ -394,6 +406,9 @@ export function ExpansionProducts({
             </Select>
           </label>
         </div>
+        {kind === NOT_USED && (
+          <p className={styles.help}>{t('matching.expansions.products.notUsedHint')}</p>
+        )}
         {query.data && (
           <p className={styles.meta} aria-live="polite">
             {t('matching.expansions.products.showing', { shown: items.length, count: total })}

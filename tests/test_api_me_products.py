@@ -16,9 +16,9 @@ EMPTY_TOTAL = {'value': 0.0, 'lines': 0, 'qty': 0, 'unpriced': 0}
 def _seed():
     add_sets()
     add_product(1, 'Origins Booster', kind='booster', category='Riftbound Boosters')
-    add_product(2, 'Origins Booster Box', kind='box', category='Riftbound Booster Boxes')
-    add_product(4, 'Origins Sleeves', kind='sleeves', set_id=None, category='Sleeves')
-    add_product(6, 'Secret Case', kind='case', hidden=True)
+    add_product(2, 'Origins Booster Box', kind='booster_box', category='Riftbound Booster Boxes')
+    add_product(4, 'Origins Sleeves', kind='accessory', set_id=None, category='Sleeves')
+    add_product(6, 'Secret Case', kind='booster_box', hidden=True)
     add_product(7, 'A single card', kind='other', type_='single')
     add_price(1, '20261014', trend=4)
     add_price(1, '20261021', avg7=0, trend=5, low=4.5)     # 5.00 (trend)
@@ -57,7 +57,7 @@ class TestList:
         assert line == {
             'id': owned_rows()[0].rbupr_id,
             'product': {
-                'id': 2, 'name': 'Origins Booster Box', 'kind': 'box',
+                'id': 2, 'name': 'Origins Booster Box', 'kind': 'booster_box',
                 'category': 'Riftbound Booster Boxes', 'set_id': 'OGN', 'image_src': None,
                 'listed': True,
                 'price': {'value': 100.0, 'source': 'avg7', 'change_7d_pct': None,

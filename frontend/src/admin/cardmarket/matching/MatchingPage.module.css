@@ -177,6 +177,12 @@
   }
 
   /* A product's kind badge (CM-g) before its Cardmarket category. */
+  /* the virtual kind "Not used" (a Cardmarket category we do not use): for reference only */
+  .notUsed {
+    color: var(--muted);
+    font-style: italic;
+  }
+
   .kindLine {
     display: flex;
     flex-wrap: wrap;

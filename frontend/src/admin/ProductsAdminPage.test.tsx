@@ -60,12 +60,12 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
     expect(rows[0].querySelector('img[src="/riftbound/media/products/501.png"]')).not.toBeNull();
-    expect(within(rows[0]).getByText('Booster box')).toBeVisible();
+    expect(within(rows[0]).getByText('Booster boxes')).toBeVisible();
     expect(within(rows[0]).getByText('OGN')).toBeVisible();
     expect(within(rows[0]).getByText(/99.50/)).toBeVisible();
     expect(rows[1].querySelector('img')).toBeNull();
     expect(rows[1].querySelector('svg')).not.toBeNull();
-    expect(within(rows[1]).getByText('Sleeves')).toBeVisible();
+    expect(within(rows[1]).getByText('Accessories')).toBeVisible();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(await axe(container)).toHaveNoViolations();
   }, 30000);
@@ -117,10 +117,24 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     const kind = await screen.findByRole('combobox', { name: /Kind/ });
     expect(kind).toHaveValue('');
-    await userEvent.selectOptions(kind, 'sleeves');
+    // the owner's kinds (2026-11-20), in order, after Automatic
+    expect(
+      within(kind)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([
+      'Automatic (from the category)',
+      'Booster',
+      'Booster boxes',
+      'Champion decks',
+      'Sealed box sets',
+      'Accessories',
+      'Other',
+    ]);
+    await userEvent.selectOptions(kind, 'accessory');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect((await screen.findAllByText('Product saved.')).length).toBeGreaterThan(0);
-    expect(patches).toEqual([{ kind: 'sleeves' }]);
+    expect(patches).toEqual([{ kind: 'accessory' }]);
   }, 30000);
 
   it('locked fields show the badge; auto unlocks (kind null, set_id "auto") and hidden toggles', async () => {
@@ -131,7 +145,7 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     const kind = within(editor).getByRole('combobox', { name: /Kind/ });
     const set = within(editor).getByRole('combobox', { name: /^Set/ });
     const hidden = within(editor).getByRole('switch', { name: 'Hide from users' });
-    expect(kind).toHaveValue('sleeves');
+    expect(kind).toHaveValue('accessory');
     expect(hidden).toHaveAttribute('aria-checked', 'true');
     await userEvent.selectOptions(kind, 'Automatic (from the category)');
     await userEvent.selectOptions(set, 'Automatic (from the expansion)');
@@ -208,24 +222,40 @@ describe('ProductsAdminPage (F14-d S5)', () => {
 
   it('filters live in the URL and reach the API', async () => {
     const { queries } = productsApi();
-    const app = await renderApp({ path: '/admin/products?kind=box&hidden=yes', width: 1280 });
+    const app = await renderApp({
+      path: '/admin/products?kind=booster_box&hidden=yes',
+      width: 1280,
+    });
     await screen.findByRole('table', { name: TABLE }, { timeout: 10000 });
-    expect(queries[0]).toContain('kind=box');
+    // one chip per kind of the owner's taxonomy (2026-11-20), in order
+    expect(
+      within(screen.getByRole('group', { name: 'Kind' }))
+        .getAllByRole('button')
+        .map((chip) => chip.textContent),
+    ).toEqual([
+      'Booster',
+      'Booster boxes',
+      'Champion decks',
+      'Sealed box sets',
+      'Accessories',
+      'Other',
+    ]);
+    expect(queries[0]).toContain('kind=booster_box');
     expect(queries[0]).toContain('hidden=yes');
-    expect(screen.getByRole('button', { name: 'Booster box' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Booster boxes' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     expect(screen.getByRole('combobox', { name: 'Hidden' })).toHaveValue('yes');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sleeves' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Accessories' }));
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'On Cardmarket' }), 'no');
     await userEvent.click(screen.getByRole('switch', { name: 'Without set' }));
     await userEvent.click(screen.getByRole('switch', { name: 'Without image' }));
     await userEvent.type(screen.getByRole('textbox', { name: /Search/ }), 'box');
     await waitFor(() => expect(app.where()).toContain('q=box'));
     const url = new URLSearchParams(app.where().split('?')[1]);
-    expect(url.getAll('kind')).toEqual(['box', 'sleeves']);
+    expect(url.getAll('kind')).toEqual(['booster_box', 'accessory']);
     expect(url.get('hidden')).toBe('yes');
     expect(url.get('listed')).toBe('no');
     expect(url.get('no_set')).toBe('true');
@@ -233,9 +263,9 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     await waitFor(() => expect(queries.at(-1)).toContain('q=box'));
     expect(queries.at(-1)).toContain('no_image=true');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Booster box' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Booster boxes' }));
     await waitFor(() =>
-      expect(new URLSearchParams(app.where().split('?')[1]).getAll('kind')).toEqual(['sleeves']),
+      expect(new URLSearchParams(app.where().split('?')[1]).getAll('kind')).toEqual(['accessory']),
     );
   }, 30000);
 

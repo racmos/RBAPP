@@ -576,8 +576,11 @@ export const unmapCardmarketExpansion = (id: number) =>
     { method: 'DELETE' },
   );
 
-/** The kind of a product of an expansion (CM-g): `card` for a single, else a product kind. */
-export type ExpansionProductKind = 'card' | ProductKind;
+/**
+ * The kind of a product of an expansion (CM-g): `card` for a single, `unused` for a Cardmarket
+ * category we do not use (Sets, Sealed Products: never in the catalog), else a product kind.
+ */
+export type ExpansionProductKind = 'card' | ProductKind | 'unused';
 
 /**
  * A product of an expansion on the latest load (CM-f). `price` is what it is worth that day: a
@@ -608,7 +611,7 @@ export type CardmarketExpansionProduct = {
   /** The card of ours it is linked to. */
   linked: { set_id: string; card_id: string; foil: CardmarketFoil } | null;
   /** Its row in our product catalog. */
-  catalog: { kind: string | null; set_id: string | null } | null;
+  catalog: { kind: ProductKind | null; set_id: string | null } | null;
 };
 export type CardmarketExpansionProducts = {
   expansion: {

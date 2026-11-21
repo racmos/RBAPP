@@ -15,14 +15,14 @@ def _seed(app):
     add_sets()
     add_product(1, 'Origins Booster', kind='booster', set_id='OGN',
                 category='Riftbound Boosters')
-    add_product(2, 'Origins Booster Box', kind='box', set_id='OGN',
+    add_product(2, 'Origins Booster Box', kind='booster_box', set_id='OGN',
                 category='Riftbound Booster Boxes')
     add_product(3, 'Spiritforged Booster', kind='booster', set_id='SFD')
-    add_product(4, 'Origins Sleeves', kind='sleeves', set_id=None, category='Sleeves')
-    add_product(5, 'Old Bundle', kind='bundle', set_id='OGN', listed=False)
-    add_product(6, 'Secret Case', kind='case', set_id='OGN', hidden=True)
+    add_product(4, 'Origins Sleeves', kind='accessory', set_id=None, category='Sleeves')
+    add_product(5, 'Old Bundle', kind='sealed_box_set', set_id='OGN', listed=False)
+    add_product(6, 'Secret Case', kind='booster_box', set_id='OGN', hidden=True)
     add_product(7, 'A single card', kind='other', set_id='OGN', type_='single')
-    add_product(8, 'Arcane Starter', kind='starter', set_id='ARC')
+    add_product(8, 'Arcane Starter', kind='champion_deck', set_id='ARC')
     # 1: +25 % in 7 days (trend); 2: -20 % (avg7); 3: +100 % in 30 days (low); 4, 8: no price.
     add_price(1, '20261014', trend=4)
     add_price(1, '20261021', avg7=0, trend=5, low=4.5)
@@ -129,7 +129,7 @@ class TestFilters:
         assert _names(authenticated_client.get(URL, query_string={'kind': 'booster'})) == [
             'Origins Booster', 'Spiritforged Booster']
         assert _names(authenticated_client.get(
-            URL, query_string=[('kind', 'booster'), ('kind', 'box')])) == [
+            URL, query_string=[('kind', 'booster'), ('kind', 'booster_box')])) == [
             'Origins Booster', 'Origins Booster Box', 'Spiritforged Booster']
 
     def test_set_repeated_and_case_insensitive(self, authenticated_client, app):
@@ -161,15 +161,16 @@ class TestFacets:
         assert list(facets) == ['kind', 'set']
         # Kinds in PRODUCT_KINDS order; sets by release date; products without a set are
         # not counted in the set facet.
-        assert list(facets['kind'].items()) == [('booster', 2), ('box', 1), ('starter', 1),
-                                                ('sleeves', 1)]
+        assert list(facets['kind'].items()) == [('booster', 2), ('booster_box', 1),
+                                                ('champion_deck', 1), ('accessory', 1)]
         assert list(facets['set'].items()) == [('OGN', 2), ('SFD', 1), ('ARC', 1)]
 
     def test_kind_facet_ignores_its_own_filter(self, authenticated_client, app):
         _seed(app)
         facets = authenticated_client.get(URL, query_string={'kind': 'booster'}).get_json()[
             'meta']['facets']
-        assert facets['kind'] == {'booster': 2, 'box': 1, 'starter': 1, 'sleeves': 1}
+        assert facets['kind'] == {'booster': 2, 'booster_box': 1, 'champion_deck': 1,
+                                  'accessory': 1}
         assert list(facets['set'].items()) == [('OGN', 1), ('SFD', 1)]
 
     def test_set_facet_ignores_its_own_filter(self, authenticated_client, app):
@@ -184,7 +185,8 @@ class TestFacets:
         facets = authenticated_client.get(URL, query_string={'listed': 'any',
                                                              'q': 'o'}).get_json()[
             'meta']['facets']
-        assert facets['kind'] == {'booster': 2, 'box': 1, 'bundle': 1, 'sleeves': 1}
+        assert facets['kind'] == {'booster': 2, 'booster_box': 1, 'sealed_box_set': 1,
+                                  'accessory': 1}
 
     def test_unknown_set_sorts_after_known_ones(self, authenticated_client, app):
         _seed(app)
@@ -331,7 +333,7 @@ class TestOwned:
                                                                        VISIBLE[4]]
         secret = next(i for i in mine['data']['items'] if i['id'] == 6)
         assert (secret['owned_qty'], secret['price']['value']) == (1, 300.0)
-        assert mine['meta']['facets']['kind']['case'] == 1
+        assert mine['meta']['facets']['kind']['booster_box'] == 2
         assert _names(authenticated_client.get(URL, query_string={'owned': 'owned'})) == [
             'Origins Booster', 'Secret Case', 'Spiritforged Booster']
         assert 'Secret Case' not in _names(other_user_client.get(URL))

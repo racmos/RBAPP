@@ -556,9 +556,13 @@ dearest first / Name / Newest first), kept in the dialog state (not the URL), an
 M products". The Kind filter is a `SegmentedControl` (a radiogroup of native radios: arrow keys,
 one checked) whose options are "All (N)" and each kind the expansion has with its count, from
 `meta.kinds` (counts of the whole expansion, whatever the search): "Cards (N)" first, then the
-product kinds in the catalog order with the products labels (`products:kind.*`: Booster, Booster
-box, Case, Bundle / set, Starter deck, Sleeves, Accessory, Other); kinds with no product are not
-shown. It starts on Cards when the expansion has cards (its row's `singles_count`), else on All;
+product kinds in the catalog order with the products labels (`products:kind.*`, the owner's
+taxonomy of 2026-11-20: Booster, Booster boxes, Champion decks, Sealed box sets, Accessories,
+Other), then "Not used" (`unused`: Cardmarket Sets and Sealed Products, never in the catalog) in
+muted italics; kinds with no product are not shown. Choosing "Not used" shows the hint "Not used:
+Cardmarket Sets and Sealed Products never enter the product catalog."; its rows carry a muted
+`Badge` (`tone="muted"`: dashed outline, no fill). The Catalog column / line shows the catalog kind
+by its label. It starts on Cards when the expansion has cards (its row's `singles_count`), else on All;
 before the first answer it shows All and Cards from the row. The group wraps onto more lines on
 narrow screens (`.group` has `flex-wrap: wrap`). Every row carries its kind as a `Badge` ("Card"
 for a single, else the kind label) before `#id · category` (table) or the facts line (cards). An
