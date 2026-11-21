@@ -158,6 +158,85 @@ def test_the_expansion_set_narrows_the_candidates(catalog):
     assert mappings() == [(12, 'SFD', '020', None, 'auto', 0.7)]
 
 
+def test_a_lone_product_of_its_set_is_clear_although_the_metacard_has_other_sets(catalog):
+    """Owner report (Vayne, Hunter): one product in Origins and two in Spiritforged share a
+    metacard. The Origins product is the only one of its set with one card of that set, so it
+    is a clear case; the two Spiritforged products pair with the two Spiritforged cards by rank
+    and price (lower number = lower rarity = cheaper), so they are clear as well."""
+    catalog('035', 'Vayne, Hunter', rarity='rare', set_id='OGN')
+    catalog('223', 'Vayne, Hunter', rarity='showcase', set_id='SFD')
+    catalog('223s', 'Vayne, Hunter', rarity='showcase', set_id='SFD')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.add(RbcmExpansion(rbexp_id=7000, rbexp_rbset_id='SFD'))
+    db.session.commit()
+    product(40, 'Vayne, Hunter', metacard=30, expansion=6286, price=0.02)
+    product(41, 'Vayne, Hunter', metacard=30, expansion=7000, price=70.0)
+    product(42, 'Vayne, Hunter', metacard=30, expansion=7000, price=500.0)
+    result = daily_prices.match_clear_cases(DATE)
+    assert result['auto_match']['linked'] == 3 and result['review'] == []
+    assert mappings() == [(40, 'OGN', '035', None, 'auto', 0.7),
+                          (41, 'SFD', '223', None, 'auto', 0.7),
+                          (42, 'SFD', '223s', None, 'auto', 0.7)]
+
+
+def test_the_dearer_product_is_the_higher_rank_whatever_the_product_ids(catalog):
+    catalog('060', 'Twin Star', rarity='rare', set_id='OGN')
+    catalog('060a', 'Twin Star', rarity='rare', set_id='OGN')
+    catalog('060s', 'Twin Star', rarity='rare', set_id='OGN')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.commit()
+    product(70, 'Twin Star', metacard=40, price=30.0)     # the signed one is the dearest
+    product(71, 'Twin Star', metacard=40, price=1.0)
+    product(72, 'Twin Star', metacard=40, price=5.0)
+    daily_prices.match_clear_cases(DATE)
+    assert [(row[0], row[2]) for row in mappings()] == [(70, '060s'), (71, '060'), (72, '060a')]
+
+
+def test_equal_prices_cannot_be_ranked_so_they_stay_ambiguous(catalog):
+    catalog('061', 'Same Cost', rarity='rare', set_id='OGN')
+    catalog('061s', 'Same Cost', rarity='rare', set_id='OGN')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.commit()
+    product(73, 'Same Cost', metacard=41, price=2.0)
+    product(74, 'Same Cost', metacard=41, price=2.0)
+    result = daily_prices.match_clear_cases(DATE)
+    assert mappings() == [] and sorted(reasons(result)) == [(73, 'ambiguous'), (74, 'ambiguous')]
+
+
+def test_more_products_than_cards_in_a_set_stay_ambiguous(catalog):
+    catalog('062', 'Crowded', rarity='rare', set_id='OGN')
+    catalog('062s', 'Crowded', rarity='rare', set_id='OGN')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.commit()
+    for pid, price in ((75, 1.0), (76, 2.0), (77, 3.0)):
+        product(pid, 'Crowded', metacard=42, price=price)
+    result = daily_prices.match_clear_cases(DATE)
+    assert mappings() == [] and len(result['review']) == 3
+
+
+def test_common_cards_have_a_foil_twin_so_their_pairs_stay_ambiguous(catalog):
+    catalog('063', 'Plain Twin', rarity='common', set_id='OGN')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.commit()
+    product(78, 'Plain Twin', metacard=43, price=0.1)
+    product(79, 'Plain Twin (Foil)', metacard=43, price=0.9)
+    result = daily_prices.match_clear_cases(DATE)
+    assert mappings() == [] and sorted(reasons(result)) == [(78, 'ambiguous'), (79, 'ambiguous')]
+
+
+def test_two_products_of_the_same_set_stay_ambiguous_even_with_other_sets_around(catalog):
+    catalog('036', 'Twin Spirit', rarity='common', set_id='OGN')
+    catalog('036', 'Twin Spirit', rarity='common', set_id='SFD')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.add(RbcmExpansion(rbexp_id=7000, rbexp_rbset_id='SFD'))
+    db.session.commit()
+    product(50, 'Twin Spirit', metacard=31, expansion=6286, price=0.1)
+    product(51, 'Twin Spirit (Foil)', metacard=31, expansion=6286, price=0.5)
+    product(52, 'Twin Spirit', metacard=31, expansion=7000, price=0.2)
+    result = daily_prices.match_clear_cases(DATE)
+    assert (50, 'ambiguous') in reasons(result) and (51, 'ambiguous') in reasons(result)
+
+
 def test_only_unmapped_singles_of_the_date_are_considered(catalog):
     catalog('021', 'Old Friend')
     product(13, 'Booster Box', metacard=None, kind='nonsingle')

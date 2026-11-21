@@ -531,11 +531,15 @@ class TestAutoMatch:
         decided = daily_prices.classify_unmapped(cm.D2)
         assert got['date'] == '2030-10-02'
         assert got['proposed'] == decided['proposed'] == 5
-        assert got['clear'] == len(decided['links']) == 1
+        # 200 (Vi, Origins) and 201 (Vi (Promo), Origins Promo) share a metacard but not a set: each
+        # is the only product of its set with one card of it, so both are clear with 250
+        assert got['clear'] == len(decided['links']) == 3
         assert got['doubtful'] == len(decided['review'])
-        assert got['links'] == [{
+        assert [(link['id_product'], link['set_id'], link['card_id']) for link in got['links']] == [
+            (200, 'OGN', '002'), (201, 'OGNX', '002'), (250, 'OGN', '003')]
+        assert got['links'][-1] == {
             'id_product': 250, 'product_name': 'Ahri, Nine-Tailed Fox', 'low_price': 9.0,
-            'set_id': 'OGN', 'card_id': '003', 'card_name': 'Ahri', 'foil': None}]
+            'set_id': 'OGN', 'card_id': '003', 'card_name': 'Ahri', 'foil': None}
         assert {(i['product_id'], i['reason']) for i in got['review']} >= {
             (100, 'ambiguous'), (400, 'no_candidates'), (501, 'no_candidates')}
         assert got['review_total'] == len(got['review'])
@@ -550,10 +554,12 @@ class TestAutoMatch:
 
     def test_apply_links_the_clear_cases_and_audits_counts(self, admin_client, data):
         got = ok(admin_client.post(APPLY, json={}))
-        assert (got['linked'], got['clear'], got['remaining_clear']) == (1, 1, 0)
-        assert links() == [(250, 'OGN', '003', None, 'auto', 0.7)]
+        assert (got['linked'], got['clear'], got['remaining_clear']) == (3, 3, 0)
+        assert links() == [(200, 'OGN', '002', None, 'auto', 0.7),
+                           (201, 'OGNX', '002', None, 'auto', 0.7),
+                           (250, 'OGN', '003', None, 'auto', 0.7)]
         assert audits() == [('cardmarket.auto_match', 'cardmarket', '2030-10-02',
-                             {'linked': 1, 'clear': 1, 'doubtful': got['doubtful'],
+                             {'linked': 3, 'clear': 3, 'doubtful': got['doubtful'],
                               'max_groups': 200})]
         again = ok(admin_client.post(APPLY, json={}))
         assert again['linked'] == 0 and len(audits()) == 2
@@ -564,8 +570,8 @@ class TestAutoMatch:
             cm.product(700 + n, f'Solo {word}', metacard=700 + n)
         db.session.commit()
         got = ok(admin_client.post(APPLY, json={'max_groups': 2}))
-        assert (got['linked'], got['clear'], got['remaining_clear']) == (2, 4, 2)
-        assert [row[0] for row in links()] == [250, 700]
+        assert (got['linked'], got['clear'], got['remaining_clear']) == (2, 6, 4)
+        assert [row[0] for row in links()] == [200, 201]
 
     @pytest.mark.parametrize('payload', [{'max_groups': 0}, {'max_groups': 201},
                                          {'other': 1}])
@@ -585,7 +591,7 @@ class TestReview:
         assert got['items'] == decided['review']
         assert got['meta']['total'] == len(decided['review'])
         assert got['meta']['date'] == '2030-10-02'
-        assert got['meta']['reasons'] == {'ambiguous': 4, 'no_candidates': 2,
+        assert got['meta']['reasons'] == {'ambiguous': 2, 'no_candidates': 2,
                                           'ignored_pair': 1}
 
     def test_reason_filter_and_paging(self, admin_client, data):
