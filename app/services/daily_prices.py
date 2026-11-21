@@ -120,6 +120,24 @@ def _review_item(product, reason: str, candidates) -> dict:
     }
 
 
+def _paired_by_rank(rivals, free, prices, taken) -> bool:
+    """Several products of one set for several cards of that set: they can be paired by rank
+    when there is exactly one single-slot card (rare, epic, showcase, rune: no foil twin) per
+    product, the cards differ in rank (rarity, then the `a` / `s` variants) and the products
+    differ in price. The cheaper product then is the card of the lower rank, as `auto_match`
+    proposes (owner rule: two printings of one name in one set, the lower number is the lower
+    rarity and the dearer product is the higher one). Anything less certain is ambiguous."""
+    slots = [matcher._expand_slots(card, taken=taken) for card in free]
+    if len(free) != len(rivals) or any(len(one) != 1 for one in slots):
+        return False
+    if any(len(matcher._expand_slots(card)) != 1 for card in free):
+        return False                      # a common or uncommon has a foil twin: not certain
+    ranks = [matcher.card_rank_key(card)[0] for card in free]
+    cost = [prices.get(product.rbprd_id_product, 0.0) for product in rivals]
+    return (len(set(ranks)) == len(ranks) and len(set(cost)) == len(cost)
+            and all(value > 0 for value in cost))
+
+
 def classify_unmapped(date: str) -> dict:
     """Decide, without writing, what `match_clear_cases` does with the unmapped
     singles of `date`: `{links: [(product id, (set, card, foil))], review: [every
@@ -127,12 +145,14 @@ def classify_unmapped(date: str) -> dict:
 
     Clear case: the only unmapped product of its metacard group in its set (the set of
     its expansion; products of other sets do not compete), with exactly
-    one candidate card that still has a free slot, and a slot proposed by
+    one candidate card that still has a free slot, or several products paired with as many
+    single-slot cards by rank and price (`_paired_by_rank`), and a slot proposed by
     `auto_match` for no other product. Every other unmapped single gets a
     review reason: `ignored_pair`, `no_candidates`, `conflict` (slot taken or
     proposed twice) or `ambiguous` (several products or candidate cards).
     """
     pairs, slot_uses, proposed = _proposals()
+    prices = matcher._get_latest_prices()
     mapped_ids = set(db.session.execute(sa.select(RbcmProductCardMap.rbpcm_id_product)).scalars())
     taken = set(db.session.execute(sa.select(
         RbcmProductCardMap.rbpcm_rbset_id, RbcmProductCardMap.rbpcm_rbcar_id,
@@ -172,7 +192,11 @@ def classify_unmapped(date: str) -> dict:
             reason = 'no_candidates'
         elif not free:
             reason = 'conflict'
-        elif len(rivals) > 1 or len(free) > 1 or slot is None:
+        elif len(rivals) == 1 and len(free) > 1:
+            reason = 'ambiguous'
+        elif len(rivals) > 1 and not _paired_by_rank(rivals, free, prices, taken):
+            reason = 'ambiguous'
+        elif slot is None:
             reason = 'ambiguous'
         elif slot_uses[slot] > 1:
             reason = 'conflict'

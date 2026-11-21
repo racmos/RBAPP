@@ -1834,6 +1834,11 @@ apply runs synchronously and is bounded.
   card_name, foil}], review (first 200), review_total}`; writes nothing.
 - `POST /admin/cardmarket/auto-match/apply` `{max_groups?: 1-200 (default 200)}` → `{date,
   linked, clear, remaining_clear, doubtful, links}`: links the first `max_groups` clear cases
+  A clear case is the only unmapped product of its set in its metacard group (products of other sets do not
+  compete) with one free candidate card, or several products of one set paired with as many single-slot cards
+  (rare, epic, showcase, rune) when the cards differ in rank and the products differ in price: the cheaper product
+  is the card of the lower rank (`223` before `223s`). Commons and uncommons (foil twins), equal prices, more
+  products than cards and several candidate cards stay in the review list (CM-b fix 2026-11-22).
   as the daily job does (`auto`, 0.7). The doubtful ones are never linked (the legacy
   auto-match links every proposal; that stays only in the legacy page). Audit
   `cardmarket.auto_match` (target `cardmarket`, id the date) `{linked, clear, doubtful,
