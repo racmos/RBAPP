@@ -172,6 +172,60 @@ def test_two_products_of_the_owner_set_do_not_own_the_slot_together(catalog):
     assert mappings() == [] and sorted(reasons(result)) == [(82, 'conflict'), (83, 'conflict')]
 
 
+def test_a_legend_is_found_by_its_champion_tag_when_the_tags_have_a_race_first(catalog):
+    """The catalog stores the Legend as its bare name with the tags 'Yordle, Kennen'; Cardmarket
+    calls it 'Kennen, Heart of the Tempest'. Each tag is tried with the name, not only the
+    whole tag string."""
+    db.session.add(RbCard(rbcar_rbset_id='OGN', rbcar_id='155', rbcar_name='Heart of the Tempest',
+                          rbcar_type='Legend', rbcar_rarity='rare', rbcar_tags='Yordle, Kennen'))
+    db.session.commit()
+    product(90, 'Kennen, Heart of the Tempest', metacard=60)
+    result = daily_prices.match_clear_cases(DATE)
+    assert mappings() == [(90, 'OGN', '155', None, 'auto', 0.7)] and result['review'] == []
+
+
+def test_a_legend_is_found_in_both_name_orders(catalog):
+    db.session.add(RbCard(rbcar_rbset_id='OGN', rbcar_id='255', rbcar_name='Nine-Tailed Fox',
+                          rbcar_type='Legend', rbcar_rarity='rare', rbcar_tags='Ahri'))
+    db.session.add(RbCard(rbcar_rbset_id='OGN', rbcar_id='256', rbcar_name='Hand of Noxus',
+                          rbcar_type='Legend', rbcar_rarity='rare', rbcar_tags='Noxus, Darius'))
+    db.session.commit()
+    product(91, 'Ahri, Nine-Tailed Fox', metacard=61)
+    product(92, 'Hand of Noxus, Darius', metacard=62)
+    daily_prices.match_clear_cases(DATE)
+    assert [(row[0], row[2]) for row in mappings()] == [(91, '255'), (92, '256')]
+
+
+def test_the_two_runes_of_a_set_pair_by_price(catalog):
+    """A basic rune has a plain and an alternate `a` card per set; Cardmarket has two products of
+    the same name in the set, the dearer one is the alternate."""
+    catalog('r01', 'Fury Rune', rarity='common', set_id='OGN', card_type='Basic Rune')
+    catalog('r01a', 'Fury Rune', rarity='showcase', set_id='OGN', card_type='Basic Rune')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.commit()
+    product(93, 'Fury Rune', metacard=63, price=2.0)
+    product(94, 'Fury Rune', metacard=63, price=0.02)
+    result = daily_prices.match_clear_cases(DATE)
+    assert [(row[0], row[2]) for row in mappings()] == [(93, 'r01a'), (94, 'r01')]
+    assert result['review'] == []
+
+
+def test_a_rune_product_of_a_set_without_that_rune_is_no_candidates_not_ambiguous(catalog):
+    """Runes are per set: a Spiritforged rune product must not be offered the Origins or
+    Radiance runes (nor a promo set the base set's rune); it has no card yet."""
+    catalog('r01', 'Fury Rune', rarity='common', set_id='OGN', card_type='Basic Rune')
+    catalog('r01', 'Fury Rune', rarity='common', set_id='RAD', card_type='Basic Rune')
+    db.session.add(RbSet(rbset_id='SFDX', rbset_name='Spiritforged Promo', rbset_ncard=10))
+    db.session.add(RbcmExpansion(rbexp_id=6399, rbexp_rbset_id='SFD'))
+    db.session.add(RbcmExpansion(rbexp_id=6483, rbexp_rbset_id='SFDX'))
+    db.session.commit()
+    product(95, 'Fury Rune', metacard=64, expansion=6399, price=1.4)
+    product(96, 'Fury Rune', metacard=64, expansion=6483, price=3.0)
+    result = daily_prices.match_clear_cases(DATE)
+    assert mappings() == []
+    assert sorted(reasons(result)) == [(95, 'no_candidates'), (96, 'no_candidates')]
+
+
 def test_the_expansion_set_narrows_the_candidates(catalog):
     catalog('020', 'Sky Herald', set_id='OGN')
     catalog('020', 'Sky Herald', set_id='SFD')

@@ -144,6 +144,10 @@ def _get_latest_prices() -> dict[int, float]:
     return prices
 
 
+def _is_rune(card: RbCard) -> bool:
+    return 'rune' in (card.rbcar_type or '').lower()
+
+
 def _get_partition_candidates(
     candidates: list[RbCard],
     partition_prods: list[RbcmProduct],
@@ -168,6 +172,12 @@ def _get_partition_candidates(
     ]
     if exact_candidates:
         return exact_candidates
+
+    # Basic runes are per set (each set has its own `R01` and `R01a`): a rune product of a set
+    # whose expansion is mapped but which has no rune card in the catalog yet has no candidate,
+    # instead of being offered the runes of other sets or, for a promo set, of its base set.
+    if seen_exact_sets and candidates and all(_is_rune(c) for c in candidates):
+        return []
 
     related_sets = set()
     for sid in exact_sets:
@@ -238,8 +248,15 @@ def _build_card_index() -> dict[str, list[RbCard]]:
         if (c.rbcar_type or '').lower() == 'legend' and c.rbcar_tags:
             tags = c.rbcar_tags
             name = c.rbcar_name or ''
-            idx[normalize_name(f"{tags}, {name}")].append(c)
-            idx[normalize_name(f"{name}, {tags}")].append(c)
+            # the whole tag string, and each tag alone: the tags are 'Yordle, Kennen' (race,
+            # champion) while Cardmarket says 'Kennen, Heart of the Tempest'
+            keys = {normalize_name(f"{tags}, {name}"), normalize_name(f"{name}, {tags}")}
+            for tag in (t.strip() for t in tags.split(',')):
+                if tag:
+                    keys.add(normalize_name(f"{tag}, {name}"))
+                    keys.add(normalize_name(f"{name}, {tag}"))
+            for key in keys:
+                idx[key].append(c)
     return idx
 
 
