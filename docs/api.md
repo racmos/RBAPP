@@ -1839,6 +1839,8 @@ apply runs synchronously and is bounded.
   (rare, epic, showcase, rune) when the cards differ in rank and the products differ in price: the cheaper product
   is the card of the lower rank (`223` before `223s`). Commons and uncommons (foil twins), equal prices, more
   products than cards and several candidate cards stay in the review list (CM-b fix 2026-11-22).
+  When a promo product falls back to a base-set card (its promo set has no card in the catalog) and so competes
+  for the same slot, the product of the card's own set owns the slot and the promo one is the conflict.
   as the daily job does (`auto`, 0.7). The doubtful ones are never linked (the legacy
   auto-match links every proposal; that stays only in the legacy page). Audit
   `cardmarket.auto_match` (target `cardmarket`, id the date) `{linked, clear, doubtful,
