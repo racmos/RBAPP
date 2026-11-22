@@ -1592,7 +1592,8 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
 - `POST /admin/cards` (`AdminCardInput`: `set_id` + `card_id` required, `name` required;
   numbers 0-99 or null; texts trimmed, empty → null) → 201. Unknown set → 400
   (`set_id`, `invalid_value`); duplicate key → 409 `already_exists` (`field: card_id`).
-  Audit `card.create`.
+  Audit `card.create`. The row is made by `app/services/catalog_admin.py::create_cards`, which
+  the missing promo cards (CM-h) reuse: the set must exist and a card is never overwritten.
 - `PATCH /admin/cards/<set>/<id>` any `AdminCardInput` field except the keys
   (sending `set_id`/`card_id` → 400 `invalid_value`; `rbcar_banned` or `banned` → 400: bans
   live only in `rbcardbans`, managed with `flask bans`; the column was dropped in F11-f) →
@@ -1949,6 +1950,82 @@ audited in the same transaction (target type `cardmarket_expansion`, id the expa
   the page.
 
 Not ported: the legacy `rbexp_name` override and the download URLs of the legacy list.
+
+### Missing promo cards (CM-h)
+
+`app/api/admin/cardmarket_promo_cards.py`, logic in `app/services/promo_cards.py` (A, owner
+request 2026-11-23). Riot's gallery does not publish the promo sets, so after the production
+reset OGNX, SFDX, UNLX, VENX, RADX, ... have no cards and their Cardmarket products cannot be
+matched (`no_candidates`, or `conflict` once the matcher falls back from the promo set to its
+base set). **Owner rule:** a promo card has the same card id as its base card, in the set whose
+id is the base set id followed by `X` (OGN/035 Vayne, Hunter → OGNX/035). A set whose id does
+not end in `X` (PLAT, PROK, ...) or whose base set does not exist is refused until the owner
+gives its convention. A **usable promo set** exists, ends in `X`, its base set (the id without
+the `X`) exists and at least one Cardmarket expansion is mapped to it
+(`rbcm_expansions.rbexp_rbset_id`).
+
+- `GET /admin/cardmarket/promo-cards` (`api_admin.promo_cards_list`) → `{date | null, sets:
+  [{id, name, base, base_name, expansions: [expansion ids], products_missing, cards_to_create}]}`:
+  the usable promo sets by id, `date` the latest product date (`YYYY-MM-DD`). `products_missing`
+  counts the products whose promo card is still to create (`products_to_create` below),
+  `cards_to_create` the cards. Nine SQL statements (session user included) whatever the number of
+  sets and products.
+- `GET /admin/cardmarket/promo-cards?set=OGNX` (the id is upper-cased; any other parameter is a
+  400) → `{set: {id, name, base, base_name, expansions}, date, items: [...], summary:
+  {cards_to_create, products_to_create, exists, manual, products}}`. A set that is not usable →
+  400 `validation_error` with the reason as `message` and `details[0].field = "set"`:
+  `Set 'X' does not exist.`, `OGN is not a promo set: a promo set id is its base set id followed
+  by X (OGN -> OGNX).`, `The base set SFD of SFDX does not exist.`, `No Cardmarket expansion is
+  mapped to UNLX: map it in the Expansions tab first.` Writes nothing; nine SQL statements
+  (session user included) whatever the number of products.
+
+  The products are the **unmatched singles of the latest load** of the set's expansions (not in
+  `rbcm_product_card_map`, not an ignored pair). They are grouped by Cardmarket metacard and
+  paired as the matcher pairs them (`cardmarket_matcher.auto_match`): the base cards of the
+  group's normalised names (`normalize_name`, the card index with the legend composite names
+  `_build_card_index`) become the promo cards `{set, base card id lower-cased}` (a promo card
+  already in the catalog with that id, or of that name, is used as it is); the products sorted by
+  price ascending (`_get_latest_prices`: low, low foil, avg7, avg7 foil of each product's newest
+  price day) and the promo cards by `card_rank_key` of the promo card (the promo rank, e.g. a
+  promo showcase ranks below a promo epic) are paired one to one over their slots
+  (`_expand_slots`): a common or uncommon card has two slots, N then S, so it absorbs two
+  products; a rare, epic, showcase or rune card one; a slot of an existing promo card already
+  linked is not offered. Items, sorted by product name ignoring case, then price, then id:
+
+  `{product_id, product_ids, product_name, price | null, expansion_id, products: [{id, name,
+  price | null, foil: "N" | "S" | null}], base: {set_id, card_id, name, rarity, type} | null,
+  proposed: {set_id, card_id} | null, status, reason}`. One item per promo card with every
+  product it absorbs (`product_ids` and `products` cheapest first, each with the slot it gets;
+  `product_id`, `product_name` and `price` are those of the cheapest), one item per manual
+  product. `status` / `reason`: `create` / `clone` (the card is created by `POST`), `exists` /
+  `in_catalog` (the promo card is in the catalog: nothing to create, Auto-match pairs it),
+  `manual` (`proposed` null, link it by hand) with `no_slot` (more products than slots;
+  `base` is the card group's highest base card), `no_base_card` (no card of that name in the
+  base set), `no_metacard` (Cardmarket gives no metacard: the matcher skips it) or
+  `invalid_base` (the copy would not pass `AdminCardCreate`). `summary` counts the create items
+  (`cards_to_create`) and the products of each status.
+- `POST /admin/cardmarket/promo-cards` `{set_id, product_ids: [1..500 ids ≥ 1]}`
+  (`api_admin.promo_cards_create`, `@validate_json(AdminPromoCardsBody)`, CSRF as every write) →
+  `{created: [{set_id, card_id, name, base: {set_id, card_id}, product_ids}], skipped: [{set_id,
+  card_id, reason: "in_catalog", product_ids}]}`, 201 when a card was created, else 200. Any
+  product of an item chooses its card (the order of first appearance in `product_ids`);
+  `exists` items are skipped, never overwritten. The plan is recomputed: a product that is not in
+  it (`unknown`) or whose item is `manual` refuses the whole call with 400 `validation_error`,
+  `details[0] = {field: "product_ids", params: {unknown, manual}}` and a message such as
+  `These products get no promo card: 1004 (no card slot left: link it by hand).` or `These
+  products are not unmatched products of OGNX: 2001, 9999.`; nothing is written. A set that is
+  not usable → the 400 of `GET` on `set_id`. The cards are **copies of their base cards**: name,
+  domain, type, tags, energy, power, might, ability, rarity and artist; never the image nor the
+  image URL (the owner uploads the promo images later); card id = the base card id lower-cased.
+  They go through `catalog_admin.create_cards`, the creation of `POST /admin/cards` (the same
+  `AdminCardCreate` validation, the set must exist, a card that exists or comes twice is refused:
+  409 `already_exists` would answer a race). One transaction with **one** audit row per call:
+  `cardmarket.promo_cards.create`, target `set` / the promo set id, details `{set_id, base,
+  created, skipped, products, cards: [created card ids, at most 200]}`. Thirteen SQL statements
+  (session user included) whatever the number of cards (one insert for all of them). Nothing is
+  linked: Auto-match (or the next daily load) links them afterwards. The normal and foil products
+  of a common or uncommon promo card stay `ambiguous` there (owner decision 2026-11-23: the
+  daily rule never pairs a foil twin), so they are linked by hand.
 
 ### Audit log (CM-e)
 

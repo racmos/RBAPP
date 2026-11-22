@@ -9,11 +9,13 @@ import {
   createCardmarketLink,
   deleteCardmarketLink,
   getCardmarketCandidates,
+  getCardmarketPromoPlan,
   ignoreCardmarketProduct,
   listCardmarketIgnored,
   listCardmarketExpansionProducts,
   listCardmarketExpansions,
   listCardmarketLinks,
+  listCardmarketPromoSets,
   listCardmarketReview,
   listCardmarketUnmatched,
   mapCardmarketExpansion,
@@ -42,6 +44,8 @@ export const matchingKeys = {
     [...cardmarketKeys.all, 'matching', 'expansions', unmappedOnly] as const,
   expansionProducts: (id: number, query: string) =>
     [...cardmarketKeys.all, 'matching', 'expansion-products', id, query] as const,
+  promoSets: [...cardmarketKeys.all, 'matching', 'promo-sets'] as const,
+  promoPlan: (setId: string) => [...cardmarketKeys.all, 'matching', 'promo-plan', setId] as const,
 };
 
 export const useUnmatched = (query: string) =>
@@ -102,6 +106,21 @@ export const useExpansionProducts = (id: number, query: string) =>
     initialPageParam: 1,
     getNextPageParam: (last) => (last.meta.page < last.meta.pages ? last.meta.page + 1 : undefined),
     placeholderData: keepPreviousData,
+  });
+
+/** The promo sets with a mapped expansion (CM-h). */
+export const usePromoSets = () =>
+  useQuery({
+    queryKey: matchingKeys.promoSets,
+    queryFn: ({ signal }) => listCardmarketPromoSets(signal),
+  });
+
+/** The missing promo cards of one promo set (CM-h); nothing is asked before a set is chosen. */
+export const usePromoPlan = (setId: string) =>
+  useQuery({
+    queryKey: matchingKeys.promoPlan(setId),
+    queryFn: ({ signal }) => getCardmarketPromoPlan(setId, signal),
+    enabled: setId !== '',
   });
 
 /** After any write: the lists, the status counters and the load days change. */

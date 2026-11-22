@@ -11,6 +11,7 @@ const ACTION_LABELS = {
   'cardmarket.auto_match': 'audit.actions.cardmarketAutoMatch',
   'cardmarket.expansion.map': 'audit.actions.cardmarketExpansionMap',
   'cardmarket.expansion.unmap': 'audit.actions.cardmarketExpansionUnmap',
+  'cardmarket.promo_cards.create': 'audit.actions.cardmarketPromoCardsCreate',
   'set.create': 'audit.actions.setCreate',
   'set.update': 'audit.actions.setUpdate',
   'set.delete': 'audit.actions.setDelete',
@@ -82,6 +83,9 @@ export function targetLink(row: {
     case 'product':
       return /^\d+$/.test(id) ? withQ('/admin/products', id) : null;
     case 'set':
+      // CM-h: the promo cards created in a set open its missing cards
+      if (row.action === 'cardmarket.promo_cards.create')
+        return `/admin/cardmarket/matching?${new URLSearchParams({ tab: 'missing', set: id }).toString()}`;
       return '/admin/sets';
     default:
       return null;

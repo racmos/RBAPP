@@ -12,6 +12,7 @@ import { TABS, parseTab, type MatchingTab } from './format';
 import { IgnoredPanel } from './IgnoredPanel';
 import { LinkDialog, type LinkSubject } from './LinkDialog';
 import { ConflictsPanel, LinkedPanel } from './LinkedPanel';
+import { MissingCardsPanel } from './MissingCardsPanel';
 import { ToLinkPanel } from './ToLinkPanel';
 import styles from './MatchingPage.module.css';
 
@@ -28,7 +29,7 @@ export type PanelProps = {
 /**
  * Cardmarket matching workbench (CM-b): link the products the daily load could not match,
  * unlink or relink the wrong ones, the conflicts, the ignore list, the auto-match and the
- * mapping of the Cardmarket expansions to our sets (CM-d).
+ * mapping of the Cardmarket expansions to our sets (CM-d) and the missing promo cards (CM-h).
  * The tab and its filters live in the URL.
  */
 export function MatchingPage() {
@@ -88,6 +89,7 @@ export function MatchingPage() {
         {tab === 'ignored' && <IgnoredPanel {...panel} />}
         {tab === 'auto' && <AutoMatchPanel {...panel} />}
         {tab === 'expansions' && <ExpansionsPanel {...panel} />}
+        {tab === 'missing' && <MissingCardsPanel {...panel} />}
       </div>
       <LinkDialog
         subject={subject}
@@ -113,7 +115,7 @@ function Counters() {
   );
 }
 
-/** The six sections as tabs: arrows, Home and End move between them. */
+/** The seven sections as tabs: arrows, Home and End move between them. */
 function Tabs({ tab, choose }: { tab: MatchingTab; choose: (tab: MatchingTab) => void }) {
   const { t } = useTranslation('admin');
   const refs = useRef<Partial<Record<MatchingTab, HTMLButtonElement | null>>>({});

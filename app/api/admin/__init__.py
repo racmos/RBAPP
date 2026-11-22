@@ -16,4 +16,5 @@ api_admin.register_error_handler(Exception, _any_error)
 
 # Import for the side effect of registering the routes on `api_admin`.
 from app.api.admin import (audit, cardmarket, cardmarket_expansions,  # noqa: E402,F401
-                           cardmarket_matching, cards, jobs, overview, products, riot, sets)
+                           cardmarket_matching, cardmarket_promo_cards, cards, jobs, overview,
+                           products, riot, sets)

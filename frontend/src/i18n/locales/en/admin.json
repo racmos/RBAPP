@@ -374,7 +374,8 @@
       "conflicts": "Conflicts",
       "ignored": "Ignored",
       "auto": "Auto-match",
-      "expansions": "Expansions"
+      "expansions": "Expansions",
+      "missing": "Missing cards"
     },
     "slot": {
       "N": "N",
@@ -678,6 +679,63 @@
         "change": "Change the set…",
         "newSet": "Create a new set…"
       }
+    },
+    "missing": {
+      "help": "Riot's gallery has no promo sets. A promo card has the id of its base card in the set whose id is the base set id followed by X: OGN-035 becomes OGNX-035. Create the missing ones here, then run Auto-match.",
+      "foilNote": "The normal and foil products of a common or uncommon card share one card; Auto-match leaves that pair for you to link by hand.",
+      "set": "Promo set",
+      "choose": "Choose a promo set",
+      "setOption_one": "{{name}} ({{id}}), {{count}} card to create",
+      "setOption_other": "{{name}} ({{id}}), {{count}} cards to create",
+      "setOptionNone": "{{name}} ({{id}}), nothing to create",
+      "chooseHint": "Choose a promo set to see its missing cards.",
+      "emptySetsTitle": "No promo set to fill",
+      "emptySetsBody": "Map the Cardmarket expansion of a promo set (its id is the base set id followed by X, such as OGNX) in the Expansions tab.",
+      "emptyTitle": "Nothing is missing in {{set}}",
+      "emptyBody": "Every unmatched product of its expansions already has its card, or none is unmatched.",
+      "offline": "You are offline: the missing cards show when you are back online.",
+      "caption": "Missing promo cards",
+      "summaryLabel": "Cards to create",
+      "columns": {
+        "select": "Create",
+        "product": "Cardmarket product",
+        "price": "Price",
+        "base": "Base card",
+        "proposed": "Promo card",
+        "status": "Status"
+      },
+      "selectFor": "Create the promo card of {{name}} (#{{id}})",
+      "productLine": "#{{id}} · {{price}} · slot {{slot}}",
+      "baseLine": "{{name}} · {{rarity}}",
+      "mapping": "{{base}} → {{promo}}",
+      "baseOnly": "Base card {{ref}}",
+      "status": {
+        "create": "To create",
+        "exists": "In the catalog",
+        "manual": "By hand"
+      },
+      "reasons": {
+        "clone": "Copy of {{ref}}.",
+        "in_catalog": "Auto-match links it.",
+        "no_base_card": "No card of this name in {{base}}.",
+        "no_slot": "No card slot left: link it by hand.",
+        "no_metacard": "Cardmarket gives it no card group: link it by hand.",
+        "invalid_base": "Its base card cannot be copied: create the card by hand."
+      },
+      "toCreate_one": "{{count}} card to create",
+      "toCreate_other": "{{count}} cards to create",
+      "existsCount_one": "{{count}} product already has its card.",
+      "existsCount_other": "{{count}} products already have their card.",
+      "manualCount_one": "{{count}} product to link by hand.",
+      "manualCount_other": "{{count}} products to link by hand.",
+      "create_one": "Create {{count}} card",
+      "create_other": "Create {{count}} cards",
+      "confirmTitle_one": "Create {{count}} promo card in {{set}}?",
+      "confirmTitle_other": "Create {{count}} promo cards in {{set}}?",
+      "confirmBody": "Each card copies its base card, without the image. Nothing is linked yet: run Auto-match afterwards.",
+      "done_one": "{{count}} card created. Run Auto-match to link its products.",
+      "done_other": "{{count}} cards created. Run Auto-match to link their products.",
+      "noneCreated": "Nothing created: those cards are already in the catalog."
     }
   },
   "audit": {
@@ -716,6 +774,7 @@
       "cardmarketAutoMatch": "Auto-match the clear cases",
       "cardmarketExpansionMap": "Map a Cardmarket expansion",
       "cardmarketExpansionUnmap": "Unmap a Cardmarket expansion",
+      "cardmarketPromoCardsCreate": "Create missing promo cards",
       "setCreate": "Create a set",
       "setUpdate": "Edit a set",
       "setDelete": "Delete a set",

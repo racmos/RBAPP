@@ -31,13 +31,14 @@ describe('matching format helpers (CM-b)', () => {
     expect(cardRef('OGN', '001')).toBe('OGN-001');
   });
 
-  it('parseTab knows the six tabs and defaults to "link"', () => {
+  it('parseTab knows the seven tabs and defaults to "link"', () => {
     expect(parseTab(null)).toBe('link');
     expect(parseTab('linked')).toBe('linked');
     expect(parseTab('conflicts')).toBe('conflicts');
     expect(parseTab('ignored')).toBe('ignored');
     expect(parseTab('auto')).toBe('auto');
     expect(parseTab('expansions')).toBe('expansions');
+    expect(parseTab('missing')).toBe('missing');
     expect(parseTab('nope')).toBe('link');
   });
 
