@@ -649,6 +649,86 @@ export const listCardmarketExpansionProducts = (id: number, query: string, signa
     { signal },
   );
 
+/**
+ * Missing promo cards (CM-h). A promo set has the id of its base set followed by `X` and its
+ * cards the ids of their base cards (OGN-035 -> OGNX-035).
+ */
+export type CardmarketPromoSet = {
+  id: string;
+  name: string;
+  base: string;
+  base_name: string;
+  expansions: number[];
+  /** Products whose promo card is not in the catalog yet. */
+  products_missing: number;
+  cards_to_create: number;
+};
+export type CardmarketPromoSets = { date: string | null; sets: CardmarketPromoSet[] };
+/** `create`: the card is to create; `exists`: it is in the catalog; `manual`: link by hand. */
+export type CardmarketPromoStatus = 'create' | 'exists' | 'manual';
+export type CardmarketPromoReason =
+  'clone' | 'in_catalog' | 'no_base_card' | 'no_slot' | 'no_metacard' | 'invalid_base';
+/**
+ * One promo card (with every product it absorbs: a common's normal and foil products) or one
+ * product left to link by hand; `product_id`, `product_name` and `price` are of the cheapest.
+ */
+export type CardmarketPromoItem = {
+  product_id: number;
+  product_ids: number[];
+  product_name: string;
+  price: number | null;
+  expansion_id: number | null;
+  products: { id: number; name: string; price: number | null; foil: CardmarketFoil }[];
+  base: {
+    set_id: string;
+    card_id: string;
+    name: string;
+    rarity: string | null;
+    type: string | null;
+  } | null;
+  proposed: { set_id: string; card_id: string } | null;
+  status: CardmarketPromoStatus;
+  reason: CardmarketPromoReason;
+};
+export type CardmarketPromoPlan = {
+  set: { id: string; name: string; base: string; base_name: string; expansions: number[] };
+  date: string | null;
+  items: CardmarketPromoItem[];
+  summary: {
+    cards_to_create: number;
+    products_to_create: number;
+    exists: number;
+    manual: number;
+    products: number;
+  };
+};
+export type CardmarketPromoCreated = {
+  created: {
+    set_id: string;
+    card_id: string;
+    name: string;
+    base: { set_id: string; card_id: string };
+    product_ids: number[];
+  }[];
+  skipped: { set_id: string; card_id: string; reason: string; product_ids: number[] }[];
+};
+
+export const listCardmarketPromoSets = (signal?: AbortSignal) =>
+  request<CardmarketPromoSets>('/admin/cardmarket/promo-cards', { signal });
+
+export const getCardmarketPromoPlan = (setId: string, signal?: AbortSignal) =>
+  request<CardmarketPromoPlan>(
+    withQuery('/admin/cardmarket/promo-cards', new URLSearchParams({ set: setId }).toString()),
+    { signal },
+  );
+
+/** Create the promo cards of the items holding `productIds`, in one transaction. */
+export const createCardmarketPromoCards = (setId: string, productIds: number[]) =>
+  request<CardmarketPromoCreated>('/admin/cardmarket/promo-cards', {
+    method: 'POST',
+    body: { set_id: setId, product_ids: productIds },
+  });
+
 /** `GET /admin/overview` (F13-a, extended in F13-e with the `riot` block). */
 export type AdminRiotActive = {
   id: string;

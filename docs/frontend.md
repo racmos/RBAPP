@@ -478,7 +478,7 @@ naive UTC and are read as UTC (`format.ts::asUtc`).
 **Cardmarket matching workbench (CM-b).** `/admin/cardmarket/matching`
 (`src/admin/cardmarket/matching/`, lazy, under the admin guard; no nav entry of its own: the admin
 navigation marks Cardmarket, `adminNav.ts::navEntryFor`) is the screen over `docs/api.md` →
-"Cardmarket matching (CM-b)". The header repeats the status counters; six tabs (`role="tablist"`,
+"Cardmarket matching (CM-b)". The header repeats the status counters; seven tabs (`role="tablist"`,
 arrows, Home, End) keep the tab and its filters in the URL (`?tab=`, a tab change drops the
 filters; `format.ts::apiQuery` sends only the keys each endpoint takes and `per_page=50`).
 **To link** (`GET …/unmatched`: search, type all / singles / sealed) lists each product (id, type,
@@ -580,6 +580,32 @@ form (`MapForm` of `ExpansionsPanel.tsx`, without the samples; "Create a new set
 `SetEditor` fields) under the list, so the list stays on screen; Cancel folds it back, a mapping
 closes the dialog with the usual Undo toast. Both buttons are disabled offline. No card or product
 is created here (CM-c's Create card lives in To link).
+
+**Missing promo cards (CM-h).** The workbench's seventh tab, **Missing cards** (`?tab=missing`,
+`MissingCardsPanel.tsx`), is the screen over `docs/api.md` → "Missing promo cards (CM-h)". Two
+help lines explain the owner rule (a promo card has the id of its base card in the set whose id
+ends with X: OGN-035 becomes OGNX-035) and that the normal and foil products of a common card
+share one card that Auto-match leaves to link by hand. A **Promo set** select (`Field` + `Select`)
+lists `GET …/promo-cards` (only usable promo sets: "Origins Promos (OGNX), 2 cards to create" or
+"…, nothing to create"); the choice goes to the URL (`set=`, dropped with the other filters on a
+tab change); no set chosen asks for one; no usable set shows "No promo set to fill" with how to map
+one in the Expansions tab. With a set, `GET …/promo-cards?set=` gives the plan: "N cards to
+create", "N products already have their card. N products to link by hand.", the **Create N
+cards** button (disabled with 0, while sending and offline) and the list: a table from 860 px
+(caption "Missing promo cards"; Create checkbox, Cardmarket product with `#id` (a card that absorbs
+two products lists both with `#id · price · slot N|S`), price, base card `SET-ID` with its name
+and rarity, promo card `SET-ID` or `—`, status badge To create / In the catalog / By hand with
+the reason), one card a product below 860 px (`OGN-035 → OGNX-035`). The checkbox of every
+`create` row starts checked; `exists` and `manual` rows have a disabled, unchecked one (its
+label "Create the promo card of <name> (#id)"). Create opens a `ConfirmDialog` ("Create N promo
+cards in OGNX?": copies without the image, nothing linked yet), then `POST …/promo-cards` with
+every product id of the checked cards; success toasts "N cards created. Run Auto-match to link
+their products." and invalidates every `['admin', 'cardmarket']` query (counters, plan, sets)
+plus `['admin', 'sets']` and `['admin', 'cards']`; a refused call toasts the server's message.
+States: skeleton (an offline note when nothing loaded), "Nothing is missing in OGNX", a 400 plan
+(a set of the URL that is not a usable promo set) shows the server's reason, any other error a
+retry. The audit screen labels `cardmarket.promo_cards.create` "Create missing promo cards" and
+links its target to `?tab=missing&set=<id>`.
 
 **Overview Cardmarket band (CM-e).** `OverviewPage.tsx` adds a "Cardmarket" section under Riot
 from `GET /admin/overview` → `cardmarket`: last load (date and the day status badge, or "No load

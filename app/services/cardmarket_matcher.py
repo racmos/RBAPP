@@ -115,21 +115,25 @@ def card_rank_key(card: RbCard):
     return (base + suffix_bonus + set_bonus, rbset_id, rbcar_id)
 
 
-def _get_latest_prices() -> dict[int, float]:
+def _get_latest_prices(ids=None) -> dict[int, float]:
     """Devuelve {id_product: precio_orden}. Usa low, low_foil, avg7,
     avg7_foil o 0 en ese orden. Sólo de la última fecha disponible por
-    producto."""
-    latest_per_prod = dict(
-        db.session.query(
-            RbcmPrice.rbprc_id_product,
-            func.max(RbcmPrice.rbprc_date),
-        ).group_by(RbcmPrice.rbprc_id_product).all()
-    )
+    producto.
+
+    `ids` (CM-h) limits both statements to those products; None reads every price row."""
+    if ids is not None and not ids:
+        return {}
+    newest = db.session.query(RbcmPrice.rbprc_id_product, func.max(RbcmPrice.rbprc_date))
+    rows_query = RbcmPrice.query
+    if ids is not None:
+        newest = newest.filter(RbcmPrice.rbprc_id_product.in_(ids))
+        rows_query = rows_query.filter(RbcmPrice.rbprc_id_product.in_(ids))
+    latest_per_prod = dict(newest.group_by(RbcmPrice.rbprc_id_product).all())
     if not latest_per_prod:
         return {}
 
     prices = {}
-    rows = RbcmPrice.query.all()
+    rows = rows_query.all()
     for p in rows:
         if latest_per_prod.get(p.rbprc_id_product) != p.rbprc_date:
             continue
@@ -229,8 +233,8 @@ def _group_products_by_metacard(ignored: set | None = None):
     return groups, skipped_no_metacard, ignored_count
 
 
-def _build_card_index() -> dict[str, list[RbCard]]:
-    """Indice nombre_normalizado -> [RbCard, ...].
+def _build_card_index(cards=None) -> dict[str, list[RbCard]]:
+    """Indice nombre_normalizado -> [RbCard, ...] of `cards` (CM-h), or of every card.
 
     Para cartas de tipo Legend se añaden además entradas compuestas con los
     rbcar_tags, en ambos órdenes:
@@ -240,7 +244,8 @@ def _build_card_index() -> dict[str, list[RbCard]]:
     Cardmarket usa ambas convenciones según la edición del producto, por lo
     que indexar ambas órdenes maximiza la cobertura del auto-matcher (REQ-5).
     """
-    cards = RbCard.query.all()
+    if cards is None:
+        cards = RbCard.query.all()
     idx = defaultdict(list)
     for c in cards:
         idx[normalize_name(c.rbcar_name)].append(c)

@@ -503,6 +503,41 @@ cd frontend && npm ci && npm run build && npm run check:dist   # the frontend ch
 Rollback: check out the previous code, `venv/bin/flask db downgrade 0027_jobs_price_alerts` (structure
 back, empty), restart; the values come back only by restoring the dump.
 
+## Missing promo cards (CM-h)
+
+Riot's gallery does not publish the promo sets, so after the production reset OGNX, SFDX, UNLX,
+VENX, RADX, ... have no cards and their Cardmarket products stay unmatched (`no_candidates` for
+runes, `conflict` when the matcher falls back to the base set's card). Owner rule (2026-11-23): a
+promo card has the same card id as its base card, in the set whose id is the base set id followed
+by `X` (OGN/035 → OGNX/035). PLAT, PROK and any other id that does not end in `X`, or whose base
+set does not exist, are refused until the owner gives their convention. No migration, no job, no
+CLI: it is an admin screen.
+
+1. **Map the expansions.** Admin → Cardmarket → Matching → Expansions: map each promo
+   expansion to its promo set (create the set with "Create a new set…" when it does not exist:
+   the id is the base id + `X`). Only a promo set with a mapped expansion is offered.
+2. **Create the missing cards.** Matching → **Missing cards**, choose the promo set. Each
+   unmatched single of the latest load gets its base card (same name in the base set) and the
+   proposed promo card (`OGNX-035`): rows **To create** start checked, **In the catalog** (the
+   promo card exists already) and **By hand** (no card of that name in the base set, more
+   products than card slots, no Cardmarket card group) cannot be checked. A common or uncommon
+   card absorbs two products (normal N, foil S), every other card and runes one. **Create N
+   cards** (confirm) copies the base cards (name, domain, type, tags, energy, power, might,
+   ability, rarity, artist; never the image) in one transaction with one audit row
+   `cardmarket.promo_cards.create` (Admin → Audit). An existing card is skipped, never
+   overwritten.
+3. **Link the products.** Matching → Auto-match → Preview, then Apply clear cases (or wait for the
+   next daily load). The products of the new cards become clear cases. The normal and foil
+   products of a common or uncommon promo card stay **ambiguous** (owner decision 2026-11-23:
+   the daily rule never pairs a foil twin): link them by hand from the review list (the cheaper
+   one is usually the normal, slot N).
+4. **Images.** The promo cards have no image; upload them in Admin → Cards (filter the set,
+   "Missing image").
+
+Undo: a wrong promo card is deleted in Admin → Cards (only while no collection line or deck uses
+it; unlink its Cardmarket products first). Nothing to roll back on the server side: the deploy is a
+pull, a restart and a frontend build.
+
 ## Card images (from M-d)
 
 Card images are not in git and not in the code tree. They live in the data directory set by

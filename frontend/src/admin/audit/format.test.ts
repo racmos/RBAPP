@@ -38,6 +38,12 @@ describe('targetLink (CM-e)', () => {
     );
   });
 
+  it('opens the missing cards of a promo set after its promo cards were created (CM-h)', () => {
+    expect(targetLink(item('cardmarket.promo_cards.create', 'set', 'OGNX'))).toBe(
+      '/admin/cardmarket/matching?tab=missing&set=OGNX',
+    );
+  });
+
   it('encodes the id and has no link without a safe route or an id', () => {
     expect(targetLink(item('card.update', 'card', 'A&B C'))).toBe('/admin/cards?q=A%26B+C');
     expect(targetLink(item('cardmarket.load', 'job', '12'))).toBeNull();
@@ -53,6 +59,9 @@ describe('actionLabelKey (CM-e)', () => {
     expect(actionLabelKey('cardmarket.expansion.map')).toBe('audit.actions.cardmarketExpansionMap');
     expect(actionLabelKey('riot.change_approve')).toBe('audit.actions.riotChangeApprove');
     expect(actionLabelKey('set.create')).toBe('audit.actions.setCreate');
+    expect(actionLabelKey('cardmarket.promo_cards.create')).toBe(
+      'audit.actions.cardmarketPromoCardsCreate',
+    );
     expect(actionLabelKey('something.new')).toBeNull();
     expect(actionLabelKey('constructor')).toBeNull();
   });

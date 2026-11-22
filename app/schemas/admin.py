@@ -4,7 +4,7 @@ Bodies use `validate_json` (extra fields are forbidden everywhere); the card
 list query uses `validate_query` with the same error body.
 """
 from datetime import date
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, create_model, field_validator
 
@@ -442,6 +442,33 @@ class AdminExpansionProductsQuery(BaseModel):
     per_page: Literal[50, 100, 200] = 50
 
     _ints = field_validator('page', 'per_page', mode='before')(_page_to_int)
+
+
+def _upper(value):
+    return value.upper() if isinstance(value, str) else value
+
+
+class AdminPromoCardsQuery(BaseModel):
+    """GET /admin/cardmarket/promo-cards query (CM-h): without `set` the promo sets, with it
+    the plan of that set (upper-cased)."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    set: Optional[str] = Field(default=None, min_length=1, max_length=20)
+
+    _upper_set = field_validator('set', mode='after')(_upper)
+
+
+class AdminPromoCardsBody(BaseModel):
+    """POST /admin/cardmarket/promo-cards body (CM-h): the promo set and the Cardmarket
+    products whose promo cards to create (any product of a card chooses it)."""
+
+    model_config = STRIPPED
+
+    set_id: str = Field(min_length=1, max_length=20)
+    product_ids: list[Annotated[int, Field(ge=1)]] = Field(min_length=1, max_length=500)
+
+    _upper_set = field_validator('set_id', mode='after')(_upper)
 
 
 # `from` and `to` are the query names of GET /admin/audit; `from` is a Python keyword, so the

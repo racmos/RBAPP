@@ -6,7 +6,7 @@ audit row (`app/services/audit.py`), so a rolled-back change leaves no trace.
 import os
 import re
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, tuple_
 
 from app import db
 from app.models.card import RbCard
@@ -81,6 +81,67 @@ def apply_set_patch(rs: RbSet, data) -> dict:
         changes['declared_count'] = [rs.rbset_ncard, data.declared_count]
         rs.rbset_ncard = data.declared_count
     return changes
+
+
+# The card attributes the admin writes (`AdminCardCreate` / `AdminCardPatch` field names).
+CARD_FIELDS = ('name', 'domain', 'type', 'tags', 'energy', 'power', 'might',
+               'ability', 'rarity', 'artist', 'image', 'image_url')
+
+_CARD_COLUMNS = {'name': 'rbcar_name', 'domain': 'rbcar_domain', 'type': 'rbcar_type',
+                 'tags': 'rbcar_tags', 'energy': 'rbcar_energy', 'power': 'rbcar_power',
+                 'might': 'rbcar_might', 'ability': 'rbcar_ability',
+                 'rarity': 'rbcar_rarity', 'artist': 'rbcar_artist'}
+
+
+def card_column(field: str) -> str:
+    """Admin field name to the `RbCard` column (`image` and `image_url` keep their name)."""
+    return _CARD_COLUMNS.get(field, field)
+
+
+class UnknownSet(Exception):
+    """The set of a card to create does not exist (the message is the set id)."""
+
+
+class CardExists(Exception):
+    """The card to create is already in the catalog, or twice in one call (`SET-ID`)."""
+
+
+def create_cards(items) -> list[RbCard]:
+    """Add the cards of the validated `AdminCardCreate` bodies `items` to the session and
+    flush; the caller audits and commits (`POST /admin/cards`, CM-h promo cards).
+
+    Every set must exist (UnknownSet) and no card may exist already or come twice
+    (CardExists): a card is never overwritten. Nothing is added when one is refused. Two
+    statements whatever the number of cards, plus the insert.
+    """
+    if not items:
+        return []
+    known = set(db.session.execute(
+        select(RbSet.rbset_id).where(RbSet.rbset_id.in_({item.set_id for item in items})))
+        .scalars())
+    for item in items:
+        if item.set_id not in known:
+            raise UnknownSet(item.set_id)
+    keys = [(item.set_id, item.card_id) for item in items]
+    seen = set()
+    for key in keys:
+        if key in seen:
+            raise CardExists(f'{key[0]}-{key[1]}')
+        seen.add(key)
+    taken = db.session.execute(
+        select(RbCard.rbcar_rbset_id, RbCard.rbcar_id)
+        .where(tuple_(RbCard.rbcar_rbset_id, RbCard.rbcar_id).in_(keys)).limit(1)).first()
+    if taken is not None:
+        raise CardExists(f'{taken[0]}-{taken[1]}')
+    cards = []
+    for item in items:
+        card = RbCard(rbcar_rbset_id=item.set_id, rbcar_id=item.card_id)
+        for field in CARD_FIELDS:
+            setattr(card, card_column(field), getattr(item, field))
+        cards.append(card)
+    db.session.add_all(cards)
+    db.session.flush()
+    return cards
 
 
 def card_item(card: RbCard) -> dict:

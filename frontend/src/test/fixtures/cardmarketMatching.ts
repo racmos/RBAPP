@@ -446,6 +446,111 @@ export function expansionProductsAnswer(
   };
 }
 
+/** Missing promo cards (CM-h): the promo sets and the plan of OGNX. */
+export const PROMO_SETS = [
+  {
+    id: 'OGNX',
+    name: 'Origins Promos',
+    base: 'OGN',
+    base_name: 'Origins',
+    expansions: [6322],
+    products_missing: 3,
+    cards_to_create: 2,
+  },
+  {
+    id: 'SFDX',
+    name: 'Spiritforged Promos',
+    base: 'SFD',
+    base_name: 'Spiritforged',
+    expansions: [6483],
+    products_missing: 0,
+    cards_to_create: 0,
+  },
+];
+
+const baseCard = (cardId: string, name: string, rarity: string, type = 'Unit') => ({
+  set_id: 'OGN',
+  card_id: cardId,
+  name,
+  rarity,
+  type,
+});
+
+export const promoItem = (
+  id: number,
+  name: string,
+  price: number | null,
+  extra: Record<string, unknown> = {},
+) => ({
+  product_id: id,
+  product_ids: [id],
+  product_name: name,
+  price,
+  expansion_id: 6322,
+  products: [{ id, name, price, foil: null as 'N' | 'S' | null }],
+  base: null as ReturnType<typeof baseCard> | null,
+  proposed: null as { set_id: string; card_id: string } | null,
+  status: 'manual',
+  reason: 'no_base_card',
+  ...extra,
+});
+
+export const PROMO_ITEMS = [
+  promoItem(1011, 'Already There', 1.5, {
+    base: baseCard('077', 'Already There', 'Rare'),
+    proposed: { set_id: 'OGNX', card_id: '077' },
+    status: 'exists',
+    reason: 'in_catalog',
+  }),
+  promoItem(1002, 'Little Spark', 0.5, {
+    product_ids: [1002, 1003],
+    products: [
+      { id: 1002, name: 'Little Spark', price: 0.5, foil: 'N' },
+      { id: 1003, name: 'Little Spark (Foil)', price: 2, foil: 'S' },
+    ],
+    base: baseCard('010', 'Little Spark', 'Common'),
+    proposed: { set_id: 'OGNX', card_id: '010' },
+    status: 'create',
+    reason: 'clone',
+  }),
+  promoItem(1004, 'Little Spark', 3, {
+    base: baseCard('010', 'Little Spark', 'Common'),
+    reason: 'no_slot',
+  }),
+  promoItem(1010, 'Nobody Known', 0.1),
+  promoItem(1001, 'Vayne, Hunter', 12, {
+    base: baseCard('035', 'Vayne, Hunter', 'Rare'),
+    proposed: { set_id: 'OGNX', card_id: '035' },
+    status: 'create',
+    reason: 'clone',
+  }),
+];
+
+export const promoPlan = (items = PROMO_ITEMS) => ({
+  set: {
+    id: 'OGNX',
+    name: 'Origins Promos',
+    base: 'OGN',
+    base_name: 'Origins',
+    expansions: [6322],
+  },
+  date: '2026-11-06',
+  items,
+  summary: {
+    cards_to_create: items.filter((one) => one.status === 'create').length,
+    products_to_create: items
+      .filter((one) => one.status === 'create')
+      .reduce((sum, one) => sum + one.product_ids.length, 0),
+    exists: items
+      .filter((one) => one.status === 'exists')
+      .reduce((sum, one) => sum + one.product_ids.length, 0),
+    manual: items
+      .filter((one) => one.status === 'manual')
+      .reduce((sum, one) => sum + one.product_ids.length, 0),
+    products: items.reduce((sum, one) => sum + one.product_ids.length, 0),
+  },
+});
+
 /** The `AdminCard` the API answers a create with: the card id lower-cased, as the server does. */
 export const adminCard = (body: Record<string, unknown>) => {
   const setId = String(body.set_id);
@@ -490,6 +595,8 @@ export function matchingApi({
   expansions = EXPANSIONS as ReturnType<typeof expansion>[],
   products = EXPANSION_PRODUCTS as ReturnType<typeof expansionProduct>[],
   kinds = undefined as KindCount[] | undefined,
+  promoSets = PROMO_SETS as unknown[],
+  promo = promoPlan() as JsonBodyType,
 } = {}) {
   const calls: Call[] = [];
   const record = async (request: Request) => {
@@ -656,6 +763,37 @@ export function matchingApi({
       }
       return ok(
         expansionProductsAnswer(current, products, new URL(request.url).searchParams, kinds),
+      );
+    }),
+    http.get(`${BASE}/promo-cards`, async ({ request }) => {
+      await record(request);
+      const set = new URL(request.url).searchParams.get('set');
+      if (set === null) return ok({ date: '2026-11-06', sets: promoSets });
+      if (set !== 'OGNX') {
+        const message = `${set} is not a promo set: a promo set id is its base set id followed by X (OGN -> OGNX).`;
+        return failure(400, { error: 'Validation Error', message, code: 'validation_error' });
+      }
+      return ok(promo);
+    }),
+    http.post(`${BASE}/promo-cards`, async ({ request }) => {
+      await record(request);
+      const body = (await request.json()) as { set_id: string; product_ids: number[] };
+      const chosen = PROMO_ITEMS.filter(
+        (one) =>
+          one.status === 'create' && one.product_ids.some((id) => body.product_ids.includes(id)),
+      );
+      return ok(
+        {
+          created: chosen.map((one) => ({
+            set_id: body.set_id,
+            card_id: one.proposed!.card_id,
+            name: one.base!.name,
+            base: { set_id: 'OGN', card_id: one.base!.card_id },
+            product_ids: one.product_ids,
+          })),
+          skipped: [],
+        },
+        chosen.length > 0 ? 201 : 200,
       );
     }),
     http.delete(`${BASE}/expansions/:id/mapping`, async ({ request, params }) => {

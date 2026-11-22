@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe('MatchingPage frame (CM-b)', () => {
-  it('shows the counters of the status and the six tabs, To link first', async () => {
+  it('shows the counters of the status and the seven tabs, To link first', async () => {
     matchingApi();
     await openPage();
     expect(await screen.findByText('Unmatched products: 305', undefined, LONG)).toBeVisible();
@@ -41,6 +41,8 @@ describe('MatchingPage frame (CM-b)', () => {
       'Ignored',
       'Auto-match',
       'Expansions',
+      // CM-h
+      'Missing cards',
     ]);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'To link' })).toBeVisible();
@@ -62,7 +64,7 @@ describe('MatchingPage frame (CM-b)', () => {
     expect(where()).toBe(`${PATH}?tab=linked`);
     await userEvent.keyboard('{End}');
     await vi.waitFor(() =>
-      expect(screen.getByRole('tab', { name: 'Expansions' })).toHaveAttribute(
+      expect(screen.getByRole('tab', { name: 'Missing cards' })).toHaveAttribute(
         'aria-selected',
         'true',
       ),

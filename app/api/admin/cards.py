@@ -8,7 +8,6 @@ from app.api.admin import api_admin
 from app.api.error_codes import DetailCode, ErrorCode
 from app.api.responses import fail, ok
 from app.models.card import RbCard
-from app.models.set import RbSet
 from app.schemas.admin import AdminCardCreate, AdminCardPatch, AdminCardQuery
 from app.schemas.validation import validate_json, validate_query
 from app.services import audit as audit_service
@@ -17,8 +16,7 @@ from app.services.card_images import card_image_path
 
 MAX_IMAGE_BYTES = 2_097_152
 
-CARD_FIELDS = ('name', 'domain', 'type', 'tags', 'energy', 'power', 'might',
-               'ability', 'rarity', 'artist', 'image', 'image_url')
+CARD_FIELDS = catalog_admin.CARD_FIELDS
 
 
 def _unknown(what, set_id, card_id=None):
@@ -43,22 +41,18 @@ def list_cards():
 def create_card():
     """Create a card; the set must exist (S7)."""
     data = request.validated_data
-    if RbSet.query.get(data.set_id) is None:
+    try:
+        card, = catalog_admin.create_cards([data])
+    except catalog_admin.UnknownSet:
         return fail('Validation Error', 'Invalid request data', 400,
                     details=[{'field': 'set_id', 'message': 'unknown set',
                               'type': 'value_error',
                               'code': DetailCode.INVALID_VALUE.value}],
                     code=ErrorCode.VALIDATION_ERROR)
-    if RbCard.query.filter_by(rbcar_rbset_id=data.set_id,
-                              rbcar_id=data.card_id).one_or_none() is not None:
+    except catalog_admin.CardExists:
         return fail('Conflict',
                     f"Card '{data.set_id}-{data.card_id}' already exists.", 409,
                     code=ErrorCode.ALREADY_EXISTS, params={'field': 'card_id'})
-    card = RbCard(rbcar_rbset_id=data.set_id, rbcar_id=data.card_id)
-    for field in CARD_FIELDS:
-        setattr(card, _column(field), getattr(data, field))
-    db.session.add(card)
-    db.session.flush()
     audit_service.record('card.create', 'card', f'{card.rbcar_rbset_id}-{card.rbcar_id}',
                          {'name': card.rbcar_name})
     db.session.commit()
@@ -144,7 +138,4 @@ def delete_card(set_id, card_id):
 
 def _column(field: str) -> str:
     """Admin field name to the `RbCard` column for the shared card attributes."""
-    return {'name': 'rbcar_name', 'domain': 'rbcar_domain', 'type': 'rbcar_type',
-            'tags': 'rbcar_tags', 'energy': 'rbcar_energy', 'power': 'rbcar_power',
-            'might': 'rbcar_might', 'ability': 'rbcar_ability',
-            'rarity': 'rbcar_rarity', 'artist': 'rbcar_artist'}.get(field, field)
+    return catalog_admin.card_column(field)
