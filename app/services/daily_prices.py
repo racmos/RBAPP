@@ -120,6 +120,15 @@ def _review_item(product, reason: str, candidates) -> dict:
     }
 
 
+def _owns_the_slot(product, slot, users, candidates) -> bool:
+    """Several products are proposed for one slot. The product of the card's own set owns it
+    when it is the only one that comes from that set: the others reached the card through the
+    promo-to-base fallback (an Origins Promo product with no promo card in our catalog proposes
+    the Origins card), so they are the conflict, not the Origins product."""
+    owners = [one for one in users if candidates.set_of(one) == slot[0]]
+    return len(owners) == 1 and owners[0] is product
+
+
 def _paired_by_rank(rivals, free, prices, taken) -> bool:
     """Several products of one set for several cards of that set: they can be paired by rank
     when there is exactly one single-slot card (rare, epic, showcase, rune: no foil twin) per
@@ -165,6 +174,12 @@ def classify_unmapped(date: str) -> dict:
         .order_by(RbcmProduct.rbprd_id_product)).scalars()
         if p.rbprd_id_product not in mapped_ids]
 
+    by_id = {p.rbprd_id_product: p for p in products}
+    slot_users = defaultdict(list)           # slot -> the products `auto_match` proposes for it
+    for id_product, one_slot in pairs.items():
+        if id_product in by_id:
+            slot_users[one_slot].append(by_id[id_product])
+
     groups = defaultdict(list)
     for p in products:
         if (p.rbprd_id_product, p.rbprd_name) not in ignored and p.rbprd_id_metacard:
@@ -198,7 +213,7 @@ def classify_unmapped(date: str) -> dict:
             reason = 'ambiguous'
         elif slot is None:
             reason = 'ambiguous'
-        elif slot_uses[slot] > 1:
+        elif slot_uses[slot] > 1 and not _owns_the_slot(p, slot, slot_users[slot], candidates):
             reason = 'conflict'
         else:
             links.append((p.rbprd_id_product, slot))

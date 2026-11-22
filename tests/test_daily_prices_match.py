@@ -147,6 +147,31 @@ def test_a_slot_proposed_twice_is_a_conflict_for_both(catalog):
     assert mappings() == []
 
 
+def test_the_product_of_the_cards_own_set_owns_the_slot_against_a_promo_fallback(catalog):
+    """Origins Promo has no promo card in the catalog, so its product falls back to the Origins
+    card (promo-to-base) and is proposed for the same slot as the Origins product. The Origins
+    product owns the slot (clear); the promo one is the conflict."""
+    catalog('037', 'Vi, Destructive', rarity='rare', set_id='OGN')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.add(RbcmExpansion(rbexp_id=6322, rbexp_rbset_id='OGNX'))
+    db.session.commit()
+    product(80, 'Vi, Destructive', metacard=50, expansion=6286, price=0.02)
+    product(81, 'Vi, Destructive', metacard=50, expansion=6322, price=50.0)
+    result = daily_prices.match_clear_cases(DATE)
+    assert mappings() == [(80, 'OGN', '037', None, 'auto', 0.7)]
+    assert reasons(result) == [(81, 'conflict')]
+
+
+def test_two_products_of_the_owner_set_do_not_own_the_slot_together(catalog):
+    catalog('038', 'Dual Claim', rarity='rare', set_id='OGN')
+    db.session.add(RbcmExpansion(rbexp_id=6286, rbexp_rbset_id='OGN'))
+    db.session.commit()
+    product(82, 'Dual Claim', metacard=51, price=1.0)
+    product(83, 'Dual Claim', metacard=52, price=2.0)     # another metacard names the same card
+    result = daily_prices.match_clear_cases(DATE)
+    assert mappings() == [] and sorted(reasons(result)) == [(82, 'conflict'), (83, 'conflict')]
+
+
 def test_the_expansion_set_narrows_the_candidates(catalog):
     catalog('020', 'Sky Herald', set_id='OGN')
     catalog('020', 'Sky Herald', set_id='SFD')
