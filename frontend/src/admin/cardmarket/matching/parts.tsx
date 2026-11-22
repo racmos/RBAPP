@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/errors';
 import type {
   CardmarketCandidateCard,
+  CardmarketExpansion,
   CardmarketExpansionItem,
   CardmarketFoil,
 } from '@/api/endpoints';
 import { CardImage } from '@/components/card';
+import { Button } from '@/components/ui/Button';
 import { translateError } from '@/i18n';
 import { cardRef } from './format';
 import styles from './MatchingPage.module.css';
@@ -25,6 +27,60 @@ export function useExpansionName() {
   const { t } = useTranslation('admin');
   return (item: CardmarketExpansionItem) =>
     item.name ?? t('matching.expansions.unnamed', { id: item.id });
+}
+
+/**
+ * The expansion of a product to link (CM-i): its name, or "Expansion #6567" when Cardmarket
+ * gives none, then the set it is mapped to ("Expansion #6567 (UNLX)") or "(not mapped)".
+ */
+export function useExpansionLabel() {
+  const { t } = useTranslation('admin');
+  return (expansion: CardmarketExpansion) => {
+    const name = expansion.name ?? t('matching.expansions.unnamed', { id: expansion.id });
+    return expansion.set_id === null
+      ? t('matching.expansion.unmapped', { name })
+      : t('matching.expansion.mapped', { name, set: expansion.set_id });
+  };
+}
+
+/**
+ * The facts line of a product in the link dialog and the create form (CM-i): "#id · category ·
+ * expansion", then "Expansion products" (every product of that expansion, on top).
+ */
+export function ProductFacts({
+  idProduct,
+  category,
+  expansion,
+  offline,
+  onViewExpansion,
+}: {
+  idProduct: number;
+  category: string | null | undefined;
+  expansion: CardmarketExpansion | null | undefined;
+  offline: boolean;
+  onViewExpansion: (expansion: CardmarketExpansion) => void;
+}) {
+  const { t } = useTranslation('admin');
+  const label = useExpansionLabel();
+  return (
+    <p className={styles.identity}>
+      <span className={styles.muted}>
+        {[`#${idProduct}`, category, expansion ? label(expansion) : null]
+          .filter(Boolean)
+          .join(' · ')}
+      </span>
+      {expansion && (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={offline}
+          onClick={() => onViewExpansion(expansion)}
+        >
+          {t('matching.expansion.products')}
+        </Button>
+      )}
+    </p>
+  );
 }
 
 type SlotTarget = { set_id: string; card_id: string; foil: CardmarketFoil };
@@ -93,7 +149,11 @@ export function useLinkErrorText() {
 }
 
 /** The image of a candidate card; the API gives only part of a `CardSummary`. */
-export function CandidateImage({ card }: { card: CardmarketCandidateCard }) {
+export function CandidateImage({
+  card,
+}: {
+  card: Pick<CardmarketCandidateCard, 'name' | 'image_src' | 'type'>;
+}) {
   const image = useMemo(
     () => ({
       name: card.name,

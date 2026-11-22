@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import {
   createCardmarketLink,
   ignoreCardmarketProduct,
+  type CardmarketExpansion,
   type CardmarketLinkTarget,
   type CardmarketSuggestion,
   type CardmarketUnmatched,
@@ -20,8 +22,9 @@ import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { formatDate, formatMoney } from '@/lib/format';
 import { apiQuery, scoreText, suggestionFoil } from './format';
+import { ExpansionProductsDialog } from './ExpansionProductsDialog';
 import type { PanelProps } from './MatchingPage';
-import { useLinkErrorText, useSlotLabel } from './parts';
+import { useExpansionLabel, useLinkErrorText, useSlotLabel } from './parts';
 import { useUndoToasts, useUnmatched } from './queries';
 import styles from './MatchingPage.module.css';
 
@@ -32,6 +35,8 @@ export function ToLinkPanel({ params, setParam, setPage, offline, openDialog }: 
   const query = useUnmatched(apiQuery('link', params));
   const toasts = useUndoToasts();
   const linkError = useLinkErrorText();
+  // the expansion whose products are open (CM-i)
+  const [viewing, setViewing] = useState<CardmarketExpansion | null>(null);
 
   const link = useMutation({
     mutationFn: ({
@@ -104,8 +109,16 @@ export function ToLinkPanel({ params, setParam, setPage, offline, openDialog }: 
               key={product.id_product}
               product={product}
               busy={busy}
+              offline={offline}
+              onViewExpansion={setViewing}
               onLink={(target) => link.mutate({ product, target })}
-              onChoose={() => openDialog({ id_product: product.id_product, name: product.name })}
+              onChoose={() =>
+                openDialog({
+                  id_product: product.id_product,
+                  name: product.name,
+                  facts: { category: product.category, expansion: product.expansion },
+                })
+              }
               onCreate={() =>
                 openDialog({
                   id_product: product.id_product,
@@ -127,6 +140,11 @@ export function ToLinkPanel({ params, setParam, setPage, offline, openDialog }: 
     <>
       {filters}
       {body}
+      <ExpansionProductsDialog
+        expansion={viewing}
+        offline={offline}
+        onClose={() => setViewing(null)}
+      />
     </>
   );
 }
@@ -134,6 +152,8 @@ export function ToLinkPanel({ params, setParam, setPage, offline, openDialog }: 
 function ProductRow({
   product,
   busy,
+  offline,
+  onViewExpansion,
   onLink,
   onChoose,
   onCreate,
@@ -141,12 +161,16 @@ function ProductRow({
 }: {
   product: CardmarketUnmatched;
   busy: boolean;
+  offline: boolean;
+  onViewExpansion: (expansion: CardmarketExpansion) => void;
   onLink: (target: CardmarketLinkTarget) => void;
   onChoose: () => void;
   onCreate: () => void;
   onIgnore: () => void;
 }) {
   const { t } = useTranslation('admin');
+  const expansionLabel = useExpansionLabel();
+  const { expansion } = product;
   const identity = product.suggestions.find((one) => one.kind === 'product');
   const cards = product.suggestions.filter((one) => one.kind === 'card');
   const single = product.type === 'single';
@@ -159,7 +183,7 @@ function ProductRow({
             `#${product.id_product}`,
             t(single ? 'matching.single' : 'matching.sealed'),
             product.category,
-            product.expansion?.name ?? '—',
+            expansion ? expansionLabel(expansion) : '—',
             product.low_price === null ? '—' : formatMoney(product.low_price),
             product.first_seen_date
               ? t('matching.toLink.firstSeen', { date: formatDate(product.first_seen_date) })
@@ -168,6 +192,17 @@ function ProductRow({
             .filter(Boolean)
             .join(' · ')}
         </span>
+        {expansion && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={offline}
+            aria-label={t('matching.expansion.productsFor', { name: product.name })}
+            onClick={() => onViewExpansion(expansion)}
+          >
+            {t('matching.expansion.products')}
+          </Button>
+        )}
       </div>
       {identity ? (
         <p className={styles.identity}>

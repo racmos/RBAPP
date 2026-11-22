@@ -7,6 +7,7 @@ import {
   createCardmarketLink,
   listAdminSets,
   type AdminCard,
+  type CardmarketExpansion,
   type CardmarketFoil,
 } from '@/api/endpoints';
 import { fieldErrorsFromDetails } from '@/auth/formHelpers';
@@ -17,13 +18,48 @@ import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { translateError } from '@/i18n';
 import { sortSetsNewestFirst } from '@/lib/sets';
-import { CARD_FIELDS, CardFields, cardInput, toForm, type CardForm } from '@/admin/CardEditor';
+import {
+  CARD_FIELDS,
+  CardFields,
+  cardInput,
+  toForm,
+  type CardField,
+  type CardForm,
+} from '@/admin/CardEditor';
 import { FormAlert } from '@/admin/FormAlert';
 import { cardNameFrom, cardRef, defaultFoil, firstQuery, typeFromCategory } from './format';
+import { CopyFromCard } from './CopyFromCard';
+import { ExpansionProductsDialog } from './ExpansionProductsDialog';
 import type { CardmarketItemFacts, LinkSubject } from './LinkDialog';
-import { useLinkErrorText } from './parts';
+import { ProductFacts, useLinkErrorText } from './parts';
 import { useCandidates, useUndoToasts } from './queries';
 import styles from './MatchingPage.module.css';
+
+/** The fields "Use this card" copies (CM-i): never the set, the number nor the image. */
+const COPIED_FIELDS = [
+  'name',
+  'type',
+  'domain',
+  'tags',
+  'energy',
+  'power',
+  'might',
+  'ability',
+  'rarity',
+  'artist',
+] as const satisfies readonly CardField[];
+
+type Copy = {
+  ref: string;
+  name: string;
+  setId: string;
+  /** The values copied, and the ones the fields had before (Clear copied data). */
+  values: Partial<CardForm>;
+  before: Partial<CardForm>;
+};
+
+const pickCopied = (form: CardForm): Partial<CardForm> =>
+  Object.fromEntries(COPIED_FIELDS.map((name) => [name, form[name] ?? '']));
 
 type CreateCardFormProps = {
   subject: LinkSubject;
@@ -80,6 +116,9 @@ function CreateCardBody({
   const [existing, setExisting] = useState<string | null>(null);
   const [created, setCreated] = useState<AdminCard | null>(null);
   const [linkError, setLinkError] = useState<unknown>(null);
+  const [copy, setCopy] = useState<Copy | null>(null);
+  // the expansion whose products are open on top of the form (CM-i)
+  const [viewing, setViewing] = useState<CardmarketExpansion | null>(null);
   const foil =
     chosenFoil !== undefined
       ? chosenFoil
@@ -136,106 +175,165 @@ function CreateCardBody({
   const pending = create.isPending || link.isPending;
   const locked = offline || pending || created !== null;
   const expansion = facts.expansion;
+  const expansionName = expansion
+    ? (expansion.name ?? t('matching.expansions.unnamed', { id: expansion.id }))
+    : '';
   let setHint = t('matching.create.setNone');
-  if (expansion?.set_id) setHint = t('matching.create.setMapped', { name: expansion.name });
-  else if (expansion) setHint = t('matching.create.setUnmapped', { name: expansion.name });
+  if (expansion?.set_id) setHint = t('matching.create.setMapped', { name: expansionName });
+  else if (expansion) setHint = t('matching.create.setUnmapped', { name: expansionName });
+
+  const copyFrom = (card: AdminCard) => {
+    const values = pickCopied(toForm(card));
+    setCopy({
+      ref: cardRef(card.set_id, card.card_id),
+      name: card.name,
+      setId: card.set_id,
+      values,
+      // a second copy still clears back to the fields before the first one
+      before: copy?.before ?? pickCopied(form),
+    });
+    setForm((current) => ({ ...current, ...values }) as CardForm);
+  };
+  const clearCopy = () => {
+    if (!copy) return;
+    setForm((current) => ({ ...current, ...copy.before }) as CardForm);
+    setCopy(null);
+  };
+  const hints: Partial<Record<CardField, string>> = {
+    set_id: setHint,
+    card_id:
+      copy && copy.setId === form.set_id
+        ? t('matching.create.copy.sameSet', { ref: copy.ref })
+        : t('matching.create.numberHint'),
+  };
+  if (copy) {
+    // a field keeps its mark while it holds what was copied into it
+    for (const name of COPIED_FIELDS) {
+      const value = copy.values[name] ?? '';
+      if (value !== '' && form[name] === value) {
+        hints[name] = t('matching.create.copy.field', { ref: copy.ref });
+      }
+    }
+  }
 
   return (
-    <form
-      className={styles.dialog}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!locked) create.mutate(form);
-      }}
-    >
-      <p className={styles.muted}>
-        {[`#${subject.id_product}`, facts.category, expansion?.name].filter(Boolean).join(' · ')}
-      </p>
-      <p className={styles.help}>{t('matching.create.intro')}</p>
-      <CardFields
-        form={form}
-        onChange={(patch) => setForm((current) => ({ ...current, ...patch }) as CardForm)}
-        errors={fieldErrors}
-        disabled={locked}
-        creating
-        hints={{ set_id: setHint, card_id: t('matching.create.numberHint') }}
-        setControl={(control) => (
-          <Select
-            {...control}
-            value={form.set_id}
-            disabled={locked}
-            onChange={(event) => setForm((current) => ({ ...current, set_id: event.target.value }))}
-          >
-            <option value="">{t('matching.create.chooseSet')}</option>
-            {mappedSet && !setOptions.some((set) => set.id === mappedSet) && (
-              <option value={mappedSet}>{mappedSet}</option>
-            )}
-            {setOptions.map((set) => (
-              <option key={set.id} value={set.id}>
-                {t('matching.create.setOption', { id: set.id, name: set.name })}
-              </option>
-            ))}
-          </Select>
+    <>
+      <form
+        className={styles.dialog}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!locked) create.mutate(form);
+        }}
+      >
+        <ProductFacts
+          idProduct={subject.id_product}
+          category={facts.category}
+          expansion={expansion}
+          offline={offline}
+          onViewExpansion={setViewing}
+        />
+        <p className={styles.help}>{t('matching.create.intro')}</p>
+        <CopyFromCard
+          initialQuery={cardNameFrom(subject.name)}
+          sets={setOptions}
+          disabled={locked}
+          copied={copy && { ref: copy.ref, name: copy.name }}
+          onUse={copyFrom}
+          onClear={clearCopy}
+        />
+        <CardFields
+          form={form}
+          onChange={(patch) => setForm((current) => ({ ...current, ...patch }) as CardForm)}
+          errors={fieldErrors}
+          disabled={locked}
+          creating
+          hints={hints}
+          setControl={(control) => (
+            <Select
+              {...control}
+              value={form.set_id}
+              disabled={locked}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, set_id: event.target.value }))
+              }
+            >
+              <option value="">{t('matching.create.chooseSet')}</option>
+              {mappedSet && !setOptions.some((set) => set.id === mappedSet) && (
+                <option value={mappedSet}>{mappedSet}</option>
+              )}
+              {setOptions.map((set) => (
+                <option key={set.id} value={set.id}>
+                  {t('matching.create.setOption', { id: set.id, name: set.name })}
+                </option>
+              ))}
+            </Select>
+          )}
+        />
+        <Field label={t('matching.create.slot')} hint={t('matching.slotHelp')}>
+          {(control) => (
+            <Select
+              {...control}
+              value={foil ?? ''}
+              disabled={offline || pending}
+              onChange={(event) => {
+                const value = event.target.value;
+                setChosenFoil(value === 'N' || value === 'S' ? value : null);
+              }}
+            >
+              <option value="">{t('matching.slotOption.none')}</option>
+              <option value="N">{t('matching.slotOption.N')}</option>
+              <option value="S">{t('matching.slotOption.S')}</option>
+            </Select>
+          )}
+        </Field>
+        {formError && <FormAlert message={formError} />}
+        {created && linkError !== null && (
+          <div role="alert" className={styles.alert}>
+            <span>
+              {t('matching.create.linkFailed', {
+                message: linkErrorText(linkError, {
+                  set_id: created.set_id,
+                  card_id: created.card_id,
+                  foil,
+                }),
+              })}
+            </span>
+            <Button
+              size="sm"
+              disabled={offline}
+              pending={link.isPending}
+              onClick={() => link.mutate({ card: created, foil })}
+            >
+              {t('matching.create.linkAgain')}
+            </Button>
+          </div>
         )}
-      />
-      <Field label={t('matching.create.slot')} hint={t('matching.slotHelp')}>
-        {(control) => (
-          <Select
-            {...control}
-            value={foil ?? ''}
-            disabled={offline || pending}
-            onChange={(event) => {
-              const value = event.target.value;
-              setChosenFoil(value === 'N' || value === 'S' ? value : null);
-            }}
-          >
-            <option value="">{t('matching.slotOption.none')}</option>
-            <option value="N">{t('matching.slotOption.N')}</option>
-            <option value="S">{t('matching.slotOption.S')}</option>
-          </Select>
-        )}
-      </Field>
-      {formError && <FormAlert message={formError} />}
-      {created && linkError !== null && (
-        <div role="alert" className={styles.alert}>
-          <span>
-            {t('matching.create.linkFailed', {
-              message: linkErrorText(linkError, {
-                set_id: created.set_id,
-                card_id: created.card_id,
-                foil,
-              }),
-            })}
-          </span>
-          <Button
-            size="sm"
-            disabled={offline}
-            pending={link.isPending}
-            onClick={() => link.mutate({ card: created, foil })}
-          >
-            {t('matching.create.linkAgain')}
+        <div className={styles.rowActions}>
+          {created === null && (
+            <Button type="submit" disabled={locked} pending={create.isPending}>
+              {t('matching.create.submit')}
+            </Button>
+          )}
+          {existing && created === null && (
+            <Button type="button" variant="ghost" onClick={() => onSearch(existing)}>
+              {t('matching.create.useExisting')}
+            </Button>
+          )}
+          <Button type="button" variant="ghost" onClick={() => onSearch()}>
+            {t('matching.create.search')}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {common('actions.cancel')}
           </Button>
         </div>
-      )}
-      <div className={styles.rowActions}>
-        {created === null && (
-          <Button type="submit" disabled={locked} pending={create.isPending}>
-            {t('matching.create.submit')}
-          </Button>
-        )}
-        {existing && created === null && (
-          <Button type="button" variant="ghost" onClick={() => onSearch(existing)}>
-            {t('matching.create.useExisting')}
-          </Button>
-        )}
-        <Button type="button" variant="ghost" onClick={() => onSearch()}>
-          {t('matching.create.search')}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onClose}>
-          {common('actions.cancel')}
-        </Button>
-      </div>
-      {offline && <span className="sr-only">{common('offline.editDisabled')}</span>}
-    </form>
+        {offline && <span className="sr-only">{common('offline.editDisabled')}</span>}
+      </form>
+      {/* outside the form: Enter in its search must never submit the card */}
+      <ExpansionProductsDialog
+        expansion={viewing}
+        offline={offline}
+        onClose={() => setViewing(null)}
+      />
+    </>
   );
 }

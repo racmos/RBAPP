@@ -1,5 +1,6 @@
 /** MSW data and handlers of the Cardmarket matching workbench (CM-b). */
 import { http, type JsonBodyType } from 'msw';
+import type { AdminCard } from '@/api/endpoints';
 import { API, adminSession, failure, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 
@@ -575,6 +576,62 @@ export const adminCard = (body: Record<string, unknown>) => {
   };
 };
 
+/** A catalog card of `GET /admin/cards` (the "Copy from an existing card" search, CM-i). */
+export const catalogCard = (
+  setId: string,
+  cardId: string,
+  name: string,
+  extra: Partial<AdminCard> = {},
+): AdminCard => ({
+  ...(adminCard({ set_id: setId, card_id: cardId, name }) as AdminCard),
+  ...extra,
+});
+
+export const CATALOG_CARDS = [
+  catalogCard('OGN', '007', 'Fury Rune', {
+    type: 'Rune',
+    domain: 'Fury',
+    rarity: 'Common',
+    artist: 'Kudos Productions',
+    ability: 'Exhaust: add 1 Fury power.',
+    image_src: '/riftbound/media/cards/ogn/007.webp',
+  }),
+  catalogCard('OGN', '042', 'Calm Rune', { type: 'Rune', domain: 'Calm', rarity: 'Common' }),
+  catalogCard('UNLX', '001', 'Fury Rune', { type: 'Rune', domain: 'Fury', rarity: 'Showcase' }),
+  catalogCard('OGN', '066', 'Ahri, Alluring', {
+    type: 'Unit',
+    domain: 'Calm',
+    tags: 'Ahri',
+    energy: 3,
+    power: 1,
+    might: 3,
+    rarity: 'Common',
+    artist: 'Someone',
+    ability: 'When you play me, draw 1.',
+  }),
+];
+
+/**
+ * `GET /admin/cards` over `cards` as the server filters: `q` a name part or a `SET-ID`
+ * code, `set` one of the sets, `type` a part of the type; first page of `per_page`.
+ */
+export function adminCardsAnswer(cards: AdminCard[], search: URLSearchParams) {
+  const q = (search.get('q') ?? '').toLowerCase();
+  const sets = search.getAll('set');
+  const type = (search.get('type') ?? '').toLowerCase();
+  const perPage = Number(search.get('per_page') ?? 50);
+  const found = cards.filter(
+    (card) =>
+      (q === '' || card.name.toLowerCase().includes(q) || card.key.toLowerCase() === q) &&
+      (sets.length === 0 || sets.includes(card.set_id)) &&
+      (type === '' || (card.type ?? '').toLowerCase().includes(type)),
+  );
+  return {
+    items: found.slice(0, perPage),
+    meta: { page: 1, per_page: perPage, total: found.length, pages: 1 },
+  };
+}
+
 /** Where the admin cards endpoint is recorded: outside the `/admin/cardmarket` base. */
 export const CARDS_PATH = `${API}/admin/cards`;
 
@@ -597,6 +654,7 @@ export function matchingApi({
   kinds = undefined as KindCount[] | undefined,
   promoSets = PROMO_SETS as unknown[],
   promo = promoPlan() as JsonBodyType,
+  catalog = CATALOG_CARDS as AdminCard[],
 } = {}) {
   const calls: Call[] = [];
   const record = async (request: Request) => {
@@ -622,6 +680,10 @@ export function matchingApi({
       return ok(STATUS);
     }),
     http.get(`${API}/admin/sets`, () => ok(ADMIN_SETS)),
+    http.get(`${API}/admin/cards`, async ({ request }) => {
+      await record(request);
+      return ok(adminCardsAnswer(catalog, new URL(request.url).searchParams));
+    }),
     http.post(`${API}/admin/cards`, async ({ request }) => {
       await record(request);
       const body = (await request.json()) as Record<string, unknown>;

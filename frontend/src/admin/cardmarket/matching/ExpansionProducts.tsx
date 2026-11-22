@@ -262,7 +262,8 @@ export function ExpansionProducts({
 }: {
   item: CardmarketExpansionItem;
   offline: boolean;
-  renderMap: MapFormSlot;
+  /** Without it the dialog only shows the list (the products of a product to link, CM-i). */
+  renderMap?: MapFormSlot;
 }) {
   const { t } = useTranslation('admin');
   const { t: common } = useTranslation('common');
@@ -426,37 +427,38 @@ export function ExpansionProducts({
       >
         {list}
       </TableScroll>
-      {mapping === null ? (
-        <div className={styles.rowActions}>
-          <Button
-            variant="ghost"
-            disabled={offline}
-            title={offline ? common('offline.editDisabled') : undefined}
-            onClick={() => setMapping('set')}
-          >
-            {item.mapped_set_id === null
-              ? t('matching.expansions.products.map')
-              : t('matching.expansions.products.change')}
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={offline}
-            title={offline ? common('offline.editDisabled') : undefined}
-            onClick={() => setMapping('new')}
-          >
-            {t('matching.expansions.products.newSet')}
-          </Button>
-        </div>
-      ) : (
-        <section aria-labelledby={mapTitleId} className={styles.section}>
-          <h3 id={mapTitleId} className={styles.sectionTitle}>
-            {t('matching.expansions.products.mapTitle')}
-          </h3>
-          <div key={mapping}>
-            {renderMap({ startNew: mapping === 'new', onCancel: () => setMapping(null) })}
+      {renderMap &&
+        (mapping === null ? (
+          <div className={styles.rowActions}>
+            <Button
+              variant="ghost"
+              disabled={offline}
+              title={offline ? common('offline.editDisabled') : undefined}
+              onClick={() => setMapping('set')}
+            >
+              {item.mapped_set_id === null
+                ? t('matching.expansions.products.map')
+                : t('matching.expansions.products.change')}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={offline}
+              title={offline ? common('offline.editDisabled') : undefined}
+              onClick={() => setMapping('new')}
+            >
+              {t('matching.expansions.products.newSet')}
+            </Button>
           </div>
-        </section>
-      )}
+        ) : (
+          <section aria-labelledby={mapTitleId} className={styles.section}>
+            <h3 id={mapTitleId} className={styles.sectionTitle}>
+              {t('matching.expansions.products.mapTitle')}
+            </h3>
+            <div key={mapping}>
+              {renderMap({ startNew: mapping === 'new', onCancel: () => setMapping(null) })}
+            </div>
+          </section>
+        ))}
     </div>
   );
 }

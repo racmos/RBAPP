@@ -91,7 +91,8 @@ type CardFieldsProps = {
   creating: boolean;
   /** Another control for the set (the Cardmarket form offers a select of the sets). */
   setControl?: (control: FieldControlProps) => ReactNode;
-  hints?: { set_id?: string; card_id?: string };
+  /** A hint per field; it comes before a field's own hint (domain, type, tags). */
+  hints?: Partial<Record<CardField, string>>;
 };
 
 /** The fields of a card, shared by the cards admin and the Cardmarket create form (CM-c). */
@@ -142,7 +143,12 @@ export function CardFields({
         )}
       </Field>
       {!creating && <p className={styles.hint}>{t('cards.keyLocked')}</p>}
-      <Field label={t('cards.fields.name')} error={errors.name} required={creating}>
+      <Field
+        label={t('cards.fields.name')}
+        hint={hints?.name}
+        error={errors.name}
+        required={creating}
+      >
         {(control) => (
           <Input
             {...control}
@@ -157,13 +163,18 @@ export function CardFields({
           key={name}
           label={t(`cards.fields.${name}` as 'cards.fields.domain')}
           hint={
-            name === 'domain'
-              ? t('cards.hints.domain')
-              : name === 'type'
-                ? t('cards.hints.type')
-                : name === 'tags'
-                  ? t('cards.hints.tags')
-                  : undefined
+            [
+              hints?.[name],
+              name === 'domain'
+                ? t('cards.hints.domain')
+                : name === 'type'
+                  ? t('cards.hints.type')
+                  : name === 'tags'
+                    ? t('cards.hints.tags')
+                    : undefined,
+            ]
+              .filter(Boolean)
+              .join(' ') || undefined
           }
           error={errors[name]}
           required={required && creating}
@@ -179,7 +190,7 @@ export function CardFields({
           )}
         </Field>
       ))}
-      <Field label={t('cards.fields.ability')} error={errors.ability}>
+      <Field label={t('cards.fields.ability')} hint={hints?.ability} error={errors.ability}>
         {(control) => (
           <textarea
             {...control}

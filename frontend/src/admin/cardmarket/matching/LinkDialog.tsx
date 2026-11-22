@@ -19,8 +19,16 @@ import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CreateCardForm } from './CreateCardForm';
+import { ExpansionProductsDialog } from './ExpansionProductsDialog';
 import { MAX_QUERY, cardRef, defaultFoil, firstQuery } from './format';
-import { CandidateImage, linkConflict, useLinkErrorText, useSlotLabel, useSlotRef } from './parts';
+import {
+  CandidateImage,
+  ProductFacts,
+  linkConflict,
+  useLinkErrorText,
+  useSlotLabel,
+  useSlotRef,
+} from './parts';
 import { useCandidates, useUndoToasts } from './queries';
 import styles from './MatchingPage.module.css';
 
@@ -117,6 +125,8 @@ function LinkDialogBody({
   const [text, setText] = useState(() => firstText ?? firstQuery(subject.name));
   const [q, setQ] = useState(() => text.trim());
   const [failure, setFailure] = useState<Failure | null>(null);
+  // the expansion whose products are open on top of the dialog (CM-i)
+  const [viewing, setViewing] = useState<CardmarketExpansion | null>(null);
   const query = useCandidates(subject.id_product, q);
   const relinking = subject.current !== undefined;
 
@@ -184,11 +194,13 @@ function LinkDialogBody({
 
   return (
     <div className={styles.dialog}>
-      <p className={styles.muted}>
-        {[`#${subject.id_product}`, product?.category, product?.expansion?.name]
-          .filter(Boolean)
-          .join(' · ')}
-      </p>
+      <ProductFacts
+        idProduct={subject.id_product}
+        category={subject.facts ? subject.facts.category : product?.category}
+        expansion={subject.facts ? subject.facts.expansion : product?.expansion}
+        offline={offline}
+        onViewExpansion={setViewing}
+      />
       {current && (
         <p className={styles.current}>
           {t('matching.dialog.linkedNow', { target: slotRef(current) })}
@@ -244,6 +256,11 @@ function LinkDialogBody({
         </div>
       )}
       {results}
+      <ExpansionProductsDialog
+        expansion={viewing}
+        offline={offline}
+        onClose={() => setViewing(null)}
+      />
     </div>
   );
 }

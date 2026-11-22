@@ -520,6 +520,41 @@ instead" (back to the search with `SET-NUM`); a created card whose link fails ke
 creation: `products_refresh` adds every Cardmarket non-single to `rbproducts` with the same id
 (the "Linked by identity" hint says so and links to Products).
 
+**To link: expansion context and copy from a card (CM-i).** Owner feedback 2026-11-24: many
+products with no candidate are runes or promos of an expansion Cardmarket gives no name, and the
+form was filled by hand. *Expansion context:* every place that shows a product to link (the To
+link row's facts line, the link dialog and the create form, both through `parts.tsx::ProductFacts`)
+names its expansion with `useExpansionLabel`: the name, or `Expansion #<id>` without one, then the
+mapped set (`Expansion #6567 (UNLX)`, `Origins (OGN)`) or `(not mapped)`; a product without an
+expansion keeps `—` and has no button. Next to it **Expansion products** (in the rows
+"Expansion products for <name>"; disabled offline, as the list cannot load) opens
+`ExpansionProductsDialog.tsx`: the CM-f `ExpansionProducts` dialog (figures, search, Kind filter,
+sort, prices, table from 860 px / cards below, full screen below 860 px) in its own `Modal` on top
+of the open dialog, read-only (`renderMap` is optional: without it there is no map form; mapping
+stays in the Expansions tab). The expansion row comes from the cached `GET
+/admin/cardmarket/expansions` (`useExpansions(false)`, the same query as "Show all" of the
+Expansions tab), else it is built from the product's `{id, name, set_id}`; no new endpoint. The
+dialog is rendered outside the create `<form>`, so the form keeps what was typed; closing it gives
+focus back to the button. "Choose a card…" now passes the row's facts to the dialog too.
+*Copy from an existing card:* the create form starts with a section of that name (above the
+fields): **Card to copy** (a `DebouncedInput`, prefilled with the product's card name so a rune
+finds its siblings at once; a name or a code such as `OGN-007`; Enter searches and never submits
+the form), **Filter by set** (the admin sets, newest first) and **Filter by type** (`types` of
+`GET /meta/game`), over the existing `GET /admin/cards?q=&set=&type=&per_page=50` (no new
+parameter); nothing is asked with an empty search and no filter. The first 8 cards are listed
+(image thumbnail, name, `SET-ID`, rarity · type, "Use this card" named "Use this card: <SET-ID>
+<name>"; "Showing 8 of N cards: refine the search." beyond). **Use this card** copies name, type,
+domain, tags, energy, power, might, ability, rarity and artist (never the set, the number or the
+image: the set stays the expansion's mapped set, the number what was typed); each filled field
+gets the hint "Copied from <SET-ID>." while it still holds the copied value; a status line says
+"Copied from <SET-ID> <name>: edit any field before creating."; a card of the same set as the new
+one turns the number hint into "<SET-ID> is in this set: give the new card its own number.".
+**Clear copied data** puts the copied fields back to what they held before the first copy. The
+rarity copied drives the default slot as typed rarity does. The section is disabled offline,
+while creating and after the card is created. `CardEditor.tsx::CardFields` `hints` now takes a
+hint per field (before a field's own hint; the cards admin passes none). Tests
+`ExpansionContext.test.tsx`, `CopyFromCard.test.tsx`.
+
 **Cardmarket expansions (CM-d).** The workbench's sixth tab, **Expansions** (`?tab=expansions`,
 `ExpansionsPanel.tsx`), is the screen over `docs/api.md` → "Cardmarket expansions (CM-d)". The
 "Unmapped expansions: N" counters of the Cardmarket page and of the workbench header link to it.
