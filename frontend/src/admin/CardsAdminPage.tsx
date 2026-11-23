@@ -12,7 +12,6 @@ import {
   patchAdminCard,
   type AdminCard,
 } from '@/api/endpoints';
-import { fieldErrorsFromDetails } from '@/auth/formHelpers';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -34,24 +33,11 @@ import { up } from '@/lib/breakpoints';
 import { sortSetsNewestFirst } from '@/lib/sets';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
-import { CardEditor, cardInput, type CardForm } from './CardEditor';
+import { CardEditor, cardFieldErrors, cardInput, type CardForm } from './CardEditor';
 import { TableScroll } from '@/components/ui/TableScroll';
 import styles from './CardsAdminPage.module.css';
 
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Showcase'];
-const FIELDS = [
-  'name',
-  'domain',
-  'type',
-  'tags',
-  'energy',
-  'power',
-  'might',
-  'ability',
-  'rarity',
-  'artist',
-  'image_url',
-] as const;
 
 type EditorTarget = { mode: 'create' } | { mode: 'edit'; card: AdminCard };
 
@@ -71,7 +57,7 @@ export function CardsAdminPage() {
   const { setSearchParams: setParams } = useSearchNavigation();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [editor, setEditor] = useState<EditorTarget | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<AdminCard | null>(null);
   useDocumentTitle(t('cards.title'));
@@ -128,8 +114,10 @@ export function CardsAdminPage() {
     },
     onError: (error: unknown) => {
       if (error instanceof ApiError && error.kind === 'http' && error.status === 400) {
-        setFieldErrors(fieldErrorsFromDetails(error.details, i18n, FIELDS));
-        setFormError(null);
+        // every field of the form, the set and number included (CM-j); else the form alert
+        const mapped = cardFieldErrors(error.details, i18n, t('cards.number.invalid'));
+        setFieldErrors(mapped);
+        setFormError(Object.keys(mapped).length === 0 ? translateError(error, i18n) : null);
       } else {
         setFieldErrors({});
         setFormError(translateError(error, i18n));
@@ -201,6 +189,7 @@ export function CardsAdminPage() {
     <CardEditor
       key={editorKey}
       initial={editor.mode === 'edit' ? editor.card : null}
+      setIds={sets.map((set) => set.id)}
       fieldErrors={fieldErrors}
       formError={formError}
       pending={save.isPending}

@@ -11,6 +11,7 @@ import {
   AHRI,
   BOX,
   CANDIDATES,
+  ADMIN_SETS,
   CARDS_PATH,
   MYSTERY,
   callsTo,
@@ -34,6 +35,17 @@ const EMPTY_CARD = {
   image_url: null,
 };
 const SPIRITFORGED = { id: 7001, name: 'Spiritforged', set_id: null };
+const NUMBER_RULE =
+  'Use only letters and digits (for example 197 or 197a). Choose the set in the Set field.';
+const OGNX = {
+  id: 'OGNX',
+  name: 'Origins Promos',
+  release_date: '2025-11-15',
+  card_count: 10,
+  declared_count: 10,
+  window: 'none',
+  next_run_at: null,
+};
 
 const rowOf = (list: HTMLElement, name: string) =>
   within(list)
@@ -191,10 +203,13 @@ describe('Create a card from a Cardmarket item (CM-c)', () => {
       ),
     );
     const { dialog, user } = await openCreate();
-    await user.type(field(dialog, 'Number'), '06-6');
+    // a number the form accepts: only the API refuses it here
+    await user.type(field(dialog, 'Number'), '066');
     await user.click(within(dialog).getByRole('button', { name: 'Create and link' }));
     await vi.waitFor(() => expect(field(dialog, 'Number')).toHaveAttribute('aria-invalid', 'true'));
-    expect(within(dialog).getByText('The format is not valid.')).toBeVisible();
+    // the card_id detail reads as the number rule, under the field (CM-j)
+    expect(within(dialog).getByText(NUMBER_RULE)).toBeVisible();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
     expect(within(dialog).getByText('The value is out of range.')).toBeVisible();
     expect(callsTo(calls, 'POST', '/links')).toHaveLength(0);
     expect(screen.getByRole('dialog', { name: 'Create a card for Ahri, Alluring' })).toBeVisible();
@@ -389,6 +404,106 @@ describe('Create a card from a Cardmarket item (CM-c)', () => {
     await vi.waitFor(() =>
       expect(within(dialog).getByRole('combobox', { name: 'Set' })).toHaveValue('OGN'),
     );
+    expect(await axe(dialog)).toHaveNoViolations();
+  }, 20000);
+});
+
+describe('Create card: a full card code in Number (CM-j)', () => {
+  /** The form with OGNX among the sets, the set select loaded on OGN. */
+  async function openWithPromos() {
+    const calls = matchingApi();
+    server.use(http.get(`${API}/admin/sets`, () => ok([...ADMIN_SETS, OGNX])));
+    const opened = await openCreate();
+    const set = within(opened.dialog).getByRole('combobox', { name: 'Set' });
+    await vi.waitFor(() => {
+      expect(set).toHaveValue('OGN');
+      expect(within(set).getByRole('option', { name: 'OGNX · Origins Promos' })).toBeTruthy();
+    });
+    return { ...opened, calls, set, number: field(opened.dialog, 'Number') };
+  }
+
+  it('OGNX-197 is read as set OGNX, number 197 when the field is left, then created so', async () => {
+    const { dialog, user, calls, set, number } = await openWithPromos();
+    await user.type(number, 'OGNX-197');
+    await user.tab();
+    expect(set).toHaveValue('OGNX');
+    expect(number).toHaveValue('197');
+    expect(within(dialog).getByText('Read OGNX-197 as set OGNX, number 197.')).toHaveAttribute(
+      'role',
+      'status',
+    );
+    expect(number).not.toHaveAttribute('aria-invalid');
+    await user.click(within(dialog).getByRole('button', { name: 'Create and link' }));
+    await vi.waitFor(() => expect(callsTo(calls, 'POST', '/links')).toHaveLength(1));
+    expect(callsTo(calls, 'POST', CARDS_PATH).map((call) => call.body)).toEqual([
+      { ...EMPTY_CARD, set_id: 'OGNX', card_id: '197', name: 'Ahri, Alluring' },
+    ]);
+  });
+
+  it('Enter on a code with a space reads it (case-insensitive, number lower-cased) and creates', async () => {
+    const { user, calls, number } = await openWithPromos();
+    await user.type(number, 'ogs 066A{Enter}');
+    await vi.waitFor(() => expect(callsTo(calls, 'POST', CARDS_PATH)).toHaveLength(1));
+    expect(callsTo(calls, 'POST', CARDS_PATH)[0]!.body).toMatchObject({
+      set_id: 'OGS',
+      card_id: '066a',
+    });
+    // created with the code read, then linked: the dialog closes
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('a pasted code is read at once: OGNX197', async () => {
+    const { dialog, user, set, number } = await openWithPromos();
+    await user.click(number);
+    await user.paste('OGNX197');
+    expect(set).toHaveValue('OGNX');
+    expect(number).toHaveValue('197');
+    expect(within(dialog).getByText('Read OGNX197 as set OGNX, number 197.')).toBeVisible();
+    // typing again drops the line: it described the value read, not the new one
+    await user.type(number, 'a');
+    expect(number).toHaveValue('197a');
+    expect(within(dialog).queryByText(/^Read OGNX197/)).toBeNull();
+  });
+
+  it('a code whose prefix is no set is not guessed: the number is refused and nothing is sent', async () => {
+    const { dialog, user, calls, set, number } = await openWithPromos();
+    await user.type(number, 'ZZZ-197');
+    await user.tab();
+    expect(set).toHaveValue('OGN');
+    expect(number).toHaveValue('ZZZ-197');
+    const error = within(dialog).getByText(NUMBER_RULE);
+    expect(error).toBeVisible();
+    expect(number).toHaveAttribute('aria-invalid', 'true');
+    expect(number.getAttribute('aria-describedby')?.split(' ')).toContain(error.id);
+    await user.click(within(dialog).getByRole('button', { name: 'Create and link' }));
+    expect(callsTo(calls, 'POST', CARDS_PATH)).toHaveLength(0);
+    expect(within(dialog).queryByText(/^Read /)).toBeNull();
+    // fixed: the message goes as the value changes
+    await user.clear(number);
+    await user.type(number, '197a');
+    expect(within(dialog).queryByText(NUMBER_RULE)).toBeNull();
+    expect(number).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('a number over 10 characters blocks the create on submit', async () => {
+    const { dialog, user, calls, number } = await openWithPromos();
+    await user.type(number, '12345678901');
+    await user.click(within(dialog).getByRole('button', { name: 'Create and link' }));
+    expect(await within(dialog).findByText(NUMBER_RULE)).toBeVisible();
+    expect(number).toHaveAttribute('aria-invalid', 'true');
+    expect(callsTo(calls, 'POST', CARDS_PATH)).toHaveLength(0);
+    expect(callsTo(calls, 'POST', '/links')).toHaveLength(0);
+  });
+
+  it('has no axe violations with the number refused and with a code read', async () => {
+    const { dialog, user, number } = await openWithPromos();
+    await user.type(number, 'ZZZ-197');
+    await user.tab();
+    expect(await axe(dialog)).toHaveNoViolations();
+    await user.clear(number);
+    await user.type(number, 'OGN-197');
+    await user.tab();
+    expect(within(dialog).getByText('Read OGN-197 as set OGN, number 197.')).toBeVisible();
     expect(await axe(dialog)).toHaveNoViolations();
   }, 20000);
 });

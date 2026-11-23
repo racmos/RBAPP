@@ -358,3 +358,103 @@ describe('CardsAdminPage set order (owner feedback S19)', () => {
     ).toEqual(['', 'VEN', 'OGS', 'OGN', 'NOD']);
   });
 });
+
+describe('CardsAdminPage new card: the number (CM-j)', () => {
+  const NUMBER_RULE =
+    'Use only letters and digits (for example 197 or 197a). Choose the set in the Set field.';
+
+  async function openNew() {
+    const state = writableApi();
+    await renderApp({ path: '/admin/cards', width: 1280 });
+    await userEvent.click(await screen.findByRole('button', { name: 'New card' }));
+    const editor = await screen.findByRole('dialog', { name: 'New card' });
+    return { state, editor, number: within(editor).getByLabelText('Number') };
+  }
+
+  it('a full code in Number fills the Set and keeps the number, then saves', async () => {
+    const { state, editor, number } = await openNew();
+    await userEvent.type(number, 'ogn-9');
+    await userEvent.tab();
+    expect(within(editor).getByLabelText('Set')).toHaveValue('OGN');
+    expect(number).toHaveValue('9');
+    expect(within(editor).getByRole('status')).toHaveTextContent(
+      'Read ogn-9 as set OGN, number 9.',
+    );
+    await userEvent.type(within(editor).getByLabelText('Name'), 'New Card');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('Card saved.')).length).toBeGreaterThan(0);
+    expect(state.posted).toEqual([
+      expect.objectContaining({ set_id: 'OGN', card_id: '9', name: 'New Card' }),
+    ]);
+  });
+
+  it('a number with a set that does not exist is refused before saving', async () => {
+    const { state, editor, number } = await openNew();
+    await userEvent.type(within(editor).getByLabelText('Set'), 'OGN');
+    await userEvent.type(number, 'ZZZ-9');
+    await userEvent.type(within(editor).getByLabelText('Name'), 'New Card');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    const error = await within(editor).findByText(NUMBER_RULE);
+    expect(number).toHaveAttribute('aria-invalid', 'true');
+    expect(number.getAttribute('aria-describedby')?.split(' ')).toContain(error.id);
+    expect(within(editor).getByLabelText('Set')).toHaveValue('OGN');
+    expect(state.posted).toEqual([]);
+    expect(await axe(editor)).toHaveNoViolations();
+  });
+
+  it('a 400 on card_id from the API shows under Number, not as nothing', async () => {
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/cards`, () => ok(CARDS)),
+      http.get(`${API}/admin/sets`, () => ok(SETS)),
+      http.post(`${API}/admin/cards`, () =>
+        failure(400, {
+          error: 'Validation Error',
+          message: 'Invalid request data',
+          code: 'validation_error',
+          details: [
+            {
+              field: 'card_id',
+              message: "String should match pattern '^[A-Za-z0-9]{1,10}$'",
+              type: 'string_pattern_mismatch',
+              code: 'invalid_format',
+            },
+          ],
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin/cards', width: 1280 });
+    await userEvent.click(await screen.findByRole('button', { name: 'New card' }));
+    const editor = await screen.findByRole('dialog', { name: 'New card' });
+    await userEvent.type(within(editor).getByLabelText('Set'), 'OGN');
+    await userEvent.type(within(editor).getByLabelText('Number'), '9');
+    await userEvent.type(within(editor).getByLabelText('Name'), 'New Card');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    expect(await within(editor).findByText(NUMBER_RULE)).toBeVisible();
+    expect(within(editor).getByLabelText('Number')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('a 400 on a field the form does not show becomes the form alert', async () => {
+    server.use(
+      http.get(`${API}/auth/session`, () => adminSession()),
+      http.get(`${API}/admin/cards`, () => ok(CARDS)),
+      http.get(`${API}/admin/sets`, () => ok(SETS)),
+      http.post(`${API}/admin/cards`, () =>
+        failure(400, {
+          error: 'Validation Error',
+          message: 'Invalid request data',
+          code: 'validation_error',
+          details: [{ field: 'image', message: 'bad', type: 'x', code: 'invalid_format' }],
+        }),
+      ),
+    );
+    await renderApp({ path: '/admin/cards', width: 1280 });
+    await userEvent.click(await screen.findByRole('button', { name: 'New card' }));
+    const editor = await screen.findByRole('dialog', { name: 'New card' });
+    await userEvent.type(within(editor).getByLabelText('Set'), 'OGN');
+    await userEvent.type(within(editor).getByLabelText('Number'), '9');
+    await userEvent.type(within(editor).getByLabelText('Name'), 'New Card');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    expect(await within(editor).findByRole('alert')).toBeVisible();
+  });
+});
