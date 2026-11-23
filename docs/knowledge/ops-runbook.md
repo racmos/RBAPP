@@ -538,6 +538,20 @@ Undo: a wrong promo card is deleted in Admin → Cards (only while no collection
 it; unlink its Cardmarket products first). Nothing to roll back on the server side: the deploy is a
 pull, a restart and a frontend build.
 
+## Missing runes and promo cards by copying a sibling (CM-i)
+
+A product left in To link with no candidate (a rune of a promo set, a card Riot does not
+publish) is created from its row: **Create card**. The header names its Cardmarket expansion
+(`Expansion #6567 (UNLX)` when Cardmarket gives no name, or `(not mapped)`); **Expansion products**
+lists every card and product of that expansion (Kind filter, prices) to tell which set it belongs
+to, and closes back onto the form. In **Copy from an existing card** the search starts with the
+product name (`Fury Rune`), narrowed by set or type when needed; **Use this card** on the
+sibling (for example `OGN-007`) fills name, type, domain, tags, numbers, ability, rarity and artist.
+Check the set (the mapped set of the expansion; choose it when not mapped) and type the number
+(never copied; a sibling of the same set needs its own number), adjust any field, then **Create
+and link**. Undo removes the link only; the card stays (delete it in Admin → Cards). Images are not
+copied: upload them in Admin → Cards. Nothing to deploy beyond the frontend build.
+
 ## Card images (from M-d)
 
 Card images are not in git and not in the code tree. They live in the data directory set by

@@ -463,7 +463,27 @@
       "exists": "{{ref}} already exists in the catalog.",
       "useExisting": "Use the existing card instead",
       "linkFailed": "Card created, link failed: {{message}}",
-      "linkAgain": "Link again"
+      "linkAgain": "Link again",
+      "copy": {
+        "title": "Copy from an existing card",
+        "intro": "Fill the fields from a card of the catalog, such as a rune of another set. The set, the number and the image are never copied.",
+        "search": "Card to copy",
+        "searchHint": "A name or a code such as OGN-007.",
+        "set": "Filter by set",
+        "anySet": "Any set",
+        "type": "Filter by type",
+        "anyType": "Any type",
+        "results": "Cards to copy",
+        "empty": "Search a name or a code, or choose a set or a type.",
+        "noCards": "No cards found.",
+        "more": "Showing {{shown}} of {{total}} cards: refine the search.",
+        "use": "Use this card",
+        "useFor": "Use this card: {{ref}} {{name}}",
+        "copied": "Copied from {{ref}} {{name}}: edit any field before creating.",
+        "field": "Copied from {{ref}}.",
+        "sameSet": "{{ref}} is in this set: give the new card its own number.",
+        "clear": "Clear copied data"
+      }
     },
     "linked": {
       "caption": "Cardmarket links",
@@ -736,6 +756,12 @@
       "done_one": "{{count}} card created. Run Auto-match to link its products.",
       "done_other": "{{count}} cards created. Run Auto-match to link their products.",
       "noneCreated": "Nothing created: those cards are already in the catalog."
+    },
+    "expansion": {
+      "mapped": "{{name}} ({{set}})",
+      "unmapped": "{{name}} (not mapped)",
+      "products": "Expansion products",
+      "productsFor": "Expansion products for {{name}}"
     }
   },
   "audit": {
