@@ -471,6 +471,37 @@ class AdminPromoCardsBody(BaseModel):
     _upper_set = field_validator('set_id', mode='after')(_upper)
 
 
+class AdminMissingPrintingsQuery(BaseModel):
+    """GET /admin/cardmarket/missing-printings query (CM-m): no parameter."""
+
+    model_config = ConfigDict(extra='forbid')
+
+
+class AdminPrintingRef(BaseModel):
+    """One proposed card of POST /admin/cardmarket/missing-printings (CM-m): the set id
+    (upper-cased) and the card id (lower-cased, letters and digits, as `AdminCardCreate`)."""
+
+    model_config = STRIPPED
+
+    set_id: str = Field(min_length=1, max_length=20)
+    card_id: str = Field(min_length=1, max_length=10, pattern=r'^[A-Za-z0-9]{1,10}$')
+
+    _upper_set = field_validator('set_id', mode='after')(_upper)
+
+    @field_validator('card_id', mode='after')
+    @classmethod
+    def _lower_card_id(cls, value: str) -> str:
+        return value.lower()
+
+
+class AdminMissingPrintingsBody(BaseModel):
+    """POST /admin/cardmarket/missing-printings body (CM-m): the proposed cards to create."""
+
+    model_config = STRIPPED
+
+    items: list[AdminPrintingRef] = Field(min_length=1, max_length=200)
+
+
 # `from` and `to` are the query names of GET /admin/audit; `from` is a Python keyword, so the
 # two dates live on a model built with `create_model` (read them with `getattr`).
 _AuditDates = create_model('_AuditDates', **{'from': (Optional[date], None),

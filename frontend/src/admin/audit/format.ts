@@ -12,6 +12,7 @@ const ACTION_LABELS = {
   'cardmarket.expansion.map': 'audit.actions.cardmarketExpansionMap',
   'cardmarket.expansion.unmap': 'audit.actions.cardmarketExpansionUnmap',
   'cardmarket.promo_cards.create': 'audit.actions.cardmarketPromoCardsCreate',
+  'cardmarket.missing_printings.create': 'audit.actions.cardmarketMissingPrintingsCreate',
   'set.create': 'audit.actions.setCreate',
   'set.update': 'audit.actions.setUpdate',
   'set.delete': 'audit.actions.setDelete',
@@ -77,6 +78,9 @@ export function targetLink(row: {
     case 'cardmarket_expansion':
       return '/admin/cardmarket/matching?tab=expansions&show=all';
     case 'cardmarket':
+      // CM-m: the extra printings are created from the Missing cards tab
+      if (row.action === 'cardmarket.missing_printings.create')
+        return '/admin/cardmarket/matching?tab=missing';
       return '/admin/cardmarket';
     case 'card':
       return withQ('/admin/cards', id);

@@ -654,6 +654,38 @@ are `string | null`, `CardmarketPromoItem.candidates?` (`CardmarketPromoCard[]`)
 `ambiguous_base`. MSW: `PLATED_ITEMS` / `platedPlan()` in `src/test/fixtures/cardmarketMatching.ts`
 (`?set=PLAT`; PLAT is the second of `PROMO_SETS`).
 
+**Extra printings (CM-m).** Under the promo list, the Missing cards tab renders
+`ExtraPrintings.tsx` (a `section` "Extra printings" with an `h3`), the screen over `docs/api.md` →
+"Missing printings (CM-m)": the card groups with more Cardmarket products than catalog cards (the
+Radiance legends: Cardmarket's third printing is the signed card, `<id>s`, owner answer
+2026-11-24). An **Extra printings set** select (`printings=` in the URL; "All sets", "Radiance
+(RAD), 2 to create" or "…, nothing to create") narrows the list and the request; the summary says
+"N signed printings to create", "N groups already have their card. N groups to handle by hand.",
+then **Create N printings** (disabled with 0, while sending and offline). From 860 px a table
+(caption "Extra printings": Create, Set, Cardmarket products (the group name, then `#id · price`,
+"no price", "· linked to RAD-141"), Cards here (`RAD-141 · Rare`), New card (`RAD-169s
+(Showcase)` or `—`), Status badge (the `matching.missing.status` labels) with the reason
+(`matching.printings.reasons.*`)); below 860 px one card a group with "Cards here: …" and "Will
+create RAD-169s (Showcase)". `create` groups start checked (label "Create the signed printing of
+<name> (RAD-169s)"); `exists` / `manual` ones are disabled. Create opens a `ConfirmDialog`
+("Create N signed printings?"), then `POST …/missing-printings {items}` with the checked shown
+groups; success toasts "N printings created. Run Auto-match to link their products." and
+invalidates every `['admin', 'cardmarket']` query plus `['admin', 'sets']` / `['admin',
+'cards']`; a 400 toasts the server's message. States: skeleton (an offline note), error with
+retry, "No card has more printings on Cardmarket than in the catalog." Query
+`useMissingPrintings` (`matchingKeys.missingPrintings`), endpoints
+`listCardmarketMissingPrintings` / `createCardmarketMissingPrintings`, types
+`CardmarketMissingPrintings`, `CardmarketPrintingGroup`; MSW `missingPrintings()`,
+`ZIGGS_GROUP`, … in `src/test/fixtures/cardmarketMatching.ts`.
+
+The Auto-match review (`AutoMatchPanel.tsx`) shows, under an `ambiguous` row whose item has
+`reason_detail: "more_printings_than_cards"` (CM-m S1), "3 printings on Cardmarket, 2 cards here:"
+and the link "create the missing printing" to `matchingTabUrl('missing', {printings: set_id})`.
+`matching/format.ts::matchingTabUrl(tab, params)` is the one helper that builds a workbench tab
+URL (the CM-l tab merge changes only it). The audit screen labels
+`cardmarket.missing_printings.create` "Create missing signed printings" and links it to
+`?tab=missing`.
+
 **Card number of a new card (CM-j, CM-k).** `src/admin/cardCode.ts::readCardCode(value, setIds,
 selectedSetId?)` reads a full code typed in Number (`OGNX-197`, `OGNX 197`, `OGNX197`) when its
 letters are an existing set, and a plated code `PLAT-SFD-189` (`PLAT SFD 189`, `PLAT-sfd189`) as

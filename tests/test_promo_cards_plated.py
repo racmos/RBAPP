@@ -9,11 +9,11 @@ copies of their origin cards (service `app/services/promo_cards.py`).
 
 CM-k2 (owner decision A, 2026-11-24): Cardmarket has one PLAT product per printing of a legend
 (the normal one and the Showcase). When the origin printings of a name are all in one set, the
-products of that name (by price ascending, unpriced as 0) are paired with those printings (by
-the rank of the plated card, `matcher.card_rank_key`): the cheapest product gets the lowest
-rarity. Extra products are `no_slot`; origins in several sets stay `ambiguous_base`. A PLAT
-card of the name whose id is not `<origin set><number>` (the old format, `PLAT/189`) settles
-nothing and is reported in `stray_cards`.
+products of that name (by price ascending, unpriced last: CM-m S5) are paired with those
+printings (by the rank of the plated card, `matcher.card_rank_key`): the cheapest product gets
+the lowest rarity. Extra products are `no_slot`; origins in several sets stay
+`ambiguous_base`. A PLAT card of the name whose id is not `<origin set><number>` (the old
+format, `PLAT/189`) settles nothing and is reported in `stray_cards`.
 
 Data, latest product date D2:
 
@@ -305,8 +305,9 @@ class TestPlan:
         assert items[4020]['proposed'] == {'set_id': 'PLAT', 'card_id': 'ogn303'}
         assert items[4021]['proposed'] == {'set_id': 'PLAT', 'card_id': 'ogn255'}
 
-    def test_an_unpriced_product_counts_as_0_and_gets_the_lower_rarity(self, admin_client,
-                                                                       data):
+    def test_an_unpriced_product_gets_the_highest_rarity(self, admin_client, data):
+        """CM-m S5 (owner decision 2026-11-24): before, an unpriced product counted as 0 and
+        took the Rare; now it sorts after every priced product and takes the Showcase."""
         card('OGN', '255', 'Ahri, Nine-Tailed Fox', 'Rare', 'Legend')
         card('OGN', '303', 'Ahri, Nine-Tailed Fox', 'Showcase', 'Legend')
         card('OGN', '303s', 'Ahri, Nine-Tailed Fox', 'Showcase', 'Legend')
@@ -315,9 +316,9 @@ class TestPlan:
         db.session.commit()
         items = plat_items(admin_client)
         assert (items[4021]['price'], items[4021]['proposed'], items[4021]['status']) == (
-            None, {'set_id': 'PLAT', 'card_id': 'ogn255'}, 'create')
+            None, {'set_id': 'PLAT', 'card_id': 'ogn303'}, 'create')
         assert (items[4020]['proposed'], items[4020]['status']) == (
-            {'set_id': 'PLAT', 'card_id': 'ogn303'}, 'create')
+            {'set_id': 'PLAT', 'card_id': 'ogn255'}, 'create')
 
     def test_more_products_than_printings_leave_the_dearest_by_hand(self, admin_client,
                                                                    data):
@@ -532,6 +533,28 @@ def decided(result):
 
 
 class TestAutoMatchAfterwards:
+    def test_the_real_radiance_pair_with_one_unpriced_product_is_clear(self, admin_client,
+                                                                       data):
+        """CM-m S5 on the real shape (2026-11-24): PLAT products 922477 (1080 EUR) and 922511
+        (no price) of Ziggs; origins RAD-141 Rare and RAD-169 Showcase. The priced one is the
+        Rare, the unpriced one the Showcase, and after the creation both are clear cases."""
+        db.session.add(RbSet(rbset_id='RAD', rbset_name='Radiance'))
+        db.session.flush()
+        card('RAD', '141', 'Hexplosives Expert', 'Rare', 'Legend', rbcar_tags='Ziggs')
+        card('RAD', '169', 'Hexplosives Expert', 'Showcase', 'Legend', rbcar_tags='Ziggs')
+        product(922477, 'Ziggs, Hexplosives Expert', 80, 1080.0)
+        product(922511, 'Ziggs, Hexplosives Expert', 80, None)
+        db.session.commit()
+        items = plat_items(admin_client)
+        assert items[922477]['proposed'] == {'set_id': 'PLAT', 'card_id': 'rad141'}
+        assert items[922511]['proposed'] == {'set_id': 'PLAT', 'card_id': 'rad169'}
+        ok(admin_client.post(URL, json={'set_id': 'PLAT', 'product_ids': [922477, 922511]}),
+           201)
+        links, review = decided(daily_prices.classify_unmapped(D2))
+        assert (links[922477], links[922511]) == (('PLAT', 'rad141', None),
+                                                  ('PLAT', 'rad169', None))
+        assert 922477 not in review and 922511 not in review
+
     def test_both_plat_products_become_clear_and_the_sfd_products_keep_their_cards(
             self, admin_client, data):
         sfd = {3001: ('SFD', '189', None), 3002: ('SFD', '244', None),

@@ -135,7 +135,10 @@ MATRIX = {
                                             # /admin/cardmarket/* (CM-a); the expansion products
                                             # list is api_admin.expansion_products (CM-f); the
                                             # missing promo cards are api_admin.promo_cards_list
-                                            # and api_admin.promo_cards_create (CM-h)
+                                            # and api_admin.promo_cards_create (CM-h); the
+                                            # missing printings are
+                                            # api_admin.missing_printings_list and
+                                            # api_admin.missing_printings_create (CM-m)
 }
 
 LOGIN_PATH = '/riftbound/app/login'

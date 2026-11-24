@@ -558,7 +558,8 @@ set `PLAT`, number = origin set + number in lower case, without the dash: `PLAT-
    no variant `a`/`s`, no rune) of that name in any set but PLAT and the promo sets. When they are
    all in one set, **each printing is one plated card** and the products are paired by price and
    rarity: the cheaper product gets the lower rarity (`SFD-189 → PLAT-sfd189`, Rare), the dearer
-   the Showcase (`SFD-244 → PLAT-sfd244`); an unpriced product counts as the cheapest. **In the
+   the Showcase (`SFD-244 → PLAT-sfd244`); an unpriced product is the dearest (CM-m S5, owner
+   decision 2026-11-24: unpriced = highest rarity). **In the
    catalog** = a PLAT card with that number exists; **By hand**: "No card of this name in any
    set.", "Several origin cards: OGN-058, SFD-020." (origins in several sets, a reprint: decide
    which one), "Its origin card cannot be copied" (the number would be over 10 characters), or
@@ -572,10 +573,48 @@ set `PLAT`, number = origin set + number in lower case, without the dash: `PLAT-
    PLAT card exists, its row in Missing cards reads In the catalog.
 6. **Link.** Matching → Auto-match → Preview, then Apply clear cases (or the next daily load): a
    product with its PLAT card becomes a clear case to `PLAT/<number>` (the two products of a legend
-   by price and rarity, as the plan paired them; an unpriced one is linked by hand), and the
+   by price and rarity, as the plan paired them; an unpriced one is the Showcase, CM-m S5), and the
    products of the origin set keep their own cards. Upload the images in Admin → Cards (filter PLAT).
 
 Undo as for the promo cards (delete the card in Admin → Cards while nothing uses it).
+
+## Extra printings (CM-m)
+
+Cardmarket lists three printings of each Radiance legend (Rare 0.02 €, Showcase 45 €, a third at
+450 €) while Riot's gallery, so the catalog, has two (`RAD-141`, `RAD-169`): Auto-match leaves the
+two unlinked products **ambiguous** (two products for one free card). It is not a name problem
+(`Ziggs, Hexplosives Expert` finds the cards by their tag). Owner answer 2026-11-24: the third
+printing is the **signed** card, `<id>s` (`RAD-169s`). No migration, no job, no CLI.
+
+1. **See why.** Matching → Auto-match: such a review row reads "3 printings on Cardmarket, 2 cards
+   here: create the missing printing"; the link opens Missing cards filtered to that set.
+2. **Create.** Matching → **Missing cards** → **Extra printings** (under the promo list; the set
+   select keeps `printings=RAD` in the URL). Each group shows its Cardmarket products by price
+   (linked ones say to which card), the cards here and the **New card** (`RAD-169s (Showcase)`):
+   a copy of the highest all-digit printing (every card field but the image), rarity Showcase.
+   **To create** rows start checked; **In the catalog** (the signed card exists: Auto-match links
+   it) and **By hand** rows cannot be checked: "More than one extra product" (only one extra
+   printing is proposed), "OGN-066 already has a letter variant" (an `a` variant exists: decide by
+   hand), "A common or uncommon card has a normal and a foil product", "No printing with a plain
+   number" (runes `r01`), "RAD-120s is another card" (the id is taken), "Its copy fails the card
+   checks" (an id over 10 characters). **Create N printings** (confirm) creates them in one
+   transaction with one audit row `cardmarket.missing_printings.create` (Admin → Audit, target
+   `cardmarket` / `missing_printings`). An existing card is skipped, never overwritten.
+3. **Link.** Matching → Auto-match → Preview, then Apply clear cases (or the next daily load): the
+   group's products pair by price and rank (`917370` → `RAD-169`, `917487` → `RAD-169s`), the
+   linked one keeps its card (`917343` → `RAD-141`).
+4. **Images.** Upload the signed images in Admin → Cards (filter the set, "Missing image").
+
+**Unpriced = highest rarity (CM-m S5, owner decision 2026-11-24).** A product with no price in the
+latest load (no price row, or every price empty) sorts after the priced products of its card
+group everywhere: Auto-match (a group with exactly one unpriced product and as many single-slot
+cards is now a clear case, the unpriced one on the highest-rank card), the promo plan (CM-h) and
+the plated plan (CM-k2: PLAT 922511 (no price) → `rad169`, 922477 (1080 €) → `rad141`). Two or
+more unpriced products in one group stay ambiguous; the foil pair of a common or uncommon stays
+ambiguous (CM-h decision A); the slot owner rule (#162) is unchanged.
+
+Undo: a wrong signed card is deleted in Admin → Cards (only while no collection line or deck uses
+it; unlink its Cardmarket products first). Deploy = pull, restart, frontend build.
 
 ## Missing runes and promo cards by copying a sibling (CM-i)
 

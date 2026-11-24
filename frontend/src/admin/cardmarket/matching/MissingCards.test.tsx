@@ -285,7 +285,7 @@ describe('Missing cards tab (CM-h)', () => {
     });
     const { container } = await openTable();
     expect(
-      within(rowOf(screen.getByRole('table'), '#1016'))
+      within(rowOf(screen.getByRole('table', { name: 'Missing promo cards' }), '#1016'))
         .getAllByRole('cell')
         .at(-1)!.textContent,
     ).toBe('By handCardmarket gives it no card group: link it by hand.');
