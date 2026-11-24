@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/errors';
@@ -48,10 +48,11 @@ function useErrorText() {
 /**
  * "Missing cards" (CM-h): Riot's gallery has no promo sets, so their Cardmarket products have
  * no card to link to. A promo card has the id of its base card in the set whose id is the base
- * id followed by X. PLAT (CM-k) has no base set: a plated card copies the one card of its name
- * in another set, its origin (`PLAT-sfd189`). Choose a set (it goes to the URL), check the
- * cards to create (the ones the server can create start checked) and create them; Auto-match
- * links them later.
+ * id followed by X. PLAT (CM-k) has no base set: a plated card copies a card of its name in
+ * another set, its origin (`PLAT-sfd189`); a legend's normal and Showcase printings get one
+ * plated card each (CM-k2), and a PLAT card with the old id format (`PLAT-189`) shows a warning
+ * under its row. Choose a set (it goes to the URL), check the cards to create (the ones the
+ * server can create start checked) and create them; Auto-match links them later.
  */
 export function MissingCardsPanel({ params, setParam, offline }: PanelProps) {
   const { t } = useTranslation('admin');
@@ -285,6 +286,16 @@ function useItemText(baseSet: string | null) {
     proposed: (item: CardmarketPromoItem) =>
       item.proposed === null ? null : cardRef(item.proposed.set_id, item.proposed.card_id),
     status: (item: CardmarketPromoItem) => t(`matching.missing.status.${item.status}`),
+    /** CM-k2: the PLAT cards of the name with the old id format, or null when there is none. */
+    stray: (item: CardmarketPromoItem) => {
+      const ids = item.stray_cards ?? [];
+      return ids.length === 0
+        ? null
+        : t('matching.missing.stray', {
+            count: ids.length,
+            refs: ids.map((id) => cardRef('PLAT', id)).join(', '),
+          });
+    },
     reason: (item: CardmarketPromoItem) => {
       const reason = item.reason;
       if (baseSet === null && (reason === 'no_base_card' || reason === 'invalid_base')) {
@@ -369,34 +380,43 @@ function PlanTable({ plan, ...rest }: ListProps) {
         </thead>
         <tbody>
           {plan.items.map((item) => (
-            <tr key={item.product_id}>
-              <td>
-                <SelectBox item={item} {...rest} />
-              </td>
-              <td>
-                <Products item={item} />
-              </td>
-              <td className={styles.nowrap}>{text.money(item.price)}</td>
-              <td>
-                {text.base(item) === null ? (
-                  '—'
-                ) : (
+            <Fragment key={item.product_id}>
+              <tr>
+                <td>
+                  <SelectBox item={item} {...rest} />
+                </td>
+                <td>
+                  <Products item={item} />
+                </td>
+                <td className={styles.nowrap}>{text.money(item.price)}</td>
+                <td>
+                  {text.base(item) === null ? (
+                    '—'
+                  ) : (
+                    <span className={styles.cellStack}>
+                      <span className={styles.nowrap}>{text.base(item)}</span>
+                      <span className={styles.muted}>{text.baseName(item)}</span>
+                    </span>
+                  )}
+                </td>
+                <td className={styles.nowrap}>{text.proposed(item) ?? '—'}</td>
+                <td>
                   <span className={styles.cellStack}>
-                    <span className={styles.nowrap}>{text.base(item)}</span>
-                    <span className={styles.muted}>{text.baseName(item)}</span>
+                    <span>
+                      <Badge tone={STATUS_TONE[item.status]}>{text.status(item)}</Badge>
+                    </span>
+                    <span className={styles.muted}>{text.reason(item)}</span>
                   </span>
-                )}
-              </td>
-              <td className={styles.nowrap}>{text.proposed(item) ?? '—'}</td>
-              <td>
-                <span className={styles.cellStack}>
-                  <span>
-                    <Badge tone={STATUS_TONE[item.status]}>{text.status(item)}</Badge>
-                  </span>
-                  <span className={styles.muted}>{text.reason(item)}</span>
-                </span>
-              </td>
-            </tr>
+                </td>
+              </tr>
+              {text.stray(item) !== null && (
+                <tr>
+                  <td colSpan={6} className={styles.alert}>
+                    {text.stray(item)}
+                  </td>
+                </tr>
+              )}
+            </Fragment>
           ))}
         </tbody>
       </table>
@@ -434,6 +454,7 @@ function PlanCards({ plan, ...rest }: ListProps) {
               <Badge tone={STATUS_TONE[item.status]}>{text.status(item)}</Badge>
               <span className={styles.muted}>{text.reason(item)}</span>
             </p>
+            {text.stray(item) !== null && <p className={styles.alert}>{text.stray(item)}</p>}
           </li>
         );
       })}

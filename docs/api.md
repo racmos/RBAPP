@@ -1966,7 +1966,8 @@ set (the id without the `X`) exists and at least one Cardmarket expansion is map
 
 **Plated cards (CM-k, owner decision 2026-11-24, option A).** Set `PLAT` holds the metal copies
 of cards of other sets (Cardmarket expansion 6947 'Plated Legends - Metal Cards', one product per
-card; the product name does not say the origin set). A plated card is coded
+plated card: a legend has two, its normal and its Showcase printing (CM-k2); the product name
+does not say the origin set). A plated card is coded
 `PLAT-<origin set>-<number>` and, since a card id is letters and digits only
 (`^[A-Za-z0-9]{1,10}$`, unchanged), stored as set `PLAT` with the card id = origin set + number in
 lower case: `PLAT-SFD-189` → `PLAT/sfd189`. PLAT is usable like a promo set when it exists and an
@@ -2015,23 +2016,40 @@ differs (below). Every other set that does not end in `X` keeps its 400.
   `invalid_base` (the copy would not pass `AdminCardCreate`). `summary` counts the create items
   (`cards_to_create`) and the products of each status.
 
-  **The plan of PLAT** (CM-k) takes every unmatched single of PLAT's mapped expansions on the
-  latest load (no metacard needed) and looks for its **origin card**: the cards of the product's
-  normalised name (`normalize_name`, the card index with the legend composite names, so
-  `Kennen, Heart of the Tempest` finds OGN/200) among the **plain printings** (an all-digit card
-  id, not a rune: `189a`, `189s` and `r01` are never origins) of every set but PLAT and the promo
-  sets (`<base>X` whose base set exists). Exactly one origin → the plated card
-  `{PLAT, <origin set><origin id> lower-cased}` (`sfd189`), `create` / `clone` with `base` = the
-  origin card (a copy whose id would be over 10 characters, or that fails `AdminCardCreate`, is
-  `manual` / `invalid_base`). A PLAT card with that id, or else of the product's name (one made by
-  hand), is `exists` / `in_catalog`. No origin → `manual` / `no_base_card` (no card of this name in
-  any set); several → `manual` / **`ambiguous_base`** with `base` null and the origins in
-  `candidates`. One product per plated card: when several products reach the same card, the
-  cheapest gets it (its slot as the matcher gives it: N for a common origin, else null) and the
-  others are `manual` / `no_slot`. Every PLAT item carries **`candidates`**: `[{set_id, card_id,
-  name, rarity, type}]` sorted by set and id, filled for `ambiguous_base` only (`[]` otherwise);
-  items of the other promo sets have no `candidates` key. Still nine SQL statements whatever the
-  number of products.
+  **The plan of PLAT** (CM-k, CM-k2) takes every unmatched single of PLAT's mapped expansions on
+  the latest load (no metacard needed), groups them by normalised product name and looks for the
+  name's **origin cards**: the cards of that name (`normalize_name`, the card index with the
+  legend composite names, so `Kennen, Heart of the Tempest` finds OGN/200) among the **plain
+  printings** (an all-digit card id, not a rune: `189a`, `244s` and `r01` are never origins) of
+  every set but PLAT and the promo sets (`<base>X` whose base set exists). Each origin printing
+  is a plated card `{PLAT, <origin set><origin id> lower-cased}` (`sfd189`), `create` / `clone`
+  with `base` = that origin (a copy whose id would be over 10 characters, or that fails
+  `AdminCardCreate`, is `manual` / `invalid_base`); a PLAT card with that id is `exists` /
+  `in_catalog`.
+
+  **Pairing (CM-k2, owner decision A, 2026-11-24).** When the origins of a name are all in **one
+  set**, the name's products sorted by price ascending (an unpriced product counts as 0, so it
+  comes first; ties by product id) are paired one to one with its plated cards sorted by
+  `card_rank_key` of the plated card (rarity first: common/uncommon < rare < epic < showcase,
+  then set and id), each card offering its first free slot (N for a common origin, else null; a
+  card whose slots are all linked already is skipped): the cheapest product gets the lowest
+  rarity (SFD-189 Rare → `sfd189`), the dearer one the Showcase (SFD-244 → `sfd244`). Products
+  left over (more products than printings) are `manual` / `no_slot` with `base` = the origin of
+  the highest-ranked printing; printings left over get no item. Origins in **several sets** (a
+  reprint, e.g. an OGS card reprinted in OGN) → `manual` / **`ambiguous_base`** for every product
+  of the name, `base` null and the origins in `candidates`; no origin → `manual` /
+  `no_base_card` (no card of this name in any set). In both cases the one PLAT card of the name
+  whose id has the `<set><number>` form (`ogn058`, made by hand) settles it: the cheapest product
+  is `exists` / `in_catalog` on it, the others `no_slot`.
+
+  **Stray cards (CM-k2).** A PLAT card of the name whose id is not of the `<set><number>` form
+  (letters, digits, then an optional variant letter: `sfd189`, `ogn066a`; the old format
+  `PLAT/189`) never counts as the plated card and hides no
+  proposal: every PLAT item of that name lists its id in **`stray_cards`** (`["189"]`, sorted;
+  `[]` otherwise) so the admin deletes it (and its link) before creating the right card. Every
+  PLAT item carries `candidates` (`[{set_id, card_id, name, rarity, type}]` sorted by set and id,
+  filled for `ambiguous_base` only, `[]` otherwise) and `stray_cards`; items of the other promo
+  sets have neither key. Still nine SQL statements whatever the number of products.
 - `POST /admin/cardmarket/promo-cards` `{set_id, product_ids: [1..500 ids ≥ 1]}`
   (`api_admin.promo_cards_create`, `@validate_json(AdminPromoCardsBody)`, CSRF as every write) →
   `{created: [{set_id, card_id, name, base: {set_id, card_id}, product_ids}], skipped: [{set_id,
@@ -2052,13 +2070,16 @@ differs (below). Every other set that does not end in `X` keeps its 400.
   409 `already_exists` would answer a race). One transaction with **one** audit row per call:
   `cardmarket.promo_cards.create`, target `set` / the promo set id, details `{set_id, base,
   created, skipped, products, cards: [created card ids, at most 200]}` (`base` null for PLAT,
-  whose plated cards copy their origin cards the same way: `created[].base` is the origin). Thirteen SQL statements
+  whose plated cards copy their origin cards the same way: `created[].base` is the origin; with
+  CM-k2 the two products of a legend create two cards, `sfd189` and `sfd244`). Thirteen SQL statements
   (session user included) whatever the number of cards (one insert for all of them). Nothing is
   linked: Auto-match (or the next daily load) links them afterwards. The normal and foil products
   of a common or uncommon promo card stay `ambiguous` there (owner decision 2026-11-23: the
   daily rule never pairs a foil twin), so they are linked by hand. A created plated card makes
   its PLAT product a clear case (the matcher pairs a product with the cards of its expansion's set
-  first), while the products of the origin set keep the origin cards.
+  first), while the products of the origin set keep the origin cards; with both plated cards of a
+  legend created, its two PLAT products are clear cases paired by rank and price (cheaper →
+  `sfd189`, dearer → `sfd244`; an unpriced one stays `ambiguous` there, link it by hand).
 
 ### Audit log (CM-e)
 

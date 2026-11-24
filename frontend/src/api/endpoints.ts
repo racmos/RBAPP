@@ -652,8 +652,8 @@ export const listCardmarketExpansionProducts = (id: number, query: string, signa
 /**
  * Missing promo cards (CM-h). A promo set has the id of its base set followed by `X` and its
  * cards the ids of their base cards (OGN-035 -> OGNX-035). PLAT (CM-k), the plated cards, has
- * no base set (`base` null): each card copies the one card of its name in another set, its
- * origin (SFD-189 -> PLAT-sfd189).
+ * no base set (`base` null): each card copies a card of its name in another set, its origin
+ * (SFD-189 -> PLAT-sfd189); each printing of a legend in that set gets its own (CM-k2).
  */
 export type CardmarketPromoSet = {
   id: string;
@@ -700,6 +700,11 @@ export type CardmarketPromoItem = {
   base: CardmarketPromoCard | null;
   /** PLAT items only: the origin cards of an `ambiguous_base` product (else empty). */
   candidates?: CardmarketPromoCard[];
+  /**
+   * PLAT items only (CM-k2): the ids of the PLAT cards of this name with the old id format
+   * (`189` instead of `sfd189`); they settle nothing and the admin deletes them (else empty).
+   */
+  stray_cards?: string[];
   proposed: { set_id: string; card_id: string } | null;
   status: CardmarketPromoStatus;
   reason: CardmarketPromoReason;

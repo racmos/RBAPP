@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http } from 'msw';
+import { http, type JsonBodyType } from 'msw';
 import { axe } from 'vitest-axe';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API, failure } from '@/test/msw/handlers';
@@ -11,6 +11,7 @@ import {
   PROMO_ITEMS,
   callsTo,
   matchingApi,
+  platedPlan,
   promoItem,
   promoPlan,
 } from '@/test/fixtures/cardmarketMatching';
@@ -354,6 +355,40 @@ describe('Missing cards of PLAT, the plated cards (CM-k)', () => {
     ]);
   });
 
+  it('a PLAT card with the old id format is a warning under its row (CM-k2)', async () => {
+    matchingApi();
+    await openPlated();
+    const table = await screen.findByRole('table', { name: 'Missing promo cards' }, LONG);
+    const warning =
+      'PLAT-189 uses the old id format: delete it (and its link) in Admin > Cards and Linked, then create the card here.';
+    expect(within(table).getByText(warning)).toBeVisible();
+    expect(within(table).getAllByText(/uses the old id format/)).toHaveLength(1);
+    // the row keeps what the plan says
+    const ornn = within(rowOf(table, 'Ornn, Fire Below the Mountain')).getAllByRole('cell');
+    expect(ornn.at(-1)!.textContent).toBe('To createCopy of SFD-189.');
+    expect(box('Ornn, Fire Below the Mountain', 4001)).toBeChecked();
+  });
+
+  it('several stray PLAT cards are named in one warning', async () => {
+    matchingApi({
+      plated: platedPlan([
+        promoItem(4001, 'Ornn, Fire Below the Mountain', 8, {
+          expansion_id: 6947,
+          candidates: [],
+          stray_cards: ['189', '58'],
+          reason: 'ambiguous_base',
+        }),
+      ]) as JsonBodyType,
+    });
+    await openPlated();
+    const table = await screen.findByRole('table', { name: 'Missing promo cards' }, LONG);
+    expect(
+      within(table).getByText(
+        'PLAT-189, PLAT-58 use the old id format: delete them (and their links) in Admin > Cards and Linked, then create the card here.',
+      ),
+    ).toBeVisible();
+  });
+
   it('on a phone the ambiguous product names its origin candidates', async () => {
     matchingApi();
     const { container } = await openPlated(390);
@@ -366,6 +401,8 @@ describe('Missing cards of PLAT, the plated cards (CM-k)', () => {
       .getAllByRole('listitem')
       .find((item) => within(item).queryByText('Ornn, Fire Below the Mountain') !== null)!;
     expect(within(ornn).getByText('SFD-189 → PLAT-sfd189')).toBeVisible();
+    expect(within(ornn).getByText(/^PLAT-189 uses the old id format/)).toBeVisible();
+    expect(within(jinx).queryByText(/old id format/)).toBeNull();
     expect(await axe(container)).toHaveNoViolations();
   }, 20000);
 });

@@ -705,7 +705,7 @@
       }
     },
     "missing": {
-      "help": "Riot's gallery has no promo sets. A promo card has the id of its base card in the set whose id is the base set id followed by X: OGN-035 becomes OGNX-035. A plated card (set PLAT) copies the one card of its name in another set, its origin: SFD-189 becomes PLAT-SFD-189, number sfd189. Create the missing ones here, then run Auto-match.",
+      "help": "Riot's gallery has no promo sets. A promo card has the id of its base card in the set whose id is the base set id followed by X: OGN-035 becomes OGNX-035. A plated card (set PLAT) copies a card of its name in another set, its origin: SFD-189 becomes PLAT-SFD-189, number sfd189. Each printing of a legend gets its own plated card: the cheaper product the lower rarity, the dearer one the Showcase. Create the missing ones here, then run Auto-match.",
       "foilNote": "The normal and foil products of a common or uncommon card share one card; Auto-match leaves that pair for you to link by hand.",
       "set": "Promo set",
       "choose": "Choose a promo set",
@@ -753,6 +753,8 @@
         "no_base_card": "No card of this name in any set.",
         "invalid_base": "Its origin card cannot be copied: create the card by hand."
       },
+      "stray_one": "{{refs}} uses the old id format: delete it (and its link) in Admin > Cards and Linked, then create the card here.",
+      "stray_other": "{{refs}} use the old id format: delete them (and their links) in Admin > Cards and Linked, then create the card here.",
       "toCreate_one": "{{count}} card to create",
       "toCreate_other": "{{count}} cards to create",
       "existsCount_one": "{{count}} product already has its card.",
