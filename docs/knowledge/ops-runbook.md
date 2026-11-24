@@ -541,29 +541,39 @@ pull, a restart and a frontend build.
 ### Plated cards (CM-k)
 
 Owner decision 2026-11-24 (option A): set **PLAT** holds the metal copies of cards of other sets
-(Cardmarket expansion 6947 'Plated Legends - Metal Cards', one product per card, named like the
-card without its origin set). A plated card is coded `PLAT-<origin set>-<number>` and stored as
+(Cardmarket expansion 6947 'Plated Legends - Metal Cards', one product per plated card, named like
+the card without its origin set: a legend has two products, its normal and its Showcase
+printing). A plated card is coded `PLAT-<origin set>-<number>` and stored as
 set `PLAT`, number = origin set + number in lower case, without the dash: `PLAT-SFD-189` →
 `PLAT` / `sfd189`, `PLAT-OGN-066a` → `PLAT` / `ogn066a` (card ids are letters and digits only).
 
 1. **Check the mapping.** Matching → Expansions: expansion 6947 mapped to PLAT.
-2. **Preview.** Matching → **Missing cards**, choose "Plated Legends (PLAT)". Each unmatched PLAT
-   single gets its **origin card**: the one plain printing (all-digit number, no variant `a`/`s`,
-   no rune) of the same name in any set but PLAT and the promo sets. **To create** shows
-   `SFD-189 → PLAT-sfd189`; **In the catalog** = a PLAT card with that number or that name exists;
-   **By hand**: "No card of this name in any set.", "Several origin cards: OGN-058, SFD-020." (a
-   reprint: decide which one), "Its origin card cannot be copied" (the number would be over 10
-   characters), or "No card slot left" (a second product of the same card).
-3. **Create** the checked cards (confirm): copies of the origin cards without the image, one audit
+2. **Delete the cards with the old id first (CM-k2).** A PLAT card made by hand with the plain
+   number (`PLAT-189`, `PLAT-145`) is not a plated card: Missing cards shows a red line under its
+   rows, "PLAT-189 uses the old id format: delete it (and its link) in Admin > Cards and Linked,
+   then create the card here." Unlink its product in Matching → Linked, delete the card in Admin →
+   Cards (filter PLAT), then reload Missing cards.
+3. **Preview.** Matching → **Missing cards**, choose "Plated Legends (PLAT)". The products are
+   grouped by name and each name gets its **origin cards**: the plain printings (all-digit number,
+   no variant `a`/`s`, no rune) of that name in any set but PLAT and the promo sets. When they are
+   all in one set, **each printing is one plated card** and the products are paired by price and
+   rarity: the cheaper product gets the lower rarity (`SFD-189 → PLAT-sfd189`, Rare), the dearer
+   the Showcase (`SFD-244 → PLAT-sfd244`); an unpriced product counts as the cheapest. **In the
+   catalog** = a PLAT card with that number exists; **By hand**: "No card of this name in any
+   set.", "Several origin cards: OGN-058, SFD-020." (origins in several sets, a reprint: decide
+   which one), "Its origin card cannot be copied" (the number would be over 10 characters), or
+   "No card slot left" (more products than printings).
+4. **Create** the checked cards (confirm): copies of the origin cards without the image, one audit
    row `cardmarket.promo_cards.create` (set PLAT, `base` null).
-4. **By-hand rows.** Admin → Cards → New card (or Matching → To link → Create card): type
+5. **By-hand rows.** Admin → Cards → New card (or Matching → To link → Create card): type
    `PLAT-SFD-189` in Number (also `PLAT SFD 189`, `PLAT-sfd189`): the Set becomes PLAT and the
    Number `sfd189`, "Read PLAT-SFD-189 as set PLAT, number sfd189."; with PLAT already chosen type
    `sfd189`. An origin set that does not exist is not guessed (the number is refused). Once the
    PLAT card exists, its row in Missing cards reads In the catalog.
-5. **Link.** Matching → Auto-match → Preview, then Apply clear cases (or the next daily load): a
-   product with its PLAT card becomes a clear case to `PLAT/<number>`, and the products of the
-   origin set keep their own cards. Upload the images in Admin → Cards (filter PLAT).
+6. **Link.** Matching → Auto-match → Preview, then Apply clear cases (or the next daily load): a
+   product with its PLAT card becomes a clear case to `PLAT/<number>` (the two products of a legend
+   by price and rarity, as the plan paired them; an unpriced one is linked by hand), and the
+   products of the origin set keep their own cards. Upload the images in Admin → Cards (filter PLAT).
 
 Undo as for the promo cards (delete the card in Admin → Cards while nothing uses it).
 

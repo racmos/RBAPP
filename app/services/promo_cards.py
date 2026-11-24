@@ -11,12 +11,21 @@ Plated cards (CM-k, owner decision 2026-11-24): set `PLAT` (Cardmarket 'Plated L
 Cards') holds metal copies of cards of other sets, coded `PLAT-<origin set>-<number>` and stored
 as set PLAT with the card id `<origin set><number>` in lower case (SFD/189 -> PLAT/sfd189; card
 ids are letters and digits only). Its product names do not carry the origin set, so each
-unmatched PLAT single looks for its ORIGIN card by name (the matcher's name index, legends by
+unmatched PLAT single looks for its ORIGIN cards by name (the matcher's name index, legends by
 their tags too) among the plain printings (all-digit ids, no rune) of every set but PLAT and the
-promo sets: exactly one is the card to copy, none or several leave the product to the admin
-(`no_base_card`, `ambiguous_base` with the `candidates`). A PLAT card of the product's name (or
-of the proposed id) is in the catalog already. One product per plated card: the cheapest gets
-it, the others are `no_slot`. A PLAT plan has no base set (`base` null).
+promo sets. CM-k2 (owner decision A, 2026-11-24): Cardmarket has one PLAT product per printing
+of a legend (the normal one and the Showcase), so when the origins of a name are all in ONE set
+each origin printing is a plated card and the products of that name, by price ascending
+(unpriced as 0), are paired with them by the rank of the plated card (`matcher.card_rank_key`
+of `_clone_shape`, as CM-h): the cheapest product gets the lowest rarity (SFD-189 Rare ->
+`sfd189`, the dearer SFD-244 Showcase -> `sfd244`); one product per plated card, the products
+left over are `no_slot`, the printings left over stay unused. Origins in several sets (a
+reprint) leave the products to the admin (`ambiguous_base` with the `candidates`) unless one
+PLAT card of the name has an id of the `<set><number>` form; no origin is `no_base_card`. A PLAT
+card with the proposed id is in the catalog already. A PLAT card of the name with an id of
+another form (the old `PLAT/189`, made by hand) never counts: every PLAT item of that name
+lists it in `stray_cards` so the admin deletes it first. A PLAT plan has no base set (`base`
+null).
 
 For a promo set with a mapped Cardmarket expansion, `plan` lists the unmatched singles of the
 latest load of its expansions (not linked, not ignored) and pairs them with the base cards of
@@ -62,6 +71,9 @@ NO_BASE_CARD, NO_SLOT, NO_METACARD, INVALID_BASE, AMBIGUOUS_BASE = (
 # The set of the plated cards (CM-k, owner decision 2026-11-24).
 PLATED_SET = 'PLAT'
 _PLAIN_ID = re.compile(r'^\d+$')
+# The id of a plated card: the origin set and number, a variant letter allowed (`sfd189`,
+# `ogn066a`); `189` is the old format (CM-k2: a stray card).
+_PLATED_ID = re.compile(r'^[a-z]+\d+[a-z]*$', re.IGNORECASE)
 
 _MANUAL_TEXT = {
     NO_SLOT: 'no card slot left: link it by hand',
@@ -209,9 +221,11 @@ class _Plans:
         return _sorted_items(items)
 
     def _plated_items(self, plated: RbSet) -> list[dict]:
-        """The items of PLAT (CM-k): each unmatched single (a card group is not needed) finds
-        its plated card through its one origin card, or the PLAT card of its name; one product
-        per plated card, the cheapest, the others `no_slot`."""
+        """The items of PLAT (CM-k, CM-k2): the unmatched singles (a card group is not needed)
+        grouped by name, each name paired with its plated cards (`_plated_targets`): products
+        by price ascending (unpriced as 0), targets by the rank of the plated card, one product
+        per plated card (its first free slot); the products left over are `no_slot` (with the
+        origin of the last printing). Every item carries `candidates` and `stray_cards`."""
         p_id = plated.rbset_id
         promo_ids = {set_id for set_id in self.set_ids if base_of(set_id) in self.set_ids}
         origins = matcher._build_card_index([
@@ -221,44 +235,40 @@ class _Plans:
         in_plated = [card for card in self.cards if card.rbcar_rbset_id == p_id]
         by_name = matcher._build_card_index(in_plated)
         by_id = {card.rbcar_id.lower(): card for card in in_plated}
-        targets, manual = {}, []
+        groups = defaultdict(list)
         for product in self.products.get(p_id, []):
-            name = matcher.normalize_name(product.rbprd_name)
-            found = _unique(origins.get(name, [])) if name else []
-            base = found[0] if len(found) == 1 else None
-            key = f'{base.rbcar_rbset_id}{base.rbcar_id}'.lower() if base is not None else None
-            same_name = sorted(_unique(by_name.get(name, [])) if name else [],
-                               key=lambda card: card.rbcar_id)
-            if key is not None and key in by_id:
-                card = by_id[key]
-            elif same_name:
-                card = same_name[0]
-            elif base is not None:
-                card = None
-            else:
-                reason = AMBIGUOUS_BASE if found else NO_BASE_CARD
-                manual.append((product, reason, None,
-                               sorted(found, key=lambda c: (c.rbcar_rbset_id, c.rbcar_id))))
-                continue
-            key = card.rbcar_id.lower() if card is not None else key
-            entry = targets.setdefault(key, {'key': key, 'card': card, 'base': base,
-                                             'products': []})
-            entry['base'] = entry['base'] or base
-            entry['products'].append(product)
+            groups[matcher.normalize_name(product.rbprd_name)].append(product)
         items = []
-        for target in targets.values():
-            products = sorted(target['products'],
-                              key=lambda p: (self.price(p) or 0.0, p.rbprd_id_product))
-            shape = target['card'] or _clone_shape(target['base'], p_id, target['key'])
-            slots = matcher._expand_slots(shape, taken=self.taken)
-            if slots:
-                target['products'] = [(products[0], slots[0][1])]
-                items.append({**self._target_item(target, p_id), 'candidates': []})
-                products = products[1:]
-            manual.extend((product, NO_SLOT, target['base'], []) for product in products)
-        items.extend({**self._manual_item(product, reason, base),
-                      'candidates': [_card_brief(card) for card in candidates]}
-                     for product, reason, base, candidates in manual)
+        for name, products in groups.items():
+            products = sorted(products, key=lambda p: (self.price(p) or 0.0, p.rbprd_id_product))
+            found = sorted(_unique(origins.get(name, [])) if name else [],
+                           key=lambda c: (c.rbcar_rbset_id, c.rbcar_id))
+            same_name = _unique(by_name.get(name, [])) if name else []
+            stray = sorted(card.rbcar_id for card in same_name
+                           if not _PLATED_ID.match(card.rbcar_id or ''))
+            hint = {'stray_cards': stray}
+            targets = _plated_targets(found, same_name, by_id)
+            if targets is None:
+                reason = AMBIGUOUS_BASE if found else NO_BASE_CARD
+                items.extend({**self._manual_item(product, reason, None),
+                              'candidates': [_card_brief(card) for card in found], **hint}
+                             for product in products)
+                continue
+            ordered = sorted(targets, key=lambda target: matcher.card_rank_key(
+                target['card'] or _clone_shape(target['base'], p_id, target['key'])))
+            free = []
+            for target in ordered:
+                shape = target['card'] or _clone_shape(target['base'], p_id, target['key'])
+                slots = matcher._expand_slots(shape, taken=self.taken)
+                if slots:
+                    free.append((target, slots[0][1]))
+            for product, (target, foil) in zip(products, free):
+                items.append({**self._target_item({**target, 'products': [(product, foil)]},
+                                                  p_id), 'candidates': [], **hint})
+            last_base = next((target['base'] for target in reversed(ordered)
+                              if target['base'] is not None), None)
+            items.extend({**self._manual_item(product, NO_SLOT, last_base), 'candidates': [],
+                          **hint} for product in products[len(free):])
         return items
 
     def _pair(self, products, p_id, b_id, in_promo, targets, manual):
@@ -357,6 +367,31 @@ def _unique(cards) -> list:
     return result
 
 
+def _plated_key(origin: RbCard) -> str:
+    """The card id of the plated copy of `origin`: SFD/189 -> `sfd189`."""
+    return f'{origin.rbcar_rbset_id}{origin.rbcar_id}'.lower()
+
+
+def _plated_targets(found: list, same_name: list, by_id: dict) -> list[dict] | None:
+    """The plated cards of one name `[{key, card, base}]` (`card` = the PLAT card already in
+    the catalog, else None), or None when the name has none (`ambiguous_base` when it has
+    origin cards, else `no_base_card`).
+
+    Origins all in one set (CM-k2): one target per origin printing, `<origin set><number>`.
+    Origins in several sets (a reprint) or none: the one PLAT card of the name with an id of
+    the `<set><number>` form settles it; a PLAT card with an id of another form (the old
+    `PLAT/189`) never counts: it is a stray card the admin deletes."""
+    if found and len({card.rbcar_rbset_id for card in found}) == 1:
+        return [{'key': _plated_key(origin), 'card': by_id.get(_plated_key(origin)),
+                 'base': origin} for origin in found]
+    proper = [card for card in same_name if _PLATED_ID.match(card.rbcar_id or '')]
+    if len(proper) != 1:
+        return None
+    key = proper[0].rbcar_id.lower()
+    return [{'key': key, 'card': proper[0],
+             'base': next((one for one in found if _plated_key(one) == key), None)}]
+
+
 def _manual_text(item: dict, base: RbSet | None) -> str:
     """Why a product gets no card, for the 400 of `create`."""
     if base is None:
@@ -437,7 +472,8 @@ def _plan(set_id: str):
 
 def plan(set_id: str) -> dict:
     """The plan of one promo set or of PLAT: `{set, date, items, summary}` (a PLAT item also
-    has `candidates`: the origin cards of an `ambiguous_base` product); SetRefused for a set
+    has `candidates`: the origin cards of an `ambiguous_base` product, and `stray_cards`: the
+    ids of the PLAT cards of its name with the old id format); SetRefused for a set
     that is not a usable promo set. Eight statements whatever the number of products. Writes
     nothing."""
     promo, base, exps, date, items = _plan(set_id)
