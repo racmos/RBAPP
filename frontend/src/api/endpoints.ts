@@ -651,13 +651,15 @@ export const listCardmarketExpansionProducts = (id: number, query: string, signa
 
 /**
  * Missing promo cards (CM-h). A promo set has the id of its base set followed by `X` and its
- * cards the ids of their base cards (OGN-035 -> OGNX-035).
+ * cards the ids of their base cards (OGN-035 -> OGNX-035). PLAT (CM-k), the plated cards, has
+ * no base set (`base` null): each card copies the one card of its name in another set, its
+ * origin (SFD-189 -> PLAT-sfd189).
  */
 export type CardmarketPromoSet = {
   id: string;
   name: string;
-  base: string;
-  base_name: string;
+  base: string | null;
+  base_name: string | null;
   expansions: number[];
   /** Products whose promo card is not in the catalog yet. */
   products_missing: number;
@@ -666,8 +668,23 @@ export type CardmarketPromoSet = {
 export type CardmarketPromoSets = { date: string | null; sets: CardmarketPromoSet[] };
 /** `create`: the card is to create; `exists`: it is in the catalog; `manual`: link by hand. */
 export type CardmarketPromoStatus = 'create' | 'exists' | 'manual';
+/** `ambiguous_base` (PLAT only): several origin cards of the name, in `candidates`. */
 export type CardmarketPromoReason =
-  'clone' | 'in_catalog' | 'no_base_card' | 'no_slot' | 'no_metacard' | 'invalid_base';
+  | 'clone'
+  | 'in_catalog'
+  | 'no_base_card'
+  | 'no_slot'
+  | 'no_metacard'
+  | 'invalid_base'
+  | 'ambiguous_base';
+/** A card of the catalog in a promo plan: the base (or origin) card, or a candidate. */
+export type CardmarketPromoCard = {
+  set_id: string;
+  card_id: string;
+  name: string;
+  rarity: string | null;
+  type: string | null;
+};
 /**
  * One promo card (with every product it absorbs: a common's normal and foil products) or one
  * product left to link by hand; `product_id`, `product_name` and `price` are of the cheapest.
@@ -679,19 +696,22 @@ export type CardmarketPromoItem = {
   price: number | null;
   expansion_id: number | null;
   products: { id: number; name: string; price: number | null; foil: CardmarketFoil }[];
-  base: {
-    set_id: string;
-    card_id: string;
-    name: string;
-    rarity: string | null;
-    type: string | null;
-  } | null;
+  /** The base card (the origin card for PLAT) the card copies. */
+  base: CardmarketPromoCard | null;
+  /** PLAT items only: the origin cards of an `ambiguous_base` product (else empty). */
+  candidates?: CardmarketPromoCard[];
   proposed: { set_id: string; card_id: string } | null;
   status: CardmarketPromoStatus;
   reason: CardmarketPromoReason;
 };
 export type CardmarketPromoPlan = {
-  set: { id: string; name: string; base: string; base_name: string; expansions: number[] };
+  set: {
+    id: string;
+    name: string;
+    base: string | null;
+    base_name: string | null;
+    expansions: number[];
+  };
   date: string | null;
   items: CardmarketPromoItem[];
   summary: {

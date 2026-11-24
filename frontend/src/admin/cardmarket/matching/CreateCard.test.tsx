@@ -465,6 +465,65 @@ describe('Create card: a full card code in Number (CM-j)', () => {
     expect(within(dialog).queryByText(/^Read OGNX197/)).toBeNull();
   });
 
+  /** The form with SFD and PLAT among the sets (CM-k). */
+  async function openWithPlated() {
+    const calls = matchingApi();
+    const plated = (id: string, name: string) => ({ ...OGNX, id, name });
+    server.use(
+      http.get(`${API}/admin/sets`, () =>
+        ok([...ADMIN_SETS, plated('SFD', 'Spiritforged'), plated('PLAT', 'Plated Legends')]),
+      ),
+    );
+    const opened = await openCreate();
+    const set = within(opened.dialog).getByRole('combobox', { name: 'Set' });
+    await vi.waitFor(() =>
+      expect(within(set).getByRole('option', { name: 'PLAT · Plated Legends' })).toBeTruthy(),
+    );
+    return { ...opened, calls, set, number: field(opened.dialog, 'Number') };
+  }
+
+  it('plat sfd 189 is read as set PLAT, number sfd189 and created so (CM-k)', async () => {
+    const { dialog, user, calls, set, number } = await openWithPlated();
+    await user.type(number, 'plat sfd 189');
+    await user.tab();
+    expect(set).toHaveValue('PLAT');
+    expect(number).toHaveValue('sfd189');
+    expect(within(dialog).getByText('Read plat sfd 189 as set PLAT, number sfd189.')).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Create and link' }));
+    await vi.waitFor(() => expect(callsTo(calls, 'POST', CARDS_PATH)).toHaveLength(1));
+    expect(callsTo(calls, 'POST', CARDS_PATH)[0]!.body).toMatchObject({
+      set_id: 'PLAT',
+      card_id: 'sfd189',
+    });
+  });
+
+  it('with set PLAT chosen, sfd189 typed stays the number and is created so (CM-k)', async () => {
+    const { dialog, user, calls, set, number } = await openWithPlated();
+    await user.selectOptions(set, 'PLAT');
+    await user.type(number, 'sfd189');
+    await user.tab();
+    expect(set).toHaveValue('PLAT');
+    expect(number).toHaveValue('sfd189');
+    expect(within(dialog).queryByText(/^Read /)).toBeNull();
+    await user.click(within(dialog).getByRole('button', { name: 'Create and link' }));
+    await vi.waitFor(() => expect(callsTo(calls, 'POST', CARDS_PATH)).toHaveLength(1));
+    expect(callsTo(calls, 'POST', CARDS_PATH)[0]!.body).toMatchObject({
+      set_id: 'PLAT',
+      card_id: 'sfd189',
+    });
+  });
+
+  it('PLAT-ZZZ-189 (an origin set that is no set) is not guessed and nothing is sent (CM-k)', async () => {
+    const { dialog, user, calls, set, number } = await openWithPlated();
+    await user.type(number, 'PLAT-ZZZ-189');
+    await user.tab();
+    expect(set).toHaveValue('OGN');
+    expect(number).toHaveValue('PLAT-ZZZ-189');
+    expect(within(dialog).getByText(NUMBER_RULE)).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Create and link' }));
+    expect(callsTo(calls, 'POST', CARDS_PATH)).toHaveLength(0);
+  });
+
   it('a code whose prefix is no set is not guessed: the number is refused and nothing is sent', async () => {
     const { dialog, user, calls, set, number } = await openWithPromos();
     await user.type(number, 'ZZZ-197');

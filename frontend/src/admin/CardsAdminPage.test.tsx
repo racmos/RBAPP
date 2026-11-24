@@ -388,6 +388,33 @@ describe('CardsAdminPage new card: the number (CM-j)', () => {
     ]);
   });
 
+  it('a plated code PLAT-SFD-189 fills set PLAT and number sfd189, then saves (CM-k)', async () => {
+    const state = writableApi();
+    const base = SETS[0]!;
+    server.use(
+      http.get(`${API}/admin/sets`, () =>
+        ok([...SETS, { ...base, id: 'SFD' }, { ...base, id: 'PLAT' }]),
+      ),
+    );
+    await renderApp({ path: '/admin/cards', width: 1280 });
+    await userEvent.click(await screen.findByRole('button', { name: 'New card' }));
+    const editor = await screen.findByRole('dialog', { name: 'New card' });
+    const number = within(editor).getByLabelText('Number');
+    await userEvent.type(number, 'PLAT-SFD-189');
+    await userEvent.tab();
+    expect(within(editor).getByLabelText('Set')).toHaveValue('PLAT');
+    expect(number).toHaveValue('sfd189');
+    expect(within(editor).getByRole('status')).toHaveTextContent(
+      'Read PLAT-SFD-189 as set PLAT, number sfd189.',
+    );
+    await userEvent.type(within(editor).getByLabelText('Name'), 'Ornn');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('Card saved.')).length).toBeGreaterThan(0);
+    expect(state.posted).toEqual([
+      expect.objectContaining({ set_id: 'PLAT', card_id: 'sfd189', name: 'Ornn' }),
+    ]);
+  });
+
   it('a number with a set that does not exist is refused before saving', async () => {
     const { state, editor, number } = await openNew();
     await userEvent.type(within(editor).getByLabelText('Set'), 'OGN');

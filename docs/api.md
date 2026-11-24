@@ -1959,10 +1959,19 @@ reset OGNX, SFDX, UNLX, VENX, RADX, ... have no cards and their Cardmarket produ
 matched (`no_candidates`, or `conflict` once the matcher falls back from the promo set to its
 base set). **Owner rule:** a promo card has the same card id as its base card, in the set whose
 id is the base set id followed by `X` (OGN/035 Vayne, Hunter → OGNX/035). A set whose id does
-not end in `X` (PLAT, PROK, ...) or whose base set does not exist is refused until the owner
-gives its convention. A **usable promo set** exists, ends in `X`, its base set (the id without
-the `X`) exists and at least one Cardmarket expansion is mapped to it
+not end in `X` (PROK, ...) or whose base set does not exist is refused until the owner gives its
+convention, except **PLAT** (CM-k, below). A **usable promo set** exists, ends in `X`, its base
+set (the id without the `X`) exists and at least one Cardmarket expansion is mapped to it
 (`rbcm_expansions.rbexp_rbset_id`).
+
+**Plated cards (CM-k, owner decision 2026-11-24, option A).** Set `PLAT` holds the metal copies
+of cards of other sets (Cardmarket expansion 6947 'Plated Legends - Metal Cards', one product per
+card; the product name does not say the origin set). A plated card is coded
+`PLAT-<origin set>-<number>` and, since a card id is letters and digits only
+(`^[A-Za-z0-9]{1,10}$`, unchanged), stored as set `PLAT` with the card id = origin set + number in
+lower case: `PLAT-SFD-189` → `PLAT/sfd189`. PLAT is usable like a promo set when it exists and an
+expansion is mapped to it; it has no base set (`base` and `base_name` are `null`) and its plan
+differs (below). Every other set that does not end in `X` keeps its 400.
 
 - `GET /admin/cardmarket/promo-cards` (`api_admin.promo_cards_list`) → `{date | null, sets:
   [{id, name, base, base_name, expansions: [expansion ids], products_missing, cards_to_create}]}`:
@@ -1972,7 +1981,8 @@ the `X`) exists and at least one Cardmarket expansion is mapped to it
   sets and products.
 - `GET /admin/cardmarket/promo-cards?set=OGNX` (the id is upper-cased; any other parameter is a
   400) → `{set: {id, name, base, base_name, expansions}, date, items: [...], summary:
-  {cards_to_create, products_to_create, exists, manual, products}}`. A set that is not usable →
+  {cards_to_create, products_to_create, exists, manual, products}}` (`?set=PLAT`: the plated
+  cards, below). A set that is not usable →
   400 `validation_error` with the reason as `message` and `details[0].field = "set"`:
   `Set 'X' does not exist.`, `OGN is not a promo set: a promo set id is its base set id followed
   by X (OGN -> OGNX).`, `The base set SFD of SFDX does not exist.`, `No Cardmarket expansion is
@@ -2004,6 +2014,24 @@ the `X`) exists and at least one Cardmarket expansion is mapped to it
   base set), `no_metacard` (Cardmarket gives no metacard: the matcher skips it) or
   `invalid_base` (the copy would not pass `AdminCardCreate`). `summary` counts the create items
   (`cards_to_create`) and the products of each status.
+
+  **The plan of PLAT** (CM-k) takes every unmatched single of PLAT's mapped expansions on the
+  latest load (no metacard needed) and looks for its **origin card**: the cards of the product's
+  normalised name (`normalize_name`, the card index with the legend composite names, so
+  `Kennen, Heart of the Tempest` finds OGN/200) among the **plain printings** (an all-digit card
+  id, not a rune: `189a`, `189s` and `r01` are never origins) of every set but PLAT and the promo
+  sets (`<base>X` whose base set exists). Exactly one origin → the plated card
+  `{PLAT, <origin set><origin id> lower-cased}` (`sfd189`), `create` / `clone` with `base` = the
+  origin card (a copy whose id would be over 10 characters, or that fails `AdminCardCreate`, is
+  `manual` / `invalid_base`). A PLAT card with that id, or else of the product's name (one made by
+  hand), is `exists` / `in_catalog`. No origin → `manual` / `no_base_card` (no card of this name in
+  any set); several → `manual` / **`ambiguous_base`** with `base` null and the origins in
+  `candidates`. One product per plated card: when several products reach the same card, the
+  cheapest gets it (its slot as the matcher gives it: N for a common origin, else null) and the
+  others are `manual` / `no_slot`. Every PLAT item carries **`candidates`**: `[{set_id, card_id,
+  name, rarity, type}]` sorted by set and id, filled for `ambiguous_base` only (`[]` otherwise);
+  items of the other promo sets have no `candidates` key. Still nine SQL statements whatever the
+  number of products.
 - `POST /admin/cardmarket/promo-cards` `{set_id, product_ids: [1..500 ids ≥ 1]}`
   (`api_admin.promo_cards_create`, `@validate_json(AdminPromoCardsBody)`, CSRF as every write) →
   `{created: [{set_id, card_id, name, base: {set_id, card_id}, product_ids}], skipped: [{set_id,
@@ -2013,7 +2041,9 @@ the `X`) exists and at least one Cardmarket expansion is mapped to it
   it (`unknown`) or whose item is `manual` refuses the whole call with 400 `validation_error`,
   `details[0] = {field: "product_ids", params: {unknown, manual}}` and a message such as
   `These products get no promo card: 1004 (no card slot left: link it by hand).` or `These
-  products are not unmatched products of OGNX: 2001, 9999.`; nothing is written. A set that is
+  products are not unmatched products of OGNX: 2001, 9999.`; for PLAT `These products get no
+  plated card: 4008 (no card of this name in any set).`, `… 4009 (several cards of this name:
+  OGN-058, SFD-020).` or `… (its origin card cannot be copied).`; nothing is written. A set that is
   not usable → the 400 of `GET` on `set_id`. The cards are **copies of their base cards**: name,
   domain, type, tags, energy, power, might, ability, rarity and artist; never the image nor the
   image URL (the owner uploads the promo images later); card id = the base card id lower-cased.
@@ -2021,11 +2051,14 @@ the `X`) exists and at least one Cardmarket expansion is mapped to it
   `AdminCardCreate` validation, the set must exist, a card that exists or comes twice is refused:
   409 `already_exists` would answer a race). One transaction with **one** audit row per call:
   `cardmarket.promo_cards.create`, target `set` / the promo set id, details `{set_id, base,
-  created, skipped, products, cards: [created card ids, at most 200]}`. Thirteen SQL statements
+  created, skipped, products, cards: [created card ids, at most 200]}` (`base` null for PLAT,
+  whose plated cards copy their origin cards the same way: `created[].base` is the origin). Thirteen SQL statements
   (session user included) whatever the number of cards (one insert for all of them). Nothing is
   linked: Auto-match (or the next daily load) links them afterwards. The normal and foil products
   of a common or uncommon promo card stay `ambiguous` there (owner decision 2026-11-23: the
-  daily rule never pairs a foil twin), so they are linked by hand.
+  daily rule never pairs a foil twin), so they are linked by hand. A created plated card makes
+  its PLAT product a clear case (the matcher pairs a product with the cards of its expansion's set
+  first), while the products of the origin set keep the origin cards.
 
 ### Audit log (CM-e)
 

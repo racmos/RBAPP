@@ -705,7 +705,7 @@
       }
     },
     "missing": {
-      "help": "Riot's gallery has no promo sets. A promo card has the id of its base card in the set whose id is the base set id followed by X: OGN-035 becomes OGNX-035. Create the missing ones here, then run Auto-match.",
+      "help": "Riot's gallery has no promo sets. A promo card has the id of its base card in the set whose id is the base set id followed by X: OGN-035 becomes OGNX-035. A plated card (set PLAT) copies the one card of its name in another set, its origin: SFD-189 becomes PLAT-SFD-189, number sfd189. Create the missing ones here, then run Auto-match.",
       "foilNote": "The normal and foil products of a common or uncommon card share one card; Auto-match leaves that pair for you to link by hand.",
       "set": "Promo set",
       "choose": "Choose a promo set",
@@ -714,7 +714,7 @@
       "setOptionNone": "{{name}} ({{id}}), nothing to create",
       "chooseHint": "Choose a promo set to see its missing cards.",
       "emptySetsTitle": "No promo set to fill",
-      "emptySetsBody": "Map the Cardmarket expansion of a promo set (its id is the base set id followed by X, such as OGNX) in the Expansions tab.",
+      "emptySetsBody": "Map the Cardmarket expansion of a promo set (its id is the base set id followed by X, such as OGNX) or of the plated cards (PLAT) in the Expansions tab.",
       "emptyTitle": "Nothing is missing in {{set}}",
       "emptyBody": "Every unmatched product of its expansions already has its card, or none is unmatched.",
       "offline": "You are offline: the missing cards show when you are back online.",
@@ -726,6 +726,8 @@
         "price": "Price",
         "base": "Base card",
         "proposed": "Promo card",
+        "origin": "Origin card",
+        "plated": "Plated card",
         "status": "Status"
       },
       "selectFor": "Create the promo card of {{name}} (#{{id}})",
@@ -744,7 +746,12 @@
         "no_base_card": "No card of this name in {{base}}.",
         "no_slot": "No card slot left: link it by hand.",
         "no_metacard": "Cardmarket gives it no card group: link it by hand.",
-        "invalid_base": "Its base card cannot be copied: create the card by hand."
+        "invalid_base": "Its base card cannot be copied: create the card by hand.",
+        "ambiguous_base": "Several origin cards: {{refs}}."
+      },
+      "platedReasons": {
+        "no_base_card": "No card of this name in any set.",
+        "invalid_base": "Its origin card cannot be copied: create the card by hand."
       },
       "toCreate_one": "{{count}} card to create",
       "toCreate_other": "{{count}} cards to create",
@@ -757,6 +764,7 @@
       "confirmTitle_one": "Create {{count}} promo card in {{set}}?",
       "confirmTitle_other": "Create {{count}} promo cards in {{set}}?",
       "confirmBody": "Each card copies its base card, without the image. Nothing is linked yet: run Auto-match afterwards.",
+      "confirmBodyPlated": "Each card copies its origin card, without the image. Nothing is linked yet: run Auto-match afterwards.",
       "done_one": "{{count}} card created. Run Auto-match to link its products.",
       "done_other": "{{count}} cards created. Run Auto-match to link their products.",
       "noneCreated": "Nothing created: those cards are already in the catalog."

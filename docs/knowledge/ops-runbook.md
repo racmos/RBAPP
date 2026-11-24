@@ -509,9 +509,9 @@ Riot's gallery does not publish the promo sets, so after the production reset OG
 VENX, RADX, ... have no cards and their Cardmarket products stay unmatched (`no_candidates` for
 runes, `conflict` when the matcher falls back to the base set's card). Owner rule (2026-11-23): a
 promo card has the same card id as its base card, in the set whose id is the base set id followed
-by `X` (OGN/035 → OGNX/035). PLAT, PROK and any other id that does not end in `X`, or whose base
-set does not exist, are refused until the owner gives their convention. No migration, no job, no
-CLI: it is an admin screen.
+by `X` (OGN/035 → OGNX/035). PROK and any other id that does not end in `X`, or whose base set
+does not exist, are refused until the owner gives their convention; PLAT has its own rule (CM-k,
+"Plated cards" below). No migration, no job, no CLI: it is an admin screen.
 
 1. **Map the expansions.** Admin → Cardmarket → Matching → Expansions: map each promo
    expansion to its promo set (create the set with "Create a new set…" when it does not exist:
@@ -537,6 +537,35 @@ CLI: it is an admin screen.
 Undo: a wrong promo card is deleted in Admin → Cards (only while no collection line or deck uses
 it; unlink its Cardmarket products first). Nothing to roll back on the server side: the deploy is a
 pull, a restart and a frontend build.
+
+### Plated cards (CM-k)
+
+Owner decision 2026-11-24 (option A): set **PLAT** holds the metal copies of cards of other sets
+(Cardmarket expansion 6947 'Plated Legends - Metal Cards', one product per card, named like the
+card without its origin set). A plated card is coded `PLAT-<origin set>-<number>` and stored as
+set `PLAT`, number = origin set + number in lower case, without the dash: `PLAT-SFD-189` →
+`PLAT` / `sfd189`, `PLAT-OGN-066a` → `PLAT` / `ogn066a` (card ids are letters and digits only).
+
+1. **Check the mapping.** Matching → Expansions: expansion 6947 mapped to PLAT.
+2. **Preview.** Matching → **Missing cards**, choose "Plated Legends (PLAT)". Each unmatched PLAT
+   single gets its **origin card**: the one plain printing (all-digit number, no variant `a`/`s`,
+   no rune) of the same name in any set but PLAT and the promo sets. **To create** shows
+   `SFD-189 → PLAT-sfd189`; **In the catalog** = a PLAT card with that number or that name exists;
+   **By hand**: "No card of this name in any set.", "Several origin cards: OGN-058, SFD-020." (a
+   reprint: decide which one), "Its origin card cannot be copied" (the number would be over 10
+   characters), or "No card slot left" (a second product of the same card).
+3. **Create** the checked cards (confirm): copies of the origin cards without the image, one audit
+   row `cardmarket.promo_cards.create` (set PLAT, `base` null).
+4. **By-hand rows.** Admin → Cards → New card (or Matching → To link → Create card): type
+   `PLAT-SFD-189` in Number (also `PLAT SFD 189`, `PLAT-sfd189`): the Set becomes PLAT and the
+   Number `sfd189`, "Read PLAT-SFD-189 as set PLAT, number sfd189."; with PLAT already chosen type
+   `sfd189`. An origin set that does not exist is not guessed (the number is refused). Once the
+   PLAT card exists, its row in Missing cards reads In the catalog.
+5. **Link.** Matching → Auto-match → Preview, then Apply clear cases (or the next daily load): a
+   product with its PLAT card becomes a clear case to `PLAT/<number>`, and the products of the
+   origin set keep their own cards. Upload the images in Admin → Cards (filter PLAT).
+
+Undo as for the promo cards (delete the card in Admin → Cards while nothing uses it).
 
 ## Missing runes and promo cards by copying a sibling (CM-i)
 
