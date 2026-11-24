@@ -124,6 +124,10 @@
       "tags": "Separated by commas."
     },
     "keyLocked": "The set and number cannot change.",
+    "number": {
+      "invalid": "Use only letters and digits (for example 197 or 197a). Choose the set in the Set field.",
+      "read": "Read {{code}} as set {{set}}, number {{number}}."
+    },
     "saved": "Card saved.",
     "deleted": "Card deleted.",
     "deleteFailed": "Could not delete {{name}}: {{reason}}",

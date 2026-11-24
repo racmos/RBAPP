@@ -10,7 +10,6 @@ import {
   type CardmarketExpansion,
   type CardmarketFoil,
 } from '@/api/endpoints';
-import { fieldErrorsFromDetails } from '@/auth/formHelpers';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Field } from '@/components/ui/Field';
@@ -19,10 +18,11 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { translateError } from '@/i18n';
 import { sortSetsNewestFirst } from '@/lib/sets';
 import {
-  CARD_FIELDS,
   CardFields,
+  cardFieldErrors,
   cardInput,
   toForm,
+  useCardNumber,
   type CardField,
   type CardForm,
 } from '@/admin/CardEditor';
@@ -129,6 +129,13 @@ function CreateCardBody({
     queryFn: ({ signal }) => listAdminSets(signal),
   });
   const setOptions = sortSetsNewestFirst(sets.data ?? [], (set) => set.release_date);
+  const patchForm = (patch: Partial<CardForm>) =>
+    setForm((current) => ({ ...current, ...patch }) as CardForm);
+  // a full code typed in Number reads its set from the sets of the select (CM-j)
+  const number = useCardNumber(form, patchForm, [
+    ...(mappedSet ? [mappedSet] : []),
+    ...setOptions.map((set) => set.id),
+  ]);
 
   const link = useMutation({
     mutationFn: ({ card, foil }: { card: AdminCard; foil: CardmarketFoil }) =>
@@ -162,7 +169,7 @@ function CreateCardBody({
         setFormError(null);
         setExisting(ref);
       } else if (error instanceof ApiError && error.kind === 'http' && error.status === 400) {
-        const mapped = fieldErrorsFromDetails(error.details, i18n, CARD_FIELDS);
+        const mapped = cardFieldErrors(error.details, i18n, t('cards.number.invalid'));
         setFieldErrors(mapped);
         setFormError(Object.keys(mapped).length === 0 ? translateError(error, i18n) : null);
       } else {
@@ -222,7 +229,9 @@ function CreateCardBody({
         className={styles.dialog}
         onSubmit={(event) => {
           event.preventDefault();
-          if (!locked) create.mutate(form);
+          if (locked) return;
+          const checked = number.check(form);
+          if (checked) create.mutate(checked);
         }}
       >
         <ProductFacts
@@ -243,11 +252,12 @@ function CreateCardBody({
         />
         <CardFields
           form={form}
-          onChange={(patch) => setForm((current) => ({ ...current, ...patch }) as CardForm)}
+          onChange={patchForm}
           errors={fieldErrors}
           disabled={locked}
           creating
           hints={hints}
+          number={number.input}
           setControl={(control) => (
             <Select
               {...control}
