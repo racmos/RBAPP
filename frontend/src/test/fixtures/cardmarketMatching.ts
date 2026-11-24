@@ -194,6 +194,20 @@ export const REVIEW_ITEM = {
   ],
 };
 
+/** CM-m S1: an ambiguous legend whose group has more products than cards of its set. */
+export const PRINTINGS_REVIEW_ITEM = {
+  product_id: 917370,
+  name: 'Ziggs, Hexplosives Expert',
+  expansion_id: 6659,
+  reason: 'ambiguous',
+  reason_detail: 'more_printings_than_cards',
+  detail: { products: 3, cards: 2, set_id: 'RAD' },
+  candidates: [
+    { set: 'RAD', id: '141', name: 'Hexplosives Expert' },
+    { set: 'RAD', id: '169', name: 'Hexplosives Expert' },
+  ],
+};
+
 export const PREVIEW = {
   date: '2026-11-06',
   proposed: 5,
@@ -614,6 +628,118 @@ export const platedPlan = (items = PLATED_ITEMS) => ({
   set: { id: 'PLAT', name: 'Plated Legends', base: null, base_name: null, expansions: [6947] },
 });
 
+/** Missing printings (CM-m): card groups with more Cardmarket products than catalog cards. */
+const ZIGGS = 'Ziggs, Hexplosives Expert';
+
+const printingCard = (setId: string, cardId: string, name: string, rarity: string | null) => ({
+  set_id: setId,
+  card_id: cardId,
+  name,
+  rarity,
+});
+
+export const printingGroup = (
+  metacard: number,
+  name: string,
+  extra: Record<string, unknown> = {},
+) => ({
+  metacard,
+  name,
+  products: [] as {
+    id: number;
+    name: string;
+    price: number | null;
+    linked: { set_id: string; card_id: string; foil: 'N' | 'S' | null } | null;
+  }[],
+  cards: [] as ReturnType<typeof printingCard>[],
+  base: null as ReturnType<typeof printingCard> | null,
+  proposed: null as { set_id: string; card_id: string; rarity: string | null } | null,
+  status: 'manual',
+  reason: 'several_extra_products',
+  ...extra,
+});
+
+export const ZIGGS_GROUP = printingGroup(100, ZIGGS, {
+  products: [
+    { id: 917343, name: ZIGGS, price: 0.02, linked: { set_id: 'RAD', card_id: '141', foil: null } },
+    { id: 917370, name: ZIGGS, price: 45, linked: null },
+    { id: 917487, name: ZIGGS, price: null, linked: null },
+  ],
+  cards: [
+    printingCard('RAD', '141', 'Hexplosives Expert', 'Rare'),
+    printingCard('RAD', '169', 'Hexplosives Expert', 'Showcase'),
+  ],
+  base: printingCard('RAD', '169', 'Hexplosives Expert', 'Showcase'),
+  proposed: { set_id: 'RAD', card_id: '169s', rarity: 'Showcase' },
+  status: 'create',
+  reason: 'clone',
+});
+
+export const VEX_GROUP = printingGroup(110, 'Vex, Cheerless', {
+  products: [
+    { id: 917400, name: 'Vex, Cheerless', price: 0.05, linked: null },
+    { id: 917401, name: 'Vex, Cheerless', price: 30, linked: null },
+    { id: 917402, name: 'Vex, Cheerless', price: 300, linked: null },
+  ],
+  cards: [
+    printingCard('RAD', '150', 'Cheerless', 'Rare'),
+    printingCard('RAD', '172', 'Cheerless', 'Showcase'),
+  ],
+  base: printingCard('RAD', '172', 'Cheerless', 'Showcase'),
+  proposed: { set_id: 'RAD', card_id: '172s', rarity: 'Showcase' },
+  status: 'create',
+  reason: 'clone',
+});
+
+export const TWIN_GROUP = printingGroup(101, 'Bright Twin', {
+  products: [1, 2, 3, 4].map((n) => ({
+    id: 5000 + n,
+    name: 'Bright Twin',
+    price: n,
+    linked: null,
+  })),
+  cards: [
+    printingCard('RAD', '151', 'Bright Twin', 'Rare'),
+    printingCard('RAD', '174', 'Bright Twin', 'Showcase'),
+  ],
+  base: printingCard('RAD', '174', 'Bright Twin', 'Showcase'),
+});
+
+export const AHRI_GROUP = printingGroup(200, 'Ahri, Alluring', {
+  products: [1, 2, 3].map((n) => ({
+    id: 6000 + n,
+    name: 'Ahri, Alluring',
+    price: n,
+    linked: null,
+  })),
+  cards: [
+    printingCard('OGN', '066', 'Ahri, Alluring', 'Rare'),
+    printingCard('OGN', '066a', 'Ahri, Alluring', 'Rare'),
+  ],
+  base: printingCard('OGN', '066', 'Ahri, Alluring', 'Rare'),
+  reason: 'letter_variant',
+});
+
+export const missingPrintings = (
+  sets: { set_id: string; set_name: string; groups: ReturnType<typeof printingGroup>[] }[] = [
+    { set_id: 'OGN', set_name: 'Origins', groups: [AHRI_GROUP] },
+    { set_id: 'RAD', set_name: 'Radiance', groups: [TWIN_GROUP, VEX_GROUP, ZIGGS_GROUP] },
+  ],
+) => {
+  const groups = sets.flatMap((one) => one.groups);
+  const count = (status: string) => groups.filter((one) => one.status === status).length;
+  return {
+    date: '2026-11-06',
+    sets,
+    summary: {
+      groups: groups.length,
+      cards_to_create: count('create'),
+      exists: count('exists'),
+      manual: count('manual'),
+    },
+  };
+};
+
 /** The `AdminCard` the API answers a create with: the card id lower-cased, as the server does. */
 export const adminCard = (body: Record<string, unknown>) => {
   const setId = String(body.set_id);
@@ -718,6 +844,7 @@ export function matchingApi({
   promo = promoPlan() as JsonBodyType,
   plated = platedPlan() as JsonBodyType,
   catalog = CATALOG_CARDS as AdminCard[],
+  printings = missingPrintings() as ReturnType<typeof missingPrintings>,
 } = {}) {
   const calls: Call[] = [];
   const record = async (request: Request) => {
@@ -921,6 +1048,41 @@ export function matchingApi({
           skipped: [],
         },
         chosen.length > 0 ? 201 : 200,
+      );
+    }),
+    http.get(`${BASE}/missing-printings`, async ({ request }) => {
+      await record(request);
+      return ok(printings);
+    }),
+    http.post(`${BASE}/missing-printings`, async ({ request }) => {
+      await record(request);
+      const body = (await request.json()) as { items: { set_id: string; card_id: string }[] };
+      const groups = printings.sets.flatMap((one) =>
+        one.groups.map((group) => ({ set_id: one.set_id, group })),
+      );
+      const chosen = groups.filter(({ group }) =>
+        body.items.some((item) => item.card_id === group.proposed?.card_id),
+      );
+      const created = chosen.filter(({ group }) => group.status === 'create');
+      return ok(
+        {
+          created: created.map(({ set_id, group }) => ({
+            set_id,
+            card_id: group.proposed!.card_id,
+            name: group.base!.name,
+            rarity: 'Showcase',
+            copy_of: { set_id, card_id: group.base!.card_id },
+            product_ids: group.products.filter((one) => one.linked === null).map((one) => one.id),
+          })),
+          skipped: chosen
+            .filter(({ group }) => group.status === 'exists')
+            .map(({ set_id, group }) => ({
+              set_id,
+              card_id: group.proposed!.card_id,
+              reason: 'in_catalog',
+            })),
+        },
+        created.length > 0 ? 201 : 200,
       );
     }),
     http.delete(`${BASE}/expansions/:id/mapping`, async ({ request, params }) => {

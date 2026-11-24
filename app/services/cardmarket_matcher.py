@@ -32,7 +32,8 @@ El algoritmo:
   4. Para cada grupo, normalizar el nombre y buscar candidatos en rbcards.
   5. Expandir cada candidato common/uncommon de set NO promo en dos "slots"
      (foil='N' y foil='S').
-  6. Ordenar productos por precio asc y slots por rank_key asc, emparejar 1:1.
+  6. Ordenar productos por precio asc (sin precio al final: CM-m S5, `price_order`) y
+     slots por rank_key asc, emparejar 1:1.
   7. Productos sobrantes quedan unmatched (revisión manual desde la UI).
 
 El método `auto_match(dry_run=...)` devuelve un dict con stats y muestras.
@@ -146,6 +147,14 @@ def _get_latest_prices(ids=None) -> dict[int, float]:
         )
         prices[p.rbprc_id_product] = float(v) if v is not None else 0.0
     return prices
+
+
+def price_order(price) -> tuple:
+    """Sort key of a product's price inside one card group (CM-m S5, owner decision
+    2026-11-24): priced products by price ascending, then the unpriced ones (no price in the
+    latest load, or every price empty: `_get_latest_prices` gives None or 0). An unpriced
+    product is the HIGHEST rarity, so it takes the highest-rank printing."""
+    return (0, float(price)) if price else (1, 0.0)
 
 
 def _is_rune(card: RbCard) -> bool:
@@ -401,10 +410,11 @@ def auto_match(dry_run: bool = False, max_groups: Optional[int] = None) -> dict:
             for c in partition_candidates:
                 slots.extend(_expand_slots(c, taken=taken))
 
-            # Productos ordenados por precio asc dentro de su partición
+            # Productos ordenados por precio asc dentro de su partición; sin precio al final
+            # (CM-m S5: un producto sin precio es la rareza más alta)
             prods_sorted = sorted(
                 partition_prods,
-                key=lambda p: (prices.get(p.rbprd_id_product, 0.0), p.rbprd_id_product),
+                key=lambda p: (price_order(prices.get(p.rbprd_id_product)), p.rbprd_id_product),
             )
 
             # Emparejamiento 1:1

@@ -427,6 +427,12 @@ export type CardmarketReviewItem = {
   expansion_id: number | null;
   reason: string;
   candidates: { set: string; id: string; name: string }[];
+  /**
+   * CM-m S1: why an `ambiguous` item is ambiguous, when known: its card group has more
+   * products on Cardmarket than cards of its set (`products` counts the linked ones too).
+   */
+  reason_detail?: 'more_printings_than_cards';
+  detail?: { products: number; cards: number; set_id: string };
 };
 export type CardmarketPreview = {
   date: string | null;
@@ -752,6 +758,72 @@ export const createCardmarketPromoCards = (setId: string, productIds: number[]) 
   request<CardmarketPromoCreated>('/admin/cardmarket/promo-cards', {
     method: 'POST',
     body: { set_id: setId, product_ids: productIds },
+  });
+
+/**
+ * Missing printings (CM-m): card groups with more Cardmarket products than catalog cards of
+ * their set. The extra printing is the signed card (owner answer 2026-11-24): a copy of the
+ * highest-rank printing (`base`) with the id `<id>s` and the rarity Showcase.
+ */
+export type CardmarketPrintingStatus = 'create' | 'exists' | 'manual';
+export type CardmarketPrintingReason =
+  | 'clone'
+  | 'in_catalog'
+  | 'no_plain_printing'
+  | 'foil_pair'
+  | 'letter_variant'
+  | 'several_extra_products'
+  | 'id_taken'
+  | 'invalid_base';
+export type CardmarketPrintingCard = {
+  set_id: string;
+  card_id: string;
+  name: string;
+  rarity: string | null;
+};
+export type CardmarketPrintingGroup = {
+  metacard: number;
+  name: string;
+  /** By price, the unpriced ones last; `linked` = the card a product is linked to. */
+  products: {
+    id: number;
+    name: string;
+    price: number | null;
+    linked: { set_id: string; card_id: string; foil: CardmarketFoil } | null;
+  }[];
+  /** The cards of the set with that name, by rank. */
+  cards: CardmarketPrintingCard[];
+  /** The printing the new card copies (the highest-rank plain one), or null. */
+  base: CardmarketPrintingCard | null;
+  proposed: { set_id: string; card_id: string; rarity: string | null } | null;
+  status: CardmarketPrintingStatus;
+  reason: CardmarketPrintingReason;
+};
+export type CardmarketMissingPrintings = {
+  date: string | null;
+  sets: { set_id: string; set_name: string; groups: CardmarketPrintingGroup[] }[];
+  summary: { groups: number; cards_to_create: number; exists: number; manual: number };
+};
+export type CardmarketPrintingsCreated = {
+  created: {
+    set_id: string;
+    card_id: string;
+    name: string;
+    rarity: string | null;
+    copy_of: { set_id: string; card_id: string };
+    product_ids: number[];
+  }[];
+  skipped: { set_id: string; card_id: string; reason: string }[];
+};
+
+export const listCardmarketMissingPrintings = (signal?: AbortSignal) =>
+  request<CardmarketMissingPrintings>('/admin/cardmarket/missing-printings', { signal });
+
+/** Create the proposed cards `items` in one transaction; Auto-match links them later. */
+export const createCardmarketMissingPrintings = (items: { set_id: string; card_id: string }[]) =>
+  request<CardmarketPrintingsCreated>('/admin/cardmarket/missing-printings', {
+    method: 'POST',
+    body: { items },
   });
 
 /** `GET /admin/overview` (F13-a, extended in F13-e with the `riot` block). */

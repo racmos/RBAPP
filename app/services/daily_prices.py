@@ -22,6 +22,9 @@ FILE_TYPES = ('price_guide', 'singles', 'nonsingles')
 REVIEW_LIMIT = 200
 # The matcher's confidence for the pairs it proposes.
 MATCHER_CONFIDENCE = 0.7
+# Why an `ambiguous` review item is ambiguous, when it is known (CM-m S1): its card group has
+# more products on Cardmarket than free cards of its own set (a printing is missing).
+MORE_PRINTINGS = 'more_printings_than_cards'
 
 
 class ValidationFailed(Exception):
@@ -108,8 +111,8 @@ class _Candidates:
         return list(matcher._get_partition_candidates(found, partition, self.exp_to_set))
 
 
-def _review_item(product, reason: str, candidates) -> dict:
-    return {
+def _review_item(product, reason: str, candidates, detail=None) -> dict:
+    item = {
         'product_id': product.rbprd_id_product,
         'name': product.rbprd_name,
         'expansion_id': product.rbprd_id_expansion,
@@ -118,6 +121,24 @@ def _review_item(product, reason: str, candidates) -> dict:
                        for c in sorted(candidates,
                                        key=lambda c: (c.rbcar_rbset_id, c.rbcar_id))],
     }
+    if detail is not None:
+        item['reason_detail'] = MORE_PRINTINGS
+        item['detail'] = detail
+    return item
+
+
+def _printings_detail(set_id, cards, rivals, in_set, taken) -> dict | None:
+    """CM-m S1: `{products, cards, set_id}` when the product's card group has more unmapped
+    products in its set (`rivals`) than free slots on the cards of that set: a printing is
+    missing from the catalog. `products` counts every product of the group in the set (linked
+    ones too), `cards` the cards of the set. None otherwise (no card of the set, or room)."""
+    own = [card for card in cards if card.rbcar_rbset_id == set_id]
+    if not own:
+        return None
+    free = sum(len(matcher._expand_slots(card, taken=taken)) for card in own)
+    if len(rivals) <= free:
+        return None
+    return {'products': in_set, 'cards': len(own), 'set_id': set_id}
 
 
 def _owns_the_slot(product, slot, users, candidates) -> bool:
@@ -133,24 +154,30 @@ def _paired_by_rank(rivals, free, prices, taken) -> bool:
     """Several products of one set for several cards of that set: they can be paired by rank
     when there is exactly one single-slot card (rare, epic, showcase, rune: no foil twin) per
     product, the cards differ in rank (rarity, then the `a` / `s` variants) and the products
-    differ in price. The cheaper product then is the card of the lower rank, as `auto_match`
-    proposes (owner rule: two printings of one name in one set, the lower number is the lower
-    rarity and the dearer product is the higher one). Anything less certain is ambiguous."""
+    can be ordered: the priced ones differ in price and at most one has no price. The cheaper
+    product then is the card of the lower rank and the unpriced one the highest (CM-m S5,
+    owner decision 2026-11-24), as `auto_match` proposes (owner rule: two printings of one
+    name in one set, the lower number is the lower rarity and the dearer product is the
+    higher one). Anything less certain is ambiguous."""
     slots = [matcher._expand_slots(card, taken=taken) for card in free]
     if len(free) != len(rivals) or any(len(one) != 1 for one in slots):
         return False
     if any(len(matcher._expand_slots(card)) != 1 for card in free):
         return False                      # a common or uncommon has a foil twin: not certain
     ranks = [matcher.card_rank_key(card)[0] for card in free]
-    cost = [prices.get(product.rbprd_id_product, 0.0) for product in rivals]
-    return (len(set(ranks)) == len(ranks) and len(set(cost)) == len(cost)
-            and all(value > 0 for value in cost))
+    cost = [prices.get(product.rbprd_id_product) or 0.0 for product in rivals]
+    priced = [value for value in cost if value > 0]
+    return (len(set(ranks)) == len(ranks) and len(set(priced)) == len(priced)
+            and len(cost) - len(priced) <= 1)
 
 
 def classify_unmapped(date: str) -> dict:
     """Decide, without writing, what `match_clear_cases` does with the unmapped
     singles of `date`: `{links: [(product id, (set, card, foil))], review: [every
     review item], proposed: pairs auto_match proposes}` (CM-b preview and review).
+    An `ambiguous` item whose card group has more products than free cards of its own set
+    also carries `reason_detail: more_printings_than_cards` and `detail {products, cards,
+    set_id}` (CM-m S1).
 
     Clear case: the only unmapped product of its metacard group in its set (the set of
     its expansion; products of other sets do not compete), with exactly
@@ -168,11 +195,11 @@ def classify_unmapped(date: str) -> dict:
         RbcmProductCardMap.rbpcm_foil)).all())
     ignored = set(db.session.execute(sa.select(
         RbcmIgnored.rbig_id_product, RbcmIgnored.rbig_name)).all())
-    products = [p for p in db.session.execute(
+    singles = db.session.execute(
         sa.select(RbcmProduct).where(RbcmProduct.rbprd_date == date,
                                      RbcmProduct.rbprd_type == 'single')
-        .order_by(RbcmProduct.rbprd_id_product)).scalars()
-        if p.rbprd_id_product not in mapped_ids]
+        .order_by(RbcmProduct.rbprd_id_product)).scalars().all()
+    products = [p for p in singles if p.rbprd_id_product not in mapped_ids]
 
     by_id = {p.rbprd_id_product: p for p in products}
     slot_users = defaultdict(list)           # slot -> the products `auto_match` proposes for it
@@ -186,6 +213,10 @@ def classify_unmapped(date: str) -> dict:
             groups[p.rbprd_id_metacard].append(p)
 
     candidates = _Candidates()
+    # every product of a card group per set, linked ones too (the counts of CM-m S1)
+    group_size = Counter((p.rbprd_id_metacard, candidates.set_of(p)) for p in singles
+                         if p.rbprd_id_metacard
+                         and (p.rbprd_id_product, p.rbprd_name) not in ignored)
     review, links = [], []
     for p in products:
         if (p.rbprd_id_product, p.rbprd_name) in ignored:
@@ -218,7 +249,12 @@ def classify_unmapped(date: str) -> dict:
         else:
             links.append((p.rbprd_id_product, slot))
             continue
-        review.append(_review_item(p, reason, cards))
+        detail = None
+        if reason == 'ambiguous':
+            own_set = candidates.set_of(p)
+            detail = _printings_detail(own_set, cards, rivals,
+                                       group_size[(p.rbprd_id_metacard, own_set)], taken)
+        review.append(_review_item(p, reason, cards, detail))
     return {'links': links, 'review': review, 'proposed': proposed}
 
 

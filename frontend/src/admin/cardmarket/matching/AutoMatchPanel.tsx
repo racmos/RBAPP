@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import {
   applyCardmarketAutoMatch,
   previewCardmarketAutoMatch,
@@ -18,7 +19,7 @@ import { TableScroll } from '@/components/ui/TableScroll';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { formatMoney, formatNumber } from '@/lib/format';
-import { apiQuery, cardRef } from './format';
+import { apiQuery, cardRef, matchingTabUrl } from './format';
 import type { PanelProps } from './MatchingPage';
 import { useSlotLabel } from './parts';
 import { useRefreshCardmarket, useReview } from './queries';
@@ -173,7 +174,10 @@ function ProposedTable({ links }: { links: CardmarketProposed[] }) {
   );
 }
 
-/** The doubtful cases of the latest load, by reason; each opens the link dialog. */
+/**
+ * The doubtful cases of the latest load, by reason; each opens the link dialog. An ambiguous
+ * legend with more Cardmarket printings than cards (CM-m) links to the extra printings.
+ */
 function ReviewSection({ params, setParam, setPage, offline, openDialog }: PanelProps) {
   const { t } = useTranslation('admin');
   const { t: common } = useTranslation('common');
@@ -212,6 +216,20 @@ function ReviewSection({ params, setParam, setPage, offline, openDialog }: Panel
                         .join('; '),
                     })}
               </span>
+              {item.reason_detail === 'more_printings_than_cards' && item.detail && (
+                <span className={styles.muted}>
+                  {t('matching.review.morePrintings', {
+                    count: item.detail.cards,
+                    products: item.detail.products,
+                  })}{' '}
+                  <Link
+                    to={matchingTabUrl('missing', { printings: item.detail.set_id })}
+                    className={styles.back}
+                  >
+                    {t('matching.review.createPrinting')}
+                  </Link>
+                </span>
+              )}
               <span className={styles.rowActions}>
                 <Button
                   size="sm"

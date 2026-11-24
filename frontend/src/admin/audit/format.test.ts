@@ -38,6 +38,12 @@ describe('targetLink (CM-e)', () => {
     );
   });
 
+  it('opens the missing cards after extra printings were created (CM-m)', () => {
+    expect(
+      targetLink(item('cardmarket.missing_printings.create', 'cardmarket', 'missing_printings')),
+    ).toBe('/admin/cardmarket/matching?tab=missing');
+  });
+
   it('opens the missing cards of a promo set after its promo cards were created (CM-h)', () => {
     expect(targetLink(item('cardmarket.promo_cards.create', 'set', 'OGNX'))).toBe(
       '/admin/cardmarket/matching?tab=missing&set=OGNX',
@@ -61,6 +67,9 @@ describe('actionLabelKey (CM-e)', () => {
     expect(actionLabelKey('set.create')).toBe('audit.actions.setCreate');
     expect(actionLabelKey('cardmarket.promo_cards.create')).toBe(
       'audit.actions.cardmarketPromoCardsCreate',
+    );
+    expect(actionLabelKey('cardmarket.missing_printings.create')).toBe(
+      'audit.actions.cardmarketMissingPrintingsCreate',
     );
     expect(actionLabelKey('something.new')).toBeNull();
     expect(actionLabelKey('constructor')).toBeNull();

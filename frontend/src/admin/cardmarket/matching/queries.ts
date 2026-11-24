@@ -10,6 +10,7 @@ import {
   deleteCardmarketLink,
   getCardmarketCandidates,
   getCardmarketPromoPlan,
+  listCardmarketMissingPrintings,
   ignoreCardmarketProduct,
   listCardmarketIgnored,
   listCardmarketExpansionProducts,
@@ -46,6 +47,7 @@ export const matchingKeys = {
     [...cardmarketKeys.all, 'matching', 'expansion-products', id, query] as const,
   promoSets: [...cardmarketKeys.all, 'matching', 'promo-sets'] as const,
   promoPlan: (setId: string) => [...cardmarketKeys.all, 'matching', 'promo-plan', setId] as const,
+  missingPrintings: [...cardmarketKeys.all, 'matching', 'missing-printings'] as const,
 };
 
 export const useUnmatched = (query: string) =>
@@ -121,6 +123,13 @@ export const usePromoPlan = (setId: string) =>
     queryKey: matchingKeys.promoPlan(setId),
     queryFn: ({ signal }) => getCardmarketPromoPlan(setId, signal),
     enabled: setId !== '',
+  });
+
+/** The card groups with more Cardmarket products than catalog cards (CM-m). */
+export const useMissingPrintings = () =>
+  useQuery({
+    queryKey: matchingKeys.missingPrintings,
+    queryFn: ({ signal }) => listCardmarketMissingPrintings(signal),
   });
 
 /** After any write: the lists, the status counters and the load days change. */

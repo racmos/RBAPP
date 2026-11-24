@@ -1840,6 +1840,10 @@ apply runs synchronously and is bounded.
   (rare, epic, showcase, rune) when the cards differ in rank and the products differ in price: the cheaper product
   is the card of the lower rank (`223` before `223s`). Commons and uncommons (foil twins), equal prices, more
   products than cards and several candidate cards stay in the review list (CM-b fix 2026-11-22).
+  **Unpriced = highest rarity (CM-m S5, owner decision 2026-11-24):** a product with no price in the latest load
+  (no price row, or every price empty) sorts after every priced product of its group (`matcher.price_order`), so it
+  takes the highest-rank card; a group with exactly one unpriced product and as many single-slot cards is a clear
+  case (the matcher proposes the same order); two or more unpriced products in one group stay ambiguous.
   When a promo product falls back to a base-set card (its promo set has no card in the catalog) and so competes
   for the same slot, the product of the card's own set owns the slot and the promo one is the conflict.
   as the daily job does (`auto`, 0.7). The doubtful ones are never linked (the legacy
@@ -1851,6 +1855,13 @@ apply runs synchronously and is bounded.
   reasons: {reason: count}}}`: the doubtful cases of the latest load, computed now with the
   daily job's rule (the job result keeps only 200 and goes stale after manual links). Item as
   in the job result: `{product_id, name, expansion_id, reason, candidates: [{set, id, name}]}`.
+  **CM-m S1 (additive):** an `ambiguous` item whose Cardmarket card group has more unlinked
+  products in its set than free slots on the cards of that set (a printing is missing from the
+  catalog, e.g. the third printing of a Radiance legend) also carries `reason_detail:
+  "more_printings_than_cards"` and `detail: {products, cards, set_id}` (`products` = every
+  product of the group in that set, linked ones too; `cards` = the cards of that set found by
+  name; e.g. `{products: 3, cards: 2, set_id: "RAD"}`). Other items are unchanged (no key added).
+  The same keys appear in the preview `review` and the daily job result.
 
 Not ported: the legacy unmap by card (`rbset_id` + `rbcar_id`; unlink by Cardmarket id
 instead), the legacy unified mapped + unmapped browser (split into `unmatched` and `links`),
@@ -2028,8 +2039,8 @@ differs (below). Every other set that does not end in `X` keeps its 400.
   `in_catalog`.
 
   **Pairing (CM-k2, owner decision A, 2026-11-24).** When the origins of a name are all in **one
-  set**, the name's products sorted by price ascending (an unpriced product counts as 0, so it
-  comes first; ties by product id) are paired one to one with its plated cards sorted by
+  set**, the name's products sorted by price ascending (an unpriced product sorts after every
+  priced one: it is the highest rarity, CM-m S5; ties by product id) are paired one to one with its plated cards sorted by
   `card_rank_key` of the plated card (rarity first: common/uncommon < rare < epic < showcase,
   then set and id), each card offering its first free slot (N for a common origin, else null; a
   card whose slots are all linked already is skipped): the cheapest product gets the lowest
@@ -2079,7 +2090,56 @@ differs (below). Every other set that does not end in `X` keeps its 400.
   its PLAT product a clear case (the matcher pairs a product with the cards of its expansion's set
   first), while the products of the origin set keep the origin cards; with both plated cards of a
   legend created, its two PLAT products are clear cases paired by rank and price (cheaper →
-  `sfd189`, dearer → `sfd244`; an unpriced one stays `ambiguous` there, link it by hand).
+  `sfd189`, dearer → `sfd244`; since CM-m S5 an unpriced one is the dearest: PLAT 922477 (1080 €)
+  → `rad141`, 922511 (no price) → `rad169`, both clear).
+
+### Missing printings (CM-m)
+
+`app/api/admin/cardmarket_missing_printings.py`, logic in `app/services/missing_printings.py`
+(A, owner feedback 2026-11-24). Cardmarket lists three printings of each Radiance legend (Rare,
+Showcase and a third, dearer one) while Riot's gallery, so the catalog, has two (`RAD-141`,
+`RAD-169`): two unlinked products for one free card is ambiguous by design. **Owner answer
+2026-11-24:** the third printing is the **signed** card, id `<id>s` (`RAD-169s`).
+
+- `GET /admin/cardmarket/missing-printings` (`api_admin.missing_printings_list`, no parameter;
+  any parameter is a 400) → `{date | null, sets: [{set_id, set_name, groups: [Group]}], summary:
+  {groups, cards_to_create, exists, manual}}`, sets by id, groups by name ignoring case. It reads
+  the singles of the latest load of the expansions mapped to a set (promo sets `<base>X` and
+  `PLAT` excluded: their missing cards are the promo-card plan's), grouped as the matcher groups
+  them: `(set, Cardmarket card group)`; products without a card group and ignored pairs do not
+  count. The group's cards are the cards of that set found by the matcher's name index (legends
+  by their tags too). A group is **listed** when its unlinked products outnumber the free slots
+  (`_expand_slots`; a common or uncommon has two) of those cards, the signed copy of the top
+  printing left aside. `Group` = `{metacard, name (the cheapest product's), products: [{id, name,
+  price | null, linked: {set_id, card_id, foil} | null}] (by price, unpriced last), cards:
+  [{set_id, card_id, name, rarity}] (by card_rank_key), base: {set_id, card_id, name, rarity} |
+  null (the highest-rank all-digit printing, the one copied), proposed: {set_id, card_id, rarity}
+  | null, status, reason}`. `status` / `reason`: `create` / `clone` (proposed = `base` id + `s`,
+  rarity `Showcase`); `exists` / `in_catalog` (the signed card is in the catalog: Auto-match links
+  it); `manual` (`proposed` null) with `no_plain_printing` (no all-digit printing),
+  `foil_pair` (the top printing is a common or uncommon: its products are a normal and a foil
+  one), `letter_variant` (the top printing has a letter variant other than `s`, e.g. `066a`),
+  `several_extra_products` (more than one product over the free slots: only one extra printing
+  is proposed), `id_taken` (a card of another name holds `<id>s`) or `invalid_base` (the copy
+  fails `AdminCardCreate`, e.g. an id over 10 characters). Writes nothing; nine SQL statements
+  (session user included) whatever the number of groups.
+- `POST /admin/cardmarket/missing-printings` `{items: [{set_id, card_id}] (1..200)}`
+  (`api_admin.missing_printings_create`, `@validate_json(AdminMissingPrintingsBody)`; set id
+  upper-cased, card id lower-cased and `^[A-Za-z0-9]{1,10}$`, repeats ignored; CSRF as every
+  write) → `{created: [{set_id, card_id, name, rarity, copy_of: {set_id, card_id}, product_ids
+  (the group's unlinked products)}], skipped: [{set_id, card_id, reason: "in_catalog"}]}`, 201
+  when a card was created, else 200. The list is recomputed: a card that is not a `create` or
+  `exists` proposal refuses the whole call with 400 `validation_error`, `details[0] = {field:
+  "items", params: {unknown: ["SET-ID", ...]}}`, message `These cards are not proposed by the
+  missing printings list: RAD-174s.`; nothing is written. The cards are **copies of `base`**
+  (name, domain, type, tags, energy, power, might, ability, artist; never the image) with the
+  rarity `Showcase`, created through `catalog_admin.create_cards` (409 `already_exists` would
+  answer a race); an `exists` proposal is skipped, never overwritten. One transaction with **one**
+  audit row: `cardmarket.missing_printings.create`, target `cardmarket` / `missing_printings`,
+  details `{created, skipped, cards: ["RAD-169s", ...] (at most 200)}`. Thirteen SQL statements
+  (session user included) whatever the number of cards. Nothing is linked: Auto-match does
+  (CM-m S6: after `RAD-169s` exists, 917370 (45 €) → `RAD-169` and 917487 (450 €, or unpriced) →
+  `RAD-169s` are clear cases; 917343 keeps `RAD-141`).
 
 ### Audit log (CM-e)
 
@@ -2109,6 +2169,7 @@ ISO strings.
 Actions recorded today: `set.create|update|delete`, `card.create|update|image|delete`,
 `product.update|image`, `riot.sync_requested|insert|apply|recheck|change_approve|change_reject`,
 `cardmarket.load|link|relink|unlink|ignore|unignore|auto_match`,
-`cardmarket.expansion.map|unmap`. Target types: `set`, `card` (`SET-ID`), `product`,
+`cardmarket.expansion.map|unmap`, `cardmarket.promo_cards.create` (CM-h),
+`cardmarket.missing_printings.create` (CM-m). Target types: `set`, `card` (`SET-ID`), `product`,
 `cardmarket_product` and `cardmarket_expansion` (Cardmarket ids), `cardmarket` (auto-match, the
-load date), `job`, `card_change`.
+load date; the missing printings, `missing_printings`), `job`, `card_change`.

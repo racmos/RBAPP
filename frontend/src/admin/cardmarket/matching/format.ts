@@ -15,6 +15,16 @@ export type MatchingTab = (typeof TABS)[number];
 /** The page size of every list; all the matching endpoints accept 25, 50, 100 and 200. */
 export const PER_PAGE = 50;
 
+/**
+ * The URL of one workbench tab with its filters, for links from other screens and panels
+ * (CM-m: the review links the Missing cards tab). The one place that knows how a tab is in the
+ * URL, so the tab merge of CM-l changes only this function. `link` is the default tab.
+ */
+export function matchingTabUrl(tab: MatchingTab, params: Record<string, string> = {}): string {
+  const query = new URLSearchParams(tab === 'link' ? params : { tab, ...params }).toString();
+  return query ? `/admin/cardmarket/matching?${query}` : '/admin/cardmarket/matching';
+}
+
 export const parseTab = (value: string | null): MatchingTab =>
   (TABS as readonly string[]).includes(value ?? '') ? (value as MatchingTab) : 'link';
 

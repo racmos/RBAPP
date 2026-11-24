@@ -16,26 +16,28 @@ their tags too) among the plain printings (all-digit ids, no rune) of every set 
 promo sets. CM-k2 (owner decision A, 2026-11-24): Cardmarket has one PLAT product per printing
 of a legend (the normal one and the Showcase), so when the origins of a name are all in ONE set
 each origin printing is a plated card and the products of that name, by price ascending
-(unpriced as 0), are paired with them by the rank of the plated card (`matcher.card_rank_key`
-of `_clone_shape`, as CM-h): the cheapest product gets the lowest rarity (SFD-189 Rare ->
-`sfd189`, the dearer SFD-244 Showcase -> `sfd244`); one product per plated card, the products
-left over are `no_slot`, the printings left over stay unused. Origins in several sets (a
-reprint) leave the products to the admin (`ambiguous_base` with the `candidates`) unless one
-PLAT card of the name has an id of the `<set><number>` form; no origin is `no_base_card`. A PLAT
-card with the proposed id is in the catalog already. A PLAT card of the name with an id of
-another form (the old `PLAT/189`, made by hand) never counts: every PLAT item of that name
-lists it in `stray_cards` so the admin deletes it first. A PLAT plan has no base set (`base`
-null).
+(unpriced last, CM-m S5: an unpriced product is the highest rarity), are paired with them by
+the rank of the plated card (`matcher.card_rank_key` of `_clone_shape`, as CM-h): the
+cheapest product gets the lowest rarity (SFD-189 Rare -> `sfd189`, the dearer SFD-244 Showcase
+-> `sfd244`); one product per plated card, the products left over are `no_slot`, the
+printings left over stay unused. Origins in several sets (a reprint) leave the products to
+the admin (`ambiguous_base` with the `candidates`) unless one PLAT card of the name has an id
+of the `<set><number>` form; no origin is `no_base_card`. A PLAT card with the proposed id is
+in the catalog already. A PLAT card of the name with an id of another form (the old
+`PLAT/189`, made by hand) never counts: every PLAT item of that name lists it in
+`stray_cards` so the admin deletes it first. A PLAT plan has no base set (`base` null).
 
 For a promo set with a mapped Cardmarket expansion, `plan` lists the unmatched singles of the
 latest load of its expansions (not linked, not ignored) and pairs them with the base cards of
 the same name as the matcher pairs products with cards (`app/services/cardmarket_matcher.py`):
 products by price ascending, the cards by `card_rank_key` of the promo card they become, a
 common or uncommon card absorbing two products (its N and S slots) and every other card,
-runes included, one. `create` makes the promo cards as copies of their base cards (every
-card field but the image) through `catalog_admin.create_cards`, the same creation and checks
-as `POST /admin/cards`; a card that exists is skipped, never overwritten. Auto-match links the
-products afterwards (`daily_prices.classify_unmapped`).
+runes included, one; an unpriced product sorts after the priced ones of its group, so it
+takes the highest-rank card (CM-m S5, owner decision 2026-11-24). `create` makes the promo
+cards as copies of their base cards (every card field but the image) through
+`catalog_admin.create_cards`, the same creation and checks as `POST /admin/cards`; a card that
+exists is skipped, never overwritten. Auto-match links the products afterwards
+(`daily_prices.classify_unmapped`).
 """
 import re
 from collections import defaultdict
@@ -196,6 +198,11 @@ class _Plans:
         value = self.prices.get(product.rbprd_id_product)
         return float(value) if value is not None else None
 
+    def _order(self, product):
+        """Products of one card group: by price ascending, the unpriced ones last (CM-m S5:
+        an unpriced product is the highest rarity), then by id."""
+        return matcher.price_order(self.price(product)), product.rbprd_id_product
+
     def items(self, promo: RbSet, base: RbSet | None) -> list[dict]:
         """The items of one promo set: one per promo card (the products it absorbs), one per
         manual product; by product name, then price. PLAT (base None): `_plated_items`."""
@@ -223,9 +230,10 @@ class _Plans:
     def _plated_items(self, plated: RbSet) -> list[dict]:
         """The items of PLAT (CM-k, CM-k2): the unmatched singles (a card group is not needed)
         grouped by name, each name paired with its plated cards (`_plated_targets`): products
-        by price ascending (unpriced as 0), targets by the rank of the plated card, one product
-        per plated card (its first free slot); the products left over are `no_slot` (with the
-        origin of the last printing). Every item carries `candidates` and `stray_cards`."""
+        by price ascending (unpriced last, CM-m S5), targets by the rank of the plated card,
+        one product per plated card (its first free slot); the products left over are
+        `no_slot` (with the origin of the last printing). Every item carries `candidates` and
+        `stray_cards`."""
         p_id = plated.rbset_id
         promo_ids = {set_id for set_id in self.set_ids if base_of(set_id) in self.set_ids}
         origins = matcher._build_card_index([
@@ -240,7 +248,7 @@ class _Plans:
             groups[matcher.normalize_name(product.rbprd_name)].append(product)
         items = []
         for name, products in groups.items():
-            products = sorted(products, key=lambda p: (self.price(p) or 0.0, p.rbprd_id_product))
+            products = sorted(products, key=self._order)
             found = sorted(_unique(origins.get(name, [])) if name else [],
                            key=lambda c: (c.rbcar_rbset_id, c.rbcar_id))
             same_name = _unique(by_name.get(name, [])) if name else []
@@ -296,7 +304,7 @@ class _Plans:
                 group_targets[key] = {'card': None, 'base': base}
         ordered = sorted(group_targets.items(), key=lambda pair: matcher.card_rank_key(
             pair[1]['card'] or _clone_shape(pair[1]['base'], p_id, pair[0])))
-        prices = sorted(products, key=lambda p: (self.price(p) or 0.0, p.rbprd_id_product))
+        prices = sorted(products, key=self._order)
         if not ordered:
             manual.extend((product, NO_BASE_CARD, None) for product in prices)
             return
@@ -315,8 +323,7 @@ class _Plans:
         manual.extend((product, NO_SLOT, last_base) for product in prices[len(slots):])
 
     def _target_item(self, target, p_id) -> dict:
-        products = sorted(target['products'],
-                          key=lambda pair: (self.price(pair[0]) or 0.0, pair[0].rbprd_id_product))
+        products = sorted(target['products'], key=lambda pair: self._order(pair[0]))
         first = products[0][0]
         base = target['base']
         if target['card'] is not None:

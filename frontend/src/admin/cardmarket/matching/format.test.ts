@@ -5,6 +5,7 @@ import {
   cardRef,
   defaultFoil,
   groupConflicts,
+  matchingTabUrl,
   parseTab,
   scoreText,
   suggestionFoil,
@@ -29,6 +30,17 @@ const link = (id: number, setId: string, cardId: string, foil: 'N' | 'S' | null)
 describe('matching format helpers (CM-b)', () => {
   it('cardRef joins set and number', () => {
     expect(cardRef('OGN', '001')).toBe('OGN-001');
+  });
+
+  it('matchingTabUrl is the one place that builds a tab URL (CM-m)', () => {
+    expect(matchingTabUrl('missing')).toBe('/admin/cardmarket/matching?tab=missing');
+    expect(matchingTabUrl('missing', { printings: 'RAD' })).toBe(
+      '/admin/cardmarket/matching?tab=missing&printings=RAD',
+    );
+    expect(matchingTabUrl('link')).toBe('/admin/cardmarket/matching');
+    expect(matchingTabUrl('linked', { q: 'a&b' })).toBe(
+      '/admin/cardmarket/matching?tab=linked&q=a%26b',
+    );
   });
 
   it('parseTab knows the seven tabs and defaults to "link"', () => {

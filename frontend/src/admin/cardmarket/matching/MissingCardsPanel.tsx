@@ -25,6 +25,7 @@ import { formatMoney } from '@/lib/format';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { FormAlert } from '@/admin/FormAlert';
 import { cardmarketKeys } from '@/admin/cardmarket/queries';
+import { ExtraPrintings } from './ExtraPrintings';
 import { cardRef } from './format';
 import type { PanelProps } from './MatchingPage';
 import { useSlotLabel } from './parts';
@@ -52,7 +53,8 @@ function useErrorText() {
  * another set, its origin (`PLAT-sfd189`); a legend's normal and Showcase printings get one
  * plated card each (CM-k2), and a PLAT card with the old id format (`PLAT-189`) shows a warning
  * under its row. Choose a set (it goes to the URL), check the cards to create (the ones the
- * server can create start checked) and create them; Auto-match links them later.
+ * server can create start checked) and create them; Auto-match links them later. Under the
+ * promo list, the extra printings (CM-m): the signed cards Cardmarket lists and the catalog lacks.
  */
 export function MissingCardsPanel({ params, setParam, offline }: PanelProps) {
   const { t } = useTranslation('admin');
@@ -95,6 +97,7 @@ export function MissingCardsPanel({ params, setParam, offline }: PanelProps) {
       ) : (
         <PromoPlan key={setId} setId={setId} offline={offline} />
       )}
+      <ExtraPrintings params={params} setParam={setParam} offline={offline} />
     </>
   );
 }

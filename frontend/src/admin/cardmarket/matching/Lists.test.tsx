@@ -6,7 +6,15 @@ import { API, ok } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderApp';
 import { clearToasts } from '@/components/ui/toastStore';
-import { PREVIEW, callsTo, linkList, matchingApi } from '@/test/fixtures/cardmarketMatching';
+import {
+  PREVIEW,
+  PRINTINGS_REVIEW_ITEM,
+  REVIEW_ITEM,
+  callsTo,
+  linkList,
+  matchingApi,
+  reviewList,
+} from '@/test/fixtures/cardmarketMatching';
 
 const LONG = { timeout: 10000 };
 const PATH = '/admin/cardmarket/matching';
@@ -264,5 +272,45 @@ describe('Auto-match tab (CM-b)', () => {
     );
     const dialog = await screen.findByRole('dialog', { name: 'Link Ahri, Alluring' });
     expect(await within(dialog).findByRole('list', { name: 'Cards' }, LONG)).toBeVisible();
+  });
+
+  it('a legend with more printings than cards says so and links to the missing printing (CM-m)', async () => {
+    matchingApi({ review: reviewList([PRINTINGS_REVIEW_ITEM, REVIEW_ITEM]) });
+    const user = userEvent.setup();
+    const { where } = await openTab('auto');
+    const review = await screen.findByRole('list', { name: 'Products to review' }, LONG);
+    const [ziggs, ahri] = within(review).getAllByRole('listitem');
+    expect(within(ziggs!).getByText(/^3 printings on Cardmarket, 2 cards here:/)).toHaveTextContent(
+      '3 printings on Cardmarket, 2 cards here: create the missing printing',
+    );
+    const link = within(ziggs!).getByRole('link', { name: 'create the missing printing' });
+    expect(link).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/cardmarket/matching?tab=missing&printings=RAD',
+    );
+    // an item without the detail keeps its row as before
+    expect(within(ahri!).queryByText(/printings on Cardmarket/)).toBeNull();
+    await user.click(link);
+    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=missing&printings=RAD`));
+    await vi.waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Missing cards' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+    expect(await screen.findByRole('combobox', { name: 'Extra printings set' }, LONG)).toHaveValue(
+      'RAD',
+    );
+  });
+
+  it('one card here is said in the singular (CM-m)', async () => {
+    matchingApi({
+      review: reviewList([
+        { ...PRINTINGS_REVIEW_ITEM, detail: { products: 2, cards: 1, set_id: 'RAD' } },
+      ]),
+    });
+    await openTab('auto');
+    const review = await screen.findByRole('list', { name: 'Products to review' }, LONG);
+    expect(within(review).getByText(/^2 printings on Cardmarket, 1 card here:/)).toBeVisible();
   });
 });
