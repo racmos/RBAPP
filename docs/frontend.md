@@ -642,6 +642,27 @@ States: skeleton (an offline note when nothing loaded), "Nothing is missing in O
 retry. The audit screen labels `cardmarket.promo_cards.create` "Create missing promo cards" and
 links its target to `?tab=missing&set=<id>`.
 
+**Plated cards (CM-k).** The select also lists **PLAT** ("Plated Legends (PLAT), N cards to
+create"; it has no base set, `base: null`) and the help line explains the plated code (SFD-189
+becomes PLAT-SFD-189, number sfd189). For PLAT the table headers read **Origin card** and
+**Plated card** (`PLAT-sfd189`), the reasons say "No card of this name in any set." and "Its origin
+card cannot be copied: create the card by hand." (`admin:matching.missing.platedReasons`), an
+`ambiguous_base` row lists its origin candidates ("Several origin cards: OGN-058, SFD-020.", from
+the item's `candidates`), and the confirm text says each card copies its origin card
+(`confirmBodyPlated`). Types: `CardmarketPromoSet.base` / `base_name` and the plan's `set.base`
+are `string | null`, `CardmarketPromoItem.candidates?` (`CardmarketPromoCard[]`), reason
+`ambiguous_base`. MSW: `PLATED_ITEMS` / `platedPlan()` in `src/test/fixtures/cardmarketMatching.ts`
+(`?set=PLAT`; PLAT is the second of `PROMO_SETS`).
+
+**Card number of a new card (CM-j, CM-k).** `src/admin/cardCode.ts::readCardCode(value, setIds,
+selectedSetId?)` reads a full code typed in Number (`OGNX-197`, `OGNX 197`, `OGNX197`) when its
+letters are an existing set, and a plated code `PLAT-SFD-189` (`PLAT SFD 189`, `PLAT-sfd189`) as
+set `PLAT`, number `sfd189` when PLAT and the origin set exist (else nothing is read and the
+number rule shows). With PLAT as the chosen set a card number such as `sfd189` is the plated
+number itself, never re-read as set SFD; every other code reads as before. Used by
+`CardEditor.tsx::useCardNumber` (on blur, paste and submit) in the cards admin and the
+Cardmarket create form.
+
 **Overview Cardmarket band (CM-e).** `OverviewPage.tsx` adds a "Cardmarket" section under Riot
 from `GET /admin/overview` → `cardmarket`: last load (date and the day status badge, or "No load
 yet."), "Loaded today" / "No load today yet" (warning), the latest load job status badge (or "No

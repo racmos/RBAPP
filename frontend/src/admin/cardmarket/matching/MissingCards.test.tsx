@@ -61,6 +61,7 @@ describe('Missing cards tab (CM-h)', () => {
     ).toEqual([
       'Choose a promo set',
       'Origins Promos (OGNX), 2 cards to create',
+      'Plated Legends (PLAT), 1 card to create',
       'Spiritforged Promos (SFDX), nothing to create',
     ]);
     expect(screen.getByText(/OGN-035 becomes OGNX-035/)).toBeVisible();
@@ -291,5 +292,80 @@ describe('Missing cards tab (CM-h)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Create 2 cards' }));
     const dialog = await screen.findByRole('dialog', { name: 'Create 2 promo cards in OGNX?' });
     expect(await axe(dialog)).toHaveNoViolations();
+  }, 20000);
+});
+
+describe('Missing cards of PLAT, the plated cards (CM-k)', () => {
+  async function openPlated(width = 1280) {
+    const rendered = await openTab('&set=PLAT', width);
+    return rendered;
+  }
+
+  it('the help says how a plated card is coded', async () => {
+    matchingApi();
+    await openTab('');
+    expect(screen.getByText(/SFD-189 becomes PLAT-SFD-189/)).toBeVisible();
+  });
+
+  it('lists each PLAT product with its origin card, its plated card and why', async () => {
+    matchingApi();
+    await openPlated();
+    const table = await screen.findByRole('table', { name: 'Missing promo cards' }, LONG);
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Create', 'Cardmarket product', 'Price', 'Origin card', 'Plated card', 'Status']);
+    const ornn = within(rowOf(table, 'Ornn, Fire Below the Mountain')).getAllByRole('cell');
+    expect(ornn.slice(2).map((cell) => cell.textContent)).toEqual([
+      '8.00 €',
+      'SFD-189Ornn, Fire Below the Mountain · Epic',
+      'PLAT-sfd189',
+      'To createCopy of SFD-189.',
+    ]);
+    const last = (text: string) =>
+      within(rowOf(table, text)).getAllByRole('cell').at(-1)!.textContent;
+    expect(last('Jinx, Loose Cannon')).toBe('By handSeveral origin cards: OGN-058, SFD-020.');
+    expect(last('Nobody Known')).toBe('By handNo card of this name in any set.');
+    expect(last('Long Name')).toBe(
+      'By handIts origin card cannot be copied: create the card by hand.',
+    );
+    expect(last('Already There')).toBe('In the catalogAuto-match links it.');
+  });
+
+  it('creates the checked plated cards after confirming', async () => {
+    const calls = matchingApi();
+    const user = userEvent.setup();
+    await openPlated();
+    await screen.findByRole('table', { name: 'Missing promo cards' }, LONG);
+    await user.click(screen.getByRole('button', { name: 'Create 1 card' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Create 1 promo card in PLAT?' });
+    expect(
+      within(dialog).getByText(
+        'Each card copies its origin card, without the image. Nothing is linked yet: run Auto-match afterwards.',
+      ),
+    ).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Create 1 card' }));
+    expect(
+      (await screen.findAllByText('1 card created. Run Auto-match to link its products.')).length,
+    ).toBeGreaterThan(0);
+    expect(callsTo(calls, 'POST', '/promo-cards').map((call) => call.body)).toEqual([
+      { set_id: 'PLAT', product_ids: [4001] },
+    ]);
+  });
+
+  it('on a phone the ambiguous product names its origin candidates', async () => {
+    matchingApi();
+    const { container } = await openPlated(390);
+    const list = await screen.findByRole('list', { name: 'Missing promo cards' }, LONG);
+    const jinx = within(list)
+      .getAllByRole('listitem')
+      .find((item) => within(item).queryByText('Jinx, Loose Cannon') !== null)!;
+    expect(within(jinx).getByText('Several origin cards: OGN-058, SFD-020.')).toBeVisible();
+    const ornn = within(list)
+      .getAllByRole('listitem')
+      .find((item) => within(item).queryByText('Ornn, Fire Below the Mountain') !== null)!;
+    expect(within(ornn).getByText('SFD-189 → PLAT-sfd189')).toBeVisible();
+    expect(await axe(container)).toHaveNoViolations();
   }, 20000);
 });

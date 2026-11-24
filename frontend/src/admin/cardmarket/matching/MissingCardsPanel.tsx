@@ -48,8 +48,10 @@ function useErrorText() {
 /**
  * "Missing cards" (CM-h): Riot's gallery has no promo sets, so their Cardmarket products have
  * no card to link to. A promo card has the id of its base card in the set whose id is the base
- * id followed by X. Choose a promo set (it goes to the URL), check the cards to create (the
- * ones the server can create start checked) and create them; Auto-match links them later.
+ * id followed by X. PLAT (CM-k) has no base set: a plated card copies the one card of its name
+ * in another set, its origin (`PLAT-sfd189`). Choose a set (it goes to the URL), check the
+ * cards to create (the ones the server can create start checked) and create them; Auto-match
+ * links them later.
  */
 export function MissingCardsPanel({ params, setParam, offline }: PanelProps) {
   const { t } = useTranslation('admin');
@@ -230,7 +232,11 @@ function PromoPlan({ setId, offline }: { setId: string; offline: boolean }) {
       <ConfirmDialog
         open={confirming}
         title={t('matching.missing.confirmTitle', { count, set: plan.set.id })}
-        message={t('matching.missing.confirmBody')}
+        message={t(
+          plan.set.base === null
+            ? 'matching.missing.confirmBodyPlated'
+            : 'matching.missing.confirmBody',
+        )}
         confirmLabel={t('matching.missing.create', { count })}
         cancelLabel={common('actions.cancel')}
         onCancel={() => setConfirming(false)}
@@ -250,8 +256,11 @@ type ListProps = {
   busy: boolean;
 };
 
-/** The texts of one item, shared by the table and the cards; `baseSet` names the base set. */
-function useItemText(baseSet: string) {
+/**
+ * The texts of one item, shared by the table and the cards; `baseSet` names the base set
+ * (null for PLAT, CM-k: its reasons say "origin" and "any set" instead of the base set).
+ */
+function useItemText(baseSet: string | null) {
   const { t } = useTranslation('admin');
   const slot = useSlotLabel();
   const money = (value: number | null) => (value === null ? '—' : formatMoney(value));
@@ -276,11 +285,17 @@ function useItemText(baseSet: string) {
     proposed: (item: CardmarketPromoItem) =>
       item.proposed === null ? null : cardRef(item.proposed.set_id, item.proposed.card_id),
     status: (item: CardmarketPromoItem) => t(`matching.missing.status.${item.status}`),
-    reason: (item: CardmarketPromoItem) =>
-      t(`matching.missing.reasons.${item.reason}`, {
+    reason: (item: CardmarketPromoItem) => {
+      const reason = item.reason;
+      if (baseSet === null && (reason === 'no_base_card' || reason === 'invalid_base')) {
+        return t(`matching.missing.platedReasons.${reason}`);
+      }
+      return t(`matching.missing.reasons.${reason}`, {
         ref: item.base === null ? '' : cardRef(item.base.set_id, item.base.card_id),
-        base: baseSet,
-      }),
+        base: baseSet ?? '',
+        refs: (item.candidates ?? []).map((one) => cardRef(one.set_id, one.card_id)).join(', '),
+      });
+    },
   };
 }
 
@@ -333,6 +348,7 @@ function Products({ item }: { item: CardmarketPromoItem }) {
 function PlanTable({ plan, ...rest }: ListProps) {
   const { t } = useTranslation('admin');
   const text = useItemText(plan.set.base);
+  const plated = plan.set.base === null;
   return (
     <TableScroll>
       <table className={styles.table}>
@@ -342,8 +358,12 @@ function PlanTable({ plan, ...rest }: ListProps) {
             <th scope="col">{t('matching.missing.columns.select')}</th>
             <th scope="col">{t('matching.missing.columns.product')}</th>
             <th scope="col">{t('matching.missing.columns.price')}</th>
-            <th scope="col">{t('matching.missing.columns.base')}</th>
-            <th scope="col">{t('matching.missing.columns.proposed')}</th>
+            <th scope="col">
+              {t(plated ? 'matching.missing.columns.origin' : 'matching.missing.columns.base')}
+            </th>
+            <th scope="col">
+              {t(plated ? 'matching.missing.columns.plated' : 'matching.missing.columns.proposed')}
+            </th>
             <th scope="col">{t('matching.missing.columns.status')}</th>
           </tr>
         </thead>

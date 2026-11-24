@@ -7,8 +7,9 @@ cards in one transaction (service `app/services/promo_cards.py`).
 
 Data, latest product date D2 (D1 holds an older snapshot):
 
-  Sets: OGN (base), OGNX (promo), PLAT (not a promo id), SFDX (no SFD base), UNL + UNLX
-  (no expansion mapped to UNLX).
+  Sets: OGN (base), OGNX (promo), PLAT (the plated cards, CM-k: listed, no product here; its
+  plans are in tests/test_promo_cards_plated.py), SFDX (no SFD base), UNL + UNLX (no expansion
+  mapped to UNLX).
   Expansions: 6286 -> OGN, 6322 -> OGNX, 7001 -> PLAT, 7002 -> SFDX, 7003 unmapped.
   OGN cards: 035 Vayne, Hunter (rare), 010 Little Spark (common), 050 Echo (epic),
   050a Echo (showcase), r01 Fury Rune (common rune), r01a Fury Rune (showcase rune),
@@ -196,13 +197,17 @@ class TestAuthorization:
 # ---------------------------------------------------------------------------
 
 class TestSets:
-    def test_only_promo_sets_with_a_base_set_and_a_mapped_expansion(self, admin_client, data):
+    def test_only_promo_sets_with_a_base_set_and_a_mapped_expansion_and_plat(
+            self, admin_client, data):
         got = ok(admin_client.get(URL))
         assert got == {
             'date': '2030-11-02',
             'sets': [{'id': 'OGNX', 'name': 'Origins Promos', 'base': 'OGN',
                       'base_name': 'Origins', 'expansions': [6322],
-                      'products_missing': 8, 'cards_to_create': 7}],
+                      'products_missing': 8, 'cards_to_create': 7},
+                     # CM-k: PLAT (the plated cards) is listed too, without a base set
+                     {'id': 'PLAT', 'name': 'Metal', 'base': None, 'base_name': None,
+                      'expansions': [7001], 'products_missing': 0, 'cards_to_create': 0}],
         }
 
     def test_counts_drop_once_the_cards_exist(self, admin_client, data):
@@ -287,8 +292,6 @@ class TestPlan:
     @pytest.mark.parametrize('set_id,message', [
         ('OGN', "OGN is not a promo set: a promo set id is its base set id followed by X "
                 "(OGN -> OGNX)."),
-        ('PLAT', "PLAT is not a promo set: a promo set id is its base set id followed by X "
-                 "(OGN -> OGNX)."),
         ('SFDX', 'The base set SFD of SFDX does not exist.'),
         ('UNLX', 'No Cardmarket expansion is mapped to UNLX: map it in the Expansions tab '
                  'first.'),
@@ -392,7 +395,7 @@ class TestCreate:
         assert body['details'][0]['field'] == 'product_ids'
         assert cards_of('OGNX') == ['077'] and audits() == []
 
-    @pytest.mark.parametrize('set_id', ['OGN', 'PLAT', 'SFDX', 'UNLX', 'NOPEX'])
+    @pytest.mark.parametrize('set_id', ['OGN', 'SFDX', 'UNLX', 'NOPEX'])
     def test_a_set_that_is_not_a_usable_promo_set_is_a_400(self, admin_client, data, set_id):
         body = refused(admin_client.post(URL, json={'set_id': set_id, 'product_ids': [1001]}))
         assert body['code'] == 'validation_error'

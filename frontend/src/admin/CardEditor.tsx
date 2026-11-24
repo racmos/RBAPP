@@ -117,6 +117,8 @@ export type CardNumberInput = {
  * The Number field of a new card (CM-j). A full code whose letters are a set (`OGNX-197`)
  * is read when the field is left, pasted or submitted: the set goes to the set field and the
  * number stays. The number is checked as the API does, from the first time it is left.
+ * A plated code (`PLAT-SFD-189`) reads as set PLAT, number `sfd189`; with PLAT chosen, a number
+ * such as `sfd189` stays as typed (CM-k).
  */
 export function useCardNumber(
   form: CardForm,
@@ -128,8 +130,8 @@ export function useCardNumber(
   const [read, setRead] = useState<CardCodeRead | null>(null);
   const pasted = useRef(false);
 
-  const apply = (value: string) => {
-    const found = readCardCode(value, setIds);
+  const apply = (value: string, setId: string = form.set_id) => {
+    const found = readCardCode(value, setIds, setId);
     if (found) {
       onChange({ set_id: found.setId, card_id: found.number });
       setRead(found);
@@ -162,7 +164,7 @@ export function useCardNumber(
   /** Before a create: the form to send (with a full code read), or null when it is refused. */
   const check = (current: CardForm): CardForm | null => {
     setChecked(true);
-    const found = apply(current.card_id);
+    const found = apply(current.card_id, current.set_id);
     const next = found ? { ...current, set_id: found.setId, card_id: found.number } : current;
     return isCardNumber(next.card_id) ? next : null;
   };

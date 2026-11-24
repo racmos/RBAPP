@@ -459,6 +459,15 @@ export const PROMO_SETS = [
     cards_to_create: 2,
   },
   {
+    id: 'PLAT',
+    name: 'Plated Legends',
+    base: null,
+    base_name: null,
+    expansions: [6947],
+    products_missing: 1,
+    cards_to_create: 1,
+  },
+  {
     id: 'SFDX',
     name: 'Spiritforged Promos',
     base: 'SFD',
@@ -550,6 +559,54 @@ export const promoPlan = (items = PROMO_ITEMS) => ({
       .reduce((sum, one) => sum + one.product_ids.length, 0),
     products: items.reduce((sum, one) => sum + one.product_ids.length, 0),
   },
+});
+
+/** Missing plated cards (CM-k): the plan of PLAT (no base set; origin cards by name). */
+const originCard = (
+  setId: string,
+  cardId: string,
+  name: string,
+  rarity = 'Rare',
+  type = 'Unit',
+) => ({ set_id: setId, card_id: cardId, name, rarity, type });
+
+export const PLATED_ITEMS = [
+  promoItem(4005, 'Already There', 1.5, {
+    expansion_id: 6947,
+    base: originCard('OGN', '077', 'Already There'),
+    candidates: [],
+    proposed: { set_id: 'PLAT', card_id: 'ogn077' },
+    status: 'exists',
+    reason: 'in_catalog',
+  }),
+  promoItem(4009, 'Jinx, Loose Cannon', 2, {
+    expansion_id: 6947,
+    candidates: [
+      originCard('OGN', '058', 'Jinx, Loose Cannon'),
+      originCard('SFD', '020', 'Jinx, Loose Cannon'),
+    ],
+    reason: 'ambiguous_base',
+  }),
+  promoItem(4012, 'Long Name', 3, {
+    expansion_id: 6947,
+    base: originCard('LONGSET', '1234', 'Long Name'),
+    candidates: [],
+    reason: 'invalid_base',
+  }),
+  promoItem(4008, 'Nobody Known', 0.1, { expansion_id: 6947, candidates: [] }),
+  promoItem(4001, 'Ornn, Fire Below the Mountain', 8, {
+    expansion_id: 6947,
+    base: originCard('SFD', '189', 'Ornn, Fire Below the Mountain', 'Epic', 'Champion Unit'),
+    candidates: [],
+    proposed: { set_id: 'PLAT', card_id: 'sfd189' },
+    status: 'create',
+    reason: 'clone',
+  }),
+];
+
+export const platedPlan = (items = PLATED_ITEMS) => ({
+  ...promoPlan(items),
+  set: { id: 'PLAT', name: 'Plated Legends', base: null, base_name: null, expansions: [6947] },
 });
 
 /** The `AdminCard` the API answers a create with: the card id lower-cased, as the server does. */
@@ -654,6 +711,7 @@ export function matchingApi({
   kinds = undefined as KindCount[] | undefined,
   promoSets = PROMO_SETS as unknown[],
   promo = promoPlan() as JsonBodyType,
+  plated = platedPlan() as JsonBodyType,
   catalog = CATALOG_CARDS as AdminCard[],
 } = {}) {
   const calls: Call[] = [];
@@ -831,6 +889,7 @@ export function matchingApi({
       await record(request);
       const set = new URL(request.url).searchParams.get('set');
       if (set === null) return ok({ date: '2026-11-06', sets: promoSets });
+      if (set === 'PLAT') return ok(plated);
       if (set !== 'OGNX') {
         const message = `${set} is not a promo set: a promo set id is its base set id followed by X (OGN -> OGNX).`;
         return failure(400, { error: 'Validation Error', message, code: 'validation_error' });
@@ -840,7 +899,8 @@ export function matchingApi({
     http.post(`${BASE}/promo-cards`, async ({ request }) => {
       await record(request);
       const body = (await request.json()) as { set_id: string; product_ids: number[] };
-      const chosen = PROMO_ITEMS.filter(
+      const items = body.set_id === 'PLAT' ? PLATED_ITEMS : PROMO_ITEMS;
+      const chosen = items.filter(
         (one) =>
           one.status === 'create' && one.product_ids.some((id) => body.product_ids.includes(id)),
       );
@@ -850,7 +910,7 @@ export function matchingApi({
             set_id: body.set_id,
             card_id: one.proposed!.card_id,
             name: one.base!.name,
-            base: { set_id: 'OGN', card_id: one.base!.card_id },
+            base: { set_id: one.base!.set_id, card_id: one.base!.card_id },
             product_ids: one.product_ids,
           })),
           skipped: [],
