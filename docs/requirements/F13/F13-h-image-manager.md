@@ -55,8 +55,11 @@ user avatars.
   magic bytes only (never the client name or type); input limit **10 MB** and **25 megapixels**, minimum
   short side 200 px (card) / 120 px (product); decode with decompression-bomb warnings as errors;
   `exif_transpose`; drop all metadata; convert to RGB(A) as needed; **fit inside** a maximum size without
-  upscaling and without cropping, keeping the aspect ratio: **cards 744 × 1039 px**, **products 800 × 800 px**
-  (proposal: the card ratio is 5:7; 744 px wide is about 2× the largest on-screen tile);
+  upscaling and without cropping, keeping the aspect ratio: **cards 640 × 894 px** (ratio 63:88), **products
+  640 × 640 px**. Reference (owner asked to follow them, checked 2026-11-24): PiltoverArchive lays its card
+  grid out at 63:88 and serves 256 px (1x) and 640 px (2x); RiftAtlas serves WebP at 256-384 px for grid
+  tiles. 640 px wide covers a 2x screen of the biggest grid tile and the card detail; thumbnails are left to
+  the browser (a thumbnail variant is a later optimisation);
   resize with LANCZOS; encode **WebP, quality 85** (lossless fallback never; `method=6`); the output is
   written to a temp file in the target folder and moved with `os.replace` (atomic). A failure leaves the
   previous image untouched and returns a 400 with the same `validation_error` shape as today
@@ -108,7 +111,7 @@ focusable **Choose file** button have a visible focus ring; success and failure 
 
 1. A card with an empty image and a card whose file is gone both appear under `Cards` (switch on); turning
    the switch off hides the second kind.
-2. Uploading a 3000 × 4200 PNG gives `<set>_<id>.webp`, at most 744 × 1039, without metadata; the row shows
+2. Uploading a 3000 × 4200 PNG gives `<set>_<id>.webp`, at most 640 × 894, without metadata; the row shows
    the new thumbnail; the old file stays until the Undo toast expires.
 3. A text file renamed `.png`, a 30 Mpx image, a 12 MB file and a 100 × 100 image are refused with the
    right code and nothing is written; a failed upload leaves the old image.
@@ -128,15 +131,15 @@ the images of the runes and promo/plated cards from the new screen.
 
 ## After merge
 
-State the new maximum sizes in `docs/knowledge/product.md`; consider re-encoding the existing 973 MB card
+State the new maximum sizes (cards 640 × 894, products 640 × 640, WebP q85) in `docs/knowledge/product.md`; consider re-encoding the existing 973 MB card
 image folder with a one-off CLI (separate unit, owner decision).
 
 ## Open questions
 
-- Owner: are **744 × 1039 WebP q85** (cards) and **800 × 800** (products) acceptable, or do you prefer
-  a smaller size or keeping PNG?
-- Owner: should the previous file be deleted at once (S7 keeps it until the Undo expires)?
+- Resolved 2026-11-24: the owner asked to follow PiltoverArchive / RiftAtlas sizes (640 × 894 cards, WebP).
+- Open, default taken: the previous file is deleted when the Undo expires (S7); tell me if you want it
+  deleted at once.
 
 ## Log
 
-- 2026-11-24 — requirement written from the owner's feedback; sizes and WebP are proposals.
+- 2026-11-24 — requirement written from the owner's feedback; sizes fixed after checking the two reference sites.

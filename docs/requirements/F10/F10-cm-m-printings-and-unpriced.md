@@ -44,7 +44,8 @@ migration, linking by hand, images.
   all taken or fewer than the products of its Cardmarket card group says so: reason detail
   `more_printings_than_cards` with counts (`3 Cardmarket printings, 2 cards`) and the candidate cards. A new
   reason code, additive; `errors.json` / catalog tests updated; nothing else in the review changes.
-- **S2 Missing printings list.** `GET /admin/cardmarket/missing-printings` (A) lists, per set, the card
+- **S2 Missing printings list.** (Owner confirmed 2026-11-24: the third Cardmarket printing is the signed
+  card, id `<id>s`.) `GET /admin/cardmarket/missing-printings` (A) lists, per set, the card
   groups (same Cardmarket card group, same normalised name) with more products than free slots, each with
   the products by price, the cards they take and the **proposed new card**: id = the highest-rank printing's
   id + `s` when that card has no letter variant (`169` → `169s`), copy of the highest-rank printing (all
@@ -57,12 +58,15 @@ migration, linking by hand, images.
 - **S4 Panel.** `Prepare → Missing cards` (see CM-l) gets a second list `Extra printings` under the promo
   list (or a segmented control if CM-l is not built yet), with the same selection / Create / confirm pattern
   as the promo list, and the proposed id and rarity per row.
-- **S5 Unpriced pair (not built until the owner decides).** Auto-match refuses to pair two products of one
-  card group when one of them has no price in the latest load (the rank pairing needs prices above 0), e.g.
-  the two PLAT products of a legend where one is unpriced. CM-k2's plan gives the unpriced product the
-  lower rank. If the owner confirms that rule (see Open questions), the matcher applies the same rule in
-  `_paired_by_rank` and the pair becomes a clear case. Until then these pairs stay `ambiguous` and are
-  linked by hand.
+- **S5 Unpriced products are the highest rarity (owner decision 2026-11-24).** A product of one card group
+  with no price in the latest load sorts **after** every priced product, so it takes the highest-rank
+  printing (the cheapest priced product takes the lowest). Today CM-h and CM-k2 plans sort it first (price
+  counted as 0) and Auto-match refuses to pair a group that has an unpriced product. Change all three: the
+  CM-h promo plan (`_Plans._pair`), the CM-k2 plated plan (`_plated_items`) and the matcher's rank pairing
+  (`_paired_by_rank`), so a group with exactly one unpriced product and the right number of printings
+  becomes a clear case (two or more unpriced products in one group stay ambiguous). Tests pin the new order
+  and the PLAT pair `922511` (no price) → `PLAT/rad169`, `922477` (1080 €) → `PLAT/rad141`... as the real
+  prices decide.
 - **S6 Radiance acceptance.** After creating `RAD-169s` (and the equivalents of the list) Auto-match Preview
   decides `917370 → RAD-169` and `917487 → RAD-169s` as clear cases, with `917343 → RAD-141` untouched.
 - **S7 No regressions.** The CM-h promo and CM-k PLAT tests, the foil-pair ambiguity of commons and the
@@ -97,12 +101,11 @@ Docs: `docs/api.md`, `docs/frontend.md`, `docs/knowledge/state.md`, `docs/knowle
 
 ## Open questions
 
-- Owner: is the third Cardmarket printing of a legend the **signed** card (`<id>s`, as `OGN-303s`,
-  `SFD-230s`)? If a set uses another id for it, the proposal changes (S2).
-- Owner: for a PLAT pair where one product has no price (e.g. `922511`), which printing gets the
-  unpriced product? (CM-k2 gives it the lower rank; Auto-match refuses it today.) Decide S5.
+- None. Resolved 2026-11-24: the third printing is the signed card (`<id>s`); an unpriced product is the
+  highest rarity (S5).
 
 ## Log
 
+- 2026-11-24 — owner answers: third printing = signed; unpriced = highest rarity.
 - 2026-11-24 — written after the live check of the Radiance legends (917343 / 917370 / 917487 vs `RAD-141`,
   `RAD-169`); the cause is a missing printing, not the tag name.

@@ -79,8 +79,7 @@ One commit, one PR (frontend only; deploy = pull + frontend build, no restart).
 
 ## Open questions
 
-- Owner: is `Prepare | Auto-match | To link | Linked` the right order and naming, and should the default tab
-  stay `To link`? (This file is written with those proposals; change them here before the build.)
+- None. Owner confirmed 2026-11-24: `Prepare | Auto-match | To link | Linked`, default tab `To link`.
 
 ## Log
 
