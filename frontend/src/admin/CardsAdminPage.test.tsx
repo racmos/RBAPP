@@ -117,17 +117,33 @@ describe('CardsAdminPage (F13-f S7, S8)', () => {
       http.get(`${API}/auth/session`, () => adminSession()),
       http.get(`${API}/admin/cards`, () => ok(CARDS)),
       http.get(`${API}/admin/sets`, () => ok(SETS)),
+      // F13-h: the answer adds the stored file, its size and the file it replaced
       http.post(`${API}/admin/cards/OGN/1/image`, async () => {
         uploaded = true;
-        return ok(CARDS.items[0]);
+        return ok({
+          ...CARDS.items[0],
+          image: 'ogn_1.webp',
+          image_src: '/riftbound/media/cards/ogn/ogn_1.webp',
+          has_image: true,
+          previous: 'ogn_1.png',
+          width: 640,
+          height: 894,
+          bytes: 87_040,
+        });
       }),
     );
     await renderApp({ path: '/admin/cards', width: 1280 });
     await userEvent.click((await screen.findAllByRole('button', { name: 'Edit Alpha Unit' }))[0]);
+    expect(
+      screen.getByText(
+        'PNG, JPEG or WebP up to 10 MB, at least 200 px on the short side. Stored as WebP, at most 640 × 894 px.',
+      ),
+    ).toBeVisible();
     const file = new File(['png'], 'ogn_1.png', { type: 'image/png' });
-    await userEvent.upload(screen.getByLabelText('Upload image'), file);
+    await userEvent.upload(screen.getByLabelText(/Upload image/), file);
     expect((await screen.findAllByText('Image updated.')).length).toBeGreaterThan(0);
     expect(uploaded).toBe(true);
+    expect(await screen.findByText('Saved as ogn_1.webp, 640 × 894 px, 85 KB.')).toBeVisible();
   });
 });
 

@@ -6,6 +6,7 @@
     "sets": "Sets",
     "cards": "Cards",
     "products": "Products",
+    "images": "Images",
     "cardmarket": "Cardmarket",
     "riot": "Riot",
     "changes": "Changes",
@@ -134,8 +135,9 @@
     "pickOne": "Pick a card to edit it.",
     "image": {
       "upload": "Upload image",
-      "hint": "PNG, JPG or WebP up to 2 MB.",
-      "uploaded": "Image updated."
+      "hint": "PNG, JPEG or WebP up to 10 MB, at least 200 px on the short side. Stored as WebP, at most 640 × 894 px.",
+      "uploaded": "Image updated.",
+      "result": "Saved as {{image}}, {{width}} × {{height}} px, {{size}}."
     },
     "confirmDelete": {
       "title": "Delete {{name}}?",
@@ -179,7 +181,100 @@
     "pickOne": "Pick a product to edit it.",
     "any": "All",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "imageHint": "PNG, JPEG or WebP up to 10 MB, at least 120 px on the short side. Stored as WebP, at most 640 × 640 px."
+  },
+  "images": {
+    "title": "Images",
+    "subtitle": "Cards and products without a usable image: pick a file from your computer and it is resized and stored under the standard name.",
+    "tabsLabel": "Image lists",
+    "tabs": {
+      "cards": "Cards",
+      "products": "Products"
+    },
+    "counter": "{{missing}} of {{total}} without an image",
+    "caption": {
+      "cards": "Cards without an image",
+      "products": "Products without an image"
+    },
+    "columns": {
+      "image": "Image",
+      "name": "Name",
+      "code": "Code",
+      "set": "Set",
+      "kind": "Kind",
+      "file": "File"
+    },
+    "noImage": "No image",
+    "fileMissing": "File missing",
+    "filters": {
+      "search": "Search by name or code",
+      "set": "Set",
+      "allSets": "All sets",
+      "kind": "Kind",
+      "allKinds": "All kinds",
+      "includeMissingFiles": "Include files missing on disk",
+      "pageSize": "Per page"
+    },
+    "choose": "Choose file",
+    "chooseFor": "Choose a file for {{name}}",
+    "dropHint": "You can also drop an image on a row.",
+    "dropped": "Drop the image to upload it for {{name}}",
+    "empty": "Nothing is missing an image here.",
+    "limits": {
+      "cards": "PNG, JPEG or WebP up to 10 MB, at least 200 px on the short side. Stored as WebP, at most 640 × 894 px.",
+      "products": "PNG, JPEG or WebP up to 10 MB, at least 120 px on the short side. Stored as WebP, at most 640 × 640 px."
+    },
+    "preview": {
+      "title": "Image for {{name}}",
+      "alt": "Preview of {{file}}",
+      "file": "{{file}} · {{size}}",
+      "upload": "Upload",
+      "notImage": "That file is not a PNG, JPEG or WebP image.",
+      "tooLarge": "The file is too large (maximum 10 MB)."
+    },
+    "uploaded": "Image saved for {{name}}: {{image}}, {{width}} × {{height}} px, {{size}}.",
+    "undo": "Undo",
+    "undone": "Image change undone.",
+    "bulk": {
+      "open": "Upload several images",
+      "title": "Upload several images",
+      "choose": "Choose files",
+      "hint": {
+        "cards": "Name each file after its card: ogn_66.png, OGN-66.jpg or plat_sfd189.webp. At most 50 files at a time.",
+        "products": "Name each file after its product id, like 123.png. At most 50 files at a time."
+      },
+      "tooMany": "At most {{max}} files at a time: only the first {{max}} were kept.",
+      "caption": "Files and where they go",
+      "columns": {
+        "file": "File",
+        "target": "Goes to",
+        "status": "Status"
+      },
+      "status": {
+        "ready": "Ready",
+        "no_match": "No match",
+        "several": "Several matches",
+        "too_large": "Too large",
+        "not_image": "Not an image",
+        "uploading": "Uploading",
+        "done": "Uploaded",
+        "failed": "Failed"
+      },
+      "assign": "Assign by hand",
+      "assignFor": "Assign {{file}} by hand",
+      "search": {
+        "cards": "Search a card by name or code",
+        "products": "Search a product by name or id"
+      },
+      "noResults": "Nothing found.",
+      "pick": "Use {{name}}",
+      "checking": "Looking up the files…",
+      "confirm_one": "Upload {{count}} image",
+      "confirm_other": "Upload {{count}} images",
+      "progress": "{{done}} of {{total}} uploaded",
+      "summary": "{{ok}} uploaded, {{failed}} failed."
+    }
   },
   "riot": {
     "title": "Riot sync",

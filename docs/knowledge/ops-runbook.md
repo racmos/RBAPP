@@ -648,6 +648,43 @@ Flask, so the proxy needs no change.
   overwrites a file and never deletes the source, so it can run any number of times; it prints
   `Copied <n>, skipped <m> existing, ignored <k>.`
 
+### Image manager (F13-h)
+
+Admin → **Images** (`/riftbound/app/admin/images`) lists the cards and products without a usable
+image (no file name, or a name whose file is not in `CARD_IMAGES_DIR` / `PRODUCT_IMAGES_DIR`; the
+switch "Include files missing on disk" off shows only the empty names) and uploads one image per row
+("Choose file" or a drop on the row) or many at once ("Upload several images", matched by file name).
+The two edit forms (Cards, Products) use the same upload.
+
+- **Processing.** Every upload is decoded and re-encoded on the server: PNG, JPEG or WebP (magic
+  bytes, never the name), at most 10 MB and 25 megapixels, a short side of at least 200 px (cards) or
+  120 px (products); turned upright, fitted inside **640 × 894** px (cards, ratio 63:88) or
+  **640 × 640** px (products) without upscaling or cropping, saved as **WebP quality 85** without
+  metadata, written to a temporary file and moved into place (`os.replace`).
+- **Naming.** Cards: `<CARD_IMAGES_DIR>/<set lower>/<set lower>_<card id lower>.webp`
+  (`ogn/ogn_66.webp`, `ognx/ognx_66.webp`, `plat/plat_sfd189.webp`; the folder is created when
+  missing). Products: `<PRODUCT_IMAGES_DIR>/<id>.webp`. A file is never overwritten: a re-upload
+  writes `<stem>-2.webp`, `-3`, … and the row names the new file (`image_url` is not written).
+- **Previous files.** The file an upload replaced stays until its Undo toast (10 s) goes away; then
+  the browser asks the server to delete it (`POST /admin/images/finalize`), which happens only when
+  no row names it. The next upload to the same item also deletes its older files of the same name
+  family. Undo gives the row its old name back and deletes the new file. A closed tab leaves the old
+  file behind: that is what `prune-orphans` is for.
+- **Orphans.** `venv/bin/flask images prune-orphans --dry-run` lists the image files (png, jpg, jpeg,
+  webp; regular files only, never symlinks) of both directories that no card or product row names,
+  one per line (`cards/<folder>/<file>`, `products/<file>`), then `<n> orphan files (dry run, nothing
+  deleted).`; without `--dry-run` it deletes them and prints `Deleted <n> orphan files.`. Run it by
+  hand, never from a timer, not while an admin is uploading (a file kept for an open Undo is an
+  orphan too), and back the directories up first: a deleted file is gone.
+- **Live check on one card without touching real images** (after the deploy): as an admin create a
+  throwaway card in a throwaway set (Admin → Sets → New set `ZZQA`, Admin → Cards → New card
+  `ZZQA-1`), open Admin → Images → Cards, search `ZZQA`, Choose file → a large PNG → Upload: the
+  toast reads `Image saved for … zzqa_1.webp, … × … px, … KB.` and
+  `curl -sI <URL>/riftbound/media/cards/zzqa/zzqa_1.webp` → 200 `image/webp`; upload again →
+  `zzqa_1-2.webp`, wait for the toast to go → `zzqa_1.webp` is gone. Then delete the card and the
+  set, and remove the throwaway folder `<CARD_IMAGES_DIR>/zzqa/` by hand (deleting a card never
+  deletes its file).
+
 ### Deploy of M-d (before or together with the deploy that pulls the M-d commit)
 
 The M-d commit removes the tracked images from git, so the next `git pull` deletes them from the

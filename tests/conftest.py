@@ -59,15 +59,21 @@ def clean_env(monkeypatch, tmp_path):
 
 
 @pytest.fixture
-def app():
+def app(tmp_path_factory):
     """Create application for testing."""
-    # Create application with test configuration overrides
+    # Create application with test configuration overrides. The image roots point at
+    # folders that do not exist in a fresh temporary directory (F13-h): the admin lists look
+    # for image files, and a test must never read or write the real images; the
+    # `card_images_dir` / `product_images_dir` fixtures give a test its own folders.
+    unused_images = tmp_path_factory.mktemp('no-images')
     app = create_app(
         TESTING=True,
         SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
         WTF_CSRF_ENABLED=False,
         SECRET_KEY='test-secret-key',
         TOTP_ENCRYPTION_KEY=TEST_TOTP_KEY,
+        CARD_IMAGES_DIR=str(unused_images / 'card-images'),
+        PRODUCT_IMAGES_DIR=str(unused_images / 'product-images'),
     )
     
     # The fixture keeps one app context open for the whole test, so Flask-Login's

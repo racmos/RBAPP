@@ -8,6 +8,8 @@ export type ToastInput = {
   action?: { label: string; onAction: () => void };
   /** Milliseconds before it goes away; 0 keeps it until dismissed. */
   duration?: number;
+  /** Runs once when the toast goes away without its action: timed out or closed (F13-h S7). */
+  onExpire?: () => void;
 };
 export type Toast = ToastInput & { id: number };
 
@@ -29,7 +31,12 @@ export function pushToast(input: ToastInput): number {
   return id;
 }
 
-export const dismissToast = (id: number): void => emit(toasts.filter((toast) => toast.id !== id));
+/** Remove a toast; unless it went away through its action, its `onExpire` runs. */
+export const dismissToast = (id: number, { byAction = false } = {}): void => {
+  const gone = toasts.find((toast) => toast.id === id);
+  emit(toasts.filter((toast) => toast.id !== id));
+  if (gone && !byAction) gone.onExpire?.();
+};
 export const clearToasts = (): void => emit([]);
 
 export const subscribeToasts = (listener: () => void) => {

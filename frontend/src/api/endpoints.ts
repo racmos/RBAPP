@@ -141,6 +141,18 @@ export type AdminCard = {
   image: string | null;
   image_url: string | null;
   image_src: string | null;
+  /** The image file exists on disk (F13-h S2). */
+  has_image: boolean;
+};
+
+/** What an image upload adds to the item (F13-h): the new file, the one it replaced (kept for
+    the Undo until `finalizeAdminImage`), and the stored size. */
+export type AdminImageUpload = {
+  image: string;
+  previous: string | null;
+  width: number;
+  height: number;
+  bytes: number;
 };
 
 export const listAdminSets = (signal?: AbortSignal) =>
@@ -192,7 +204,7 @@ export const deleteAdminCard = (setId: string, cardId: string) =>
 export const uploadAdminCardImage = (setId: string, cardId: string, file: File) => {
   const form = new FormData();
   form.append('file', file);
-  return request<AdminCard>(`/admin/cards/${setId}/${cardId}/image`, {
+  return request<AdminCard & AdminImageUpload>(`/admin/cards/${setId}/${cardId}/image`, {
     method: 'POST',
     body: form,
   });
@@ -205,6 +217,9 @@ export type AdminProduct = ProductSummary & {
   set_locked: boolean;
   rbpdt_type: string;
   updated_at: string | null;
+  /** The stored file name and whether the file exists on disk (F13-h S2). */
+  image: string | null;
+  has_image: boolean;
 };
 
 export type AdminProductList = {
@@ -228,8 +243,36 @@ export const patchAdminProduct = (id: number, body: AdminProductPatch) =>
 export const uploadAdminProductImage = (id: number, file: File) => {
   const form = new FormData();
   form.append('file', file);
-  return request<AdminProduct>(`/admin/products/${id}/image`, { method: 'POST', body: form });
+  return request<AdminProduct & AdminImageUpload>(`/admin/products/${id}/image`, {
+    method: 'POST',
+    body: form,
+  });
 };
+
+/** `GET /admin/images/summary` (F13-h S1): the counters of the Images screen. */
+export type AdminImagesSummary = {
+  cards: { missing: number; total: number };
+  products: { missing: number; total: number };
+};
+
+export const getAdminImagesSummary = (signal?: AbortSignal) =>
+  request<AdminImagesSummary>('/admin/images/summary', { signal });
+
+/** `POST /admin/images/finalize` (F13-h S7): delete the previous file once its Undo expired;
+    the server keeps it when a row still names it. */
+export const finalizeAdminImage = (body: {
+  type: 'card' | 'product';
+  image: string;
+  set_id?: string;
+}) => request<{ deleted: boolean }>('/admin/images/finalize', { method: 'POST', body });
+
+/** `POST /admin/images/undo` (F13-h S3): give the item its previous image back. */
+export type AdminImageUndo =
+  | { type: 'card'; set_id: string; card_id: string; image: string; previous: string | null }
+  | { type: 'product'; product_id: number; image: string; previous: string | null };
+
+export const undoAdminImage = (body: AdminImageUndo) =>
+  request<AdminCard | AdminProduct>('/admin/images/undo', { method: 'POST', body });
 
 export type AdminJob = {
   id: number;

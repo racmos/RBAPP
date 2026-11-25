@@ -143,3 +143,12 @@ image folder with a one-off CLI (separate unit, owner decision).
 ## Log
 
 - 2026-11-24 — requirement written from the owner's feedback; sizes fixed after checking the two reference sites.
+- 2026-11-25 — built on `feat/f13h-image-manager` (two commits: backend, frontend). Choices inside the spec: the
+  switch "Include files missing on disk" off sends the new value `image=empty` (column empty only; `missing` stays
+  "empty or file gone", `present` the file exists); `too_small` is a `DetailCode` of the `validation_error` body (like
+  `invalid_format` / `out_of_range`), translated by `errors.json` → `validation.too_small` / `validation.file.too_small`;
+  the 25 Mpx refusal is `out_of_range` with `params.max_pixels`; the Undo is `POST /admin/images/undo` and the expiry
+  `POST /admin/images/finalize` (no audit row: no data changes); the Undo toast lasts 10 s; at the next upload the item's
+  older files of its own name family (`<stem>.<ext>`, `<stem>-<n>.webp`) that no row names are deleted; a bulk batch has
+  no Undo (its replaced files go at the next upload or with `prune-orphans`); the edit forms finalize the replaced file
+  when their "Image updated." toast goes.
