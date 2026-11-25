@@ -84,3 +84,4 @@ One commit, one PR (frontend only; deploy = pull + frontend build, no restart).
 ## Log
 
 - 2026-11-24 — requirement written from the owner's feedback; proposals marked above.
+- 2026-11-25 — built on `feat/cm-matching-tabs` (frontend only; implemented, not deployed).

@@ -107,7 +107,7 @@ describe('Extra printings in the Missing cards tab (CM-m)', () => {
         .map((option) => option.textContent),
     ).toEqual(['All sets', 'Origins (OGN), nothing to create', 'Radiance (RAD), 2 to create']);
     await user.selectOptions(select, 'OGN');
-    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=missing&printings=OGN`));
+    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=prepare&view=missing&printings=OGN`));
     await vi.waitFor(() =>
       expect(
         within(screen.getByRole('table', { name: 'Extra printings' })).queryByText(ZIGGS),

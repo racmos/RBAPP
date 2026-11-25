@@ -26,6 +26,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useOnline } from '@/lib/useOnline';
 import { DayDetail } from './DayDetail';
 import { isActiveJob, secondsBetween } from './format';
+import { matchingTabUrl } from './matching/format';
 import {
   DayStatusBadge,
   FileChips,
@@ -77,7 +78,7 @@ export function CardmarketPage() {
         title={t('cardmarket.title')}
         subtitle={t('cardmarket.subtitle')}
         actions={
-          <Link to="/admin/cardmarket/matching" className={styles.link}>
+          <Link to={matchingTabUrl('link')} className={styles.link}>
             {t('cardmarket.workbench')}
           </Link>
         }
@@ -202,10 +203,10 @@ function StatusHeader() {
           </div>
         </dl>
         <p className={styles.counters}>
-          <Link to="/admin/cardmarket/matching?type=single" className={styles.link}>
+          <Link to={matchingTabUrl('link', { type: 'single' })} className={styles.link}>
             {t('cardmarket.unmatched', { count: query.data.unmatched })}
           </Link>
-          <Link to="/admin/cardmarket/matching?tab=expansions" className={styles.link}>
+          <Link to={matchingTabUrl('prepare', { view: 'expansions' })} className={styles.link}>
             {t('cardmarket.unmappedExpansions', { count: query.data.unmapped_expansions })}
           </Link>
         </p>

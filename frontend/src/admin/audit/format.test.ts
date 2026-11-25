@@ -22,13 +22,13 @@ describe('targetLink (CM-e)', () => {
       '/admin/cardmarket/matching?q=501',
     );
     expect(targetLink(item('cardmarket.ignore', 'cardmarket_product', '501'))).toBe(
-      '/admin/cardmarket/matching?tab=ignored',
+      '/admin/cardmarket/matching?view=ignored',
     );
   });
 
   it('links expansions, cards, products, sets and the auto-match', () => {
     expect(targetLink(item('cardmarket.expansion.map', 'cardmarket_expansion', '6567'))).toBe(
-      '/admin/cardmarket/matching?tab=expansions&show=all',
+      '/admin/cardmarket/matching?tab=prepare&view=expansions&show=all',
     );
     expect(targetLink(item('card.update', 'card', 'OGN-001'))).toBe('/admin/cards?q=OGN-001');
     expect(targetLink(item('product.update', 'product', '7001'))).toBe('/admin/products?q=7001');
@@ -41,12 +41,12 @@ describe('targetLink (CM-e)', () => {
   it('opens the missing cards after extra printings were created (CM-m)', () => {
     expect(
       targetLink(item('cardmarket.missing_printings.create', 'cardmarket', 'missing_printings')),
-    ).toBe('/admin/cardmarket/matching?tab=missing');
+    ).toBe('/admin/cardmarket/matching?tab=prepare&view=missing');
   });
 
   it('opens the missing cards of a promo set after its promo cards were created (CM-h)', () => {
     expect(targetLink(item('cardmarket.promo_cards.create', 'set', 'OGNX'))).toBe(
-      '/admin/cardmarket/matching?tab=missing&set=OGNX',
+      '/admin/cardmarket/matching?tab=prepare&view=missing&set=OGNX',
     );
   });
 

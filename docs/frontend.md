@@ -478,9 +478,29 @@ naive UTC and are read as UTC (`format.ts::asUtc`).
 **Cardmarket matching workbench (CM-b).** `/admin/cardmarket/matching`
 (`src/admin/cardmarket/matching/`, lazy, under the admin guard; no nav entry of its own: the admin
 navigation marks Cardmarket, `adminNav.ts::navEntryFor`) is the screen over `docs/api.md` →
-"Cardmarket matching (CM-b)". The header repeats the status counters; seven tabs (`role="tablist"`,
-arrows, Home, End) keep the tab and its filters in the URL (`?tab=`, a tab change drops the
-filters; `format.ts::apiQuery` sends only the keys each endpoint takes and `per_page=50`).
+"Cardmarket matching (CM-b)". The header repeats the status counters; four tabs in the order of
+the work after a reset (CM-l, owner feedback 2026-11-24): **Prepare | Auto-match | To link |
+Linked** (`role="tablist"`, arrows, Home, End; ids `matching-tab-<name>` / `matching-panel-<name>`,
+names `prepare`, `auto`, `link`, `linked`; To link is the default). The tabs stay on one row
+(`flex-wrap: nowrap`, they fit at 360 px; a narrower screen scrolls inside the bar only). Three
+tabs merge two lists behind a segmented control (`components/ui/SegmentedControl.tsx`, a
+`radiogroup` of native radios with an optional `count` per option, `tone: 'warning'`; the count is
+part of the option's name, "Conflicts 2") at the left of the panel, `view` in the URL:
+**Prepare** `Expansions | Missing cards` (`?tab=prepare&view=expansions|missing`, default
+expansions; `set=` and `printings=` keep working), **To link** `To link | Ignored`
+(`?view=ignored`, the label carries the ignored count from `GET …/ignored`), **Linked**
+`All links | Conflicts` (`?tab=linked&view=conflicts`, the label carries `conflict_slots` of
+`GET …/links?conflicts=true&per_page=50`, the same query as the Conflicts view, in warning tone
+above zero; no badge on the tab). The panels are unchanged. A tab change drops every filter; a
+view change keeps `q`, `set` and `category` and drops the page and the other filters
+(`format.ts::viewSearch`); `format.ts::apiQuery` sends only the keys each endpoint takes and
+`per_page=50`. Old URLs (`format.ts::canonicalSearch`, rewritten with a `replace`, every other
+parameter kept): `?tab=conflicts` → `?tab=linked&view=conflicts`, `?tab=ignored` →
+`?view=ignored`, `?tab=expansions` → `?tab=prepare&view=expansions`, `?tab=missing` →
+`?tab=prepare&view=missing`, an unknown tab → To link; `?tab=auto` and `?tab=linked` are
+unchanged. `format.ts::matchingTabUrl(tab, {view?, ...filters})` builds every link into the
+workbench (header and Cardmarket page counters, overview tiles, audit targets, the Auto-match
+review link); the default views of To link and Linked are never written.
 **To link** (`GET …/unmatched`: search, type all / singles / sealed) lists each product (id, type,
 category, expansion or "—", low price, first seen) with up to three "Link to SET-NUM name (score)"
 buttons (the first free slot; disabled when none is free), "Choose a card…" and "Ignore"; sealed
@@ -555,7 +575,7 @@ while creating and after the card is created. `CardEditor.tsx::CardFields` `hint
 hint per field (before a field's own hint; the cards admin passes none). Tests
 `ExpansionContext.test.tsx`, `CopyFromCard.test.tsx`.
 
-**Cardmarket expansions (CM-d).** The workbench's sixth tab, **Expansions** (`?tab=expansions`,
+**Cardmarket expansions (CM-d).** The **Expansions** view of the workbench's Prepare tab (`?tab=prepare&view=expansions`, CM-l;
 `ExpansionsPanel.tsx`), is the screen over `docs/api.md` → "Cardmarket expansions (CM-d)". The
 "Unmapped expansions: N" counters of the Cardmarket page and of the workbench header link to it.
 A help line says the mapping lets the matcher prefer cards of that set and does not change
@@ -616,7 +636,7 @@ form (`MapForm` of `ExpansionsPanel.tsx`, without the samples; "Create a new set
 closes the dialog with the usual Undo toast. Both buttons are disabled offline. No card or product
 is created here (CM-c's Create card lives in To link).
 
-**Missing promo cards (CM-h).** The workbench's seventh tab, **Missing cards** (`?tab=missing`,
+**Missing promo cards (CM-h).** The **Missing cards** view of the workbench's Prepare tab (`?tab=prepare&view=missing`, CM-l;
 `MissingCardsPanel.tsx`), is the screen over `docs/api.md` → "Missing promo cards (CM-h)". Two
 help lines explain the owner rule (a promo card has the id of its base card in the set whose id
 ends with X: OGN-035 becomes OGNX-035) and that the normal and foil products of a common card
@@ -640,7 +660,7 @@ plus `['admin', 'sets']` and `['admin', 'cards']`; a refused call toasts the ser
 States: skeleton (an offline note when nothing loaded), "Nothing is missing in OGNX", a 400 plan
 (a set of the URL that is not a usable promo set) shows the server's reason, any other error a
 retry. The audit screen labels `cardmarket.promo_cards.create` "Create missing promo cards" and
-links its target to `?tab=missing&set=<id>`.
+links its target to `?tab=prepare&view=missing&set=<id>` (CM-l).
 
 **Plated cards (CM-k).** The select also lists **PLAT** ("Plated Legends (PLAT), N cards to
 create"; it has no base set, `base: null`) and the help line explains the plated code (SFD-189
@@ -682,9 +702,9 @@ The Auto-match review (`AutoMatchPanel.tsx`) shows, under an `ambiguous` row who
 `reason_detail: "more_printings_than_cards"` (CM-m S1), "3 printings on Cardmarket, 2 cards here:"
 and the link "create the missing printing" to `matchingTabUrl('missing', {printings: set_id})`.
 `matching/format.ts::matchingTabUrl(tab, params)` is the one helper that builds a workbench tab
-URL (the CM-l tab merge changes only it). The audit screen labels
-`cardmarket.missing_printings.create` "Create missing signed printings" and links it to
-`?tab=missing`.
+URL (since CM-l: `matchingTabUrl('prepare', {view: 'missing', printings})`). The audit screen
+labels `cardmarket.missing_printings.create` "Create missing signed printings" and links it to
+`?tab=prepare&view=missing`.
 
 **Card number of a new card (CM-j, CM-k).** `src/admin/cardCode.ts::readCardCode(value, setIds,
 selectedSetId?)` reads a full code typed in Number (`OGNX-197`, `OGNX 197`, `OGNX197`) when its
@@ -699,7 +719,7 @@ Cardmarket create form.
 from `GET /admin/overview` → `cardmarket`: last load (date and the day status badge, or "No load
 yet."), "Loaded today" / "No load today yet" (warning), the latest load job status badge (or "No
 load job yet."), "Unmatched products: N" (→ `/admin/cardmarket/matching?type=single`),
-"Unmapped expansions: N" (→ `?tab=expansions`) and "Open Cardmarket" (→ `/admin/cardmarket`).
+"Unmapped expansions: N" (→ `?tab=prepare&view=expansions`) and "Open Cardmarket" (→ `/admin/cardmarket`).
 An API without the key shows no band.
 
 **Audit (CM-e).** `/admin/audit` (`frontend/src/admin/audit/`, nav entry "Audit" after Changes,
@@ -713,8 +733,8 @@ action as a readable label with the raw code in its `title` (an unknown action s
 the target type and id, and a "Details" disclosure with the stored JSON pretty-printed (none
 when the row has no details). `format.ts::targetLink` links a target only where a route can show
 it: a Cardmarket product to the workbench tab that holds it after the action (`?tab=linked&q=`
-for link/relink, `?tab=ignored` for ignore, `?q=` otherwise), an expansion to
-`?tab=expansions&show=all`, a card to `/admin/cards?q=SET-ID`, a product to `/admin/products?q=`,
+for link/relink, `?view=ignored` for ignore, `?q=` otherwise), an expansion to
+`?tab=prepare&view=expansions&show=all` (CM-l: every link through `matchingTabUrl`), a card to `/admin/cards?q=SET-ID`, a product to `/admin/products?q=`,
 a set to `/admin/sets`, the auto-match to `/admin/cardmarket`; jobs and the rest are plain text.
 The list keeps the previous page on screen while the next one loads; loading, empty ("Nothing
 recorded") and error (Retry) states as the other admin screens.

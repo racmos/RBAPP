@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useDocumentTitle } from '@/i18n';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { getAdminOverview, type AdminCardmarketHealth, type AdminRiot } from '@/api/endpoints';
+import { matchingTabUrl } from './cardmarket/matching/format';
 import { DayStatusBadge, JobStatusBadge } from './cardmarket/parts';
 import styles from './OverviewPage.module.css';
 
@@ -162,12 +163,12 @@ function CardmarketBand({ cardmarket }: { cardmarket: AdminCardmarketHealth }) {
         </div>
         <div className={styles.tile}>
           <p className={styles.facts}>
-            <Link to="/admin/cardmarket/matching?type=single">
+            <Link to={matchingTabUrl('link', { type: 'single' })}>
               {t('cardmarket.unmatched', { count: cardmarket.unmatched })}
             </Link>
           </p>
           <p className={styles.facts}>
-            <Link to="/admin/cardmarket/matching?tab=expansions">
+            <Link to={matchingTabUrl('prepare', { view: 'expansions' })}>
               {t('cardmarket.unmappedExpansions', { count: cardmarket.unmapped_expansions })}
             </Link>
           </p>

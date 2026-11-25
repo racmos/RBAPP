@@ -5,6 +5,10 @@ export type SegmentedOption<T extends string> = {
   value: T;
   label: ReactNode;
   disabled?: boolean;
+  /** A number shown after the label, part of the option's accessible name (CM-l). */
+  count?: number;
+  /** `warning`: the count needs attention (it is never the only signal: the number says it). */
+  tone?: 'neutral' | 'warning';
 };
 
 type SegmentedControlProps<T extends string> = {
@@ -53,7 +57,16 @@ export function SegmentedControl<T extends string>({
             disabled={disabled || option.disabled}
             onChange={() => onChange(option.value)}
           />
-          <span className={styles.text}>{option.label}</span>
+          <span className={styles.text}>
+            {option.label}
+            {/* the space keeps the name readable: "Conflicts 2", never "Conflicts2" */}
+            {option.count !== undefined && ' '}
+            {option.count !== undefined && (
+              <span className={styles.count} data-count="" data-tone={option.tone ?? 'neutral'}>
+                {option.count}
+              </span>
+            )}
+          </span>
         </label>
       ))}
     </div>
