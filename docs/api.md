@@ -1580,15 +1580,21 @@ same body. Every write records an `rbadminaudit` row in the same transaction
 ### Cards
 
 `AdminCard` = `{set_id, card_id, key ("<set>-<id>"), name, domain, type, tags, energy,
-power, might, ability, rarity, artist, image, image_url, image_src}` (raw columns;
-`image_*` from `CARD_IMAGES_DIR`).
+power, might, ability, rarity, artist, image, image_url, image_src, has_image}` (raw columns;
+`image_*` from `CARD_IMAGES_DIR`; `has_image` (F13-h S2) = the file named by `image` exists
+under `CARD_IMAGES_DIR`).
 
 - `GET /admin/cards` with `set` (repeatable), `rarity` (repeatable, exact,
-  case-insensitive), `type`/`domain` (substrings, case-insensitive), `missing_image`
-  (`true`), `q` (substring of the name, an exact card id, or a `SET-ID` key),
+  case-insensitive), `type`/`domain` (substrings, case-insensitive), `image` =
+  `any` (default) | `missing` (no image name **or** its file is not on disk) | `empty` (no
+  image name only: the Images screen with "Include files missing on disk" off) | `present`
+  (the file exists) (F13-h S2; `missing_image=true` is the older name of `image=missing`),
+  `q` (substring of the name, an exact card id, or a `SET-ID` key),
   `sort` = `number` (default: set id, then natural card id) | `name`, `dir` =
   `asc` (default) | `desc`, `page` ≥ 1, `per_page` ∈ {50, 100, 200} (default 50).
-  → 200 `{items: [AdminCard], meta: {page, per_page, total, pages}}`.
+  → 200 `{items: [AdminCard], meta: {page, per_page, total, pages}}`. At most 3 SQL
+  statements; the file check reads each card folder once (one directory scan per folder of
+  the matching cards, never one call per row).
 - `POST /admin/cards` (`AdminCardInput`: `set_id` + `card_id` required, `name` required;
   numbers 0-99 or null; texts trimmed, empty → null) → 201. Unknown set → 400
   (`set_id`, `invalid_value`); duplicate key → 409 `already_exists` (`field: card_id`).
@@ -1598,12 +1604,27 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   (sending `set_id`/`card_id` → 400 `invalid_value`; `rbcar_banned` or `banned` → 400: bans
   live only in `rbcardbans`, managed with `flask bans`; the column was dropped in F11-f) →
   200. Unknown card → 404. Audit `card.update` with `{field: [old, new]}`.
-- `POST /admin/cards/<set>/<id>/image` (multipart, field `file`): ≤ 2 097 152 bytes
-  (else 400 `out_of_range`, `params.max`); type by magic bytes — PNG `89 50 4E 47`,
-  JPEG `FF D8 FF`, WebP `RIFF????WEBP` (else 400 `invalid_format`). The extension follows
-  the bytes, not the name. Written with `card_image_path` over any existing file; the card's
-  `image` becomes `<stem>.<ext>` (stem of the current image, else `<set lower>_<card>`).
-  → 200 `AdminCard`. Audit `card.image` with `{image, bytes}`.
+- `POST /admin/cards/<set>/<id>/image` (multipart, field `file`; F13-h S4, S5, S7, S8;
+  logic `app/services/image_upload.py`): the upload is decoded, never stored as sent. At most
+  10 MB (10 485 760 bytes; else 400 `out_of_range` with `params.max`); PNG, JPEG or WebP by
+  magic bytes and Pillow (never the name or content type; else, or a damaged file, 400
+  `invalid_format`); at most 25 megapixels, read from the header before any pixel is decoded
+  (400 `out_of_range` with `params.max_pixels: 25000000`); a short side of at least 200 px
+  (400 `too_small` with `params.min: 200`); no `file` → 400 `required`. Every refusal is the
+  `validation_error` body with one `details[]` item on the field `file`, and nothing is
+  written. The image is turned upright (EXIF orientation), fitted inside **640 × 894** px
+  (ratio 63:88; LANCZOS, never upscaled or cropped) and re-encoded from bare pixels as
+  **WebP quality 85** (`method=6`), without any metadata. It is written to a temporary file
+  in its folder and moved with `os.replace` as `<set lower>_<card id lower>.webp` in the
+  folder `card_image_folder` gives (`ognx/ognx_66.webp`, `plat/plat_sfd189.webp`; created when
+  missing); when that name is taken (a file exists or it is the card's current image) the
+  name is `<stem>-<n>.webp`, n = 2, 3, …, so a browser never reuses the old URL. `image`
+  becomes the new name (`image_url` is not written). → 200 `AdminCard` + `{width, height,
+  bytes, previous}` (`image` is the new name, `bytes` the stored size, `previous` the name it
+  replaced or null). Audit `card.image` with `{image, bytes_in, bytes_out, width, height}`.
+  The previous file is **kept** for the Undo (S7); after the commit the card's older files of
+  its own name (`<stem>.<png|jpg|jpeg|webp>`, `<stem>-<n>.webp`) other than the new one and
+  `previous` are deleted when no card row names them.
 - `DELETE /admin/cards/<set>/<id>` → 200 `{"deleted": "<SET>-<id>"}`; 409 `card_in_use`
   (`params: {"collection_lines": n, "decks": m}`) when a collection line or a deck of any
   user references it. `decks` counts the distinct decks v2 of any user (the **current**
@@ -1616,17 +1637,20 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
 `app/api/admin/products.py`, logic in `app/services/product_list.py` (list) and
 `app/services/products.py` (`apply_admin_patch`, `expansion_set`). Only non-singles
 (`rbpdt_type = 'nonsingle'`); hidden ones included. `AdminProduct` = `ProductSummary` +
-`{hidden, kind_locked, set_locked, rbpdt_type, updated_at (UTC "YYYY-MM-DDTHH:MM:SSZ"|null)}`
-(`owned_qty` is the calling admin's copies).
+`{hidden, kind_locked, set_locked, rbpdt_type, updated_at (UTC "YYYY-MM-DDTHH:MM:SSZ"|null),
+image, has_image}` (`owned_qty` is the calling admin's copies; `image` = the stored file name
+and `has_image` = that file exists in `PRODUCT_IMAGES_DIR`, F13-h S2).
 
 - `GET /admin/products` (`AdminProductQuery`) with `q` (case-insensitive name substring, or
   an exact product id), `kind` (repeatable, one of the `PRODUCT_KINDS`), `hidden` and
-  `listed` = `any` (default) | `yes` | `no`, `no_set` / `no_image` (`true`: no set / no
-  image), `sort` = `name` (default) | `updated` (`rbpdt_updated_at`, nulls last in both
+  `listed` = `any` (default) | `yes` | `no`, `no_set` (`true`: no set), `image` = `any`
+  (default) | `missing` | `empty` | `present` (as `GET /admin/cards`, F13-h S2; `no_image=true`
+  is the older name of `image=missing`), `sort` = `name` (default) | `updated` (`rbpdt_updated_at`, nulls last in both
   directions, ties by name), `dir` = `asc` (default) | `desc`, `page` ≥ 1, `per_page` ∈
   {50, 100, 200} (default 50); anything else → 400 `validation_error`. → 200
   `{items: [AdminProduct], meta: {page, per_page, total, pages}}`. Three SQL statements (plus
-  the session user) whatever the size of the catalog.
+  the session user) and one directory scan of `PRODUCT_IMAGES_DIR` whatever the size of the
+  catalog.
 - `PATCH /admin/products/<id>` any of `{hidden (bool), kind, set_id}` (a key that is absent
   is not touched; other keys → 400). `kind` in `PRODUCT_KINDS` (`booster`, `booster_box`,
   `champion_deck`, `sealed_box_set`, `accessory`, `other`; the old `box`, `case`, `bundle`,
@@ -1641,18 +1665,44 @@ power, might, ability, rarity, artist, image, image_url, image_src}` (raw column
   product that is not a non-single → 404. `rbpdt_updated_at` moves only on a change. →
   200 `AdminProduct`. Audit `product.update` with `{field: [old, new]}` of what changed
   (`hidden`, `kind`, `kind_locked`, `set_id`, `set_locked`); no change, no row.
-- `POST /admin/products/<id>/image` (multipart, field `file`): the card image rules
-  (≤ 2 097 152 bytes, else 400 `out_of_range` with `params.max`; PNG / JPEG / WebP by magic
-  bytes, else 400 `invalid_format`; no `file` → 400 `required`). Written with
-  `product_image_path` as `<id>.<ext>` (the extension follows the bytes; the client file
-  name is never used) in `PRODUCT_IMAGES_DIR`; a previous `<id>.<other ext>` file is
-  deleted, any other name is left. `rbpdt_image` becomes the file name. → 200
-  `AdminProduct`. Audit `product.image` with `{image, bytes}`. Same 404 cases.
+- `POST /admin/products/<id>/image` (multipart, field `file`; F13-h): the card image rules
+  above with a minimum short side of **120 px** and the box **640 × 640** px; stored as
+  `<id>.webp` in `PRODUCT_IMAGES_DIR` (`<id>-<n>.webp` when taken; the client file name is
+  never used). `rbpdt_image` becomes the new name. → 200 `AdminProduct` + `{width, height,
+  bytes, previous}`. Audit `product.image` with `{image, bytes_in, bytes_out, width, height}`.
+  The previous file is kept for the Undo; the product's older `<id>.<ext>` / `<id>-<n>.webp`
+  files that no row names are deleted at the next upload, any other name is left. Same 404
+  cases.
 
 Product images are served publicly at `GET /riftbound/media/products/<filename>`
 (`media.product_image`): a plain file name with a `png`, `jpg`, `jpeg` or `webp`
 extension inside `PRODUCT_IMAGES_DIR`, cached a week, no `Set-Cookie`; anything else is a
 404 (same rules as `media.card_image`).
+
+### Images (F13-h)
+
+`app/api/admin/images.py`, logic in `app/services/image_upload.py`. The uploads are the two
+routes above; these routes serve the Admin → Images screen.
+
+- `GET /admin/images/summary` (no parameter) → 200 `{cards: {missing, total}, products:
+  {missing, total}}`: `missing` counts the items with no image name or whose file is not on
+  disk (`image=missing`); products are the non-singles. Two SQL statements and one directory
+  scan per card folder plus one of the products root.
+- `POST /admin/images/undo` `{type: "card"|"product", set_id + card_id | product_id, image,
+  previous}` (S3): when the item's image is still `image`, it becomes `previous` (null = no
+  image) and the file `image` is deleted when no row names it. → 200 `AdminCard` /
+  `AdminProduct`. Audit `card.image_undo` / `product.image_undo` with `{image: previous,
+  replaced: image}`. The image changed meanwhile → 409 (`Conflict`, no `code`); unknown item →
+  404; a missing key or a name that is not a plain file name → 400 `validation_error`.
+- `POST /admin/images/finalize` `{type: "card"|"product", image, set_id?}` (S7: the SPA calls
+  it when the Undo toast of an upload goes away) → 200 `{deleted: bool}`: the file is deleted
+  only when it is a regular file (not a symlink) inside `CARD_IMAGES_DIR` (in the folder
+  `card_image_folder(image, set_id)` gives) or `PRODUCT_IMAGES_DIR`, and no card / product row
+  names it; otherwise nothing happens and `deleted` is false. A name that is not a plain file
+  name → 400 `validation_error`. No audit row (no data changes).
+
+`flask images prune-orphans [--dry-run]` lists (and without `--dry-run` deletes) the image
+files of both roots that no row names; see `docs/knowledge/ops-runbook.md` → "Card images".
 
 ### Sync, jobs and change review
 

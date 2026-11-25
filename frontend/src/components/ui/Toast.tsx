@@ -54,7 +54,7 @@ function ToastItem({ toast }: { toast: ToastModel }) {
           className={styles.action}
           onClick={() => {
             toast.action?.onAction();
-            dismissToast(toast.id);
+            dismissToast(toast.id, { byAction: true });
           }}
         >
           {toast.action.label}

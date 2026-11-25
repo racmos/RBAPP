@@ -203,7 +203,17 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     server.use(
       http.post(`${API}/admin/products/:id/image`, ({ params, request }) => {
         uploads.push({ id: params.id, type: request.headers.get('content-type') });
-        return ok({ ...sleeves, image_src: '/riftbound/media/products/502.png' });
+        // F13-h: the answer adds the stored file, its size and the file it replaced
+        return ok({
+          ...sleeves,
+          image: '502.webp',
+          image_src: '/riftbound/media/products/502.png',
+          has_image: true,
+          previous: null,
+          width: 640,
+          height: 320,
+          bytes: 2048,
+        });
       }),
     );
     await renderApp({ path: '/admin/products', width: 1280 });
@@ -218,6 +228,12 @@ describe('ProductsAdminPage (F14-d S5)', () => {
     // jsdom's FormData cannot be read back on the MSW side: check what went into it.
     expect(append).toHaveBeenCalledWith('file', file);
     expect(editor.querySelector('img[src="/riftbound/media/products/502.png"]')).not.toBeNull();
+    expect(within(editor).getByText('Saved as 502.webp, 640 × 320 px, 2 KB.')).toBeVisible();
+    expect(
+      within(editor).getByText(
+        'PNG, JPEG or WebP up to 10 MB, at least 120 px on the short side. Stored as WebP, at most 640 × 640 px.',
+      ),
+    ).toBeVisible();
   }, 30000);
 
   it('filters live in the URL and reach the API', async () => {

@@ -49,3 +49,10 @@ export function formatRelative(value: Date | string, now: Date = new Date()): st
   }
   return formatDate(then);
 }
+
+/** A file size: `850 B`, `85 KB`, `1.2 MB` (1 KB = 1024 bytes). */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${formatNumber(bytes)} B`;
+  if (bytes < 1024 * 1024) return `${formatNumber(Math.round(bytes / 1024))} KB`;
+  return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
+}

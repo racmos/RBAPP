@@ -70,7 +70,12 @@ class TestList:
             ('OGN', '1'), ('OGN', '10'), ('SFD', '1')]
         assert ids(payload(admin_client.get(f'{URL}?domain=UR'))) == [('OGN', '1'), ('OGN', '10')]
 
-    def test_missing_image(self, admin_client, catalog):
+    def test_missing_image(self, admin_client, catalog, card_images_dir):
+        """F13-h S2: the old parameter means `image=missing` (the file must exist too)."""
+        assert ids(payload(admin_client.get(f'{URL}?missing_image=true'))) == [
+            ('OGN', '1'), ('OGN', '2'), ('OGN', '10'), ('SFD', '1')]
+        (card_images_dir / 'ogn').mkdir(parents=True)
+        (card_images_dir / 'ogn' / 'ogn_1.png').write_bytes(b'png')
         assert ids(payload(admin_client.get(f'{URL}?missing_image=true'))) == [
             ('OGN', '2'), ('OGN', '10'), ('SFD', '1')]
 
@@ -132,7 +137,8 @@ class TestList:
                         'tags': None, 'energy': None, 'power': None, 'might': None,
                         'ability': None, 'rarity': 'Común', 'artist': None,
                         'image': 'ogn_1.png', 'image_url': '/riftbound/media/cards/ogn/ogn_1.png',
-                        'image_src': '/riftbound/media/cards/ogn/ogn_1.png'}
+                        'image_src': '/riftbound/media/cards/ogn/ogn_1.png',
+                        'has_image': False}   # ogn_1.png is not on disk (F13-h S2)
 
 
 class TestCreate:

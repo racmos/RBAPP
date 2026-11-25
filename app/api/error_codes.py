@@ -70,4 +70,8 @@ class DetailCode(StrEnum):
     TOO_LONG = 'too_long'                         # params.max
     INVALID_FORMAT = 'invalid_format'
     INVALID_VALUE = 'invalid_value'
-    OUT_OF_RANGE = 'out_of_range'                 # params.min and/or params.max
+    OUT_OF_RANGE = 'out_of_range'                 # params.min and/or params.max (an image
+                                                  # upload: params.max bytes or
+                                                  # params.max_pixels, F13-h)
+    TOO_SMALL = 'too_small'                       # an image under the minimum short side;
+                                                  # params.min (px), F13-h

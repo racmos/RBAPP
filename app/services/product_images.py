@@ -11,7 +11,7 @@ import os
 
 from flask import current_app
 
-from app.services.card_images import _inside, is_plain_file_name
+from app.services.card_images import _inside, files_in, is_plain_file_name
 
 MEDIA_URL_PREFIX = '/riftbound/media/products'
 
@@ -64,3 +64,15 @@ def stored_product_image(filename: str):
     if not os.path.isfile(path) or not _inside(root, path):
         return None
     return filename
+
+
+def existing_files() -> set:
+    """Names of the image files in the root: one directory scan (F13-h S2)."""
+    root = images_root()
+    return {name for name in files_in(root, root) if has_image_extension(name)}
+
+
+def product_has_file(filename, existing: set) -> bool:
+    """True when `filename` is a plain image name present in `existing` (`existing_files`)."""
+    return bool(filename) and is_plain_file_name(filename) and \
+        has_image_extension(filename) and filename in existing

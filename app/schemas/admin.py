@@ -174,8 +174,14 @@ class AdminBulkBody(BaseModel):
     action: Literal['approve', 'reject']
 
 
+# F13-h S2: `missing` = no image name or its file is not on disk, `empty` = no image name only
+# (the Images screen with "Include files missing on disk" off), `present` = the file exists.
+IMAGE_FILTERS = ('any', 'missing', 'empty', 'present')
+
+
 class AdminCardQuery(BaseModel):
-    """GET /admin/cards query (S6). Repeatable params accept one value or many."""
+    """GET /admin/cards query (S6). Repeatable params accept one value or many.
+    `missing_image=true` is the older name of `image=missing` (F13-h S2)."""
 
     model_config = ConfigDict(extra='forbid')
 
@@ -184,6 +190,7 @@ class AdminCardQuery(BaseModel):
     type: Optional[str] = None
     domain: Optional[str] = None
     missing_image: bool = False
+    image: Literal[IMAGE_FILTERS] = 'any'
     q: Optional[str] = None
     sort: Literal['number', 'name'] = 'number'
     dir: Literal['asc', 'desc'] = 'asc'
@@ -216,6 +223,11 @@ class AdminCardQuery(BaseModel):
                 return False
         return value
 
+    @property
+    def image_filter(self) -> str:
+        """`image`, with the older `missing_image=true` meaning `missing`."""
+        return 'missing' if self.image == 'any' and self.missing_image else self.image
+
 
 def _query_bool(value):
     """`true` / `false` (any case) of a query string; anything else is left to Pydantic."""
@@ -225,7 +237,8 @@ def _query_bool(value):
 
 
 class AdminProductQuery(BaseModel):
-    """GET /admin/products query (F14-d S2). `kind` is repeatable."""
+    """GET /admin/products query (F14-d S2). `kind` is repeatable; `no_image=true` is the
+    older name of `image=missing` (F13-h S2)."""
 
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
@@ -235,6 +248,7 @@ class AdminProductQuery(BaseModel):
     listed: Literal['any', 'yes', 'no'] = 'any'
     no_set: bool = False
     no_image: bool = False
+    image: Literal[IMAGE_FILTERS] = 'any'
     sort: Literal['name', 'updated'] = 'name'
     dir: Literal['asc', 'desc'] = 'asc'
     page: int = Field(default=1, ge=1)
@@ -258,6 +272,11 @@ class AdminProductQuery(BaseModel):
     @classmethod
     def _to_bool(cls, value):
         return _query_bool(value)
+
+    @property
+    def image_filter(self) -> str:
+        """`image`, with the older `no_image=true` meaning `missing`."""
+        return 'missing' if self.image == 'any' and self.no_image else self.image
 
 
 class AdminProductPatch(BaseModel):
@@ -530,6 +549,37 @@ class AdminAuditQuery(_AuditDates):
         if value is not None and start is not None and value < start:
             raise ValueError('to must not be before from')
         return value
+
+
+class AdminImageFinalizeBody(BaseModel):
+    """POST /admin/images/finalize body (F13-h S7): the previous file to delete once the Undo
+    expired; `set_id` gives the folder of a card image name without a `<folder>_` prefix."""
+
+    model_config = STRIPPED
+
+    type: Literal['card', 'product']
+    image: str = Field(min_length=1, max_length=200)
+    set_id: Optional[str] = Field(default=None, min_length=1, max_length=20)
+
+
+class AdminImageUndoBody(BaseModel):
+    """POST /admin/images/undo body (F13-h S3): give the item its `previous` image back
+    (null = none) when its image is still `image`."""
+
+    model_config = STRIPPED
+
+    type: Literal['card', 'product']
+    set_id: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    card_id: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    product_id: Optional[int] = Field(default=None, ge=1)
+    image: str = Field(min_length=1, max_length=200)
+    previous: Optional[str] = Field(default=None, max_length=500)
+
+
+class AdminImagesSummaryQuery(BaseModel):
+    """GET /admin/images/summary query (F13-h S1): no parameter."""
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class AdminAuditFacetsQuery(BaseModel):

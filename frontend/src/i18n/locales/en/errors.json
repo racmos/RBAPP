@@ -57,6 +57,12 @@
     "invalid_format": "The format is not valid.",
     "invalid_value": "The value is not valid.",
     "out_of_range": "The value is out of range.",
+    "too_small": "The image is too small (at least {{min}} px).",
+    "file": {
+      "invalid_format": "That file is not a supported image. Use a PNG, JPEG or WebP image.",
+      "out_of_range": "The image is too large (at most 10 MB and 25 megapixels).",
+      "too_small": "The image is too small: its short side must be at least {{min}} px."
+    },
     "username": {
       "invalid_format": "Use 3 to 32 characters: letters, numbers, dot, hyphen or underscore.",
       "too_short": "The username must be at least {{min}} characters.",

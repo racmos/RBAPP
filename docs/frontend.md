@@ -427,6 +427,31 @@ only what changed to `PATCH /admin/products/<id>`: the "automatic" kind is `kind
 the "Set by hand" badge. The image goes to `POST .../image` as multipart `file`. Kind labels
 live in the `products` namespace (`products:kind.<kind>`, F14-e adds the rest).
 
+**Images admin (F13-h).** `/admin/images` (`src/admin/images/`, nav entry `images` after
+Products) lists the cards (`GET /admin/cards`) or products (`GET /admin/products`) without a usable
+image, tabs `Cards | Products` in the URL (`?tab=products`; the tabs show the `missing` counters of
+`GET /admin/images/summary`). Filters in the URL: `q`, `set` (cards) or `kind` (products),
+`per_page` 50/100/200, `page`, and `files=off` for the switch "Include files missing on disk" off
+(the request sends `image=empty`; on, the default, `image=missing`). ≥ 860 px a table (48 px
+thumbnail or placeholder with a "No image" / "File missing" badge, name, code or kind, set, "Choose
+file"); below 860 px a list of cards. Each row takes a dropped image too. `UploadDialog` previews the
+picked file (object URL, name, size, the limits) and refuses a non-image or a file over 10 MB before
+sending; Upload sends it once through `uploadImage.ts::sendImage`, the row shows the new thumbnail at
+once (the list query is marked stale, the row leaves at the next refetch) and the toast
+`Image saved for <name>: <file>, <w> × <h> px, <size>.` (10 s) offers Undo (`POST
+/admin/images/undo`); when it goes away without Undo its `onExpire` (`toastStore`, new) calls
+`POST /admin/images/finalize` with the replaced file. "Upload several images" (`BulkUploadDialog`)
+takes up to 50 files, matches each by its name stem (`matchFiles.ts`, pure: `ogn_66`, `OGN-66`,
+`plat_sfd189`, case-insensitive, `-` = `_`; products by id) after looking the keys up on the API,
+shows `file → target` with Ready / No match / Several matches / Too large / Not an image, lets a
+file be assigned by hand from a search, and on confirm sends the ready files two at a time
+(`runBatch.ts`) with a progress bar and a summary; a failure never stops the others (no Undo in a
+batch: the replaced files go at the next upload or with `flask images prune-orphans`). The Cards
+and Products edit forms keep their upload control, show the new limits and `Saved as <file>, <w> ×
+<h> px, <size>.` after an upload, and finalize the replaced file when their toast goes. Strings:
+`admin:images.*`, `admin:cards.image.*`, `admin:products.imageHint`, `errors:validation.too_small`
+and `errors:validation.file.*`.
+
 **Sets admin.** `/admin/sets` (`src/admin/SetsPage.tsx`) filters and sorts the
 `GET /admin/sets` list in the browser, with the state in the URL: `q` (code or name
 substring), `sort` = `id|name|releaseDate|cards` (default `id`) and `dir` = `asc|desc`

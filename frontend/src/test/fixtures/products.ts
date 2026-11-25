@@ -31,6 +31,8 @@ export const boosterBox: AdminProduct = {
   set_locked: false,
   rbpdt_type: 'nonsingle',
   updated_at: '2026-10-28T06:30:00Z',
+  image: '501.png',
+  has_image: true,
 };
 
 /** A hidden product with both locks, no set, no image and no price. */
@@ -49,6 +51,8 @@ export const sleeves: AdminProduct = {
   set_locked: true,
   rbpdt_type: 'nonsingle',
   updated_at: null,
+  image: null,
+  has_image: false,
 };
 
 export const adminProductList: AdminProductList = {

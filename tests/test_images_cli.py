@@ -120,3 +120,66 @@ class TestImportLegacy:
         result = runner.invoke(args=['images', '--help'])
         assert result.exit_code == 0
         assert 'import-legacy' in result.stdout
+
+
+class TestPruneOrphans:
+    """F13-h S7: `flask images prune-orphans [--dry-run]` lists or deletes the image files no
+    row references; both roots are the fixtures' temporary folders."""
+
+    @pytest.fixture
+    def world(self, app, card_images_dir, product_images_dir, tmp_path):
+        from app import db
+        from app.models.card import RbCard
+        from app.models.set import RbSet
+        from tests.product_helpers import add_product
+        db.session.add(RbSet(rbset_id='OGN', rbset_name='Origen', rbset_ncard=2))
+        db.session.add_all([
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='1', rbcar_name='A', image='ogn_1.png'),
+            RbCard(rbcar_rbset_id='OGN', rbcar_id='2', rbcar_name='B', image='ogn_2.webp')])
+        add_product(100, 'Booster', image='100.webp')
+        db.session.commit()
+        (card_images_dir / 'ogn').mkdir(parents=True)
+        for name in ('ogn_1.png', 'ogn_2.webp', 'ogn_2.png', 'ogn_3.jpg', 'notes.txt'):
+            (card_images_dir / 'ogn' / name).write_bytes(PNG)
+        (card_images_dir / 'sfd').mkdir()
+        (card_images_dir / 'sfd' / 'sfd_1.png').write_bytes(PNG)
+        (card_images_dir / 'Bad-Folder').mkdir()
+        (card_images_dir / 'Bad-Folder' / 'x_1.png').write_bytes(PNG)
+        (tmp_path / 'outside.png').write_bytes(b'keep me')
+        (card_images_dir / 'ogn' / 'ogn_9.png').symlink_to(tmp_path / 'outside.png')
+        product_images_dir.mkdir()
+        for name in ('100.webp', '100.png', '101.png', '.upload-x.tmp'):
+            (product_images_dir / name).write_bytes(PNG)
+        return card_images_dir, product_images_dir
+
+    ORPHANS = ('cards/ogn/ogn_2.png\ncards/ogn/ogn_3.jpg\ncards/sfd/sfd_1.png\n'
+               'products/100.png\nproducts/101.png\n')
+
+    def test_dry_run_lists_and_deletes_nothing(self, cli, world):
+        before = [_tree(root) for root in world]
+        result = cli('prune-orphans', '--dry-run')
+        assert result.exit_code == 0, result.output
+        assert result.stdout == self.ORPHANS + '5 orphan files (dry run, nothing deleted).\n'
+        assert result.stderr == ''
+        assert [_tree(root) for root in world] == before
+
+    def test_it_deletes_only_the_orphan_images(self, cli, world, tmp_path):
+        cards, products = world
+        result = cli('prune-orphans')
+        assert result.exit_code == 0, result.output
+        assert result.stdout == self.ORPHANS + 'Deleted 5 orphan files.\n'
+        assert sorted(_tree(cards)) == sorted([
+            os.path.join('ogn', 'ogn_1.png'), os.path.join('ogn', 'ogn_2.webp'),
+            os.path.join('ogn', 'notes.txt'), os.path.join('ogn', 'ogn_9.png'),
+            os.path.join('Bad-Folder', 'x_1.png')])
+        assert sorted(_tree(products)) == ['.upload-x.tmp', '100.webp']
+        assert (tmp_path / 'outside.png').read_bytes() == b'keep me'
+
+    def test_missing_roots_find_nothing(self, cli, card_images_dir, product_images_dir):
+        result = cli('prune-orphans')
+        assert result.exit_code == 0
+        assert result.stdout == 'Deleted 0 orphan files.\n'
+
+    def test_it_is_listed_in_the_help(self, app):
+        result = app.test_cli_runner(mix_stderr=False).invoke(args=['images', '--help'])
+        assert 'prune-orphans' in result.stdout

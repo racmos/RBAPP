@@ -138,7 +138,10 @@ MATRIX = {
                                             # and api_admin.promo_cards_create (CM-h); the
                                             # missing printings are
                                             # api_admin.missing_printings_list and
-                                            # api_admin.missing_printings_create (CM-m)
+                                            # api_admin.missing_printings_create (CM-m); the
+                                            # image manager is api_admin.images_summary,
+                                            # api_admin.images_undo and
+                                            # api_admin.images_finalize (F13-h)
 }
 
 LOGIN_PATH = '/riftbound/app/login'
