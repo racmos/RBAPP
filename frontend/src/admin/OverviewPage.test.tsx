@@ -159,7 +159,7 @@ describe('OverviewPage (F13-a S6)', () => {
       );
       expect(within(band).getByRole('link', { name: 'Unmapped expansions: 3' })).toHaveAttribute(
         'href',
-        '/riftbound/app/admin/cardmarket/matching?tab=expansions',
+        '/riftbound/app/admin/cardmarket/matching?tab=prepare&view=expansions',
       );
       expect(within(band).getByRole('link', { name: 'Open Cardmarket' })).toHaveAttribute(
         'href',

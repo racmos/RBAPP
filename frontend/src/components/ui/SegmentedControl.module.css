@@ -66,6 +66,28 @@
     box-shadow: inset 0 0 0 4px var(--bg-0);
   }
 
+  /* The count of an option (CM-l): a pill with its own background, readable on the checked
+     segment too. */
+  .count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    min-height: 20px;
+    padding: 0 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg-0);
+    color: var(--text);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .count[data-tone='warning'] {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
   .input:disabled + .text {
     opacity: 0.5;
     cursor: not-allowed;

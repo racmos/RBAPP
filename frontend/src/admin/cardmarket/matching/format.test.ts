@@ -5,11 +5,15 @@ import {
   cardRef,
   defaultFoil,
   groupConflicts,
+  canonicalSearch,
   matchingTabUrl,
   parseTab,
+  parseView,
   scoreText,
   suggestionFoil,
+  TABS,
   typeFromCategory,
+  viewSearch,
 } from './format';
 
 const link = (id: number, setId: string, cardId: string, foil: 'N' | 'S' | null) => ({
@@ -32,26 +36,90 @@ describe('matching format helpers (CM-b)', () => {
     expect(cardRef('OGN', '001')).toBe('OGN-001');
   });
 
-  it('matchingTabUrl is the one place that builds a tab URL (CM-m)', () => {
-    expect(matchingTabUrl('missing')).toBe('/admin/cardmarket/matching?tab=missing');
-    expect(matchingTabUrl('missing', { printings: 'RAD' })).toBe(
-      '/admin/cardmarket/matching?tab=missing&printings=RAD',
+  it('matchingTabUrl is the one place that builds a tab URL (CM-m, CM-l)', () => {
+    expect(matchingTabUrl('prepare', { view: 'missing' })).toBe(
+      '/admin/cardmarket/matching?tab=prepare&view=missing',
     );
+    expect(matchingTabUrl('prepare', { printings: 'RAD', view: 'missing' })).toBe(
+      '/admin/cardmarket/matching?tab=prepare&view=missing&printings=RAD',
+    );
+    expect(matchingTabUrl('prepare', { view: 'expansions' })).toBe(
+      '/admin/cardmarket/matching?tab=prepare&view=expansions',
+    );
+    expect(matchingTabUrl('prepare')).toBe('/admin/cardmarket/matching?tab=prepare');
     expect(matchingTabUrl('link')).toBe('/admin/cardmarket/matching');
+    expect(matchingTabUrl('link', { type: 'single' })).toBe(
+      '/admin/cardmarket/matching?type=single',
+    );
+    expect(matchingTabUrl('link', { view: 'ignored' })).toBe(
+      '/admin/cardmarket/matching?view=ignored',
+    );
+    // the default view of To link and Linked is never written
+    expect(matchingTabUrl('link', { view: 'link' })).toBe('/admin/cardmarket/matching');
+    expect(matchingTabUrl('linked', { view: 'all', q: '9' })).toBe(
+      '/admin/cardmarket/matching?tab=linked&q=9',
+    );
     expect(matchingTabUrl('linked', { q: 'a&b' })).toBe(
       '/admin/cardmarket/matching?tab=linked&q=a%26b',
     );
+    expect(matchingTabUrl('linked', { view: 'conflicts' })).toBe(
+      '/admin/cardmarket/matching?tab=linked&view=conflicts',
+    );
+    expect(matchingTabUrl('auto')).toBe('/admin/cardmarket/matching?tab=auto');
   });
 
-  it('parseTab knows the seven tabs and defaults to "link"', () => {
+  it('parseTab knows the four tabs in workflow order and defaults to "link" (CM-l S1)', () => {
+    expect(TABS).toEqual(['prepare', 'auto', 'link', 'linked']);
     expect(parseTab(null)).toBe('link');
-    expect(parseTab('linked')).toBe('linked');
-    expect(parseTab('conflicts')).toBe('conflicts');
-    expect(parseTab('ignored')).toBe('ignored');
+    expect(parseTab('prepare')).toBe('prepare');
     expect(parseTab('auto')).toBe('auto');
-    expect(parseTab('expansions')).toBe('expansions');
-    expect(parseTab('missing')).toBe('missing');
+    expect(parseTab('linked')).toBe('linked');
+    expect(parseTab('conflicts')).toBe('link');
     expect(parseTab('nope')).toBe('link');
+  });
+
+  it('parseView reads the view of a merged tab, its first view by default (CM-l S2-S4)', () => {
+    expect(parseView('prepare', null)).toBe('expansions');
+    expect(parseView('prepare', 'missing')).toBe('missing');
+    expect(parseView('prepare', 'ignored')).toBe('expansions');
+    expect(parseView('link', null)).toBe('link');
+    expect(parseView('link', 'ignored')).toBe('ignored');
+    expect(parseView('linked', null)).toBe('all');
+    expect(parseView('linked', 'conflicts')).toBe('conflicts');
+    expect(parseView('linked', 'nope')).toBe('all');
+  });
+
+  it('canonicalSearch rewrites the old tabs and an unknown one, keeping the filters (CM-l S5)', () => {
+    const canonical = (search: string) => canonicalSearch(new URLSearchParams(search))?.toString();
+    expect(canonical('tab=conflicts')).toBe('tab=linked&view=conflicts');
+    expect(canonical('tab=ignored&q=ahri')).toBe('view=ignored&q=ahri');
+    expect(canonical('tab=expansions&show=all')).toBe('tab=prepare&view=expansions&show=all');
+    expect(canonical('tab=missing&set=OGNX')).toBe('tab=prepare&view=missing&set=OGNX');
+    expect(canonical('printings=RAD&tab=missing')).toBe('tab=prepare&view=missing&printings=RAD');
+    // an old tab wins over a view of the URL
+    expect(canonical('tab=conflicts&view=all&page=2')).toBe('tab=linked&view=conflicts&page=2');
+    // an unknown tab falls back to To link
+    expect(canonical('tab=nope&q=x')).toBe('q=x');
+    // the new tabs, and no tab, are already canonical
+    expect(canonical('')).toBeUndefined();
+    expect(canonical('tab=auto')).toBeUndefined();
+    expect(canonical('tab=linked&q=9')).toBeUndefined();
+    expect(canonical('tab=prepare&view=missing&set=OGNX')).toBeUndefined();
+    expect(canonical('view=ignored')).toBeUndefined();
+  });
+
+  it('viewSearch keeps q, set and category and drops page and the other filters (CM-l S6)', () => {
+    const view = (tab: 'prepare' | 'link' | 'linked', search: string, next: string) =>
+      viewSearch(tab, next as never, new URLSearchParams(search)).toString();
+    expect(view('link', 'q=ahri&type=single&page=3', 'ignored')).toBe('view=ignored&q=ahri');
+    expect(view('link', 'view=ignored&q=ahri&category=Box', 'link')).toBe('q=ahri&category=Box');
+    expect(
+      view('linked', 'tab=linked&q=9&set=OGN&foil=N&match_type=auto&page=2', 'conflicts'),
+    ).toBe('tab=linked&view=conflicts&q=9&set=OGN');
+    expect(view('prepare', 'tab=prepare&show=all', 'missing')).toBe('tab=prepare&view=missing');
+    expect(view('prepare', 'tab=prepare&view=missing&set=OGNX&printings=RAD', 'expansions')).toBe(
+      'tab=prepare&view=expansions&set=OGNX',
+    );
   });
 
   it('defaultFoil follows the matcher slots: runes and rares one slot, commons N then S', () => {

@@ -152,7 +152,7 @@ describe('CardmarketPage header (CM-a)', () => {
     ).toEqual(['Unmatched products: 12', 'Unmapped expansions: 2']);
     expect(within(header).getByRole('link', { name: 'Unmapped expansions: 2' })).toHaveAttribute(
       'href',
-      '/riftbound/app/admin/cardmarket/matching?tab=expansions',
+      '/riftbound/app/admin/cardmarket/matching?tab=prepare&view=expansions',
     );
     expect(within(header).getByRole('link', { name: 'Unmatched products: 12' })).toHaveAttribute(
       'href',

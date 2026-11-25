@@ -286,18 +286,17 @@ describe('Auto-match tab (CM-b)', () => {
     const link = within(ziggs!).getByRole('link', { name: 'create the missing printing' });
     expect(link).toHaveAttribute(
       'href',
-      '/riftbound/app/admin/cardmarket/matching?tab=missing&printings=RAD',
+      '/riftbound/app/admin/cardmarket/matching?tab=prepare&view=missing&printings=RAD',
     );
     // an item without the detail keeps its row as before
     expect(within(ahri!).queryByText(/printings on Cardmarket/)).toBeNull();
     await user.click(link);
-    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=missing&printings=RAD`));
+    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=prepare&view=missing&printings=RAD`));
+    // CM-l: Missing cards is a view of the Prepare tab
     await vi.waitFor(() =>
-      expect(screen.getByRole('tab', { name: 'Missing cards' })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      ),
+      expect(screen.getByRole('tab', { name: 'Prepare' })).toHaveAttribute('aria-selected', 'true'),
     );
+    expect(screen.getByRole('radio', { name: 'Missing cards' })).toBeChecked();
     expect(await screen.findByRole('combobox', { name: 'Extra printings set' }, LONG)).toHaveValue(
       'RAD',
     );

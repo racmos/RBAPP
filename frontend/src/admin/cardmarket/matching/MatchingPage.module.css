@@ -22,24 +22,48 @@
     font-size: 14px;
   }
 
+  /* Four tabs on one row (CM-l): they fit at 360 px; a narrower screen scrolls inside the bar
+     only, never the page. */
   .tabs {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+    flex-wrap: nowrap;
+    gap: 2px;
     margin: 12px 0 16px;
+    overflow-x: auto;
     border-bottom: 1px solid var(--line);
   }
 
   .tab {
+    flex: 0 0 auto;
     min-height: 44px;
-    padding: 8px 14px;
+    padding: 8px 10px;
     border: 0;
     border-bottom: 3px solid transparent;
     background: none;
     color: var(--muted);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
+    white-space: nowrap;
     cursor: pointer;
+  }
+
+  @media (min-width: 860px) {
+    .tabs {
+      gap: 4px;
+    }
+
+    .tab {
+      padding: 8px 14px;
+      font-size: 15px;
+    }
+  }
+
+  /* The views of a merged tab (CM-l): at the left of the panel's toolbar, under the tabs. */
+  .views {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
   }
 
   .tab[aria-selected='true'] {

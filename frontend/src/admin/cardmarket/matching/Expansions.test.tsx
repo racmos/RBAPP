@@ -42,13 +42,12 @@ afterEach(() => {
 });
 
 describe('Expansions tab (CM-d)', () => {
-  it('is the sixth tab and lists the unmapped expansions by default', async () => {
+  it('is the Expansions view of Prepare and lists the unmapped expansions by default', async () => {
     const calls = matchingApi();
     const { table } = await openTab();
-    expect(screen.getByRole('tab', { name: 'Expansions' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    // CM-l: the old ?tab=expansions opens the Expansions view of the Prepare tab
+    expect(screen.getByRole('tab', { name: 'Prepare' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('radio', { name: 'Expansions' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Not mapped only' })).toBeChecked();
     expect(
       screen.getByText(
@@ -76,7 +75,7 @@ describe('Expansions tab (CM-d)', () => {
     const user = userEvent.setup();
     const { where } = await openTab();
     await user.click(screen.getByRole('checkbox', { name: 'Not mapped only' }));
-    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=expansions&show=all`));
+    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=prepare&view=expansions&show=all`));
     const table = await screen.findByRole('table', { name: 'Cardmarket expansions' });
     await vi.waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(4));
     expect(callsTo(calls, 'GET', '/expansions').at(-1)!.search.toString()).toBe('');
@@ -450,10 +449,10 @@ describe('Unmapped expansions counters link to the tab (CM-d)', () => {
     const counter = await screen.findByRole('link', { name: 'Unmapped expansions: 2' }, LONG);
     expect(counter).toHaveAttribute(
       'href',
-      '/riftbound/app/admin/cardmarket/matching?tab=expansions',
+      '/riftbound/app/admin/cardmarket/matching?tab=prepare&view=expansions',
     );
     await user.click(counter);
-    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=expansions`));
+    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=prepare&view=expansions`));
     expect(await screen.findByRole('table', { name: 'Cardmarket expansions' }, LONG)).toBeVisible();
   });
 
@@ -467,6 +466,9 @@ describe('Unmapped expansions counters link to the tab (CM-d)', () => {
     const header = await screen.findByRole('region', { name: 'Status' }, LONG);
     expect(
       await within(header).findByRole('link', { name: 'Unmapped expansions: 2' }),
-    ).toHaveAttribute('href', '/riftbound/app/admin/cardmarket/matching?tab=expansions');
+    ).toHaveAttribute(
+      'href',
+      '/riftbound/app/admin/cardmarket/matching?tab=prepare&view=expansions',
+    );
   });
 });

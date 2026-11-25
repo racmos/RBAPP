@@ -46,14 +46,13 @@ afterEach(() => {
 });
 
 describe('Missing cards tab (CM-h)', () => {
-  it('is the seventh tab and asks for a promo set before listing anything', async () => {
+  it('is the Missing cards view of Prepare and asks for a promo set before listing anything', async () => {
     const calls = matchingApi();
     const user = userEvent.setup();
     const { where } = await openTab('');
-    expect(screen.getByRole('tab', { name: 'Missing cards' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    // CM-l: the old ?tab=missing opens the Missing cards view of the Prepare tab
+    expect(screen.getByRole('tab', { name: 'Prepare' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('radio', { name: 'Missing cards' })).toBeChecked();
     const select = screen.getByRole('combobox', { name: 'Promo set' });
     expect(
       within(select)
@@ -70,7 +69,7 @@ describe('Missing cards tab (CM-h)', () => {
       '',
     ]);
     await user.selectOptions(select, 'OGNX');
-    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=missing&set=OGNX`));
+    await vi.waitFor(() => expect(where()).toBe(`${PATH}?tab=prepare&view=missing&set=OGNX`));
     await screen.findByRole('table', { name: 'Missing promo cards' }, LONG);
     expect(callsTo(calls, 'GET', '/promo-cards').at(-1)!.search.toString()).toBe('set=OGNX');
   });

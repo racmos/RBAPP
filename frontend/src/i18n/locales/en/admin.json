@@ -373,13 +373,23 @@
     "back": "Back to Cardmarket",
     "tabsLabel": "Matching sections",
     "tabs": {
-      "link": "To link",
-      "linked": "Linked",
-      "conflicts": "Conflicts",
-      "ignored": "Ignored",
+      "prepare": "Prepare",
       "auto": "Auto-match",
+      "link": "To link",
+      "linked": "Linked"
+    },
+    "views": {
+      "label": {
+        "prepare": "Prepare view",
+        "link": "To link view",
+        "linked": "Linked view"
+      },
       "expansions": "Expansions",
-      "missing": "Missing cards"
+      "missing": "Missing cards",
+      "link": "To link",
+      "ignored": "Ignored",
+      "all": "All links",
+      "conflicts": "Conflicts"
     },
     "slot": {
       "N": "N",

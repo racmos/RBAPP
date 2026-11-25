@@ -223,7 +223,10 @@ function ReviewSection({ params, setParam, setPage, offline, openDialog }: Panel
                     products: item.detail.products,
                   })}{' '}
                   <Link
-                    to={matchingTabUrl('missing', { printings: item.detail.set_id })}
+                    to={matchingTabUrl('prepare', {
+                      view: 'missing',
+                      printings: item.detail.set_id,
+                    })}
                     className={styles.back}
                   >
                     {t('matching.review.createPrinting')}

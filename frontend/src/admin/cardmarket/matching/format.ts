@@ -1,32 +1,108 @@
 /** Pure helpers of the Cardmarket matching workbench (CM-b). */
 import type { CardmarketFoil, CardmarketLink } from '@/api/endpoints';
 
-export const TABS = [
-  'link',
-  'linked',
-  'conflicts',
-  'ignored',
-  'auto',
-  'expansions',
-  'missing',
-] as const;
+/** The four tabs in the order of the work after a reset or a new set (CM-l S1). */
+export const TABS = ['prepare', 'auto', 'link', 'linked'] as const;
 export type MatchingTab = (typeof TABS)[number];
+
+/**
+ * The views of the merged tabs (CM-l S2-S4), the default first: Prepare holds Expansions and
+ * Missing cards, To link the Ignored list, Linked the Conflicts.
+ */
+export const VIEWS = {
+  prepare: ['expansions', 'missing'],
+  link: ['link', 'ignored'],
+  linked: ['all', 'conflicts'],
+} as const;
+export type ViewTab = keyof typeof VIEWS;
+export type MatchingView<T extends ViewTab = ViewTab> = (typeof VIEWS)[T][number];
+
+export const hasViews = (tab: MatchingTab): tab is ViewTab => tab in VIEWS;
 
 /** The page size of every list; all the matching endpoints accept 25, 50, 100 and 200. */
 export const PER_PAGE = 50;
 
+const BASE_URL = '/admin/cardmarket/matching';
+
+/** The filters a view change keeps (CM-l S6); the page and every other filter go. */
+const VIEW_KEPT = ['q', 'set', 'category'];
+
 /**
- * The URL of one workbench tab with its filters, for links from other screens and panels
- * (CM-m: the review links the Missing cards tab). The one place that knows how a tab is in the
- * URL, so the tab merge of CM-l changes only this function. `link` is the default tab.
+ * The old tabs of CM-b..CM-h and where they live now (CM-l S5): their URLs are rewritten with
+ * a replace, keeping the filters.
+ */
+const OLD_TABS: Record<string, { tab: MatchingTab; view: MatchingView }> = {
+  conflicts: { tab: 'linked', view: 'conflicts' },
+  ignored: { tab: 'link', view: 'ignored' },
+  expansions: { tab: 'prepare', view: 'expansions' },
+  missing: { tab: 'prepare', view: 'missing' },
+};
+
+/**
+ * `view` as the URL holds it: the default views of To link and Linked are never written; both
+ * views of Prepare are (`?tab=prepare&view=expansions|missing`).
+ */
+function viewParam(tab: MatchingTab, view: string | undefined): string | null {
+  if (!view || !hasViews(tab)) return null;
+  if (tab !== 'prepare' && view === VIEWS[tab][0]) return null;
+  return view;
+}
+
+/** The search of one tab: `tab` (none for To link, the default), then `view`, then the rest. */
+export function matchingSearch(
+  tab: MatchingTab,
+  params: Iterable<[string, string]>,
+): URLSearchParams {
+  const rest = [...params];
+  const view = viewParam(tab, rest.find(([key]) => key === 'view')?.[1]);
+  const search = new URLSearchParams(tab === 'link' ? {} : { tab });
+  if (view) search.set('view', view);
+  for (const [key, value] of rest) if (key !== 'tab' && key !== 'view') search.append(key, value);
+  return search;
+}
+
+/**
+ * The URL of one workbench tab with its view and filters, for links from other screens and
+ * panels (CM-m, CM-l). The one place that knows how a tab and its view are in the URL; `link`
+ * is the default tab. `params.view` picks a view of a merged tab.
  */
 export function matchingTabUrl(tab: MatchingTab, params: Record<string, string> = {}): string {
-  const query = new URLSearchParams(tab === 'link' ? params : { tab, ...params }).toString();
-  return query ? `/admin/cardmarket/matching?${query}` : '/admin/cardmarket/matching';
+  const query = matchingSearch(tab, Object.entries(params)).toString();
+  return query ? `${BASE_URL}?${query}` : BASE_URL;
 }
 
 export const parseTab = (value: string | null): MatchingTab =>
   (TABS as readonly string[]).includes(value ?? '') ? (value as MatchingTab) : 'link';
+
+/** The view of a merged tab from the URL; its first view when absent or unknown. */
+export const parseView = <T extends ViewTab>(tab: T, value: string | null): MatchingView<T> => {
+  const views: readonly string[] = VIEWS[tab];
+  return (views.includes(value ?? '') ? value : views[0]) as MatchingView<T>;
+};
+
+/**
+ * The search an old or unknown `?tab=` stands for (CM-l S5), with every other parameter kept;
+ * null when the search is already in the current form.
+ */
+export function canonicalSearch(params: URLSearchParams): URLSearchParams | null {
+  const value = params.get('tab');
+  if (value === null || (TABS as readonly string[]).includes(value)) return null;
+  const old = OLD_TABS[value];
+  const rest = [...params].filter(([key]) => key !== 'tab' && (!old || key !== 'view'));
+  return old
+    ? matchingSearch(old.tab, [['view', old.view], ...rest])
+    : matchingSearch('link', rest);
+}
+
+/** The search after choosing another view of the same tab: q, set and category stay (S6). */
+export function viewSearch<T extends ViewTab>(
+  tab: T,
+  view: MatchingView<T>,
+  params: URLSearchParams,
+): URLSearchParams {
+  const kept = [...params].filter(([key]) => VIEW_KEPT.includes(key));
+  return matchingSearch(tab, [['view', view], ...kept]);
+}
 
 /** The longest search the candidates endpoint takes. */
 export const MAX_QUERY = 100;

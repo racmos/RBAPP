@@ -1,4 +1,5 @@
 /** Pure helpers of the admin audit screen (CM-e). */
+import { matchingTabUrl } from '../cardmarket/matching/format';
 
 /** Every action the admin area records (`audit.record`), with its readable label. */
 const ACTION_LABELS = {
@@ -72,15 +73,15 @@ export function targetLink(row: {
     case 'cardmarket_product':
       if (!/^\d+$/.test(id)) return null;
       if (row.action === 'cardmarket.link' || row.action === 'cardmarket.relink')
-        return `/admin/cardmarket/matching?tab=linked&q=${id}`;
-      if (row.action === 'cardmarket.ignore') return '/admin/cardmarket/matching?tab=ignored';
-      return `/admin/cardmarket/matching?q=${id}`;
+        return matchingTabUrl('linked', { q: id });
+      if (row.action === 'cardmarket.ignore') return matchingTabUrl('link', { view: 'ignored' });
+      return matchingTabUrl('link', { q: id });
     case 'cardmarket_expansion':
-      return '/admin/cardmarket/matching?tab=expansions&show=all';
+      return matchingTabUrl('prepare', { view: 'expansions', show: 'all' });
     case 'cardmarket':
-      // CM-m: the extra printings are created from the Missing cards tab
+      // CM-m: the extra printings are created from the Missing cards view of Prepare
       if (row.action === 'cardmarket.missing_printings.create')
-        return '/admin/cardmarket/matching?tab=missing';
+        return matchingTabUrl('prepare', { view: 'missing' });
       return '/admin/cardmarket';
     case 'card':
       return withQ('/admin/cards', id);
@@ -89,7 +90,7 @@ export function targetLink(row: {
     case 'set':
       // CM-h: the promo cards created in a set open its missing cards
       if (row.action === 'cardmarket.promo_cards.create')
-        return `/admin/cardmarket/matching?${new URLSearchParams({ tab: 'missing', set: id }).toString()}`;
+        return matchingTabUrl('prepare', { view: 'missing', set: id });
       return '/admin/sets';
     default:
       return null;
