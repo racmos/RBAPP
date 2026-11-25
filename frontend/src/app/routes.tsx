@@ -211,6 +211,12 @@ export function createAppRoutes(
                       }),
                     },
                     {
+                      path: 'images',
+                      lazy: async () => ({
+                        Component: (await import('@/admin/images/ImagesPage')).ImagesPage,
+                      }),
+                    },
+                    {
                       path: 'cardmarket',
                       lazy: async () => ({
                         Component: (await import('@/admin/cardmarket/CardmarketPage'))

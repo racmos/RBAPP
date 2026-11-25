@@ -498,14 +498,15 @@ describe('CardmarketPage recent jobs (CM-a)', () => {
 });
 
 describe('CardmarketPage routing (CM-a)', () => {
-  it('the admin nav links Cardmarket between Products and Riot', async () => {
+  it('the admin nav links Cardmarket between Products (then Images, F13-h) and Riot', async () => {
     cardmarketApi();
     await openPage();
     const nav = screen.getByRole('navigation', { name: 'Administration sections' });
     const labels = within(nav)
       .getAllByRole('link')
       .map((link) => link.textContent);
-    expect(labels.indexOf('Cardmarket')).toBe(labels.indexOf('Products') + 1);
+    expect(labels.indexOf('Images')).toBe(labels.indexOf('Products') + 1);
+    expect(labels.indexOf('Cardmarket')).toBe(labels.indexOf('Images') + 1);
     expect(labels.indexOf('Riot')).toBe(labels.indexOf('Cardmarket') + 1);
     const link = within(nav).getByRole('link', { name: 'Cardmarket' });
     expect(link).toHaveAttribute('href', '/riftbound/app/admin/cardmarket');

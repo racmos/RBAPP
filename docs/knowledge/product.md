@@ -104,6 +104,13 @@ swirl on teal `#06222c`.
 - Card images: folder derived from the file-name prefix (`RbCard.image_src`). They move out of git into a
   data directory outside the code tree (unit M-d; copied first, because removing them from the index would
   delete them from the deployed checkout on the next pull).
+- Uploaded images (F13-h, owner 2026-11-24, following PiltoverArchive / RiftAtlas): every image uploaded
+  from the admin is resized on the server to fit inside **640 × 894 px for cards** (ratio 63:88) and
+  **640 × 640 px for products**, never upscaled or cropped, and stored as **WebP quality 85** without
+  metadata, under the standard name (`<set>_<id>.webp`, `<product id>.webp`; `-<n>` for a re-upload).
+  The previous file is deleted when the Undo toast expires (default taken in F13-h; the owner may ask
+  for an immediate delete). The images already stored are not converted (a one-off re-encode is a
+  separate owner decision).
 - Price fallback chain (`app/services/pricing.py`): premium cards (rare, epic, showcase, or a foil copy) use
   `avg7_foil → avg7 → low_foil → low`; common non-foil uses `avg7 → avg7_foil → low → low_foil`; NULL and 0
   count as missing. Basic Runes have no foil slot.

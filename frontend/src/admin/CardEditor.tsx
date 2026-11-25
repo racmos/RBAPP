@@ -13,6 +13,7 @@ import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { isCardNumber, readCardCode, type CardCodeRead } from './cardCode';
 import { FormAlert } from './FormAlert';
+import { finalizeLater, resultText } from './images/uploadImage';
 import styles from './CardsAdminPage.module.css';
 
 export type CardForm = Record<string, string>;
@@ -343,6 +344,7 @@ export function CardEditor({
   const [imageSrc, setImageSrc] = useState(initial?.image_src ?? null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<string | null>(null);
   const creating = initial === null;
   const disabled = pending || offline;
   const set = (patch: Partial<CardForm>) =>
@@ -359,10 +361,18 @@ export function CardEditor({
       setImage(card.image);
       setImageSrc(card.image_src);
       setUploadError(null);
-      pushToast({ kind: 'success', message: t('cards.image.uploaded') });
+      setFieldErrors({});
+      // F13-h S11: the server resized and renamed it; its previous file goes with the toast (S7)
+      setUploadResult(resultText(i18n, card));
+      pushToast({
+        kind: 'success',
+        message: t('cards.image.uploaded'),
+        onExpire: finalizeLater({ type: 'card', setId: card.set_id }, card.previous),
+      });
       void queryClient.invalidateQueries({ queryKey: ['admin'] });
     },
     onError: (error: unknown) => {
+      setUploadResult(null);
       if (error instanceof ApiError && error.kind === 'http' && error.status === 400) {
         const mapped = fieldErrorsFromDetails(error.details, i18n, ['file'] as const);
         setFieldErrors(mapped);
@@ -418,6 +428,11 @@ export function CardEditor({
         )}
       </div>
       {image && <p className={styles.hint}>{image}</p>}
+      {uploadResult && (
+        <p role="status" className={styles.hint}>
+          {uploadResult}
+        </p>
+      )}
       {formError && <FormAlert message={formError} />}
       <div className={styles.actions}>
         <Button type="submit" disabled={disabled}>

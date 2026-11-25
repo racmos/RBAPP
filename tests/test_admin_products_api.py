@@ -9,6 +9,7 @@ from app import db
 from app.models import RbcmExpansion, RbcmProduct, RbProducts
 from app.models.audit import RbAdminAudit
 from app.services.products import refresh_products
+from tests.image_helpers import jpeg, noise_png, opened, png, webp
 from tests.product_helpers import add_price, add_product, add_sets
 from tests.test_authz_matrix import classify
 
@@ -16,10 +17,10 @@ URL = '/riftbound/api/v1/admin/products'
 DAY = '20300101'
 NEXT = '20300102'
 NOON = datetime(2030, 1, 1, 12, 0, 0)
-PNG = b'\x89PNG\r\n\x1a\n' + b'product-image-bytes' * 50
-JPG = b'\xff\xd8\xff' + b'product-image-bytes' * 50
-WEBP = b'RIFF\x00\x00\x00\x00WEBPVP8 ' + b'product-image-bytes' * 50
-MAX_BYTES = 2_097_152
+PNG = png((1280, 640))
+JPG = jpeg((1280, 640))
+WEBP = webp((1280, 640))
+MAX_BYTES = 10 * 1024 * 1024
 
 
 def cm(day, product_id, name, category, expansion=None, type_='nonsingle'):
@@ -107,6 +108,7 @@ class TestList:
             'owned_qty': 0,
             'hidden': False, 'kind_locked': False, 'set_locked': False,
             'rbpdt_type': 'nonsingle', 'updated_at': '2030-01-01T10:00:00Z',
+            'image': None, 'has_image': False,
         }
         starter = next(item for item in items if item['id'] == 103)
         assert starter['image_src'] == '/riftbound/media/products/103.png'
@@ -133,7 +135,7 @@ class TestList:
         ('listed=no', [102]),
         ('no_set=true', [102]),
         ('no_set=false', [103, 102, 100, 101]),
-        ('no_image=true', [102, 100, 101]),
+        ('no_image=true', [103, 102, 100, 101]),   # 103.png is not on disk (F13-h S2)
         ('kind=booster_box&hidden=no', []),
         ('q=origins&kind=booster', [100]),
     ])
@@ -143,7 +145,7 @@ class TestList:
     def test_an_empty_image_counts_as_no_image(self, admin_client, catalog):
         product(100).rbpdt_image = ''
         db.session.commit()
-        assert ids(admin_client.get(f'{URL}?no_image=true')) == [102, 100, 101]
+        assert ids(admin_client.get(f'{URL}?no_image=true')) == [103, 102, 100, 101]
 
     @pytest.mark.parametrize('query, expected', [
         ('sort=name&dir=desc', [101, 100, 102, 103]),
@@ -431,46 +433,65 @@ class TestPatchRules:
 # ---------------------------------------------------------------------------
 
 class TestImage:
-    @pytest.mark.parametrize('data, filename, ext', [
-        (PNG, 'scan.png', 'png'), (JPG, 'photo.jpg', 'jpg'), (WEBP, 'art.webp', 'webp'),
-        (JPG, 'renamed.png', 'jpg'),
-        (PNG, '../../etc/passwd', 'png'),
-    ])
-    def test_the_file_is_id_dot_magic_extension(self, admin_client, catalog,
-                                                product_images_dir, client, data,
-                                                filename, ext):
+    """F14-d S4 adapted by F13-h S4, S5, S7: every upload is fitted inside 640 x 640 and stored
+    as `<id>.webp` (`<id>-<n>.webp` when taken); the previous file stays for the Undo."""
+
+    @pytest.mark.parametrize('data, filename', [
+        (PNG, 'scan.png'), (JPG, 'photo.jpg'), (WEBP, 'art.webp'), (JPG, 'renamed.png'),
+        (PNG, '../../etc/passwd'),
+    ], ids=['png', 'jpeg', 'webp', 'renamed', 'path-name'])
+    def test_the_file_is_id_dot_webp(self, admin_client, catalog, product_images_dir, client,
+                                     data, filename):
         resp = upload(admin_client, 100, data, filename)
         assert resp.status_code == 200
         item = payload(resp)['data']
+        stored = product_images_dir / '100.webp'
         assert item['id'] == 100
-        assert item['image_src'] == f'/riftbound/media/products/100.{ext}'
-        assert sorted(p.name for p in product_images_dir.iterdir()) == [f'100.{ext}']
-        assert (product_images_dir / f'100.{ext}').read_bytes() == data
-        assert product(100).rbpdt_image == f'100.{ext}'
+        assert item['image_src'] == '/riftbound/media/products/100.webp'
+        assert (item['image'], item['previous'], item['has_image']) == ('100.webp', None, True)
+        assert (item['width'], item['height'], item['bytes']) == (640, 320, stored.stat().st_size)
+        assert sorted(p.name for p in product_images_dir.iterdir()) == ['100.webp']
+        assert opened(stored.read_bytes()).format == 'WEBP'
+        assert product(100).rbpdt_image == '100.webp'
         (audit,) = audits()
         assert (audit.rbaud_action, audit.rbaud_target_type, audit.rbaud_target_id,
                 audit.rbaud_details) == ('product.image', 'product', '100',
-                                         {'image': f'100.{ext}', 'bytes': len(data)})
+                                         {'image': '100.webp', 'bytes_in': len(data),
+                                          'bytes_out': stored.stat().st_size,
+                                          'width': 640, 'height': 320})
         served = client.get(item['image_src'])
         assert served.status_code == 200
-        assert served.data == data
+        assert served.data == stored.read_bytes()
 
     def test_the_list_shows_the_new_image(self, admin_client, catalog, product_images_dir):
         upload(admin_client, 100, PNG)
         items = payload(admin_client.get(f'{URL}?q=Origins Booster'))['data']['items']
-        assert items[0]['image_src'] == '/riftbound/media/products/100.png'
-        assert ids(admin_client.get(f'{URL}?no_image=true')) == [102, 101]
+        assert items[0]['image_src'] == '/riftbound/media/products/100.webp'
+        assert items[0]['has_image'] is True
+        # 103 names 103.png, which is not on disk: it is missing too (S2)
+        assert ids(admin_client.get(f'{URL}?no_image=true')) == [103, 102, 101]
 
-    def test_a_new_type_replaces_the_old_file(self, admin_client, catalog, product_images_dir):
+    def test_a_re_upload_gets_the_next_number_and_keeps_the_previous(self, admin_client,
+                                                                     catalog,
+                                                                     product_images_dir):
         upload(admin_client, 100, PNG)
-        upload(admin_client, 100, WEBP)
-        assert sorted(p.name for p in product_images_dir.iterdir()) == ['100.webp']
-        assert product(100).rbpdt_image == '100.webp'
+        item = payload(upload(admin_client, 100, WEBP))['data']
+        assert (item['image'], item['previous']) == ('100-2.webp', '100.webp')
+        assert sorted(p.name for p in product_images_dir.iterdir()) == ['100-2.webp',
+                                                                        '100.webp']
+        assert product(100).rbpdt_image == '100-2.webp'
 
-    def test_the_same_type_overwrites(self, admin_client, catalog, product_images_dir):
+    def test_the_next_upload_deletes_the_older_files(self, admin_client, catalog,
+                                                     product_images_dir):
+        product_images_dir.mkdir()
+        (product_images_dir / '100.png').write_bytes(PNG)
+        product(100).rbpdt_image = '100.png'
+        db.session.commit()
         upload(admin_client, 100, PNG)
-        upload(admin_client, 100, PNG[:20] + b'v2')
-        assert (product_images_dir / '100.png').read_bytes() == PNG[:20] + b'v2'
+        assert sorted(p.name for p in product_images_dir.iterdir()) == ['100.png', '100.webp']
+        upload(admin_client, 100, PNG)
+        assert sorted(p.name for p in product_images_dir.iterdir()) == ['100-2.webp',
+                                                                        '100.webp']
 
     def test_an_image_not_named_after_the_product_is_kept(self, admin_client, catalog,
                                                           product_images_dir):
@@ -479,7 +500,9 @@ class TestImage:
         product(100).rbpdt_image = 'shared.png'
         db.session.commit()
         upload(admin_client, 100, JPG)
-        assert sorted(p.name for p in product_images_dir.iterdir()) == ['100.jpg', 'shared.png']
+        upload(admin_client, 100, JPG)
+        assert sorted(p.name for p in product_images_dir.iterdir()) == [
+            '100-2.webp', '100.webp', 'shared.png']
 
     def test_an_unsafe_stored_name_is_ignored(self, admin_client, catalog, product_images_dir,
                                               tmp_path):
@@ -487,27 +510,34 @@ class TestImage:
         product(100).rbpdt_image = '../outside.png'
         db.session.commit()
         assert upload(admin_client, 100, PNG).status_code == 200
+        assert upload(admin_client, 100, PNG).status_code == 200
         assert (tmp_path / 'outside.png').read_bytes() == b'keep me'
 
-    def test_exactly_2mb_is_accepted(self, admin_client, catalog, product_images_dir):
-        data = (PNG + b'x' * MAX_BYTES)[:MAX_BYTES]
-        assert upload(admin_client, 100, data).status_code == 200
+    def test_a_120_px_image_is_accepted(self, admin_client, catalog, product_images_dir):
+        assert upload(admin_client, 100, png((120, 120))).status_code == 200
 
-    def test_over_2mb_is_400_and_writes_nothing(self, admin_client, catalog,
-                                                 product_images_dir):
-        data = (PNG + b'x' * MAX_BYTES)[:MAX_BYTES + 1]
+    @pytest.mark.parametrize('data, code, params', [
+        (png((119, 400)), 'too_small', {'min': 120}),
+        (None, 'out_of_range', {'max': MAX_BYTES}),
+    ], ids=['tiny', '12mb'])
+    def test_too_small_or_too_large_is_400_and_writes_nothing(self, admin_client, catalog,
+                                                              product_images_dir, data, code,
+                                                              params):
+        data = data if data is not None else noise_png(12 * 1024 * 1024)
         resp = upload(admin_client, 100, data)
         assert resp.status_code == 400
         body = payload(resp)
         assert body['code'] == 'validation_error'
-        assert any(d['field'] == 'file' and d['code'] == 'out_of_range'
-                   and d['params'] == {'max': MAX_BYTES} for d in body['details'])
+        assert any(d['field'] == 'file' and d['code'] == code and d['params'] == params
+                   for d in body['details'])
         self._nothing_written(product_images_dir)
 
     @pytest.mark.parametrize('data', [b'GIF89a' + b'x' * 100, b'<svg></svg>', b'',
-                                      b'RIFF\x00\x00\x00\x00AVI LIST'])
-    def test_bad_magic_bytes_are_400_and_write_nothing(self, admin_client, catalog,
-                                                       product_images_dir, data):
+                                      b'RIFF\x00\x00\x00\x00AVI LIST',
+                                      b'\x89PNG\r\n\x1a\n' + b'product-image-bytes' * 50],
+                             ids=['gif', 'svg', 'empty', 'avi', 'fake-png'])
+    def test_bad_or_damaged_files_are_400_and_write_nothing(self, admin_client, catalog,
+                                                           product_images_dir, data):
         resp = upload(admin_client, 100, data, 'fake.png')
         assert resp.status_code == 400
         assert any(d['field'] == 'file' and d['code'] == 'invalid_format'

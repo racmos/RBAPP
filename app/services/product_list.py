@@ -16,7 +16,7 @@ from app.models import RbProducts, RbSet, RbUserProduct
 from app.models.cardmarket import PRODUCT_KINDS
 from app.schemas.validators import ProductListQuery
 from app.services import catalog, pricing
-from app.services.product_images import product_image_url
+from app.services.product_images import existing_files, product_has_file, product_image_url
 from app.services.product_prices import (line_numbers, price_rows, product_price,
                                          product_price_summaries, summary_from_rows)
 
@@ -207,8 +207,12 @@ def list_products(query: ProductListQuery, user_id) -> dict:
     }
 
 
-def admin_product_item(product, *, price, owned_qty) -> dict:
-    """`ProductSummary` + `{hidden, kind_locked, set_locked, rbpdt_type, updated_at}` (F14-d)."""
+def admin_product_item(product, *, price, owned_qty, files=None) -> dict:
+    """`ProductSummary` + `{hidden, kind_locked, set_locked, rbpdt_type, updated_at}` (F14-d)
+    + `{image, has_image}` (F13-h S2: the stored name and whether its file exists; `files` is
+    the result of `existing_files()`, read here when the caller did not batch it)."""
+    if files is None:
+        files = existing_files()
     item = product_summary(product, price=price, owned_qty=owned_qty)
     item.update({
         'hidden': bool(product.rbpdt_hidden),
@@ -216,6 +220,8 @@ def admin_product_item(product, *, price, owned_qty) -> dict:
         'set_locked': bool(product.rbpdt_set_locked),
         'rbpdt_type': product.rbpdt_type,
         'updated_at': _iso_utc(product.rbpdt_updated_at),
+        'image': product.rbpdt_image,
+        'has_image': product_has_file(product.rbpdt_image, files),
     })
     return item
 
@@ -235,7 +241,7 @@ def admin_item_for(product, user_id) -> dict:
                               owned_qty=owned_quantities(user_id).get(product.rbpdt_id_product, 0))
 
 
-def _admin_matches(query, product) -> bool:
+def _admin_matches(query, product, files) -> bool:
     q = (query.q or '').casefold()
     if q and q not in (product.rbpdt_name or '').casefold() and \
             not (q.isdigit() and int(q) == product.rbpdt_id_product):
@@ -248,7 +254,11 @@ def _admin_matches(query, product) -> bool:
         return False
     if query.no_set and product.rbpdt_id_set is not None:
         return False
-    if query.no_image and product.rbpdt_image:
+    image_filter = query.image_filter
+    if image_filter == 'empty' and product.rbpdt_image:
+        return False
+    if image_filter in ('missing', 'present') and \
+            product_has_file(product.rbpdt_image, files) != (image_filter == 'present'):
         return False
     return True
 
@@ -256,9 +266,11 @@ def _admin_matches(query, product) -> bool:
 def list_admin_products(query, user_id) -> tuple[list[dict], int]:
     """`(items, total)` of the admin list (`AdminProductQuery`): every non-single, hidden
     ones included; sort by name, or by `rbpdt_updated_at` with nulls last and ties by name.
-    Three statements whatever the size of the catalog (products, prices, owned copies)."""
+    Three statements whatever the size of the catalog (products, prices, owned copies), and
+    one directory scan of the product images (F13-h S2)."""
     products = db.session.query(RbProducts).filter(RbProducts.rbpdt_type == 'nonsingle').all()
-    matched = sorted((p for p in products if _admin_matches(query, p)), key=_name_key,
+    files = existing_files()
+    matched = sorted((p for p in products if _admin_matches(query, p, files)), key=_name_key,
                      reverse=(query.sort == 'name' and query.dir == 'desc'))
     if query.sort == 'updated':
         dated = [p for p in matched if p.rbpdt_updated_at is not None]
@@ -270,7 +282,7 @@ def list_admin_products(query, user_id) -> tuple[list[dict], int]:
     prices = product_price_summaries(p.rbpdt_id_product for p in page)
     owned = owned_quantities(user_id)
     return [admin_product_item(p, price=prices.get(p.rbpdt_id_product),
-                               owned_qty=owned.get(p.rbpdt_id_product, 0))
+                               owned_qty=owned.get(p.rbpdt_id_product, 0), files=files)
             for p in page], len(matched)
 
 

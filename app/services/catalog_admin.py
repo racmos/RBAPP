@@ -3,7 +3,6 @@
 Pure queries and row mutations; the views commit once, together with the
 audit row (`app/services/audit.py`), so a rolled-back change leaves no trace.
 """
-import os
 import re
 
 from sqlalchemy import func, or_, select, tuple_
@@ -13,7 +12,8 @@ from app.models.card import RbCard
 from app.models.collection import RbCollection
 from app.models.deck_v2 import RbDeckHead, RbDeckVersion
 from app.models.set import RbSet
-from app.services.card_images import card_image_url
+from app.models.card import card_image_folder
+from app.services.card_images import card_has_file, card_image_url, existing_files
 from app.services.decks import _refs, normal_content
 
 
@@ -144,8 +144,13 @@ def create_cards(items) -> list[RbCard]:
     return cards
 
 
-def card_item(card: RbCard) -> dict:
-    """The S6 `AdminCard` payload: raw column values, key, M-d image URLs."""
+def card_item(card: RbCard, has_image=None) -> dict:
+    """The S6 `AdminCard` payload: raw column values, key, M-d image URLs, and `has_image`
+    (F13-h S2: the file exists; checked here when the caller did not batch it)."""
+    if has_image is None:
+        has_image = card_has_file(card.image, card.rbcar_rbset_id,
+                                  existing_files([card_image_folder(card.image,
+                                                                    card.rbcar_rbset_id)]))
     return {'set_id': card.rbcar_rbset_id, 'card_id': card.rbcar_id,
             'key': f'{card.rbcar_rbset_id}-{card.rbcar_id}',
             'name': card.rbcar_name, 'domain': card.rbcar_domain,
@@ -155,11 +160,16 @@ def card_item(card: RbCard) -> dict:
             'rarity': card.rbcar_rarity, 'artist': card.rbcar_artist,
             'image': card.image,
             'image_url': card_image_url(card.image, card.rbcar_rbset_id),
-            'image_src': card.image_src}
+            'image_src': card.image_src, 'has_image': has_image}
 
 
 def list_cards(params) -> tuple[list[dict], int]:
-    """Filtered cards and the total (S6): two bounded queries, natural sort in Python."""
+    """Filtered cards and the total (S6): two bounded queries, natural sort in Python.
+
+    `image` (F13-h S2): `empty` filters the column in SQL; `missing` and `present` also look
+    for the file, one directory scan per folder of the matching cards; every row of the page
+    carries `has_image` from the same scans.
+    """
     query = RbCard.query
     if params.set:
         query = query.filter(RbCard.rbcar_rbset_id.in_(params.set))
@@ -170,8 +180,11 @@ def list_cards(params) -> tuple[list[dict], int]:
         query = query.filter(RbCard.rbcar_type.ilike(f'%{params.type}%'))
     if params.domain:
         query = query.filter(RbCard.rbcar_domain.ilike(f'%{params.domain}%'))
-    if params.missing_image:
+    image_filter = params.image_filter
+    if image_filter == 'empty':
         query = query.filter(or_(RbCard.image.is_(None), RbCard.image == ''))
+    elif image_filter == 'present':
+        query = query.filter(RbCard.image.isnot(None), RbCard.image != '')
     if params.q:
         like = f'%{params.q}%'
         clauses = [RbCard.rbcar_name.ilike(like),
@@ -182,9 +195,14 @@ def list_cards(params) -> tuple[list[dict], int]:
                 clauses.append((func.lower(RbCard.rbcar_rbset_id) == set_part.lower())
                                & (func.lower(RbCard.rbcar_id) == card_part.lower()))
         query = query.filter(or_(*clauses))
-    total = db.session.scalar(
-        select(func.count()).select_from(query.order_by(None).subquery()))
     cards = query.all()
+    existing = {}
+    if image_filter in ('missing', 'present'):
+        existing = existing_files(card_image_folder(c.image, c.rbcar_rbset_id)
+                                  for c in cards if c.image)
+        cards = [c for c in cards if card_has_file(c.image, c.rbcar_rbset_id, existing)
+                 == (image_filter == 'present')]
+    total = len(cards)
     if params.sort == 'name':
         cards.sort(key=lambda c: ((c.rbcar_name or '').lower(), c.rbcar_rbset_id,
                                   _nat(c.rbcar_id)))
@@ -193,7 +211,11 @@ def list_cards(params) -> tuple[list[dict], int]:
     if params.dir == 'desc':
         cards.reverse()
     start = (params.page - 1) * params.per_page
-    return [card_item(c) for c in cards[start:start + params.per_page]], total
+    page = cards[start:start + params.per_page]
+    folders = {card_image_folder(c.image, c.rbcar_rbset_id) for c in page if c.image}
+    existing.update(existing_files(folders - set(existing)))
+    return [card_item(c, card_has_file(c.image, c.rbcar_rbset_id, existing))
+            for c in page], total
 
 
 def _v2_decks_using(set_id: str, card_id: str) -> set[int]:
@@ -238,9 +260,3 @@ def detect_image_ext(head: bytes) -> str | None:
         return 'webp'
     return None
 
-
-def image_stem(card: RbCard) -> str:
-    """The stem of the card's current image, else `<set lower>_<card>` (S9)."""
-    if card.image:
-        return os.path.splitext(os.path.basename(card.image))[0]
-    return f'{card.rbcar_rbset_id.lower()}_{card.rbcar_id}'

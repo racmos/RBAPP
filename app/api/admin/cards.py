@@ -1,7 +1,9 @@
-"""Cards admin API (F13-b S6-S10): list, create, edit, image, delete with audit."""
-import os
+"""Cards admin API (F13-b S6-S10): list, create, edit, image, delete with audit.
 
+The image upload goes through `app/services/image_upload.py` (F13-h S4, S5, S7, S8).
+"""
 from flask import request
+from werkzeug.datastructures import FileStorage
 
 from app import db
 from app.api.admin import api_admin
@@ -11,10 +13,7 @@ from app.models.card import RbCard
 from app.schemas.admin import AdminCardCreate, AdminCardPatch, AdminCardQuery
 from app.schemas.validation import validate_json, validate_query
 from app.services import audit as audit_service
-from app.services import catalog_admin
-from app.services.card_images import card_image_path
-
-MAX_IMAGE_BYTES = 2_097_152
+from app.services import catalog_admin, image_upload
 
 CARD_FIELDS = catalog_admin.CARD_FIELDS
 
@@ -79,43 +78,54 @@ def update_card(set_id, card_id):
     return ok(catalog_admin.card_item(card))
 
 
+def file_required():
+    """The 400 of an upload without the multipart part `file`."""
+    return fail('Validation Error', 'Invalid request data', 400,
+                details=[{'field': 'file', 'message': 'file is required',
+                          'type': 'missing', 'code': DetailCode.REQUIRED.value}],
+                code=ErrorCode.VALIDATION_ERROR)
+
+
+def image_refused(error: image_upload.ImageRejected):
+    """The 400 of a refused image (F13-h S4): one `details[]` item on the field `file`."""
+    return fail('Validation Error', 'Invalid request data', 400, details=[error.detail],
+                code=ErrorCode.VALIDATION_ERROR)
+
+
+def read_upload():
+    """The bytes of the part `file` (at most the limit + 1, enough to refuse a bigger one),
+    or None when the part is missing."""
+    file = (request.files or {}).get('file')
+    if not isinstance(file, FileStorage):
+        return None
+    return file.stream.read(image_upload.MAX_FILE_BYTES + 1)
+
+
 @api_admin.post('/cards/<set_id>/<card_id>/image')
 def upload_card_image(set_id, card_id):
-    """Replace the card image from multipart field `file` (S9)."""
+    """Replace the card image from multipart field `file` (F13-b S9, F13-h S4-S8): resized
+    WebP `<set>_<id>.webp` (`-<n>` when taken); the previous file is kept for the Undo."""
     card = RbCard.query.filter_by(rbcar_rbset_id=set_id, rbcar_id=card_id).one_or_none()
     if card is None:
         return _unknown('Card', set_id, card_id)
-    file = (request.files or {}).get('file')
-    if file is None:
-        return fail('Validation Error', 'Invalid request data', 400,
-                    details=[{'field': 'file', 'message': 'file is required',
-                              'type': 'missing', 'code': DetailCode.REQUIRED.value}],
-                    code=ErrorCode.VALIDATION_ERROR)
-    blob = file.read()
-    if len(blob) > MAX_IMAGE_BYTES:
-        return fail('Validation Error', 'Invalid request data', 400,
-                    details=[{'field': 'file', 'message': 'file is too large',
-                              'type': 'value_error',
-                              'code': DetailCode.OUT_OF_RANGE.value,
-                              'params': {'max': MAX_IMAGE_BYTES}}],
-                    code=ErrorCode.VALIDATION_ERROR)
-    ext = catalog_admin.detect_image_ext(blob[:12])
-    if ext is None:
-        return fail('Validation Error', 'Invalid request data', 400,
-                    details=[{'field': 'file', 'message': 'unsupported image type',
-                              'type': 'value_error',
-                              'code': DetailCode.INVALID_FORMAT.value}],
-                    code=ErrorCode.VALIDATION_ERROR)
-    filename = f'{catalog_admin.image_stem(card)}.{ext}'
-    dest = card_image_path(filename, card.rbcar_rbset_id)
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
-    with open(dest, 'wb') as handle:
-        handle.write(blob)
-    card.image = filename
-    audit_service.record('card.image', 'card', f'{set_id}-{card_id}',
-                         {'image': filename, 'bytes': len(blob)})
-    db.session.commit()
-    return ok(catalog_admin.card_item(card))
+    blob = read_upload()
+    if blob is None:
+        return file_required()
+    try:
+        stored = image_upload.store_card_image(card, blob)
+    except image_upload.ImageRejected as error:
+        return image_refused(error)
+    try:
+        audit_service.record('card.image', 'card', f'{set_id}-{card_id}', stored.audit())
+        db.session.commit()
+    except BaseException:
+        db.session.rollback()
+        image_upload.remove_written('card', stored, set_id)
+        raise
+    image_upload.discard_card_family(card, keep={stored.image, stored.previous})
+    item = catalog_admin.card_item(card, has_image=True)
+    item.update(stored.payload())
+    return ok(item)
 
 
 @api_admin.delete('/cards/<set_id>/<card_id>')

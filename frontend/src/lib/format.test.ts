@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatBytes,
   formatDate,
   formatDateTime,
   formatMoney,
@@ -67,5 +68,16 @@ describe('formatRelative (F9-j S9)', () => {
   it('is the date from 7 days, and "now" for a time in the future', () => {
     expect(formatRelative('2026-11-08T12:00:00Z', NOW)).toBe('8 Nov 2026');
     expect(formatRelative('2026-11-15T12:05:00Z', NOW)).toBe('now');
+  });
+});
+
+describe('formatBytes (F13-h)', () => {
+  it.each([
+    [850, '850 B'],
+    [87_040, '85 KB'],
+    [1_258_291, '1.2 MB'],
+    [10 * 1024 * 1024, '10 MB'],
+  ])('%d -> %s', (bytes, text) => {
+    expect(formatBytes(bytes)).toBe(text);
   });
 });

@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/Switch';
 import { pushToast } from '@/components/ui/toastStore';
 import { translateError } from '@/i18n';
 import { FormAlert } from './FormAlert';
+import { finalizeLater, resultText } from './images/uploadImage';
 import styles from './ProductEditor.module.css';
 
 // Sentinel values of the set select: set ids are upper-case codes, so they never collide.
@@ -89,6 +90,7 @@ export function ProductEditor({
   const [form, setForm] = useState(initial);
   const [imageSrc, setImageSrc] = useState(product.image_src);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<string | null>(null);
   const disabled = pending || offline;
   const knownSet = product.set_id === null || sets.some((set) => set.id === product.set_id);
 
@@ -97,10 +99,17 @@ export function ProductEditor({
     onSuccess: (updated) => {
       setImageSrc(updated.image_src);
       setUploadError(null);
-      pushToast({ kind: 'success', message: t('cards.image.uploaded') });
+      // F13-h S11: the server resized and renamed it; its previous file goes with the toast (S7)
+      setUploadResult(resultText(i18n, updated));
+      pushToast({
+        kind: 'success',
+        message: t('cards.image.uploaded'),
+        onExpire: finalizeLater({ type: 'product' }, updated.previous),
+      });
       void queryClient.invalidateQueries({ queryKey: ['admin'] });
     },
     onError: (error: unknown) => {
+      setUploadResult(null);
       const mapped =
         error instanceof ApiError && error.kind === 'http' && error.status === 400
           ? fieldErrorsFromDetails(error.details, i18n, ['file'] as const).file
@@ -186,7 +195,7 @@ export function ProductEditor({
         <ProductThumb src={imageSrc} />
         <Field
           label={t('cards.image.upload')}
-          hint={t('cards.image.hint')}
+          hint={t('products.imageHint')}
           error={uploadError ?? undefined}
         >
           {(control) => (
@@ -203,6 +212,11 @@ export function ProductEditor({
           )}
         </Field>
       </div>
+      {uploadResult && (
+        <p role="status" className={styles.result}>
+          {uploadResult}
+        </p>
+      )}
       {formError && <FormAlert message={formError} />}
       <div className={styles.actions}>
         <Button type="submit" disabled={disabled}>

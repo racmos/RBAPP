@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from app.api.error_codes import ErrorCode
+from app.api.error_codes import DetailCode, ErrorCode
 
 LOCALES = Path(__file__).resolve().parent.parent / 'frontend' / 'src' / 'i18n' / 'locales'
 
@@ -58,3 +58,26 @@ def test_the_api_key_codes_have_their_text(code, text):
     """F9-h S13."""
     assert ErrorCode(code).value == code
     assert _codes()[code] == text
+
+
+def _validation():
+    return json.loads((LOCALES / 'en' / 'errors.json').read_text(encoding='utf-8'))['validation']
+
+
+@pytest.mark.parametrize('code', [c.value for c in DetailCode])
+def test_every_detail_code_has_a_catalog_entry(code):
+    """F13-h S10: a field error is translated by its code (`validation.<code>`)."""
+    entry = _validation().get(code)
+    assert isinstance(entry, str) and entry.strip(), f'errors.json[en] lacks validation.{code}'
+
+
+@pytest.mark.parametrize('code, text', [
+    ('too_small', 'The image is too small: its short side must be at least {{min}} px.'),
+    ('invalid_format', 'That file is not a supported image. Use a PNG, JPEG or WebP image.'),
+    ('out_of_range', 'The image is too large (at most 10 MB and 25 megapixels).'),
+])
+def test_the_image_upload_codes_have_their_text(code, text):
+    """F13-h S4, S10: the upload refusals on the field `file`."""
+    assert DetailCode(code).value == code
+    assert _validation()['file'][code] == text
+    assert _validation()['too_small'] == 'The image is too small (at least {{min}} px).'

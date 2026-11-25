@@ -86,6 +86,53 @@ def stored_card_image(folder: str, filename: str):
     return f'{folder}/{filename}'
 
 
+def files_in(folder_path: str, root: str) -> set:
+    """Names of the regular files directly in `folder_path` (one `os.scandir`, F13-h S2).
+
+    A symlink counts only when it resolves to a regular file inside `root` (what the media
+    route serves). A missing or unreadable folder has no files.
+    """
+    names = set()
+    try:
+        entries = os.scandir(folder_path)
+    except OSError:
+        return names
+    with entries:
+        for entry in entries:
+            try:
+                if not entry.is_file():
+                    continue
+                if entry.is_symlink() and not _inside(root, entry.path):
+                    continue
+            except OSError:
+                continue
+            names.add(entry.name)
+    return names
+
+
+def existing_files(folders) -> dict:
+    """`{folder: set of file names}` of the safe `folders` under the root: one directory scan
+    per folder, whatever the number of cards (F13-h S2)."""
+    root = images_root()
+    return {folder: files_in(os.path.join(root, folder), root)
+            for folder in set(folders) if is_safe_folder(folder)}
+
+
+def card_has_file(image, set_id, existing: dict) -> bool:
+    """True when the card's `image` names a file present in `existing` (`existing_files`)."""
+    if not image or not is_plain_file_name(image):
+        return False
+    return image in existing.get(card_image_folder(image, set_id), ())
+
+
+def cards_with_files(pairs) -> list:
+    """`[has file]` for each `(image, set_id)` of `pairs`, one directory scan per folder."""
+    pairs = list(pairs)
+    existing = existing_files(card_image_folder(image, set_id)
+                              for image, set_id in pairs if image)
+    return [card_has_file(image, set_id, existing) for image, set_id in pairs]
+
+
 def import_legacy(source: str) -> tuple[int, int, int]:
     """Copy `<source>/<folder>/<file>` into the images root (S7, D-Md-3).
 

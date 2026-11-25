@@ -1,0 +1,209 @@
+@layer components {
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 12px 0 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tab {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .tab[aria-selected='true'] {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+  }
+
+  .tab:hover {
+    color: var(--text);
+  }
+
+  .tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .tabCount {
+    min-width: 24px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .counter,
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .filterField {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+    vertical-align: middle;
+  }
+
+  /* A row (or a phone card) the admin is dragging an image over (S3). */
+  .dropTarget[data-over] {
+    background: var(--panel-2);
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+  }
+
+  .thumb {
+    display: block;
+    width: 48px;
+    height: auto;
+    border-radius: var(--radius-sm);
+  }
+
+  .placeholder {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 67px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    color: var(--muted);
+  }
+
+  .cards {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .card {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 12px;
+  }
+
+  .cardText {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cardTitle {
+    display: block;
+    font-size: 15px;
+  }
+
+  .cardMeta {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .preview {
+    display: grid;
+    gap: 12px;
+  }
+
+  .preview p {
+    margin: 0;
+  }
+
+  .previewImage {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    margin: 0 auto;
+    border-radius: var(--radius-sm);
+  }
+
+  .previewActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .bulkTable {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .bulkTable th,
+  .bulkTable td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+    vertical-align: top;
+  }
+
+  .fileName {
+    overflow-wrap: anywhere;
+  }
+
+  .search {
+    display: grid;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .results {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .progress {
+    width: 100%;
+  }
+}
